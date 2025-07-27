@@ -30,13 +30,13 @@ size_t hexToDec(const std::string &hexStr) {
 }
 
 // Helper to convert decimal string to size_t
-std::size_t strToDec(const std::string& decStr) {
+size_t strToDec(const std::string& decStr) {
     if (decStr.empty()) {
         throw std::runtime_error("Error: Attempted to convert empty decimal string to size_t.");
     }
     std::stringstream ss;
     ss << decStr; 
-    std::size_t decVal;
+    size_t decVal;
     ss >> decVal;
     if (ss.fail() || !ss.eof()) {
 
@@ -57,10 +57,6 @@ void readMshFile(const std::string &filePath,
   allFaces.clear();
   allCells.clear();
   allBoundaryPatches.clear();
-
-  // Maps face_zone_id to index in allBoundaryPatches
-  std::map<size_t, size_t> faceZoneToPatchIndexMap;
-  std::vector<size_t> boundaryDataTemp;
 
   std::string line;
   std::string token;
@@ -151,6 +147,9 @@ void readMshFile(const std::string &filePath,
               ifs >> allNodes[node_global_idx].z;
             }
             node_global_idx++;
+          } else {
+            throw std::runtime_error("Error: Node index " + std::to_string(node_global_idx) + 
+                                   " exceeds allocated node vector size " + std::to_string(allNodes.size()));            
           }
         }
       }
@@ -227,7 +226,12 @@ void readMshFile(const std::string &filePath,
           currentFace.nodeIndices.clear();
 
           if (!std::getline(ifs, line)) {
-            throw std::runtime_error("Error: Could not read face data line for face ID (1-based): " + std::to_string(face_i));
+            throw std::runtime_error("Error: Could not read face data line for face ID (1-based): " + std::to_string(face_i) + 
+                                   ". End of file reached unexpectedly.");
+          }
+          
+          if (line.empty()) {
+            throw std::runtime_error("Error: Empty line encountered while reading face data for face ID (1-based): " + std::to_string(face_i));
           }
           
           std::stringstream line_stream(line);
@@ -295,7 +299,7 @@ void readMshFile(const std::string &filePath,
 
   // ----- Populate Cell Data (Face Indices and Neighbour Cell Indices) ----- //
 
-  // Initialize cell's ID and clear any pre-existing connectivity data.
+  // Initialize cell's ID and pre-allocate vectors for better performance
   for (size_t i = 0; i < num_cells; ++i) {
     if (i < allCells.size())
     {
@@ -361,4 +365,29 @@ void readMshFile(const std::string &filePath,
                 << ", num_cells: " << num_cells << std::endl;
     }
   }
+
+  // ----- Final Mesh Validation ----- //
+  
+  // Validate that all cells have at least 4 faces (minimum for 3D)
+  for (size_t i = 0; i < allCells.size(); ++i) {
+    if (allCells[i].faceIndices.size() < 4) {
+      std::cerr << "Warning: Cell " << i << " has only " << allCells[i].faceIndices.size() 
+                << " faces, which is below the minimum of 4 for 3D cells." << std::endl;
+    }
+  }
+  
+  // Validate that all faces have at least 3 nodes
+  for (size_t i = 0; i < allFaces.size(); ++i) {
+    if (allFaces[i].nodeIndices.size() < 3) {
+      throw std::runtime_error("Error: Face " + std::to_string(i) + " has only " + 
+                             std::to_string(allFaces[i].nodeIndices.size()) + " nodes, minimum required is 3.");
+    }
+  }
+  
+  // Print summary statistics
+  std::cout << "Mesh loaded successfully:" << std::endl;
+  std::cout << "  - Nodes: " << allNodes.size() << std::endl;
+  std::cout << "  - Faces: " << allFaces.size() << std::endl;
+  std::cout << "  - Cells: " << allCells.size() << std::endl;
+  std::cout << "  - Boundary patches: " << allBoundaryPatches.size() << std::endl;
 }

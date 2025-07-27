@@ -33,13 +33,14 @@ struct Cell {
           neighbourCellIndices(neighbours)
           {}
 
-    // Calculate geometric properties of the cell
-    // Input: allFaces >>> Vector of all faces in the mesh
-    // Output: necessary geometric properties of the cell like volume, centroid, etc.
-    // The function starts with basic validation of the cell's faces count and face indices
-    // The function then calculates the geometric properties of the cell based on the number of faces
-    // The cell volume is calculated using the divergence theorem: V = (1/3) * sum(face_centroid . face_area_vector)
-    // The cell centroid is calculated using the second moments of the faces
+    /* Calculate geometric properties of the cell
+     * Input: allFaces >>> Vector of all faces in the mesh
+     * Output: necessary geometric properties of the cell like volume, centroid, etc.
+     * The function starts with basic validation of the cell's faces count and face indices
+     * The function then calculates the geometric properties of the cell based on the number of faces
+     * The cell volume is calculated using the divergence theorem: V = (1/3) * sum(face_centroid . face_area_vector)
+     * The cell centroid is calculated using the second moments of the faces
+     */
     void calculateGeometricProperties(const std::vector<Face>& allFaces) {
         geometricPropertiesCalculated = false;
         volume = 0.0;
@@ -99,12 +100,13 @@ struct Cell {
     }
 };
 
-// This function is used to print the cell to the console
-// It prints the cell's id, faces, neighbours, and calculated properties if available
-// The function sets the precision for floating Vector output within this scope
-// The function then prints the cell's id, faces, neighbours, and calculated properties if available
-// The function then restores the precision for floating Vector output within this scope
-// The function then returns the ostream object
+/* This function is used to print the cell to the console
+ * It prints the cell's id, faces, neighbours, and calculated properties if available
+ * The function sets the precision for floating Vector output within this scope
+ * The function then prints the cell's id, faces, neighbours, and calculated properties if available
+ * The function then restores the precision for floating Vector output within this scope
+ * The function then returns the ostream object
+ */
 inline std::ostream& operator<<(std::ostream& os, const Cell& c) {
     os << "Cell(ID: " << c.id
        << ", Faces: [";
@@ -121,17 +123,17 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& c) {
 
     // Print calculated properties if available
     if (c.geometricPropertiesCalculated) {
-        std::ios_base::fmtflags flags = os.flags(); // Save format flags
-        int                      prec = os.precision(); // Save precision
-        os << std::fixed << std::setprecision(6); // Apply formatting
+        std::ios_base::fmtflags flags = os.flags(); 
+        int                      prec = os.precision(); 
+        os << std::fixed << std::setprecision(6); 
         os << ", Volume: " << c.volume
            << ", Centroid: " << c.centroid;
-        os.flags(flags); // Restore flags
-        os.precision(prec); // Restore precision
+        os.flags(flags);
+        os.precision(prec);
     } else {
-        os << ", Geometry: N/A"; // Indicate properties not calculated or failed
+        os << ", Geometry: N/A";
     }
-    os << ")"; // Closing parenthesis
+    os << ")";
     return os;
 }
 
