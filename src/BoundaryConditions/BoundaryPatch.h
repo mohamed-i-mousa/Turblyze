@@ -39,13 +39,13 @@ inline BoundaryConditionType mapFluentBCToEnum(const std::string& fluentType) {
   if (fluentType == "solid") return BoundaryConditionType::SOLID;
   if (fluentType == "fluid") return BoundaryConditionType::FLUID;
 
-  // If non of the above
+  // If none of the above
   std::cerr << "Warning: Unknown Fluent boundary type encountered: " << fluentType << std::endl;
   return BoundaryConditionType::UNDEFINED;
 }
 
 struct BoundaryPatch {
-  // ----- Memebers ----- //
+  // ----- Members ----- //
   std::string patchName;
   std::string fluentType;
   BoundaryConditionType type;
@@ -53,12 +53,11 @@ struct BoundaryPatch {
   size_t firstFaceIndex;
   size_t lastFaceIndex;
 
-
-  // ----- Constructor ------ //
+  // ----- Constructor ----- //
   BoundaryPatch(size_t id, size_t start_id, size_t end_id)
       : zoneID(id), firstFaceIndex(start_id), lastFaceIndex(end_id) {}
 
-  // ----- Functions ------ //
+  // ----- Functions ----- //
 
   size_t getNumberOfBoundaryFaces() const {
       size_t numFaces;

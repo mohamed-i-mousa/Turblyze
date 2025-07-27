@@ -49,12 +49,12 @@ int main() {
 
         for (auto& face : allFaces) {
             face.calculateGeometricProperties(allNodes);
-            std::cout << face << std::endl;   // For debugging
+            //std::cout << face << std::endl;   // For debugging
         }
 
         for (auto& cell : allCells) {
             cell.calculateGeometricProperties(allFaces);
-            std::cout << cell << std::endl;   // For debugging
+            //std::cout << cell << std::endl;   // For debugging
         }
         std::cout << "Geometric properties calculated." << std::endl;
 
@@ -65,8 +65,8 @@ int main() {
 
         // --- Physical Properties ---
         const Scalar rho = 1.0;         // Density (kg/m^3)
-        const Scalar k = 1.0;           // Thermal conductivity (W/m.K)
-        const Scalar cp = 434.0;        // Specific heat (J/kg.K)
+        // const Scalar k = 1.0;           // Thermal conductivity (W/m.K)
+        // const Scalar cp = 434.0;        // Specific heat (J/kg.K)
         const Scalar Gamma = 0.1;       // Diffusivity coefficient (m^2/s)
 
         // --- Boundary Conditions ---
@@ -84,7 +84,7 @@ int main() {
         const Scalar time_total = 1;  // Total simulation time
         const Scalar dt = 0;          // Time step
         int time_step_count = 0;
-        const int max_time_steps = static_cast<int>(time_total / dt);
+        // const int max_time_steps = static_cast<int>(time_total / dt);
 
         // --- Discretization Scheme Selection ---
         CentralDifferenceScheme convScheme;  // Use concrete implementation instead of abstract class

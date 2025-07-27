@@ -6,7 +6,6 @@
 #include <map>
 #include <stdexcept>
 #include <iostream>
-#include <algorithm>
 
 #include "BoundaryPatch.h"
 #include "BoundaryData.h"

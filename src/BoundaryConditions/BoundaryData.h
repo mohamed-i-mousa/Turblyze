@@ -2,9 +2,6 @@
 #define BOUNDARYDATA_H
 
 #include <string>
-#include <vector>
-#include <map>
-#include <variant>
 
 #include "Scalar.h"
 #include "Vector.h"
@@ -46,7 +43,7 @@ struct BoundaryData {
         scalarValue = s_val; 
         valueType = BCValueType::SCALAR;
 
-        // Clear other value typers
+        // Clear other value types
         vectorValue = Vector();
         gradientType = BCValueType::UNDEFINED;
     }
@@ -56,7 +53,7 @@ struct BoundaryData {
         vectorValue = v_val; 
         valueType = BCValueType::VECTOR;
 
-        // Clear other value typers
+        // Clear other value types
         scalarValue = S(0.0);
         gradientType = BCValueType::UNDEFINED;
     }
@@ -66,7 +63,7 @@ struct BoundaryData {
         scalarGradient = s_grad; 
         gradientType = BCValueType::SCALAR;
 
-        // Clear other value typers
+        // Clear other value types
         vectorValue = Vector();
         valueType = BCValueType::UNDEFINED;
     }
@@ -76,7 +73,7 @@ struct BoundaryData {
         vectorGradient = v_grad; 
         gradientType = BCValueType::VECTOR;
 
-        // Clear other value typers
+        // Clear other value types
         scalarValue = S(0.0);
         valueType = BCValueType::UNDEFINED;
     }
