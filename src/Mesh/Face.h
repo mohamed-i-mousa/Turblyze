@@ -3,9 +3,9 @@
 
 #include <vector>     // for std::vector
 #include <stdexcept>  // for std::out_of_range and std::runtime_error
-#include <cmath>      // for std::abs
+#include <cmath>      // for std::abs and other math functions
 #include <iostream>   // for std::ostream, std::cerr
-#include <iomanip>    // for std::setprecision, std::std::fixed in operator<<
+#include <iomanip>    // for std::setprecision, std::fixed in operator<<
 #include <string>     // for std::to_string in operator<<
 #include <optional>   // for std::optional
 
@@ -23,38 +23,43 @@ struct Face {
     Scalar y2_integral = 0.0;
     Scalar z2_integral = 0.0;
 
-    Vector centroid;            
-    Vector normal;              // Normal vector scaled by face area (Vectors owner->neighbor)
-    Scalar area = 0.0;          // Magnitude of the area vector
+    Vector centroid;   
+    Vector normal;
+    Scalar area = 0.0;
 
-    bool geometricPropertiesCalculated = false;     // Flag to check if calculations were successful
+    bool geometricPropertiesCalculated = false;
 
-    // ----- Constructors ----- //
-
-    // Default constructor (useful for creating vectors of Faces before knowing details)
+    // Default constructor >>> Constructor for internal faces >>> Constructor for boundary faces
     Face() = default;
 
-    // Constructor for internal faces
     Face(size_t faceId, const std::vector<size_t>& nodes, size_t owner, size_t neighbour)
         : id(faceId), nodeIndices(nodes), ownerCell(owner), neighbourCell(neighbour) {}
     
-    // Constructor for boundary faces
     Face(size_t faceId, const std::vector<size_t>& nodes, size_t owner)
         : id(faceId), nodeIndices(nodes), ownerCell(owner), neighbourCell(std::nullopt) {}
 
     // ----- Member Methods ----- //
 
+    // Calculate geometric properties of the face
+    // Input: allNodes >>> Vector of all nodes in the mesh
+    // Output: necessary geometric properties of the face like area, centroid, normal, etc.
+    // The function starts with basic validation of the face's nodes count and node indices
+    // The function then calculates the geometric properties of the face based on the number of nodes
+    // If the face is a triangle, the function calculates the area and normal using the cross product
+    // If the face is a polygon, the function decomposes the face into triangles and calculates the area and normal using the cross product
+    // The function then calculates the centroid of the face using the weighted average of the centroids of the triangles
+    // The function then calculates the x2_integral, y2_integral, and z2_integral of the face using the weighted average of the x2_integral, y2_integral, and z2_integral of the triangles
+    // The function then sets the geometricPropertiesCalculated flag to true
+    // The function then returns the geometricPropertiesCalculated flag
     void calculateGeometricProperties(const std::vector<Vector>& allNodes) {
         geometricPropertiesCalculated = false;         
         const size_t nNodes = nodeIndices.size();
 
-        // Basic validation
         if (nNodes < 3) {
             throw std::runtime_error("Warning: Face " + std::to_string(id) + " has fewer than 3 nodes (" + std::to_string(nNodes)
                       + "). Cannot calculate geometric properties. Skipping.");
         }
 
-        // Node index validation
         for (size_t i = 0; i < nNodes; ++i) {
             if (nodeIndices[i] >= allNodes.size()) {
                 throw std::out_of_range("Error calculating properties for Face " + std::to_string(id) +
@@ -63,29 +68,20 @@ struct Face {
             }
         }
 
-        // Create a local vector of points for easier access
-        std::vector<Vector> points(nNodes);
-        for (size_t i = 0; i < nNodes; ++i) {
-            points[i] = allNodes[nodeIndices[i]];
-        }
-
         // CASE 1: Face is "Triangle" (nNodes == 3)
         if (nNodes == 3) {
-            const Vector& p1 = points[0];
-            const Vector& p2 = points[1];
-            const Vector& p3 = points[2];
+            const Vector& p1 = allNodes[nodeIndices[0]];
+            const Vector& p2 = allNodes[nodeIndices[1]];
+            const Vector& p3 = allNodes[nodeIndices[2]];
 
-            // Calculate the Centroid
             centroid = (p1 + p2 + p3) / S(3.0);
 
-            // Calculate area & normal (using cross product)
-            // Use consistent ordering to ensure normal direction
             Vector vecA = p2 - p1;
             Vector vecB = p3 - p1;
+
             Vector crossProd = cross(vecB, vecA);
             Scalar crossProdMag = crossProd.magnitude();
 
-            // Check the minimum area limit 
             if (std::abs(crossProdMag) < AREA_TOLERANCE) {
                 throw std::runtime_error("Face " + std::to_string(id) + " is degenerate.");
             }
@@ -111,24 +107,23 @@ struct Face {
             y2_integral = 0.0;
             z2_integral = 0.0;
 
-            // Calculate face center (vertices average)
             Vector faceCenter(0.0, 0.0, 0.0);
-            for (const auto& p : points) {
-                faceCenter += p;
+
+            for (size_t i = 0; i < nNodes; ++i) {
+                faceCenter += allNodes[nodeIndices[i]];
             }
             if (nNodes > 0) {
                 faceCenter /= S(nNodes);
-            } 
-            // Decompose into triangles (Center, P_i, P_{i+1}) and sum properties
+            }
+
             Scalar totalArea = 0.0;
             Vector weightedCentroidSum(0.0, 0.0, 0.0);
             Vector normalSum(0.0, 0.0, 0.0);
 
             for (size_t i = 0; i < nNodes; ++i) {
-                const Vector& p_i = points[i];
-                const Vector& p_next = points[(i + 1) % nNodes]; // Handles the end point
+                const Vector& p_i = allNodes[nodeIndices[i]];
+                const Vector& p_next = allNodes[nodeIndices[(i + 1) % nNodes]]; // Handles the end point
 
-                // Calculate area and centroid for triangles 
                 const Vector& p1_tri = faceCenter;
                 const Vector& p2_tri = p_i;
                 const Vector& p3_tri = p_next;
@@ -138,7 +133,7 @@ struct Face {
 
                 Vector crossProd_tri = cross(vecB_tri, vecA_tri);
                 Scalar triangleArea = S(0.5) * crossProd_tri.magnitude();
-                normalSum += crossProd_tri;          // inside the loop
+                normalSum += crossProd_tri;
 
                 Scalar x2_part = (p1_tri.x * p1_tri.x + p2_tri.x * p2_tri.x + p3_tri.x * p3_tri.x +
                                 p1_tri.x * p2_tri.x + p1_tri.x * p3_tri.x + p2_tri.x * p3_tri.x) *
@@ -150,37 +145,33 @@ struct Face {
                                 p1_tri.z * p2_tri.z + p1_tri.z * p3_tri.z + p2_tri.z * p3_tri.z) *
                                triangleArea / S(6.0);
 
-                // Accumulate into face integrals
                 x2_integral += x2_part;
                 y2_integral += y2_part;
                 z2_integral += z2_part;
 
-                // Accumulate area and weighted centroid
                 if (triangleArea > AREA_TOLERANCE) {
-                    Vector triangleCentroid = (p1_tri + p2_tri + p3_tri) * S(1.0 / 3.0);
+                    Vector triangleCentroid = (p1_tri + p2_tri + p3_tri) / S(3.0);
                     totalArea += triangleArea;
                     weightedCentroidSum += triangleCentroid * triangleArea;
                 }
             }
 
-            // Final polygon area
             area = totalArea;
 
-            // Final polygon centroid
             if (area < AREA_TOLERANCE) {
                  throw std::runtime_error("Warning: Polygonal Face " + std::to_string(id) + " has near-zero total area. Setting area=0, centroid/normal=(0,0,0).");
-
             } else {
                  if (std::abs(area) > DIVISION_TOLERANCE) {
                      centroid = weightedCentroidSum / area;
                  } else {
-                     centroid = Vector(S(0.0), S(0.0), S(0.0));
+                     throw std::runtime_error("Warning: Polygonal Face " + std::to_string(id) + " has near-zero total area.");
                  }
-                 normal = normalSum.normalized();     // after the loop
+                 normal = normalSum.normalized();
                  geometricPropertiesCalculated = true; 
             }
         }
     }
+
 
     bool isBoundary() const {
         return !neighbourCell.has_value();
@@ -196,6 +187,12 @@ struct Face {
 
 // ----- Operator Overloads (Non-Member Methods) ----- //
 
+// This function is used to print the face to the console
+// It prints the face's id, nodes, owner, neighbour, and calculated properties if available
+// The function sets the precision for floating Vector output within this scope
+// The function then prints the face's id, nodes, owner, neighbour, and calculated properties if available
+// The function then restores the precision for floating Vector output within this scope
+// The function then returns the ostream object
 inline std::ostream& operator<<(std::ostream& os, const Face& f) {
     os << "Face(ID: " << f.id
     << ", Nodes: [";
@@ -208,14 +205,14 @@ inline std::ostream& operator<<(std::ostream& os, const Face& f) {
    // Print calculated properties if available
     if (f.geometricPropertiesCalculated) {
         // Set precision for floating Vector output within this scope
-        std::ios_base::fmtflags flags = os.flags();         // Save current flags
-        int                      prec = os.precision();     // Save current precision
-        os << std::fixed << std::setprecision(6);           // Set precision 
+        std::ios_base::fmtflags flags = os.flags();
+        int                      prec = os.precision();
+        os << std::fixed << std::setprecision(6);
         os << ", Centroid: " << f.centroid
         << ", Area: " << f.area
         << ", Normal: " << f.normal;
-        os.flags(flags);                                    // Restore flags
-        os.precision(prec);                                 // Restore precision
+        os.flags(flags);
+        os.precision(prec);
     } else {
         os << ", Geometry: N/A";
     }

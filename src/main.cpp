@@ -49,12 +49,12 @@ int main() {
 
         for (auto& face : allFaces) {
             face.calculateGeometricProperties(allNodes);
-            //std::cout << face << std::endl;   // For debugging
+            std::cout << face << std::endl;   // For debugging
         }
 
         for (auto& cell : allCells) {
             cell.calculateGeometricProperties(allFaces);
-            //std::cout << cell << std::endl;   // For debugging
+            std::cout << cell << std::endl;   // For debugging
         }
         std::cout << "Geometric properties calculated." << std::endl;
 
