@@ -1,7 +1,6 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <limits>    // For std::numeric_limits
 #include <algorithm> // For std::sort, std::unique
 #include <stdexcept>
 #include <charconv>
@@ -319,7 +318,7 @@ void readMshFile(const std::string &filePath,
     const Face &currentFace = allFaces[face_idx];
 
     // --- Process Owner Cell ---
-    if (currentFace.ownerCell != std::numeric_limits<size_t>::max() && currentFace.ownerCell < num_cells) {
+    if (currentFace.ownerCell < num_cells) {
       // Add this face's index to its owner cell's list of faces.
       allCells[currentFace.ownerCell].faceIndices.push_back(face_idx);
       allCells[currentFace.ownerCell].faceSigns.push_back(1);

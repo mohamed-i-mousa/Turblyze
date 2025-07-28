@@ -22,7 +22,7 @@ struct Cell {
     Scalar volume = 0.0;
     bool geometricPropertiesCalculated = false;
 
-    // Default constructor >>> Constructor for internal faces >>> Constructor for boundary faces
+    // Default constructor >>> Parameterized constructor
 
     Cell() = default;
 

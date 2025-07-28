@@ -12,12 +12,10 @@ struct Vector {
     // ----- Members ----- //
     Scalar x, y, z;
 
-    // ----- Constructors ----- //
+    // Default constructor >>> Parameterized constructor
 
-    // Default constructor
     Vector() : x(0.0), y(0.0), z(0.0) {}
 
-    // Parametized constructor
     Vector(Scalar x_val, Scalar y_val, Scalar z_val) : x(x_val), y(y_val), z(z_val) {}
 
     // ----- Operators ----- //
@@ -103,7 +101,6 @@ struct Vector {
     }
 
     // Normalize the vector
-    // Modifies the vector and returns a reference to itself
     Vector& normalize() {
         Scalar mag = magnitude();
         if (std::abs(mag) > DIVISION_TOLERANCE) {

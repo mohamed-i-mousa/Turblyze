@@ -37,35 +37,6 @@ public:
         return nullptr; // Not found
     }
 
-    // Get a patch by its zone ID (from the .msh file)
-    const BoundaryPatch* getPatchByID(size_t zoneID) const {
-        for (const auto& patch : patches) {
-            if (patch.zoneID == zoneID) {
-                return &patch;
-            }
-        }
-        return nullptr;
-    }
-
-    // Get faces belong to a specific BoundaryConditionType
-    std::vector<size_t> getFacesOfType(BoundaryConditionType type) const {
-        std::vector<size_t> facesOfType;
-        for (const auto& patch : patches) {
-            if (patch.type == type) {
-                if (patch.lastFaceIndex >= patch.firstFaceIndex) {
-                    for (size_t i = patch.firstFaceIndex; i <= patch.lastFaceIndex; ++i) {
-                        facesOfType.push_back(i);            
-                    }
-                } 
-            }
-        } 
-        return facesOfType;
-    }
-
-    // Get the number of allBoundaryPatches
-    size_t numberOfPatches() const {
-        return patches.size();
-    }
 
     // ----- Methods to set boundary conditions ----- //
 

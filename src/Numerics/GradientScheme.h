@@ -17,27 +17,18 @@ class GradientScheme {
 public:
     GradientScheme() = default;
 
-    VectorField GreenGauss(
-        const ScalarField& phi,
-        const std::vector<Face>& allFaces,
-        const std::vector<Cell>& allCells,
-        const BoundaryConditions& bcManager
-    ) const;
-
-    // New: cell-centred Least-Squares gradient reconstruction
+    // Cell-centred Least-Squares gradient reconstruction
     VectorField LeastSquares(
         const ScalarField& phi,
         const std::vector<Cell>& allCells
     ) const;
 
-private:
-    // Helper to get the value of phi at a boundary face based on the BC
-    Scalar getBoundaryFaceValue(
-        const Face& face,
-        size_t ownerCellId,
+    // Interpolate cell-centered gradients to face values
+    FaceVectorField interpolateGradientsToFaces(
+        const VectorField& grad_phi,
         const ScalarField& phi,
         const std::vector<Cell>& allCells,
-        const BoundaryData& bc
+        const std::vector<Face>& allFaces
     ) const;
 };
 

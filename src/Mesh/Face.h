@@ -1,13 +1,13 @@
 #ifndef FACE_H
 #define FACE_H
 
-#include <vector>     // for std::vector
-#include <stdexcept>  // for std::out_of_range and std::runtime_error
-#include <cmath>      // for std::abs and other math functions
-#include <iostream>   // for std::ostream, std::cerr
-#include <iomanip>    // for std::setprecision, std::fixed in operator<<
-#include <string>     // for std::to_string in operator<<
-#include <optional>   // for std::optional
+#include <vector>
+#include <stdexcept>
+#include <cmath>
+#include <iostream>
+#include <iomanip>      // for std::setprecision, std::fixed in operator<<
+#include <string>
+#include <optional>
 
 #include "Scalar.h"
 #include "Vector.h"    
@@ -176,13 +176,6 @@ struct Face {
 
     bool isBoundary() const {
         return !neighbourCell.has_value();
-    }
-
-    size_t getNeighbour() const {
-        if (!neighbourCell.has_value()) {
-            throw std::runtime_error("Face " + std::to_string(id) + " is a boundary face");
-        }
-        return neighbourCell.value();
     }
 };
 

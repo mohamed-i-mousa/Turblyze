@@ -40,11 +40,6 @@
  *       "4" = "Quadrilateral"
  *       "5" = "Polygonal"
  *       
- *
- * filePath Path to the mesh file.
- * allNodes Vector to be filled with Scalar data.
- * allFaces Vector to be filled with Face data.
- * allCells Vector to be filled with Cell data.
  */
 
 void readMshFile(const std::string& filePath,

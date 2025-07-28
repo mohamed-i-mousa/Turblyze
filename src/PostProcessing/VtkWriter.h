@@ -25,11 +25,6 @@ namespace VtkWriter {
  *
  * This function exports points and cells to a .vtk file
  * that can be visualized in ParaView.
- *
- *  @param filename The path to the output .vtk file (e.g., "mesh_output.vtk").
- *  @param allNodes A constant reference to a vector of Point objects representing the mesh nodes.
- *  @param allFaces A constant reference to a vector of Face objects defining the connectivity of faces.
- *  @param allCells A constant reference to a vector of Cell objects defining the polyhedral cells.
  */
 void writeVtkFile(const std::string& filename,
                   const std::vector<Vector>& allNodes,
