@@ -18,6 +18,7 @@ inline const Scalar DIVISION_TOLERANCE = std::numeric_limits<Scalar>::epsilon();
 inline const Scalar EQUALITY_TOLERANCE = std::numeric_limits<Scalar>::epsilon() * 100;
 inline const Scalar AREA_TOLERANCE = 1e-12;
 inline const Scalar VOLUME_TOLERANCE = 1e-30;
+inline const Scalar GRADIENT_TOLERANCE = 1e-12;
 
 // Literal conversion
 template<typename T>                  // template is used to allow the function to be used with different types

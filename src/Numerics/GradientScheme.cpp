@@ -88,7 +88,7 @@ VectorField GradientScheme::LeastSquares(
             
             // Check for degenerate cases (cells too close together)
             Scalar r_mag_sq = r.magnitudeSquared();
-            if (r_mag_sq < AREA_TOLERANCE) continue;
+            if (r_mag_sq < GRADIENT_TOLERANCE) continue;
             
             Scalar w = S(1.0) / r_mag_sq; // weight ∝ 1/|r|²
             totalWeight += w;
@@ -213,7 +213,7 @@ FaceVectorField GradientScheme::interpolateGradientsToFaces(
             Vector d_PN = allCells[N].centroid - allCells[P].centroid;
             Scalar d_PN_mag = d_PN.magnitude();
             
-            if (d_PN_mag < AREA_TOLERANCE) {
+            if (d_PN_mag < GRADIENT_TOLERANCE) {
                 // Cells are too close, use simple average
                 grad_phi_faces[faceId] = S(0.5) * (grad_phi[P] + grad_phi[N]);
                 continue;
@@ -228,7 +228,7 @@ FaceVectorField GradientScheme::interpolateGradientsToFaces(
             Scalar total_dist = d_P + d_N;
             
             Scalar g_P, g_N;
-            if (total_dist < AREA_TOLERANCE) {
+            if (total_dist < GRADIENT_TOLERANCE) {
                 // Face is equidistant, use simple average
                 g_P = S(0.5);
                 g_N = S(0.5);
