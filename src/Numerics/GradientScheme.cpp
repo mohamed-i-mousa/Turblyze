@@ -243,7 +243,7 @@ FaceVectorField GradientScheme::interpolateGradientsToFaces(
             
             // Calculate the correction term
             Scalar phi_diff = phi[N] - phi[P];
-            Scalar correction = (phi_diff / S(2.0)) - dot(grad_avg, e_PN);
+            Scalar correction = (phi_diff / d_PN_mag) - dot(grad_avg, e_PN);
             
             // Apply the interpolation scheme
             grad_phi_faces[faceId] = grad_avg + correction * e_PN;

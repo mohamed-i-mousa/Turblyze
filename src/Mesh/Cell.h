@@ -29,8 +29,8 @@ struct Cell {
     Cell(size_t cellId, const std::vector<size_t>& faces, const std::vector<size_t>& neighbours, const std::vector<int>& signs)
         : id(cellId),
           faceIndices(faces),
-          faceSigns(signs),
-          neighbourCellIndices(neighbours)
+          neighbourCellIndices(neighbours),  // Moved before faceSigns
+          faceSigns(signs)
           {}
 
     /* Calculate geometric properties of the cell

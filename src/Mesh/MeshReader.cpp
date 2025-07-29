@@ -60,11 +60,9 @@ void readMshFile(const std::string &filePath,
   std::string token;
   char ch;
 
-  size_t num_nodes = 0;
-  size_t num_faces = 0;
   size_t num_cells = 0;
 
-  bool is2D = false;
+
 
   std::ifstream ifs(filePath);
   if (!ifs.is_open()) {
@@ -93,10 +91,8 @@ void readMshFile(const std::string &filePath,
       ifs >> dimension;
       dimension.pop_back();
       if (dimension == "2") {
-        is2D = true;
         throw std::runtime_error("This code doesn't handle 2D geometries!");
-      } else if (dimension == "3")
-        is2D = false;
+      }
     }
 
     // ----- Points Section ----- //
@@ -113,7 +109,6 @@ void readMshFile(const std::string &filePath,
         size_t last_idx = hexToDec(last_idx_str);
 
         allNodes.resize(last_idx);
-        num_nodes = allNodes.size();
       }
 
       // Points data
@@ -186,7 +181,6 @@ void readMshFile(const std::string &filePath,
         size_t last_idx = hexToDec(last_idx_str);
 
         allFaces.resize(last_idx);
-        num_faces = allFaces.size();
       }
 
       // Faces data
