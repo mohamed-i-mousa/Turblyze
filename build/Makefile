@@ -204,6 +204,60 @@ src/Numerics/GradientScheme.cpp.s:
 	$(MAKE) -f CMakeFiles/MyCFDCode.dir/build.make CMakeFiles/MyCFDCode.dir/src/Numerics/GradientScheme.cpp.s
 .PHONY : src/Numerics/GradientScheme.cpp.s
 
+src/Numerics/KOmegaSST.o: src/Numerics/KOmegaSST.cpp.o
+
+.PHONY : src/Numerics/KOmegaSST.o
+
+# target to build an object file
+src/Numerics/KOmegaSST.cpp.o:
+	$(MAKE) -f CMakeFiles/MyCFDCode.dir/build.make CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.o
+.PHONY : src/Numerics/KOmegaSST.cpp.o
+
+src/Numerics/KOmegaSST.i: src/Numerics/KOmegaSST.cpp.i
+
+.PHONY : src/Numerics/KOmegaSST.i
+
+# target to preprocess a source file
+src/Numerics/KOmegaSST.cpp.i:
+	$(MAKE) -f CMakeFiles/MyCFDCode.dir/build.make CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.i
+.PHONY : src/Numerics/KOmegaSST.cpp.i
+
+src/Numerics/KOmegaSST.s: src/Numerics/KOmegaSST.cpp.s
+
+.PHONY : src/Numerics/KOmegaSST.s
+
+# target to generate assembly for a file
+src/Numerics/KOmegaSST.cpp.s:
+	$(MAKE) -f CMakeFiles/MyCFDCode.dir/build.make CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.s
+.PHONY : src/Numerics/KOmegaSST.cpp.s
+
+src/Numerics/LinearSolvers.o: src/Numerics/LinearSolvers.cpp.o
+
+.PHONY : src/Numerics/LinearSolvers.o
+
+# target to build an object file
+src/Numerics/LinearSolvers.cpp.o:
+	$(MAKE) -f CMakeFiles/MyCFDCode.dir/build.make CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.o
+.PHONY : src/Numerics/LinearSolvers.cpp.o
+
+src/Numerics/LinearSolvers.i: src/Numerics/LinearSolvers.cpp.i
+
+.PHONY : src/Numerics/LinearSolvers.i
+
+# target to preprocess a source file
+src/Numerics/LinearSolvers.cpp.i:
+	$(MAKE) -f CMakeFiles/MyCFDCode.dir/build.make CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.i
+.PHONY : src/Numerics/LinearSolvers.cpp.i
+
+src/Numerics/LinearSolvers.s: src/Numerics/LinearSolvers.cpp.s
+
+.PHONY : src/Numerics/LinearSolvers.s
+
+# target to generate assembly for a file
+src/Numerics/LinearSolvers.cpp.s:
+	$(MAKE) -f CMakeFiles/MyCFDCode.dir/build.make CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.s
+.PHONY : src/Numerics/LinearSolvers.cpp.s
+
 src/Numerics/MatrixConstructor.o: src/Numerics/MatrixConstructor.cpp.o
 
 .PHONY : src/Numerics/MatrixConstructor.o
@@ -257,6 +311,33 @@ src/Numerics/SIMPLE.s: src/Numerics/SIMPLE.cpp.s
 src/Numerics/SIMPLE.cpp.s:
 	$(MAKE) -f CMakeFiles/MyCFDCode.dir/build.make CMakeFiles/MyCFDCode.dir/src/Numerics/SIMPLE.cpp.s
 .PHONY : src/Numerics/SIMPLE.cpp.s
+
+src/Numerics/massFlowRate.o: src/Numerics/massFlowRate.cpp.o
+
+.PHONY : src/Numerics/massFlowRate.o
+
+# target to build an object file
+src/Numerics/massFlowRate.cpp.o:
+	$(MAKE) -f CMakeFiles/MyCFDCode.dir/build.make CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.o
+.PHONY : src/Numerics/massFlowRate.cpp.o
+
+src/Numerics/massFlowRate.i: src/Numerics/massFlowRate.cpp.i
+
+.PHONY : src/Numerics/massFlowRate.i
+
+# target to preprocess a source file
+src/Numerics/massFlowRate.cpp.i:
+	$(MAKE) -f CMakeFiles/MyCFDCode.dir/build.make CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.i
+.PHONY : src/Numerics/massFlowRate.cpp.i
+
+src/Numerics/massFlowRate.s: src/Numerics/massFlowRate.cpp.s
+
+.PHONY : src/Numerics/massFlowRate.s
+
+# target to generate assembly for a file
+src/Numerics/massFlowRate.cpp.s:
+	$(MAKE) -f CMakeFiles/MyCFDCode.dir/build.make CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.s
+.PHONY : src/Numerics/massFlowRate.cpp.s
 
 src/PostProcessing/VtkWriter.o: src/PostProcessing/VtkWriter.cpp.o
 
@@ -330,12 +411,21 @@ help:
 	@echo "... src/Numerics/GradientScheme.o"
 	@echo "... src/Numerics/GradientScheme.i"
 	@echo "... src/Numerics/GradientScheme.s"
+	@echo "... src/Numerics/KOmegaSST.o"
+	@echo "... src/Numerics/KOmegaSST.i"
+	@echo "... src/Numerics/KOmegaSST.s"
+	@echo "... src/Numerics/LinearSolvers.o"
+	@echo "... src/Numerics/LinearSolvers.i"
+	@echo "... src/Numerics/LinearSolvers.s"
 	@echo "... src/Numerics/MatrixConstructor.o"
 	@echo "... src/Numerics/MatrixConstructor.i"
 	@echo "... src/Numerics/MatrixConstructor.s"
 	@echo "... src/Numerics/SIMPLE.o"
 	@echo "... src/Numerics/SIMPLE.i"
 	@echo "... src/Numerics/SIMPLE.s"
+	@echo "... src/Numerics/massFlowRate.o"
+	@echo "... src/Numerics/massFlowRate.i"
+	@echo "... src/Numerics/massFlowRate.s"
 	@echo "... src/PostProcessing/VtkWriter.o"
 	@echo "... src/PostProcessing/VtkWriter.i"
 	@echo "... src/PostProcessing/VtkWriter.s"

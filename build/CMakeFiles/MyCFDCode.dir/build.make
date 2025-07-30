@@ -122,9 +122,35 @@ CMakeFiles/MyCFDCode.dir/src/Numerics/MatrixConstructor.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/MyCFDCode.dir/src/Numerics/MatrixConstructor.cpp.s"
 	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/server-mm/MyCFDCode/src/Numerics/MatrixConstructor.cpp -o CMakeFiles/MyCFDCode.dir/src/Numerics/MatrixConstructor.cpp.s
 
+CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.o: CMakeFiles/MyCFDCode.dir/flags.make
+CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.o: ../src/Numerics/massFlowRate.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/server-mm/MyCFDCode/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.o"
+	/usr/bin/g++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.o -c /home/server-mm/MyCFDCode/src/Numerics/massFlowRate.cpp
+
+CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.i"
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/server-mm/MyCFDCode/src/Numerics/massFlowRate.cpp > CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.i
+
+CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.s"
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/server-mm/MyCFDCode/src/Numerics/massFlowRate.cpp -o CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.s
+
+CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.o: CMakeFiles/MyCFDCode.dir/flags.make
+CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.o: ../src/Numerics/LinearSolvers.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/server-mm/MyCFDCode/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.o"
+	/usr/bin/g++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.o -c /home/server-mm/MyCFDCode/src/Numerics/LinearSolvers.cpp
+
+CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.i"
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/server-mm/MyCFDCode/src/Numerics/LinearSolvers.cpp > CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.i
+
+CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.s"
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/server-mm/MyCFDCode/src/Numerics/LinearSolvers.cpp -o CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.s
+
 CMakeFiles/MyCFDCode.dir/src/Numerics/SIMPLE.cpp.o: CMakeFiles/MyCFDCode.dir/flags.make
 CMakeFiles/MyCFDCode.dir/src/Numerics/SIMPLE.cpp.o: ../src/Numerics/SIMPLE.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/server-mm/MyCFDCode/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/MyCFDCode.dir/src/Numerics/SIMPLE.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/server-mm/MyCFDCode/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/MyCFDCode.dir/src/Numerics/SIMPLE.cpp.o"
 	/usr/bin/g++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/MyCFDCode.dir/src/Numerics/SIMPLE.cpp.o -c /home/server-mm/MyCFDCode/src/Numerics/SIMPLE.cpp
 
 CMakeFiles/MyCFDCode.dir/src/Numerics/SIMPLE.cpp.i: cmake_force
@@ -135,9 +161,22 @@ CMakeFiles/MyCFDCode.dir/src/Numerics/SIMPLE.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/MyCFDCode.dir/src/Numerics/SIMPLE.cpp.s"
 	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/server-mm/MyCFDCode/src/Numerics/SIMPLE.cpp -o CMakeFiles/MyCFDCode.dir/src/Numerics/SIMPLE.cpp.s
 
+CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.o: CMakeFiles/MyCFDCode.dir/flags.make
+CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.o: ../src/Numerics/KOmegaSST.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/server-mm/MyCFDCode/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.o"
+	/usr/bin/g++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.o -c /home/server-mm/MyCFDCode/src/Numerics/KOmegaSST.cpp
+
+CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.i"
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/server-mm/MyCFDCode/src/Numerics/KOmegaSST.cpp > CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.i
+
+CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.s"
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/server-mm/MyCFDCode/src/Numerics/KOmegaSST.cpp -o CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.s
+
 CMakeFiles/MyCFDCode.dir/src/PostProcessing/VtkWriter.cpp.o: CMakeFiles/MyCFDCode.dir/flags.make
 CMakeFiles/MyCFDCode.dir/src/PostProcessing/VtkWriter.cpp.o: ../src/PostProcessing/VtkWriter.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/server-mm/MyCFDCode/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/MyCFDCode.dir/src/PostProcessing/VtkWriter.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/server-mm/MyCFDCode/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/MyCFDCode.dir/src/PostProcessing/VtkWriter.cpp.o"
 	/usr/bin/g++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/MyCFDCode.dir/src/PostProcessing/VtkWriter.cpp.o -c /home/server-mm/MyCFDCode/src/PostProcessing/VtkWriter.cpp
 
 CMakeFiles/MyCFDCode.dir/src/PostProcessing/VtkWriter.cpp.i: cmake_force
@@ -155,7 +194,10 @@ MyCFDCode_OBJECTS = \
 "CMakeFiles/MyCFDCode.dir/src/Numerics/GradientScheme.cpp.o" \
 "CMakeFiles/MyCFDCode.dir/src/Numerics/ConvectionScheme.cpp.o" \
 "CMakeFiles/MyCFDCode.dir/src/Numerics/MatrixConstructor.cpp.o" \
+"CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.o" \
+"CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.o" \
 "CMakeFiles/MyCFDCode.dir/src/Numerics/SIMPLE.cpp.o" \
+"CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.o" \
 "CMakeFiles/MyCFDCode.dir/src/PostProcessing/VtkWriter.cpp.o"
 
 # External object files for target MyCFDCode
@@ -166,11 +208,14 @@ MyCFDCode: CMakeFiles/MyCFDCode.dir/src/Mesh/MeshReader.cpp.o
 MyCFDCode: CMakeFiles/MyCFDCode.dir/src/Numerics/GradientScheme.cpp.o
 MyCFDCode: CMakeFiles/MyCFDCode.dir/src/Numerics/ConvectionScheme.cpp.o
 MyCFDCode: CMakeFiles/MyCFDCode.dir/src/Numerics/MatrixConstructor.cpp.o
+MyCFDCode: CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.o
+MyCFDCode: CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.o
 MyCFDCode: CMakeFiles/MyCFDCode.dir/src/Numerics/SIMPLE.cpp.o
+MyCFDCode: CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.o
 MyCFDCode: CMakeFiles/MyCFDCode.dir/src/PostProcessing/VtkWriter.cpp.o
 MyCFDCode: CMakeFiles/MyCFDCode.dir/build.make
 MyCFDCode: CMakeFiles/MyCFDCode.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/server-mm/MyCFDCode/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Linking CXX executable MyCFDCode"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/server-mm/MyCFDCode/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Linking CXX executable MyCFDCode"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/MyCFDCode.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

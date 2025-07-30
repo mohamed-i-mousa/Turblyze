@@ -1,37 +1,52 @@
 [
 {
   "directory": "/home/server-mm/MyCFDCode/build",
-  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/main.cpp.o -c /home/server-mm/MyCFDCode/src/main.cpp",
+  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -Wall -Wextra -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/main.cpp.o -c /home/server-mm/MyCFDCode/src/main.cpp",
   "file": "/home/server-mm/MyCFDCode/src/main.cpp"
 },
 {
   "directory": "/home/server-mm/MyCFDCode/build",
-  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/Mesh/MeshReader.cpp.o -c /home/server-mm/MyCFDCode/src/Mesh/MeshReader.cpp",
+  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -Wall -Wextra -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/Mesh/MeshReader.cpp.o -c /home/server-mm/MyCFDCode/src/Mesh/MeshReader.cpp",
   "file": "/home/server-mm/MyCFDCode/src/Mesh/MeshReader.cpp"
 },
 {
   "directory": "/home/server-mm/MyCFDCode/build",
-  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/Numerics/GradientScheme.cpp.o -c /home/server-mm/MyCFDCode/src/Numerics/GradientScheme.cpp",
+  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -Wall -Wextra -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/Numerics/GradientScheme.cpp.o -c /home/server-mm/MyCFDCode/src/Numerics/GradientScheme.cpp",
   "file": "/home/server-mm/MyCFDCode/src/Numerics/GradientScheme.cpp"
 },
 {
   "directory": "/home/server-mm/MyCFDCode/build",
-  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/Numerics/ConvectionScheme.cpp.o -c /home/server-mm/MyCFDCode/src/Numerics/ConvectionScheme.cpp",
+  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -Wall -Wextra -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/Numerics/ConvectionScheme.cpp.o -c /home/server-mm/MyCFDCode/src/Numerics/ConvectionScheme.cpp",
   "file": "/home/server-mm/MyCFDCode/src/Numerics/ConvectionScheme.cpp"
 },
 {
   "directory": "/home/server-mm/MyCFDCode/build",
-  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/Numerics/MatrixConstructor.cpp.o -c /home/server-mm/MyCFDCode/src/Numerics/MatrixConstructor.cpp",
+  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -Wall -Wextra -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/Numerics/MatrixConstructor.cpp.o -c /home/server-mm/MyCFDCode/src/Numerics/MatrixConstructor.cpp",
   "file": "/home/server-mm/MyCFDCode/src/Numerics/MatrixConstructor.cpp"
 },
 {
   "directory": "/home/server-mm/MyCFDCode/build",
-  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/Numerics/SIMPLE.cpp.o -c /home/server-mm/MyCFDCode/src/Numerics/SIMPLE.cpp",
+  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -Wall -Wextra -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/Numerics/massFlowRate.cpp.o -c /home/server-mm/MyCFDCode/src/Numerics/massFlowRate.cpp",
+  "file": "/home/server-mm/MyCFDCode/src/Numerics/massFlowRate.cpp"
+},
+{
+  "directory": "/home/server-mm/MyCFDCode/build",
+  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -Wall -Wextra -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/Numerics/LinearSolvers.cpp.o -c /home/server-mm/MyCFDCode/src/Numerics/LinearSolvers.cpp",
+  "file": "/home/server-mm/MyCFDCode/src/Numerics/LinearSolvers.cpp"
+},
+{
+  "directory": "/home/server-mm/MyCFDCode/build",
+  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -Wall -Wextra -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/Numerics/SIMPLE.cpp.o -c /home/server-mm/MyCFDCode/src/Numerics/SIMPLE.cpp",
   "file": "/home/server-mm/MyCFDCode/src/Numerics/SIMPLE.cpp"
 },
 {
   "directory": "/home/server-mm/MyCFDCode/build",
-  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/PostProcessing/VtkWriter.cpp.o -c /home/server-mm/MyCFDCode/src/PostProcessing/VtkWriter.cpp",
+  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -Wall -Wextra -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/Numerics/KOmegaSST.cpp.o -c /home/server-mm/MyCFDCode/src/Numerics/KOmegaSST.cpp",
+  "file": "/home/server-mm/MyCFDCode/src/Numerics/KOmegaSST.cpp"
+},
+{
+  "directory": "/home/server-mm/MyCFDCode/build",
+  "command": "/usr/bin/g++  -DPROJECT_USE_DOUBLE_PRECISION -I/home/server-mm/MyCFDCode/src -I/home/server-mm/MyCFDCode/src/Mesh -I/home/server-mm/MyCFDCode/src/BoundaryConditions -I/home/server-mm/MyCFDCode/src/Numerics -I/home/server-mm/MyCFDCode/src/PostProcessing  -g   -Wall -Wextra -std=gnu++17 -o CMakeFiles/MyCFDCode.dir/src/PostProcessing/VtkWriter.cpp.o -c /home/server-mm/MyCFDCode/src/PostProcessing/VtkWriter.cpp",
   "file": "/home/server-mm/MyCFDCode/src/PostProcessing/VtkWriter.cpp"
 }
 ]

@@ -11,6 +11,7 @@ add_executable(${PROJECT_NAME}
     src/Numerics/GradientScheme.cpp
     src/Numerics/ConvectionScheme.cpp
     src/Numerics/MatrixConstructor.cpp
+    src/Numerics/massFlowRate.cpp
     src/Numerics/LinearSolvers.cpp
     src/Numerics/SIMPLE.cpp
     src/Numerics/KOmegaSST.cpp

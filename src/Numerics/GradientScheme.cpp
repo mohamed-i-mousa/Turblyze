@@ -3,22 +3,6 @@
 #include <stdexcept>
 #include <eigen3/Eigen/Dense>
 
-/*
- * Usage Example:
- * 
- * // 1. Calculate cell-centered gradients using least-squares
- * VectorField grad_phi = gradientScheme.LeastSquares(phi, allCells);
- * 
- * // 2. Interpolate gradients to face values
- * FaceVectorField grad_phi_faces = gradientScheme.interpolateGradientsToFaces(
- *     grad_phi, phi, allCells, allFaces);
- * 
- * // 3. Use the face gradients for flux calculations, non-orthogonal corrections, etc.
- * for (size_t faceId = 0; faceId < allFaces.size(); ++faceId) {
- *     Vector grad_at_face = grad_phi_faces[faceId];
- *     // ... use grad_at_face for calculations
- * }
- */
 
     
 /* Cell-centered Least-Squares Gradient Reconstruction
@@ -114,7 +98,7 @@ VectorField GradientScheme::LeastSquares(
         ATA(1,1) += regularization;
         ATA(2,2) += regularization;
 
-        // Use more efficient solver for 3x3 systems
+        // Efficient solver for 3x3 systems
         Eigen::LLT<Eigen::Matrix<Scalar,3,3>> llt(ATA);
         if (llt.info() == Eigen::Success) {
             Eigen::Matrix<Scalar,3,1> g = llt.solve(ATb);
@@ -129,7 +113,7 @@ VectorField GradientScheme::LeastSquares(
         }
     }
     
-    // Print performance statistics
+    // Print statistics
     std::cout << "LeastSquares gradient: " << cellsProcessed << " cells processed, " 
               << cellsSkipped << " cells skipped" << std::endl;
 
@@ -154,8 +138,6 @@ FaceVectorField GradientScheme::interpolateGradientsToFaces(
     const std::vector<Cell>& allCells,
     const std::vector<Face>& allFaces) const
 {
-
-    
     // Input validation
     if (allFaces.empty()) {
         throw std::invalid_argument("interpolateGradientsToFaces: Empty face list provided");
@@ -194,10 +176,10 @@ FaceVectorField GradientScheme::interpolateGradientsToFaces(
         
         if (!face.geometricPropertiesCalculated) {
             facesSkipped++;
-            continue; // Skip faces without calculated geometry
+            continue;
         }
         
-        size_t P = face.ownerCell; // Owner cell index
+        size_t P = face.ownerCell;
         
         if (face.isBoundary()) {
             // For boundary faces, use the owner cell gradient
@@ -207,7 +189,7 @@ FaceVectorField GradientScheme::interpolateGradientsToFaces(
             boundaryFacesProcessed++;
         } else {
             // For internal faces, use the specified interpolation scheme
-            size_t N = face.neighbourCell.value(); // Neighbor cell index
+            size_t N = face.neighbourCell.value();
             
             // Calculate the vector from P to N
             Vector d_PN = allCells[N].centroid - allCells[P].centroid;
@@ -219,13 +201,12 @@ FaceVectorField GradientScheme::interpolateGradientsToFaces(
                 continue;
             }
             
-            // Unit vector from P to N
             Vector e_PN = d_PN / d_PN_mag;
             
             // Calculate interpolation weights (distance-based)
-            Scalar d_P = (face.centroid - allCells[P].centroid).magnitude();
-            Scalar d_N = (face.centroid - allCells[N].centroid).magnitude();
-            Scalar total_dist = d_P + d_N;
+            Scalar d_Pf = (face.centroid - allCells[P].centroid).magnitude();
+            Scalar d_Nf = (face.centroid - allCells[N].centroid).magnitude();
+            Scalar total_dist = d_Pf + d_Nf;
             
             Scalar g_P, g_N;
             if (total_dist < GRADIENT_TOLERANCE) {
@@ -234,8 +215,8 @@ FaceVectorField GradientScheme::interpolateGradientsToFaces(
                 g_N = S(0.5);
             } else {
                 // Distance-weighted interpolation
-                g_P = d_N / total_dist; // Weight for cell P
-                g_N = d_P / total_dist; // Weight for cell N
+                g_P = d_Nf / total_dist; // Weight for cell P
+                g_N = d_Pf / total_dist; // Weight for cell N
             }
             
             // Calculate average gradient at face

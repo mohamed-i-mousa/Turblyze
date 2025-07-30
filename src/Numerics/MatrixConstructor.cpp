@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include "CellData.h"
+#include "massFlowRate.h"
 
 MatrixConstructor::MatrixConstructor(
     const std::vector<Face>& faces,
@@ -53,6 +54,9 @@ void MatrixConstructor::constructScalarTransportMatrix(
 
     // Pre-compute gradient field
     VectorField grad_phi = gradScheme.LeastSquares(phi, allCells);
+    
+    // Pre-compute mass flow rate field
+    FaceFluxField mdot = calculateMassFlowRate(allFaces, allCells, U_field, rho);
 
     // Rough estimate to minimise reallocations of tripletList
     size_t internalFaces = 0, boundaryFaces = 0;
@@ -75,9 +79,9 @@ void MatrixConstructor::constructScalarTransportMatrix(
                 if (!bc) continue;
 
                 Scalar D = Gamma * face.area / (face.centroid - allCells[P].centroid).magnitude();
-                Scalar F = rho * dot(U_field[P], S_f);
+                Scalar F = mdot[face.id];
                 Scalar a_P_conv, a_N_conv;
-                convScheme.getFluxCoefficients(F, a_P_conv, a_N_conv, face, allCells);
+                convScheme.getFluxCoefficients(F, a_P_conv, a_N_conv);
 
                 if (bc->type == BCType::FIXED_VALUE) {
                     tripletList.emplace_back(P, P, D);
@@ -99,12 +103,11 @@ void MatrixConstructor::constructScalarTransportMatrix(
                 Vector S_f = face.normal * face.area;
                 Scalar D = Gamma * face.area / d_PN.magnitude();
 
-                // Distance-weighted interpolation of the face velocity
+                // Distance-weighted interpolation for gradient calculation
                 Scalar d_P = (face.centroid - allCells[P].centroid).magnitude();
                 Scalar d_N = (face.centroid - allCells[N].centroid).magnitude();
                 Scalar denom = d_P + d_N;
                 Scalar w_P = d_N / denom;
-                Vector U_f = w_P * U_field[P] + (1.0 - w_P) * U_field[N];
 
                 // Non-orthogonal correction
                 Vector e_PN = d_PN / d_PN.magnitude();
@@ -114,9 +117,9 @@ void MatrixConstructor::constructScalarTransportMatrix(
                 b_vector(P) -= flux_nonOrth;   // subtract from owner
                 b_vector(N) += flux_nonOrth;   // add to neighbour (conservation)
 
-                Scalar F = rho * dot(U_f, S_f);
+                Scalar F = mdot[face.id];
                 Scalar a_P_conv, a_N_conv;
-                convScheme.getFluxCoefficients(F, a_P_conv, a_N_conv, face, allCells);
+                convScheme.getFluxCoefficients(F, a_P_conv, a_N_conv);
 
                 // Contribution to cell P
                 tripletList.emplace_back(P, P, D + a_P_conv);
@@ -152,9 +155,9 @@ void MatrixConstructor::constructScalarTransportMatrix(
             Scalar D = Gamma * face.area / (face.centroid - allCells[P].centroid).magnitude();
 
             // --- IMPLICIT PART (contributes to A and b) ---
-            Scalar F_new = rho * dot(U_field[P], S_f);
+            Scalar F_new = mdot[face.id];
             Scalar a_P_conv_new, a_N_conv_new; // a_N is not used for BCs but required by function
-            convScheme.getFluxCoefficients(F_new, a_P_conv_new, a_N_conv_new, face, allCells);
+            convScheme.getFluxCoefficients(F_new, a_P_conv_new, a_N_conv_new);
 
             if (bc->type == BCType::FIXED_VALUE) {
                 // The implicit flux is: (D + a_P_conv_new)*phi_P - (D - min(F,0))*phi_b
@@ -169,9 +172,9 @@ void MatrixConstructor::constructScalarTransportMatrix(
 
             // --- EXPLICIT PART (contributes only to b) ---
             if (dt > 0 && theta < 1.0) {
-                Scalar F_old = rho * dot(U_field[P], S_f); // Assuming U is constant over dt
+                Scalar F_old = mdot[face.id]; // Assuming U is constant over dt
                 Scalar a_P_conv_old, a_N_conv_old;
-                convScheme.getFluxCoefficients(F_old, a_P_conv_old, a_N_conv_old, face, allCells);
+                convScheme.getFluxCoefficients(F_old, a_P_conv_old, a_N_conv_old);
 
                 if (bc->type == BCType::FIXED_VALUE) {
                     // Total spatial flux from the previous time step
@@ -193,18 +196,12 @@ void MatrixConstructor::constructScalarTransportMatrix(
             // --- INTERNAL FACE LOGIC ---
             size_t N = face.neighbourCell.value();
             Vector d_PN = allCells[N].centroid - allCells[P].centroid;
-            Vector S_f = face.normal * face.area;
             Scalar D = Gamma * face.area / d_PN.magnitude();
 
-            // Implicit part – distance-weighted face velocity
-            Scalar d_P = (face.centroid - allCells[P].centroid).magnitude();
-            Scalar d_N = (face.centroid - allCells[N].centroid).magnitude();
-            Scalar denom = d_P + d_N;
-            Scalar w_P = d_N / denom;
-            Vector U_f_new = w_P * U_field[P] + (1.0 - w_P) * U_field[N];
-            Scalar F_new = rho * dot(U_f_new, S_f);
+            // Implicit part using pre-computed mass flow rate
+            Scalar F_new = mdot[face.id];
             Scalar a_P_conv_new, a_N_conv_new;
-            convScheme.getFluxCoefficients(F_new, a_P_conv_new, a_N_conv_new, face, allCells);
+            convScheme.getFluxCoefficients(F_new, a_P_conv_new, a_N_conv_new);
             
             // Contribution to P
             tripletList.emplace_back(P, P, theta * (D + a_P_conv_new));
@@ -216,10 +213,9 @@ void MatrixConstructor::constructScalarTransportMatrix(
 
             // Explicit part
             if (dt > 0 && theta < 1.0) {
-                Vector U_f_old = U_f_new; // Assuming U is constant over dt
-                Scalar F_old = rho * dot(U_f_old, S_f);
+                Scalar F_old = mdot[face.id]; // Assuming U is constant over dt
                 Scalar a_P_conv_old, a_N_conv_old;
-                convScheme.getFluxCoefficients(F_old, a_P_conv_old, a_N_conv_old, face, allCells);
+                convScheme.getFluxCoefficients(F_old, a_P_conv_old, a_N_conv_old);
                 
                 Scalar flux_old = (D + a_P_conv_old) * phi_old[P] + (-D + a_N_conv_old) * phi_old[N];
 
