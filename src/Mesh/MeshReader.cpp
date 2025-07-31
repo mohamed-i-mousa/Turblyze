@@ -62,8 +62,6 @@ void readMshFile(const std::string &filePath,
 
   size_t num_cells = 0;
 
-
-
   std::ifstream ifs(filePath);
   if (!ifs.is_open()) {
     throw std::runtime_error("Error: Could not open mesh file: " + filePath);
