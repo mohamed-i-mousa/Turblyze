@@ -142,7 +142,6 @@ FaceVectorField GradientScheme::interpolateGradientsToFaces(
     if (allFaces.empty()) {
         throw std::invalid_argument("interpolateGradientsToFaces: Empty face list provided");
     }
-    
     if (allCells.empty()) {
         throw std::invalid_argument("interpolateGradientsToFaces: Empty cell list provided");
     }

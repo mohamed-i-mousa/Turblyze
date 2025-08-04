@@ -3,6 +3,8 @@
 #include <cmath>
 #include <iostream>
 #include <algorithm>
+#include <limits>
+#include <map>
 
 SIMPLE::SIMPLE(const std::vector<Face>& faces,
                const std::vector<Cell>& cells, 
@@ -14,13 +16,12 @@ SIMPLE::SIMPLE(const std::vector<Face>& faces,
       bcManager(bc),
       gradientScheme(gradScheme),
       convectionScheme(convScheme),
-      rho(1.0),
-      mu(1e-3),
+      rho(1.225),
+      mu(1.7894e-5),
       alpha_U(0.7),
       alpha_p(0.3),
       maxIterations(500),
       tolerance(1e-6),
-      enableNonOrthCorrection(true),
       enableTurbulence(false),
       U("U", cells.size(), Vector(0.0, 0.0, 0.0)),
       p("p", cells.size(), 0.0),
@@ -30,20 +31,21 @@ SIMPLE::SIMPLE(const std::vector<Face>& faces,
       volumeFlux("volumeFlux", faces.size(), 0.0),
       a_U("a_U", cells.size(), 0.0),
       H_U("H_U", cells.size(), Vector(0.0, 0.0, 0.0)),
-      gradP("gradP", cells.size(), Vector(0.0, 0.0, 0.0))
+      grad_P("grad_P", cells.size(), Vector(0.0, 0.0, 0.0))
 {
-    initialize();
+    // Initialize with zero velocity to avoid conflicts with boundary conditions
+    initialize(Vector(0.0, 0.0, 0.0), 0.0);
 }
 
-void SIMPLE::initialize() {
+void SIMPLE::initialize(const Vector& initialVelocity, Scalar initialPressure) {
     // Initialize matrix constructor
-    matrixConstructor = std::make_unique<MatrixConstructor>(
+    matrixConstruct = std::make_unique<Matrix>(
         allFaces, allCells, bcManager, gradientScheme);
     
-    // Initialize velocity field with reasonable values for internal cells
+    // Initialize velocity and pressure fields
     for (size_t i = 0; i < allCells.size(); ++i) {
-        U[i] = Vector(0.1, 0.0, 0.0);  // Small initial velocity
-        p[i] = 0.0;                     // Zero initial pressure
+        U[i] = initialVelocity;
+        p[i] = initialPressure;                     
     }
     
     // Initialize turbulence model if enabled
@@ -63,26 +65,26 @@ void SIMPLE::initialize() {
 }
 
 void SIMPLE::solve() {
-    std::cout << "\n=== Starting SIMPLE Algorithm with ";
-    if (enableTurbulence) {
-        std::cout << "k-omega SST Turbulence Model";
-    } else {
-        std::cout << "Laminar Flow";
-    }
-    std::cout << " ===" << std::endl;
+
+    std::cout << "\n=== Starting SIMPLE Loop" << " ===" << std::endl;
     
     int iteration = 0;
     bool converged = false;
     
-    // Calculate initial pressure gradient
-    gradP = gradientScheme.LeastSquares(p, allCells);
+    // Initial cache build
+    matrixConstruct->refreshIterationCaches(p, U, rho, turbulenceModel.get());
+    grad_P = matrixConstruct->gradP;
     
     while (!converged && iteration < maxIterations) {
         std::cout << "\n--- SIMPLE Iteration " << iteration + 1 << " ---" << std::endl;
+
+        // Refresh caches (gradients, mdot) for this iteration
+        matrixConstruct->refreshIterationCaches(p, U, rho, turbulenceModel.get());
+        grad_P = matrixConstruct->gradP;
         
         // Step 1: Solve momentum equations with effective viscosity
-        discretizeMomentumEquations();
-        
+        solveMomentumEquations();
+            
         // Step 2: Calculate face fluxes using Rhie-Chow interpolation
         calculateRhieChowFaceVelocities();
         calculateMassFluxes();
@@ -98,34 +100,12 @@ void SIMPLE::solve() {
         if (enableTurbulence && turbulenceModel) {
             std::cout << "  Solving turbulence equations..." << std::endl;
             
-            // Calculate velocity gradients for turbulence production
-            std::vector<VectorField> gradU;
-            gradU.reserve(3);
-            
-            // Create VectorField objects with proper initialization
-            gradU.emplace_back("gradU_x", allCells.size(), Vector(0.0, 0.0, 0.0));
-            gradU.emplace_back("gradU_y", allCells.size(), Vector(0.0, 0.0, 0.0));
-            gradU.emplace_back("gradU_z", allCells.size(), Vector(0.0, 0.0, 0.0));
-            
-            // Create velocity component fields for gradient calculation
-            ScalarField U_x_field("U_x", allCells.size());
-            ScalarField U_y_field("U_y", allCells.size());
-            ScalarField U_z_field("U_z", allCells.size());
-            
-            // Extract velocity components
-            for (size_t i = 0; i < allCells.size(); ++i) {
-                U_x_field[i] = U[i].x;
-                U_y_field[i] = U[i].y;
-                U_z_field[i] = U[i].z;
-            }
-            
-            // Calculate velocity gradients using Least Squares
-            gradU[0] = gradientScheme.LeastSquares(U_x_field, allCells);
-            gradU[1] = gradientScheme.LeastSquares(U_y_field, allCells);
-            gradU[2] = gradientScheme.LeastSquares(U_z_field, allCells);
-            
-            // Solve complete k-omega SST model
-            turbulenceModel->solve(U, gradU, rho, mu);
+            // Solve complete k-omega SST model using cached velocity gradients
+            turbulenceModel->solve(U,
+                                 matrixConstruct->gradUx,
+                                 matrixConstruct->gradUy,
+                                 matrixConstruct->gradUz,
+                                 rho, mu);
         }
         
         // Step 6: Update boundary conditions
@@ -152,7 +132,7 @@ void SIMPLE::solve() {
     }
 }
 
-void SIMPLE::discretizeMomentumEquations() {
+void SIMPLE::solveMomentumEquations() {
     /**
      * Solve momentum equations with effective viscosity (laminar + turbulent):
      * ∂(ρU)/∂t + ∇·(ρUU) = -∇p + ∇·[(μ + μₜ)∇U] + S
@@ -160,8 +140,13 @@ void SIMPLE::discretizeMomentumEquations() {
      * Where μₜ is the turbulent viscosity from k-omega SST model
      */
     
-    // Update pressure gradient for momentum source term
-    gradP = gradientScheme.LeastSquares(p, allCells);
+    // Obtain pressure gradient from cache
+    grad_P = matrixConstruct->gradP;
+    
+    // Reset momentum equation diagonal accumulator
+    for (size_t i = 0; i < allCells.size(); ++i) {
+        a_U[i] = 0.0;
+    }
     
     // Get effective viscosity (laminar + turbulent)
     Scalar mu_eff = mu;  // Default to laminar viscosity
@@ -172,46 +157,49 @@ void SIMPLE::discretizeMomentumEquations() {
         std::cout << "  Using effective viscosity (μ_lam + μ_t)" << std::endl;
     }
     
-    // Solve U-momentum equation with effective viscosity
-    matrixConstructor->constructScalarTransportMatrix(
-        "U_x", 
-        ScalarField("U_x", allCells.size()),  // Current U.x component
-        ScalarField("U_x_old", allCells.size()), // Previous time step
-        VectorField("U_transport", allCells.size()), // Transport velocity
-        rho,    // Density
-        mu_eff, // Effective viscosity (laminar + turbulent)
-        TimeScheme::Steady,  // Time scheme
-        0.0,    // dt (not used for steady)
-        1.0,    // theta (not used for steady)
-        convectionScheme
-    );
-    
-    // Extract U.x component for solving
+    // Extract U.x component and old values for transient
     ScalarField U_x("U_x", allCells.size());
     for (size_t i = 0; i < allCells.size(); ++i) {
         U_x[i] = U[i].x;
     }
     
+    // Solve U-momentum equation with effective viscosity
+    matrixConstruct->constructScalarTransportMatrix(
+        "U_x", 
+        U_x,  // Current U.x component
+        ScalarField("U_x_old", allCells.size()), // Previous time step
+        U, // Transport velocity - use actual velocity field
+        ScalarField("U_x_source", allCells.size()), // Source term (zero for momentum)
+        rho,    // Density
+        mu_eff, // Effective viscosity (laminar + turbulent)
+        TimeScheme::Steady,
+        0.0,    // dt
+        1.0, // theta
+        convectionScheme
+    );
+    
+    // Old values already extracted above
+    
     // Add pressure gradient source term and under-relaxation
     auto& b_vector = const_cast<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&>(
-        matrixConstructor->getVectorB());
+        matrixConstruct->getVectorB());
     auto& A_matrix = const_cast<Eigen::SparseMatrix<Scalar>&>(
-        matrixConstructor->getMatrixA());
+        matrixConstruct->getMatrixA());
     
     for (size_t i = 0; i < allCells.size(); ++i) {
         Scalar cellVolume = allCells[i].volume;
         
         // Add pressure gradient source term: -∇p·V
-        b_vector(i) -= gradP[i].x * cellVolume;
+        b_vector(i) -= grad_P[i].x * cellVolume;
+        
         
         // Apply under-relaxation: a_P = a_P/α + (1-α)/α * a_P_old
         Scalar a_P = A_matrix.coeff(i, i);
-        a_U[i] = a_P / alpha_U;  // Store for Rhie-Chow
-        A_matrix.coeffRef(i, i) = a_U[i];
+        Scalar a_P_relaxed = a_P / alpha_U;
+        a_U[i] += a_P_relaxed;   // Accumulate for Rhie-Chow (will average later)
+        A_matrix.coeffRef(i, i) = a_P_relaxed;
         b_vector(i) += (1.0 - alpha_U) / alpha_U * a_P * U[i].x;
         
-        // Store H/A term for Rhie-Chow interpolation
-        H_U[i].x = b_vector(i) / a_U[i];
     }
     
     // Solve for U.x
@@ -229,34 +217,36 @@ void SIMPLE::discretizeMomentumEquations() {
         }
     }
     
-    // Similarly solve for U.y and U.z components
-    // (For brevity, implementing similar pattern)
-    
-    // Solve V-momentum (y-component)
+    // Solve V-momentum equation (y-component)
     ScalarField U_y("U_y", allCells.size());
     for (size_t i = 0; i < allCells.size(); ++i) {
         U_y[i] = U[i].y;
     }
     
-    matrixConstructor->constructScalarTransportMatrix(
+    matrixConstruct->constructScalarTransportMatrix(
         "U_y", U_y, ScalarField("U_y_old", allCells.size()),
-        VectorField("U_transport", allCells.size()),
-        rho, mu, TimeScheme::Steady, 0.0, 1.0, convectionScheme);
+        U, // Transport velocity - use actual velocity field
+        ScalarField("U_y_source", allCells.size()), // Source term (zero for momentum)
+        rho, mu_eff, 
+        TimeScheme::Steady,
+        0.0, 
+        1.0, 
+        convectionScheme);
     
     auto& b_vector_y = const_cast<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&>(
-        matrixConstructor->getVectorB());
+        matrixConstruct->getVectorB());
     auto& A_matrix_y = const_cast<Eigen::SparseMatrix<Scalar>&>(
-        matrixConstructor->getMatrixA());
+        matrixConstruct->getMatrixA());
     
     for (size_t i = 0; i < allCells.size(); ++i) {
         Scalar cellVolume = allCells[i].volume;
-        b_vector_y(i) -= gradP[i].y * cellVolume;
+        b_vector_y(i) -= grad_P[i].y * cellVolume;
         
         Scalar a_P = A_matrix_y.coeff(i, i);
-        A_matrix_y.coeffRef(i, i) = a_P / alpha_U;
+        Scalar a_P_relaxed = a_P / alpha_U;
+        a_U[i] += a_P_relaxed;
+        A_matrix_y.coeffRef(i, i) = a_P_relaxed;
         b_vector_y(i) += (1.0 - alpha_U) / alpha_U * a_P * U[i].y;
-        
-        H_U[i].y = b_vector_y(i) / (a_P / alpha_U);
     }
     
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> U_y_solution(allCells.size());
@@ -273,9 +263,55 @@ void SIMPLE::discretizeMomentumEquations() {
         }
     }
     
-    // For 2D problems, U.z can be kept at zero or solved similarly for 3D
+    // Solve W-momentum equation (z-component)
+    ScalarField U_z("U_z", allCells.size());
     for (size_t i = 0; i < allCells.size(); ++i) {
-        H_U[i].z = 0.0;  // For 2D problems
+        U_z[i] = U[i].z;
+    }
+    
+    matrixConstruct->constructScalarTransportMatrix(
+        "U_z", U_z, ScalarField("U_z_old", allCells.size()),
+        U, // Transport velocity - use actual velocity field
+        ScalarField("U_z_source", allCells.size()), // Source term (zero for momentum)
+        rho, mu_eff, 
+        TimeScheme::Steady,
+        0.0, 
+        1.0, 
+        convectionScheme);
+    
+    auto& b_vector_z = const_cast<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&>(
+        matrixConstruct->getVectorB());
+    auto& A_matrix_z = const_cast<Eigen::SparseMatrix<Scalar>&>(
+        matrixConstruct->getMatrixA());
+    
+    for (size_t i = 0; i < allCells.size(); ++i) {
+        Scalar cellVolume = allCells[i].volume;
+        b_vector_z(i) -= grad_P[i].z * cellVolume;
+        
+        Scalar a_P = A_matrix_z.coeff(i, i);
+        Scalar a_P_relaxed = a_P / alpha_U;
+        a_U[i] += a_P_relaxed;
+        A_matrix_z.coeffRef(i, i) = a_P_relaxed;
+        b_vector_z(i) += (1.0 - alpha_U) / alpha_U * a_P * U[i].z;  
+    }
+    
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> U_z_solution(allCells.size());
+    for (size_t i = 0; i < allCells.size(); ++i) {
+        U_z_solution(i) = U[i].z;
+    }
+    
+    solved = LinearSolvers::BiCGSTAB(
+        U_z_solution, A_matrix_z, b_vector_z, 1e-8, 1000, "U_z");
+    
+    if (solved) {
+        for (size_t i = 0; i < allCells.size(); ++i) {
+            U[i].z = U_z_solution(i);
+        }
+    }
+
+    // Average the accumulated diagonal from the three momentum components
+    for (size_t i = 0; i < allCells.size(); ++i) {
+        a_U[i] /= 3.0;
     }
 }
 
@@ -287,9 +323,58 @@ void SIMPLE::calculateRhieChowFaceVelocities() {
         const Face& face = allFaces[faceIdx];
         
         if (face.isBoundary()) {
-            // For boundary faces, apply boundary conditions
-            // (implementation depends on specific BC type)
-            U_face[faceIdx] = Vector(0.0, 0.0, 0.0);  // Default no-slip
+            // --- Boundary face handling ---
+            size_t P = face.ownerCell;
+            Vector U_b(0.0, 0.0, 0.0);
+
+            // Build (or reuse) face-to-patch map
+            static std::map<size_t, const BoundaryPatch*> faceToPatchMap;
+            if (faceToPatchMap.empty()) {
+                for (const auto& patch : bcManager.patches) {
+                    for (size_t f = patch.firstFaceIndex; f <= patch.lastFaceIndex; ++f) {
+                        faceToPatchMap[f] = &patch;
+                    }
+                }
+            }
+
+            const BoundaryPatch* patch = faceToPatchMap.at(face.id);
+            const BoundaryData* bc = bcManager.getFieldBC(patch->patchName, "U");
+
+            if (bc) {
+                switch (bc->type) {
+                    case BCType::FIXED_VALUE:
+                        if (bc->valueType == BCValueType::VECTOR) {
+                            U_b = bc->vectorValue;
+                        } else {
+                            // Treat scalar value as magnitude normal to the face
+                            U_b = face.normal * bc->scalarValue;
+                        }
+                        break;
+                    case BCType::NO_SLIP:
+                        U_b = Vector(0.0, 0.0, 0.0);
+                        break;
+                    case BCType::ZERO_GRADIENT:
+                        U_b = U[P];
+                        break;
+                    case BCType::FIXED_GRADIENT: {
+                        Vector d_Pf = face.centroid - allCells[P].centroid;
+                        if (bc->gradientType == BCValueType::VECTOR) {
+                            U_b = U[P] + bc->vectorGradient * d_Pf.magnitude();
+                        } else {
+                            U_b = U[P] + face.normal * bc->scalarGradient * d_Pf.magnitude();
+                        }
+                        break;
+                    }
+                    default:
+                        U_b = U[P];
+                        break;
+                }
+            } else {
+                // Fallback to owner cell velocity
+                U_b = U[P];
+            }
+
+            U_face[faceIdx] = U_b;
             continue;
         }
         
@@ -309,7 +394,7 @@ void SIMPLE::calculateRhieChowFaceVelocities() {
         Vector U_f_interpolated = w_f * U[P] + (1.0 - w_f) * U[N];
         
         // Interpolated pressure gradient
-        Vector gradP_f_interpolated = w_f * gradP[P] + (1.0 - w_f) * gradP[N];
+        Vector grad_P_f_interpolated = w_f * grad_P[P] + (1.0 - w_f) * grad_P[N];
         
         // Face-based pressure gradient (using neighbor cell pressures)
         Vector gradP_f_face = (p[N] - p[P]) / d_PN.magnitude() * 
@@ -320,7 +405,7 @@ void SIMPLE::calculateRhieChowFaceVelocities() {
         Scalar D_f = face.area / (a_P_interp + 1e-20);  // Avoid division by zero
         
         // Rhie-Chow correction
-        Vector correction = D_f * (gradP_f_interpolated - gradP_f_face);
+        Vector correction = D_f * (grad_P_f_interpolated - gradP_f_face);
         
         // Final face velocity
         U_face[faceIdx] = U_f_interpolated - correction;
@@ -342,19 +427,20 @@ void SIMPLE::calculateMassFluxes() {
 
 void SIMPLE::solvePressureCorrection() {
     // Build pressure correction equation
-    // ∇·(D_f ∇p') = ∇·ρU*
+    // ∇·(D_f ∇p') = ∇·ρU
     
-    matrixConstructor->constructScalarTransportMatrix(
+    matrixConstruct->constructScalarTransportMatrix(
         "p_prime", p_prime, ScalarField("p_prime_old", allCells.size()),
         VectorField("zero_velocity", allCells.size(), Vector(0.0, 0.0, 0.0)),
+        ScalarField("p_prime_source", allCells.size()), // Source term (zero for pressure correction)
         0.0,  // No convection for pressure correction
         1.0,  // Diffusion coefficient (will be overridden)
-        TimeScheme::Steady, 0.0, 1.0, convectionScheme);
+        TimeScheme::Steady, 0.0, 1.0, convectionScheme); // Pressure correction always steady
     
     auto& A_matrix = const_cast<Eigen::SparseMatrix<Scalar>&>(
-        matrixConstructor->getMatrixA());
+        matrixConstruct->getMatrixA());
     auto& b_vector = const_cast<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&>(
-        matrixConstructor->getVectorB());
+        matrixConstruct->getVectorB());
     
     // Clear the matrix and rebuild for pressure correction
     A_matrix.setZero();
@@ -369,9 +455,29 @@ void SIMPLE::solvePressureCorrection() {
         size_t P = face.ownerCell;
         
         if (face.isBoundary()) {
-            // Boundary face: apply zero gradient condition
-            // (pressure correction should have zero gradient at boundaries)
-            continue;
+            // For boundary faces, we need to handle pressure outlets
+            // Build face-to-patch map if not already done
+            static std::map<size_t, const BoundaryPatch*> faceToPatchMap;
+            if (faceToPatchMap.empty()) {
+                for (const auto& patch : bcManager.patches) {
+                    for (size_t i = patch.firstFaceIndex; i <= patch.lastFaceIndex; ++i) {
+                        faceToPatchMap[i] = &patch;
+                    }
+                }
+            }
+            
+            const BoundaryPatch* patch = faceToPatchMap.at(face.id);
+            const BoundaryData* bc = bcManager.getFieldBC(patch->patchName, "p");
+            
+            if (bc && bc->type == BCType::FIXED_VALUE) {
+                // Fixed pressure boundary: p' = 0
+                // Add large coefficient to diagonal to enforce p'[P] = 0
+                triplets.emplace_back(P, P, 1e10);
+                // No contribution to RHS as p' should be zero
+            } else {
+                // For other boundaries (walls, inlets), treat as zero flux
+                // This is implicitly handled by not adding face contribution
+            }
         } else {
             // Internal face
             size_t N = face.neighbourCell.value();
@@ -449,23 +555,121 @@ bool SIMPLE::checkConvergence() {
                      (velocityResidual < tolerance) && 
                      (pressureResidual < tolerance);
     
-    std::cout << "  Mass imbalance: " << massImbalance 
-              << ", Velocity residual: " << velocityResidual
-              << ", Pressure residual: " << pressureResidual << std::endl;
+    std::cout << "  Residuals - Mass: " << std::scientific << massImbalance 
+              << ", Velocity: " << velocityResidual
+              << ", Pressure: " << pressureResidual 
+              << std::fixed << std::endl;
+    
+    // Additional convergence monitoring
+    if (massImbalance > 1e3 || velocityResidual > 1e3 || pressureResidual > 1e3) {
+        std::cout << "  WARNING: Residuals are very large - solution may be diverging!" << std::endl;
+        std::cout << "  Consider: " << std::endl;
+        std::cout << "    - Reducing relaxation factors (current: U=" << alpha_U << ", p=" << alpha_p << ")" << std::endl;
+        std::cout << "    - Checking boundary conditions" << std::endl;
+        std::cout << "    - Improving initial guess" << std::endl;
+    }
     
     return converged;
 }
 
 void SIMPLE::applyVelocityBoundaryConditions() {
+    // Build face-to-patch map for boundary lookup
+    std::map<size_t, const BoundaryPatch*> faceToPatchMap;
+    for (const auto& patch : bcManager.patches) {
+        for (size_t i = patch.firstFaceIndex; i <= patch.lastFaceIndex; ++i) {
+            faceToPatchMap[i] = &patch;
+        }
+    }
+    
     // Apply velocity boundary conditions
-    // (Implementation would depend on specific boundary patch setup)
-    // This is a placeholder for BC application
+    for (const auto& face : allFaces) {
+        if (!face.isBoundary()) continue;
+        
+        size_t P = face.ownerCell;  // Owner cell adjacent to boundary
+        
+        // Get boundary patch and condition
+        const BoundaryPatch* patch = faceToPatchMap.at(face.id);
+        const BoundaryData* bc = bcManager.getFieldBC(patch->patchName, "U");
+        
+        if (!bc) {
+            // No BC specified for this patch - skip
+            continue;
+        }
+        
+        // Apply boundary condition based on type
+        switch (bc->type) {
+            case BCType::FIXED_VALUE:
+                // For fixed value, directly set the cell value (can be improved with ghost cells)
+                // This is a simple implementation - production code would use ghost cells
+                U[P] = bc->getFixedVectorValue();
+                break;
+                
+            case BCType::NO_SLIP:
+                // No-slip wall: velocity = 0
+                U[P] = Vector(0.0, 0.0, 0.0);
+                break;
+                
+            case BCType::ZERO_GRADIENT:
+                // Zero gradient: no modification needed as gradients are computed
+                // The cell value remains as calculated by momentum equations
+                break;
+                
+            case BCType::FIXED_GRADIENT:
+                // Fixed gradient: modify based on gradient
+                // Note: This is simplified - proper implementation would consider face distance
+                break;
+                
+            default:
+                break;
+        }
+    }
 }
 
 void SIMPLE::applyPressureBoundaryConditions() {
+    // Build face-to-patch map for boundary lookup
+    std::map<size_t, const BoundaryPatch*> faceToPatchMap;
+    for (const auto& patch : bcManager.patches) {
+        for (size_t i = patch.firstFaceIndex; i <= patch.lastFaceIndex; ++i) {
+            faceToPatchMap[i] = &patch;
+        }
+    }
+    
     // Apply pressure boundary conditions
-    // (Implementation would depend on specific boundary patch setup)
-    // This is a placeholder for BC application
+    for (const auto& face : allFaces) {
+        if (!face.isBoundary()) continue;
+        
+        size_t P = face.ownerCell;  // Owner cell adjacent to boundary
+        
+        // Get boundary patch and condition
+        const BoundaryPatch* patch = faceToPatchMap.at(face.id);
+        const BoundaryData* bc = bcManager.getFieldBC(patch->patchName, "p");
+        
+        if (!bc) {
+            // No BC specified for this patch - skip
+            continue;
+        }
+        
+        // Apply boundary condition based on type
+        switch (bc->type) {
+            case BCType::FIXED_VALUE:
+                // For fixed pressure outlet
+                p[P] = bc->getFixedScalarValue();
+                break;
+                
+            case BCType::ZERO_GRADIENT:
+                // Zero gradient: no modification needed
+                // The cell value remains as calculated by pressure correction
+                break;
+                
+            case BCType::FIXED_GRADIENT:
+                // Fixed gradient: typically used at inlets
+                // Note: This is simplified - proper implementation would consider face distance
+                break;
+                
+            default:
+                break;
+        }
+    }
 }
 
 Scalar SIMPLE::calculateMassImbalance() const {
@@ -555,4 +759,29 @@ const ScalarField* SIMPLE::getWallDistance() const {
         return &(turbulenceModel->getWallDistance());
     }
     return nullptr;
+}
+
+// Velocity component getters
+ScalarField SIMPLE::getVelocityX() const {
+    ScalarField U_x("U_x", allCells.size());
+    for (size_t i = 0; i < allCells.size(); ++i) {
+        U_x[i] = U[i].x;
+    }
+    return U_x;
+}
+
+ScalarField SIMPLE::getVelocityY() const {
+    ScalarField U_y("U_y", allCells.size());
+    for (size_t i = 0; i < allCells.size(); ++i) {
+        U_y[i] = U[i].y;
+    }
+    return U_y;
+}
+
+ScalarField SIMPLE::getVelocityZ() const {
+    ScalarField U_z("U_z", allCells.size());
+    for (size_t i = 0; i < allCells.size(); ++i) {
+        U_z[i] = U[i].z;
+    }
+    return U_z;
 }

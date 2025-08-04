@@ -85,34 +85,4 @@ public:
     ) const;
 };
 
-// Rhie-Chow interpolation scheme for colocated grid momentum solution
-class RhieChowScheme {
-public:
-    // Calculate face velocity using Rhie-Chow interpolation
-    Vector calculateFaceVelocity(
-        const Face& face,
-        const std::vector<Cell>& cells,
-        const ScalarField& u,
-        const ScalarField& v,
-        const ScalarField& w,
-        const ScalarField& p,
-        const VectorField& grad_u,
-        const VectorField& grad_v,
-        const VectorField& grad_w,
-        const VectorField& grad_p,
-        const ScalarField& a_u,
-        const ScalarField& a_v,
-        const ScalarField& a_w
-    ) const;
-
-    // Calculate pressure gradient correction term
-    Vector calculatePressureGradientCorrection(
-        const Face& face,
-        const std::vector<Cell>& cells,
-        const ScalarField& p,
-        const VectorField& grad_p,
-        const ScalarField& a_p
-    ) const;
-};
-
 #endif // CONVECTIONSCHEME_H

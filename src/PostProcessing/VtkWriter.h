@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <unordered_set>
-#include <algorithm>
 
 struct Vector;
 struct Face;
@@ -17,14 +15,14 @@ struct Cell;
 #include "CellData.h"
 #include "Vector.h"
 
-
 namespace VtkWriter {
 
 /**
- * This function writes a VTK legacy file for unstructured grids.
+ * This function writes a VTK PolyData file using the VTK XML library.
  *
- * This function exports points and cells to a .vtk file
- * that can be visualized in ParaView.
+ * This function exports points and faces as polygons to a .vtp file
+ * that can be visualized in ParaView. Cell-centered scalar fields are
+ * mapped to face data for visualization.
  */
 void writeVtkFile(const std::string& filename,
                   const std::vector<Vector>& allNodes,

@@ -18,8 +18,7 @@ bool BiCGSTAB(Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& x,
     size_t system_size = B.size();
 
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> r(system_size);
-    Scalar r_sum;
-    Scalar r_norm_initial_avg, r_norm_final_avg, r_norm_ratio;    
+    Scalar r_norm_initial_avg, r_norm_final_avg;    
     
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> r_initial = B - A * x;
     Scalar r_sum_initial = S(0.0);

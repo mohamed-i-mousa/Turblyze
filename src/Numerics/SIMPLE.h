@@ -1,22 +1,23 @@
 #ifndef SIMPLE_H
 #define SIMPLE_H
 
-#include "ConvectionScheme.h"
-#include "MatrixConstructor.h"
-#include "LinearSolvers.h"
-#include "GradientScheme.h"
-#include "BoundaryConditions.h"
-#include "CellData.h"
-#include "FaceData.h"
-#include "Face.h"
-#include "Cell.h"
-#include "KOmegaSST.h"
 #include <vector>
 #include <memory>
 
+#include "Face.h"
+#include "Cell.h"
+#include "BoundaryConditions.h"
+#include "CellData.h"
+#include "FaceData.h"
+#include "GradientScheme.h"
+#include "ConvectionScheme.h"
+#include "Matrix.h"
+#include "LinearSolvers.h"
+#include "KOmegaSST.h"
+
+
 class SIMPLE {
 public:
-    // Enhanced constructor that requires mesh components and schemes
     SIMPLE(const std::vector<Face>& faces,
            const std::vector<Cell>& cells, 
            const BoundaryConditions& bc,
@@ -27,7 +28,7 @@ public:
     void solve();
     
     // Individual SIMPLE steps
-    void discretizeMomentumEquations();
+    void solveMomentumEquations();
     void calculateFaceFluxes();
     void solvePressureCorrection();
     void correctVelocity();
@@ -42,13 +43,18 @@ public:
     const VectorField& getVelocity() const { return U; }
     const ScalarField& getPressure() const { return p; }
     const FaceFluxField& getMassFlux() const { return massFlux; }
+    
+    // 3D-specific getters
+    ScalarField getVelocityX() const;
+    ScalarField getVelocityY() const;
+    ScalarField getVelocityZ() const;
 
     // Setters for algorithm parameters
     void setRelaxationFactors(Scalar alpha_U, Scalar alpha_p);
     void setConvergenceTolerance(Scalar tol);
     void setMaxIterations(int maxIter);
     void enableTurbulenceModeling(bool enable = true);
-
+    
     // Turbulence getters
     const ScalarField* getTurbulentKineticEnergy() const;
     const ScalarField* getSpecificDissipationRate() const;
@@ -72,9 +78,8 @@ private:
     Scalar alpha_p;       // Under-relaxation factor for pressure
     int maxIterations;    // Maximum number of iterations
     Scalar tolerance;     // Convergence tolerance
-    bool enableNonOrthCorrection; // Enable non-orthogonal corrections
     bool enableTurbulence;        // Enable turbulence modeling
-
+    
     // Turbulence model
     std::unique_ptr<KOmegaSST> turbulenceModel;
 
@@ -82,7 +87,7 @@ private:
     VectorField U;        // Velocity field
     ScalarField p;        // Pressure field
     ScalarField p_prime;  // Pressure correction field
-
+    
     // Face-based fields for Rhie-Chow interpolation
     FaceVectorField U_face;      // Face velocities
     FaceFluxField massFlux;      // Mass flux through faces
@@ -93,14 +98,13 @@ private:
     VectorField H_U;      // H/A terms for momentum equations
     
     // Gradient fields
-    VectorField gradP;    // Pressure gradient
+    VectorField grad_P;    // Pressure gradient
     
     // Matrix constructor and solver objects
-    std::unique_ptr<MatrixConstructor> matrixConstructor;
+    std::unique_ptr<Matrix> matrixConstruct;
     
     // Helper functions
-    void initialize();
-    void calculateNonOrthogonalCorrections();
+    void initialize(const Vector& initialVelocity, Scalar initialPressure);
     void applyVelocityBoundaryConditions();
     void applyPressureBoundaryConditions();
     
@@ -108,6 +112,7 @@ private:
     Scalar calculateMassImbalance() const;
     Scalar calculateVelocityResidual() const;
     Scalar calculatePressureResidual() const;
+    void printSolutionStatistics();
 };
 
 #endif

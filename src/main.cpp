@@ -23,7 +23,7 @@
 // Numerics and Solver
 #include "GradientScheme.h"
 #include "ConvectionScheme.h"
-#include "MatrixConstructor.h"
+#include "Matrix.h"
 #include "LinearSolvers.h"
 #include "SIMPLE.h"
 
@@ -50,7 +50,7 @@ int main() {
         std::vector<Cell> allCells;
         std::vector<BoundaryPatch> allBoundaryPatches;
 
-        std::string meshFilePath = "../input_files/rod_convection.msh";
+        std::string meshFilePath = "../input_files/cylinder.msh";
         readMshFile(meshFilePath, allNodes, allFaces, allCells, allBoundaryPatches);
         std::cout << "Mesh Loaded: " << allNodes.size() << " nodes, "
                   << allFaces.size() << " faces, " << allCells.size() << " cells." << std::endl;
@@ -86,21 +86,32 @@ int main() {
         const std::string p_field = "p";
         
         // Inlet: Fixed velocity
-        bcManager.setFixedValue("inlet", U_field, Vector(0.1, 0.0, 0.0));  // 0.1 m/s inlet velocity
-        bcManager.setFixedGradient("inlet", p_field, 0.0);  // Zero gradient for pressure at inlet
+        bcManager.setFixedValue("inlet", U_field, Vector(-0.1, 0.0, 0.0));
+        bcManager.setFixedGradient("inlet", p_field, 0.0);
         
         // Outlet: Fixed pressure, zero gradient velocity
-        bcManager.setFixedValue("outlet", p_field, 0.0);   // Reference pressure at outlet
-        bcManager.setFixedGradient("outlet", U_field, Vector(0.0, 0.0, 0.0));  // Zero gradient for velocity
+        bcManager.setFixedValue("outlet", p_field, 0.0);
+        bcManager.setFixedGradient("outlet", U_field, Vector(0.0, 0.0, 0.0));
         
-        // Walls: No-slip condition for velocity, zero gradient for pressure
-        bcManager.setFixedValue("wall", U_field, Vector(0.0, 0.0, 0.0));  // No-slip wall
-        bcManager.setFixedGradient("wall", p_field, 0.0);  // Zero gradient for pressure at wall
+        // Cylinder wall: no-slip condition for velocity, zero gradient for pressure
+        bcManager.setNoSlip("cylinder", U_field);  // No-slip condition for velocity at wall
+        bcManager.setZeroGradient("cylinder", p_field);  // Zero gradient for pressure at wall
+        
+        // Symmetry walls: zero gradient condition for velocity, zero gradient for pressure
+        bcManager.setZeroGradient("symmetry1", U_field);  // Zero gradient for velocity at wall
+        bcManager.setZeroGradient("symmetry2", U_field);  // Zero gradient for velocity at wall
+        bcManager.setZeroGradient("symmetry3", U_field);  // Zero gradient for velocity at wall
+        bcManager.setZeroGradient("symmetry4", U_field);  // Zero gradient for velocity at wall
+        bcManager.setZeroGradient("symmetry1", p_field);  // Zero gradient for pressure at wall
+        bcManager.setZeroGradient("symmetry2", p_field);  // Zero gradient for pressure at wall
+        bcManager.setZeroGradient("symmetry3", p_field);  // Zero gradient for pressure at wall
+        bcManager.setZeroGradient("symmetry4", p_field);  // Zero gradient for pressure at wall
+
         
         bcManager.printSummary(false);
 
         // --- Discretization Scheme Selection ---
-        CentralDifferenceScheme convScheme;  // Use central difference scheme
+        CentralDifferenceScheme convScheme;         // Use central difference scheme
         GradientScheme gradScheme;                  // Gradient calculation scheme
 
         // =========================================================================
@@ -111,19 +122,20 @@ int main() {
         SIMPLE simpleSolver(allFaces, allCells, bcManager, gradScheme, convScheme);
         
         // Configure SIMPLE parameters
+        // Note: For stability, start with conservative relaxation factors
+        // Typical ranges: U=0.3-0.7, p=0.1-0.3
+        // Lower values = more stable but slower convergence
         simpleSolver.setRelaxationFactors(0.7, 0.3);  // Under-relaxation: U=0.7, p=0.3
         simpleSolver.setConvergenceTolerance(1e-6);   // Convergence tolerance
-        simpleSolver.setMaxIterations(500);           // Maximum iterations
+        simpleSolver.setMaxIterations(5);             // Maximum iterations
         
         // Enable k-omega SST turbulence modeling
-        simpleSolver.enableTurbulenceModeling(true);
+        simpleSolver.enableTurbulenceModeling(false);
 
         // =========================================================================
-        // --- 4. SOLVE PRESSURE-VELOCITY COUPLING WITH TURBULENCE ---
+        // --- 4. SOLVE STEADY-STATE FLOW EQUATIONS ---
         // =========================================================================
-        std::cout << "\n--- 4. Solving Incompressible Turbulent Flow with SIMPLE + k-omega SST ---" << std::endl;
-        
-        // Solve the coupled pressure-velocity-turbulence system
+        std::cout << "\n--- 4. Solving Steady-State Flow with SIMPLE + k-omega SST ---" << std::endl;
         simpleSolver.solve();
 
         // =========================================================================
@@ -140,6 +152,11 @@ int main() {
         const ScalarField* omega_field = simpleSolver.getSpecificDissipationRate();
         const ScalarField* mu_t_field = simpleSolver.getTurbulentViscosity();
         const ScalarField* wallDist_field = simpleSolver.getWallDistance();
+        
+        // Extract 3D velocity components
+        ScalarField U_x = simpleSolver.getVelocityX();
+        ScalarField U_y = simpleSolver.getVelocityY();
+        ScalarField U_z = simpleSolver.getVelocityZ();
         
         std::cout << "Solution extracted:" << std::endl;
         std::cout << "  Velocity field size: " << velocity.size() << std::endl;
@@ -194,6 +211,27 @@ int main() {
         std::cout << "  Average velocity magnitude: " << avgVelocity << " m/s" << std::endl;
         std::cout << "  Pressure range: [" << minPressure << ", " << maxPressure << "] Pa" << std::endl;
         
+        // 3D velocity component statistics
+        Scalar maxUx = 0.0, maxUy = 0.0, maxUz = 0.0;
+        Scalar avgUx = 0.0, avgUy = 0.0, avgUz = 0.0;
+        
+        for (size_t i = 0; i < velocity.size(); ++i) {
+            maxUx = std::max(maxUx, std::abs(U_x[i]));
+            maxUy = std::max(maxUy, std::abs(U_y[i]));
+            maxUz = std::max(maxUz, std::abs(U_z[i]));
+            avgUx += U_x[i];
+            avgUy += U_y[i];
+            avgUz += U_z[i];
+        }
+        avgUx /= velocity.size();
+        avgUy /= velocity.size();
+        avgUz /= velocity.size();
+        
+        std::cout << "3D Velocity Component Statistics:" << std::endl;
+        std::cout << "  Max U_x: " << maxUx << " m/s, Avg U_x: " << avgUx << " m/s" << std::endl;
+        std::cout << "  Max U_y: " << maxUy << " m/s, Avg U_y: " << avgUy << " m/s" << std::endl;
+        std::cout << "  Max U_z: " << maxUz << " m/s, Avg U_z: " << avgUz << " m/s" << std::endl;
+        
         // Turbulence statistics
         if (k_field && omega_field && mu_t_field) {
             Scalar maxK = 0.0, avgK = 0.0;
@@ -229,7 +267,8 @@ int main() {
         // --- 7. EXPORT RESULTS ---
         // =========================================================================
         std::cout << "\n--- 7. Exporting Results to VTK ---" << std::endl;
-        std::string vtkOutputFilename = "../output_files/komega_sst_flow_solution.vtk";
+        // Create output filename for steady-state solution
+        std::string vtkOutputFilename = "../output_files/cylinder_flow.vtp";
 
         // Prepare scalar fields for export
         std::map<std::string, const ScalarField*> scalarFieldsToVtk;
@@ -237,16 +276,8 @@ int main() {
         scalarFieldsToVtk["velocityMagnitude"] = &velocityMagnitude;
         scalarFieldsToVtk["pressureCoeff"] = &pressureCoeff;
 
-        // Prepare vector fields for export (convert velocity to separate components)
-        ScalarField U_x("U_x", velocity.size());
-        ScalarField U_y("U_y", velocity.size());
-        ScalarField U_z("U_z", velocity.size());
-        
-        for (size_t i = 0; i < velocity.size(); ++i) {
-            U_x[i] = velocity[i].x;
-            U_y[i] = velocity[i].y;
-            U_z[i] = velocity[i].z;
-        }
+        // Use 3D velocity components from solver
+        // (Already extracted above using getVelocityX(), getVelocityY(), getVelocityZ())
         
         scalarFieldsToVtk["U_x"] = &U_x;
         scalarFieldsToVtk["U_y"] = &U_y;
