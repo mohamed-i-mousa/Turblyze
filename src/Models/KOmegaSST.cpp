@@ -195,7 +195,7 @@ void KOmegaSST::solve(const VectorField& U_field,
     calculateBlendingFunctions(gradU, rho, mu_lam);
     
     // Step 3: Calculate production terms
-    calculateProductionTerms(gradU, rho);
+    calculateProductionTerms(gradU);
     
     // Step 4: Calculate cross-diffusion term
     calculateCrossDiffusion(rho);
@@ -559,7 +559,7 @@ void KOmegaSST::calculateBlendingFunctions(const std::vector<VectorField>&,
     }
 }
 
-void KOmegaSST::calculateProductionTerms(const std::vector<VectorField>& gradU, Scalar rho) {
+void KOmegaSST::calculateProductionTerms(const std::vector<VectorField>& gradU) {
     /**
      * Calculate production terms for k and omega:
      * 

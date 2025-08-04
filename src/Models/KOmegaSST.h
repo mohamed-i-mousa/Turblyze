@@ -189,7 +189,7 @@ private:
      * @param gradU Velocity gradient field
      * @param rho Fluid density
      */
-    void calculateProductionTerms(const std::vector<VectorField>& gradU, Scalar rho);
+    void calculateProductionTerms(const std::vector<VectorField>& gradU);
 
     /**
      * @brief Calculate cross-diffusion term for omega equation

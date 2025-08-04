@@ -155,7 +155,5 @@ The solver has been validated for:
 ## Future Enhancements
 
 - Parallel processing for large 3D meshes
-- Additional turbulence models (RANS, LES)
-- Moving mesh capabilities
-- Multi-phase flow support
-- Advanced boundary conditions
+- Additional turbulence models (LES)
+
