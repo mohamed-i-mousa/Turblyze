@@ -1,3 +1,0 @@
-/home/server-mm/MyCFDCode/build/CMakeFiles/rebuild_cache.dir
-/home/server-mm/MyCFDCode/build/CMakeFiles/edit_cache.dir
-/home/server-mm/MyCFDCode/build/CMakeFiles/MyCFDCode.dir
