@@ -16,19 +16,20 @@ class BoundaryConditions {
 public:
     std::vector<BoundaryPatch> patches;
 
-    // The main storage of boundary conditions setup 
+    // The main storage of boundary conditions setup
     /* Example:
     bcManager
     ├── "inlet"
-    │   ├── "U"     -> BoundaryData(FIXED_VALUE, VECTOR, (10,0,0))
-    │   ├── "p"     -> BoundaryData(ZERO_GRADIENT)
-    │   ├── "k"     -> BoundaryData(FIXED_VALUE, SCALAR, 0.1)
-    │   └── "omega" -> BoundaryData(FIXED_VALUE, SCALAR, 1.0)
-    ├── "outlet" 
-    │   ├── "U"     -> BoundaryData(ZERO_GRADIENT)
-    │   ├── "p"     -> BoundaryData(FIXED_VALUE, SCALAR, 101325.0)
-    │   ├── "k"     -> BoundaryData(ZERO_GRADIENT)
-    │   └── "omega" -> BoundaryData(ZERO_GRADIENT)
+    │   ├── "U"     --> BoundaryData(FIXED_VALUE, VECTOR, (10,0,0))
+    │   ├── "p"     --> BoundaryData(ZERO_GRADIENT)
+    │   ├── "k"     --> BoundaryData(FIXED_VALUE, SCALAR, 0.1)
+    │   └── "omega" --> BoundaryData(FIXED_VALUE, SCALAR, 1.0)
+    │
+    ├── "outlet"
+    │   ├── "U"     --> BoundaryData(ZERO_GRADIENT)
+    │   ├── "p"     --> BoundaryData(FIXED_VALUE, SCALAR, 101325.0)
+    │   ├── "k"     --> BoundaryData(ZERO_GRADIENT)
+    │   └── "omega" --> BoundaryData(ZERO_GRADIENT)
     */
     std::map<std::string, std::map<std::string, BoundaryData>> patchBoundaryData;
 
@@ -99,7 +100,6 @@ public:
     }
 
     // ----- Methods to get boundary condition configuration ----- //
-
     const BoundaryData* getFieldBC(const std::string& patchName, const std::string& fieldName) const {
         auto patch_it = patchBoundaryData.find(patchName);
         if (patch_it != patchBoundaryData.end()) {
@@ -109,7 +109,7 @@ public:
                 return &(field_it->second);
             }
         }
-        return nullptr; 
+        return nullptr;
     }
 
     // Helper Method to convert BCType enum to string for printing

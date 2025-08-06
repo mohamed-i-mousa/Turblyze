@@ -496,12 +496,7 @@ void SIMPLE::solvePressureCorrection() {
         } else {
             // Internal face - add diffusion terms
             size_t N = face.neighbourCell.value();
-            
-            // Distance between cell centers
-            Vector d_PN = allCells[N].centroid - allCells[P].centroid;
-            // Distance projected on face normal
-            Scalar proj = std::fabs(dot(d_PN, face.normal));  // Projection distance of cell-centre line on face normal
-            
+        
             // Pressure correction diffusion coefficient (Rhie-Chow consistent)
             Scalar a_P_interp = 0.5 * (a_U[P] + a_U[N]);
             Scalar D_f = rho * face.area / (a_P_interp + 1e-20);
