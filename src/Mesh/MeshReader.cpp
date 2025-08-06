@@ -37,12 +37,12 @@ size_t strToDec(const std::string& decStr) {
     size_t decVal;
     ss >> decVal;
     if (ss.fail() || !ss.eof()) {
-
         throw std::runtime_error("Error: Failed to convert decimal string '" + decStr + "' to size_t. Invalid format or contains non-numeric characters.");
     }
     return decVal;
 }
 
+// Mesh reader function
 void readMshFile(const std::string &filePath,
                  std::vector<Vector> &allNodes,
                  std::vector<Face> &allFaces,

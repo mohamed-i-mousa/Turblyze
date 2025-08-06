@@ -12,7 +12,7 @@ struct Vector {
     // ----- Members ----- //
     Scalar x, y, z;
 
-    // Default constructor >>> Parameterized constructor
+    // ----- Constructors ----- //
 
     Vector() : x(0.0), y(0.0), z(0.0) {}
 
@@ -111,7 +111,6 @@ struct Vector {
         else {
             throw std::runtime_error("Error: Division by zero in Vector::normalize");
         }
-
         return *this;
     }
 
@@ -122,7 +121,7 @@ struct Vector {
     }
 };
 
-    // ----- Operator Overloads (Non-Member Methods) ----- //
+    // ----- Operator Overloads ----- //
 
     // Scalar Multiplication: scalar * P (allows Scalar * Vector syntax)
     inline Vector operator*(Scalar scalar, const Vector& p) {
@@ -135,7 +134,7 @@ struct Vector {
         return os;
     }
 
-    // ----- Common Geometric Methods (Non-Member) ----- //
+    // ----- Common Geometric Methods ----- //
 
     // Dot product of two vectors (vectors from origin)
     inline Scalar dot(const Vector& p1, const Vector& p2) {

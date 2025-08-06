@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <iostream>
-#include <iomanip>      // for std::setprecision, std::fixed in operator<<
+#include <iomanip>
 #include <string>
 #include <optional>
 
@@ -29,28 +29,31 @@ struct Face {
 
     bool geometricPropertiesCalculated = false;
 
-    // Default constructor >>> Constructor for internal faces >>> Constructor for boundary faces
+    // ----- Constructors ----- //
+
     Face() = default;
 
     Face(size_t faceId, const std::vector<size_t>& nodes, size_t owner, size_t neighbour)
-        : id(faceId), nodeIndices(nodes), ownerCell(owner), neighbourCell(neighbour) {}
+        : id(faceId), nodeIndices(nodes), ownerCell(owner), neighbourCell(neighbour) {}         // Constructor for internal faces
     
     Face(size_t faceId, const std::vector<size_t>& nodes, size_t owner)
-        : id(faceId), nodeIndices(nodes), ownerCell(owner), neighbourCell(std::nullopt) {}
+        : id(faceId), nodeIndices(nodes), ownerCell(owner), neighbourCell(std::nullopt) {}      // Constructor for boundary faces
 
     // ----- Member Methods ----- //
 
     /* Calculate geometric properties of the face
-     * Input: allNodes >>> Vector of all nodes in the mesh
+     *
+     * Input: allNodes (Vector of all nodes in the mesh and connectivity).
      * Output: necessary geometric properties of the face like area, centroid, normal, etc.
-     * The function starts with basic validation of the face's nodes count and node indices
-     * The function then calculates the geometric properties of the face based on the number of nodes
-     * If the face is a triangle, the function calculates the area and normal using the cross product
+     * 
+     * The function calculates the geometric properties of the face based on the number of nodes.
+     * If the face is a triangle, the function calculates the area and normal using the cross product.
      * If the face is a polygon, the function decomposes the face into triangles and calculates the area and normal using the cross product
-     * The function then calculates the centroid of the face using the weighted average of the centroids of the triangles
-     * The function then calculates the x2_integral, y2_integral, and z2_integral of the face using the weighted average of the x2_integral, y2_integral, and z2_integral of the triangles
-     * The function then sets the geometricPropertiesCalculated flag to true
-     * The function then returns the geometricPropertiesCalculated flag
+     *
+     * The function calculates the centroid of the face using the weighted average of the centroids of the triangles
+     * The function calculates the x2_integral, y2_integral, and z2_integral of the face using the weighted average of the x2_integral, y2_integral, and z2_integral of the triangles
+     * 
+     * The function sets the geometricPropertiesCalculated flag to true and returns it.
      */
     void calculateGeometricProperties(const std::vector<Vector>& allNodes) {
         geometricPropertiesCalculated = false;         
@@ -85,15 +88,9 @@ struct Face {
 
             if (std::abs(crossProdMag) < AREA_TOLERANCE) {
                 throw std::runtime_error("Face " + std::to_string(id) + " is degenerate.");
-            }
-
-            else {
+            } else {
                 area = S(0.5) * crossProdMag;
-                if (std::abs(crossProdMag) > DIVISION_TOLERANCE) {
-                    normal = crossProd / crossProdMag;
-                } else {
-                    normal = Vector(S(0.0), S(0.0), S(0.0));
-                }
+                normal = crossProd / crossProdMag;
 
                 x2_integral = (p1.x*p1.x + p2.x*p2.x + p3.x*p3.x + p1.x*p2.x + p1.x*p3.x + p2.x*p3.x) * area / S(6.0);
                 y2_integral = (p1.y*p1.y + p2.y*p2.y + p3.y*p3.y + p1.y*p2.y + p1.y*p3.y + p2.y*p3.y) * area / S(6.0);
@@ -104,10 +101,6 @@ struct Face {
         }
         // CASE 2: Face is "Polygon" (nNodes > 3)
         else {
-            x2_integral = 0.0;
-            y2_integral = 0.0;
-            z2_integral = 0.0;
-
             Vector faceCenter(0.0, 0.0, 0.0);
 
             for (size_t i = 0; i < nNodes; ++i) {
@@ -154,6 +147,8 @@ struct Face {
                     Vector triangleCentroid = (p1_tri + p2_tri + p3_tri) / S(3.0);
                     totalArea += triangleArea;
                     weightedCentroidSum += triangleCentroid * triangleArea;
+                } else {
+                    throw std::runtime_error("Warning: Polygonal Face " + std::to_string(id) + " has near-zero total area.");
                 }
             }
 
@@ -173,20 +168,19 @@ struct Face {
         }
     }
 
-
     bool isBoundary() const {
         return !neighbourCell.has_value();
     }
 };
 
-// ----- Operator Overloads (Non-Member Methods) ----- //
+// ----- Operator Overloads ----- //
 
-/* This function is used to print the face to the console
- * It prints the face's id, nodes, owner, neighbour, and calculated properties if available
- * The function sets the precision for floating Vector output within this scope
- * The function then prints the face's id, nodes, owner, neighbour, and calculated properties if available
- * The function then restores the precision for floating Vector output within this scope
- * The function then returns the ostream object
+/* This function prints the face to the console
+ *
+ * Input: ostream object
+ * Output: ostream object
+ *
+ * The function prints the face's id, nodes, owner, neighbour, and calculated properties if available
  */
  inline std::ostream& operator<<(std::ostream& os, const Face& f) {
     os << "Face(ID: " << f.id
@@ -197,9 +191,7 @@ struct Face {
     os << "], Owner: " << f.ownerCell
        << ", Neighbour: " << (f.isBoundary() ? "Boundary" : std::to_string(f.neighbourCell.value_or(0))); // Display "boundary" for boundary
 
-   // Print calculated properties if available
     if (f.geometricPropertiesCalculated) {
-        // Set precision for floating Vector output within this scope
         std::ios_base::fmtflags flags = os.flags();
         int                      prec = os.precision();
         os << std::fixed << std::setprecision(6);

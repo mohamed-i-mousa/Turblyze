@@ -20,6 +20,13 @@ enum class BCValueType {
     UNDEFINED
 };
 
+/*
+ * This struct stores the boundary data for a patch.
+ * For each patch, a BoundaryData object is created and stores a value and a gradient (scalar and vector).
+ * Depending on the type of boundary condition, the value and gradient are stored in the appropriate variable, 
+ * and the other variable is set to undefined.For example, if the boundary condition is a fixed value, the value 
+ * is stored in the scalarValue variable, and the gradient is set to undefined.
+ */
 struct BoundaryData {
     
     BCType type = BCType::UNDEFINED;
@@ -30,10 +37,12 @@ struct BoundaryData {
     Vector vectorValue; 
 
     // ----- Gradient storage ----- //
+    // Gradients are vectors/tensors. But as BC, only the normal component of the gradient ∂φ/∂n is assigned. 
     BCValueType gradientType = BCValueType::UNDEFINED;
-    Scalar scalarGradient = S(0.0);
-    Vector vectorGradient;
+    Scalar scalarGradient = S(0.0);     
+    Vector vectorGradient;         
 
+    // ----- Constructor ----- //
     BoundaryData() = default;
 
     // ----- Setting Methods ----- // 
@@ -87,6 +96,9 @@ struct BoundaryData {
         gradientType = BCValueType::UNDEFINED;
     }
 
+    // This is the simple implementation of no slip boundary condition.
+    // This implementatin is not suitable for turbulent flow where the wall shear stress calculations depend on 
+    // the parallel to wall velocity only. Zero gradient is an important addition for turbulent flows.
     void setNoSlip() {
         type = BCType::NO_SLIP;
         vectorValue = Vector(S(0.0), S(0.0), S(0.0));

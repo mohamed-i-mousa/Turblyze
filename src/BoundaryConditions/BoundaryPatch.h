@@ -39,7 +39,6 @@ inline BoundaryConditionType mapFluentBCToEnum(const std::string& fluentType) {
   if (fluentType == "solid") return BoundaryConditionType::SOLID;
   if (fluentType == "fluid") return BoundaryConditionType::FLUID;
 
-  // If none of the above
   std::cerr << "Warning: Unknown Fluent boundary type encountered: " << fluentType << std::endl;
   return BoundaryConditionType::UNDEFINED;
 }

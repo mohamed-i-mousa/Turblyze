@@ -50,7 +50,7 @@ int main() {
         std::vector<Cell> allCells;
         std::vector<BoundaryPatch> allBoundaryPatches;
 
-        std::string meshFilePath = "../input_files/cylinder.msh";
+        std::string meshFilePath = "../input_files/cylinder_coarse.msh";
         readMshFile(meshFilePath, allNodes, allFaces, allCells, allBoundaryPatches);
         std::cout << "Mesh Loaded: " << allNodes.size() << " nodes, "
                   << allFaces.size() << " faces, " << allCells.size() << " cells." << std::endl;
@@ -86,12 +86,12 @@ int main() {
         const std::string p_field = "p";
         
         // Inlet: Fixed velocity
-        bcManager.setFixedValue("inlet", U_field, Vector(-0.1, 0.0, 0.0));
-        bcManager.setFixedGradient("inlet", p_field, 0.0);
+        bcManager.setFixedValue("inlet", U_field, Vector(0.0, 0.0, -0.1));
+        bcManager.setZeroGradient("inlet", p_field);
         
         // Outlet: Fixed pressure, zero gradient velocity
         bcManager.setFixedValue("outlet", p_field, 0.0);
-        bcManager.setFixedGradient("outlet", U_field, Vector(0.0, 0.0, 0.0));
+        bcManager.setZeroGradient("outlet", U_field);
         
         // Cylinder wall: no-slip condition for velocity, zero gradient for pressure
         bcManager.setNoSlip("cylinder", U_field);  // No-slip condition for velocity at wall
@@ -127,7 +127,7 @@ int main() {
         // Lower values = more stable but slower convergence
         simpleSolver.setRelaxationFactors(0.7, 0.3);  // Under-relaxation: U=0.7, p=0.3
         simpleSolver.setConvergenceTolerance(1e-6);   // Convergence tolerance
-        simpleSolver.setMaxIterations(5);             // Maximum iterations
+        simpleSolver.setMaxIterations(1000);          // Maximum iterations
         
         // Enable k-omega SST turbulence modeling
         simpleSolver.enableTurbulenceModeling(false);

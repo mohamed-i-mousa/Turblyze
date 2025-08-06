@@ -12,6 +12,7 @@
 template<typename T>
 class CellData {
 public:
+  // ----- Members ----- //
   std::string name;
   std::vector<T> internalField;
 
@@ -55,7 +56,7 @@ public:
   void printSummary(size_t itemsToShow) const {
     std::cout << "CellData: " << name << " (Size: " << internalField.size() << ")" << std::endl;
     for (size_t i = 0; i < std::min(internalField.size(), itemsToShow); ++i) {
-        std::cout << "  Cell " << i << ": " << internalField[i] << std::endl; // Requires T to be streamable
+        std::cout << "  Cell " << i << ": " << internalField[i] << std::endl;
     }
     if (internalField.size() > itemsToShow) {
         std::cout << "  ..." << std::endl;

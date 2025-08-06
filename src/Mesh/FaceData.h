@@ -12,6 +12,7 @@
 template<typename T>
 class FaceData {
 public:
+  // ----- Members ----- //
   std::string name;
   std::vector<T> allFacesValues;
 
@@ -55,7 +56,7 @@ public:
   void printSummary(size_t itemsToShow = 5) const {
     std::cout << "FaceField: " << name << " (Size: " << allFacesValues.size() << ")" << std::endl;
     for (size_t i = 0; i < std::min(allFacesValues.size(), itemsToShow); ++i) {
-      std::cout << "  Face " << i << ": " << allFacesValues[i] << std::endl; // Requires T to be streamable
+      std::cout << "  Face " << i << ": " << allFacesValues[i] << std::endl;
     }
     if (allFacesValues.size() > itemsToShow) {
       std::cout << "  ..." << std::endl;
@@ -63,7 +64,7 @@ public:
   }
 };
 
-using FaceFluxField = FaceData<Scalar>; // e.g., for phi in p-U coupling
+using FaceFluxField = FaceData<Scalar>;
 using FaceVectorField = FaceData<Vector>;
 
 #endif

@@ -17,6 +17,19 @@ public:
     std::vector<BoundaryPatch> patches;
 
     // The main storage of boundary conditions setup 
+    /* Example:
+    bcManager
+    ├── "inlet"
+    │   ├── "U"     -> BoundaryData(FIXED_VALUE, VECTOR, (10,0,0))
+    │   ├── "p"     -> BoundaryData(ZERO_GRADIENT)
+    │   ├── "k"     -> BoundaryData(FIXED_VALUE, SCALAR, 0.1)
+    │   └── "omega" -> BoundaryData(FIXED_VALUE, SCALAR, 1.0)
+    ├── "outlet" 
+    │   ├── "U"     -> BoundaryData(ZERO_GRADIENT)
+    │   ├── "p"     -> BoundaryData(FIXED_VALUE, SCALAR, 101325.0)
+    │   ├── "k"     -> BoundaryData(ZERO_GRADIENT)
+    │   └── "omega" -> BoundaryData(ZERO_GRADIENT)
+    */
     std::map<std::string, std::map<std::string, BoundaryData>> patchBoundaryData;
 
     // ----- Constructors ------//
@@ -34,7 +47,8 @@ public:
                 return &patch;
             }
         }
-        return nullptr; // Not found
+        // if not found
+        return nullptr;
     }
 
 
@@ -106,7 +120,7 @@ public:
             case BCType::FIXED_GRADIENT: return "FIXED_GRADIENT";
             case BCType::ZERO_GRADIENT: return "ZERO_GRADIENT";
             case BCType::NO_SLIP: return "NO_SLIP";
-            default: return "UNKNOWN_BCTYPE";
+            default: return "UNKNOWN_BC_TYPE";
         }
     }
 

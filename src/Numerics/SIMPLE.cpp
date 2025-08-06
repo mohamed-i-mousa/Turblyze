@@ -33,8 +33,7 @@ SIMPLE::SIMPLE(const std::vector<Face>& faces,
       H_U("H_U", cells.size(), Vector(0.0, 0.0, 0.0)),
       grad_P("grad_P", cells.size(), Vector(0.0, 0.0, 0.0))
 {
-    // Initialize with zero velocity to avoid conflicts with boundary conditions
-    initialize(Vector(0.0, 0.0, 0.0), 0.0);
+    initialize(Vector(0.0, 0.0, -0.1), 0.0);
 }
 
 void SIMPLE::initialize(const Vector& initialVelocity, Scalar initialPressure) {
@@ -150,11 +149,16 @@ void SIMPLE::solveMomentumEquations() {
     
     // Get effective viscosity (laminar + turbulent)
     Scalar mu_eff = mu;  // Default to laminar viscosity
-    ScalarField mu_effective("mu_eff", allCells.size(), mu);
     
     if (enableTurbulence && turbulenceModel) {
-        mu_effective = turbulenceModel->getEffectiveViscosity(mu);
-        std::cout << "  Using effective viscosity (μ_lam + μ_t)" << std::endl;
+        // For turbulent flow, use average effective viscosity
+        ScalarField mu_effective = turbulenceModel->getEffectiveViscosity(mu);
+        Scalar sum_mu = 0.0;
+        for (size_t i = 0; i < allCells.size(); ++i) {
+            sum_mu += mu_effective[i];
+        }
+        mu_eff = sum_mu / allCells.size();
+        std::cout << "  Using averaged effective viscosity (μ_lam + μ_t): " << mu_eff << std::endl;
     }
     
     // Extract U.x component and old values for transient
@@ -196,7 +200,7 @@ void SIMPLE::solveMomentumEquations() {
         // Apply under-relaxation: a_P = a_P/α + (1-α)/α * a_P_old
         Scalar a_P = A_matrix.coeff(i, i);
         Scalar a_P_relaxed = a_P / alpha_U;
-        a_U[i] += a_P_relaxed;   // Accumulate for Rhie-Chow (will average later)
+        a_U[i] = a_P_relaxed;   // Store diagonal coefficient for Rhie-Chow
         A_matrix.coeffRef(i, i) = a_P_relaxed;
         b_vector(i) += (1.0 - alpha_U) / alpha_U * a_P * U[i].x;
         
@@ -244,7 +248,7 @@ void SIMPLE::solveMomentumEquations() {
         
         Scalar a_P = A_matrix_y.coeff(i, i);
         Scalar a_P_relaxed = a_P / alpha_U;
-        a_U[i] += a_P_relaxed;
+        a_U[i] = 0.5 * (a_U[i] + a_P_relaxed); // Blend with X-momentum coefficient for Rhie-Chow
         A_matrix_y.coeffRef(i, i) = a_P_relaxed;
         b_vector_y(i) += (1.0 - alpha_U) / alpha_U * a_P * U[i].y;
     }
@@ -290,7 +294,7 @@ void SIMPLE::solveMomentumEquations() {
         
         Scalar a_P = A_matrix_z.coeff(i, i);
         Scalar a_P_relaxed = a_P / alpha_U;
-        a_U[i] += a_P_relaxed;
+        a_U[i] = (a_U[i] + a_P_relaxed) * 0.5; // Update blended coefficient for Rhie-Chow
         A_matrix_z.coeffRef(i, i) = a_P_relaxed;
         b_vector_z(i) += (1.0 - alpha_U) / alpha_U * a_P * U[i].z;  
     }
@@ -307,11 +311,6 @@ void SIMPLE::solveMomentumEquations() {
         for (size_t i = 0; i < allCells.size(); ++i) {
             U[i].z = U_z_solution(i);
         }
-    }
-
-    // Average the accumulated diagonal from the three momentum components
-    for (size_t i = 0; i < allCells.size(); ++i) {
-        a_U[i] /= 3.0;
     }
 }
 
@@ -388,23 +387,26 @@ void SIMPLE::calculateRhieChowFaceVelocities() {
         
         Scalar d_P = d_Pf.magnitude();
         Scalar d_N = d_Nf.magnitude();
-        Scalar w_f = d_N / (d_P + d_N);  // Interpolation weight
+        Scalar total_dist = d_P + d_N;
+        Scalar w_f = d_N / (total_dist + 1e-20);  // Weight for P cell
         
         // Standard interpolated face velocity
-        Vector U_f_interpolated = w_f * U[P] + (1.0 - w_f) * U[N];
+        Vector U_f_interpolated = (1.0 - w_f) * U[P] + w_f * U[N];
         
         // Interpolated pressure gradient
-        Vector grad_P_f_interpolated = w_f * grad_P[P] + (1.0 - w_f) * grad_P[N];
+        Vector grad_P_f_interpolated = (1.0 - w_f) * grad_P[P] + w_f * grad_P[N];
         
         // Face-based pressure gradient (using neighbor cell pressures)
-        Vector gradP_f_face = (p[N] - p[P]) / d_PN.magnitude() * 
-                              (d_PN / d_PN.magnitude());
+        // Project pressure difference onto face normal direction
+        Vector face_normal_unit = face.normal;
+
         
-        // Interpolated diffusion coefficient D_f
-        Scalar a_P_interp = w_f * a_U[P] + (1.0 - w_f) * a_U[N];
-        Scalar D_f = face.area / (a_P_interp + 1e-20);  // Avoid division by zero
+        // Interpolated diffusion coefficient D_f (Rhie-Chow)
+        Scalar a_P_interp = (1.0 - w_f) * a_U[P] + w_f * a_U[N];
+        Scalar D_f = face.area / (a_P_interp + 1e-20);  // Standard Rhie-Chow coefficient
         
-        // Rhie-Chow correction
+        // Rhie-Chow correction: 
+        Vector gradP_f_face = ((p[N] - p[P]) / (d_PN.magnitude() + 1e-20)) * face_normal_unit;
         Vector correction = D_f * (grad_P_f_interpolated - gradP_f_face);
         
         // Final face velocity
@@ -448,14 +450,30 @@ void SIMPLE::solvePressureCorrection() {
     
     std::vector<Eigen::Triplet<Scalar>> triplets;
     
-    // Loop over all faces to build pressure correction equation
-    for (const auto& face : allFaces) {
+    // Initialize source term from mass conservation violation
+    for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx) {
+        const Cell& cell = allCells[cellIdx];
+        Scalar mass_imbalance = 0.0;
+        
+        // Sum mass flux through all faces of this cell
+        for (size_t j = 0; j < cell.faceIndices.size(); ++j) {
+            size_t faceIdx = cell.faceIndices[j];
+            int sign = cell.faceSigns[j];  // +1 if normal points out, -1 if points in
+            mass_imbalance += sign * massFlux[faceIdx];
+        }
+        
+        // Source term equals mass imbalance (divergence of provisional mass flux)
+        b_vector(cellIdx) = mass_imbalance;
+    }
+    
+    // Build diffusion matrix for pressure correction equation
+    for (size_t faceIdx = 0; faceIdx < allFaces.size(); ++faceIdx) {
+        const Face& face = allFaces[faceIdx];
         if (!face.geometricPropertiesCalculated) continue;
         
         size_t P = face.ownerCell;
         
         if (face.isBoundary()) {
-            // For boundary faces, we need to handle pressure outlets
             // Build face-to-patch map if not already done
             static std::map<size_t, const BoundaryPatch*> faceToPatchMap;
             if (faceToPatchMap.empty()) {
@@ -471,34 +489,28 @@ void SIMPLE::solvePressureCorrection() {
             
             if (bc && bc->type == BCType::FIXED_VALUE) {
                 // Fixed pressure boundary: p' = 0
-                // Add large coefficient to diagonal to enforce p'[P] = 0
                 triplets.emplace_back(P, P, 1e10);
-                // No contribution to RHS as p' should be zero
-            } else {
-                // For other boundaries (walls, inlets), treat as zero flux
-                // This is implicitly handled by not adding face contribution
+                b_vector(P) = 0.0;  // Override source term
             }
+            // For other boundary conditions, no diffusion contribution
         } else {
-            // Internal face
+            // Internal face - add diffusion terms
             size_t N = face.neighbourCell.value();
             
             // Distance between cell centers
             Vector d_PN = allCells[N].centroid - allCells[P].centroid;
-            Scalar d_mag = d_PN.magnitude();
+            // Distance projected on face normal
+            Scalar proj = std::fabs(dot(d_PN, face.normal));  // Projection distance of cell-centre line on face normal
             
-            // Pressure correction diffusion coefficient
+            // Pressure correction diffusion coefficient (Rhie-Chow consistent)
             Scalar a_P_interp = 0.5 * (a_U[P] + a_U[N]);
-            Scalar D_f = face.area / (a_P_interp + 1e-20);
+            Scalar D_f = rho * face.area / (a_P_interp + 1e-20);
             
-            // Matrix coefficients
-            triplets.emplace_back(P, P, D_f / d_mag);
-            triplets.emplace_back(P, N, -D_f / d_mag);
-            triplets.emplace_back(N, N, D_f / d_mag);
-            triplets.emplace_back(N, P, -D_f / d_mag);
-            
-            // Source term: mass imbalance
-            b_vector(P) -= massFlux[face.id];
-            b_vector(N) += massFlux[face.id];
+            // Add diffusion coefficients to matrix
+            triplets.emplace_back(P, P, D_f);
+            triplets.emplace_back(P, N, -D_f);
+            triplets.emplace_back(N, N, D_f);
+            triplets.emplace_back(N, P, -D_f);
         }
     }
     
@@ -615,8 +627,14 @@ void SIMPLE::applyVelocityBoundaryConditions() {
                 break;
                 
             case BCType::FIXED_GRADIENT:
-                // Fixed gradient: modify based on gradient
-                // Note: This is simplified - proper implementation would consider face distance
+                // Fixed gradient: U_boundary = U_cell + grad * distance
+                // For simplicity, assume zero gradient (can be enhanced)
+                {
+                    // const Vector& gradValue = bc->getFixedVectorGradient();
+                    // For now, implement as zero gradient since we need face distance calculation
+                    // which would require more complex geometric calculations
+                    // U[P] remains unchanged (zero gradient effect)
+                }
                 break;
                 
             default:
@@ -662,8 +680,14 @@ void SIMPLE::applyPressureBoundaryConditions() {
                 break;
                 
             case BCType::FIXED_GRADIENT:
-                // Fixed gradient: typically used at inlets
-                // Note: This is simplified - proper implementation would consider face distance
+                // Fixed gradient: p_boundary = p_cell + grad * distance  
+                // For simplicity, assume zero gradient (can be enhanced)
+                {
+                    // Scalar gradValue = bc->getFixedScalarGradient();
+                    // For now, implement as zero gradient since we need face distance calculation
+                    // which would require more complex geometric calculations
+                    // p[P] remains unchanged (zero gradient effect)
+                }
                 break;
                 
             default:

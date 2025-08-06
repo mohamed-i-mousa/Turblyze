@@ -153,7 +153,7 @@ The solver has been validated for:
 - Boundary condition implementation
 
 ## Future Enhancements
-
+- Advanced no-slip boundary condition 
 - Parallel processing for large 3D meshes
 - Additional turbulence models (LES)
 

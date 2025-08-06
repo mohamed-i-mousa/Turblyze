@@ -37,7 +37,6 @@
  * - allCells: Output vector to store cell data with face and neighbor indices
  * - allBoundaryPatches: Output vector to store boundary patch information
  *
- * The function clears all input vectors before populating them with new data.
  * All indices are converted to 0-based indexing internally.
  *
  * Throws std::runtime_error for:

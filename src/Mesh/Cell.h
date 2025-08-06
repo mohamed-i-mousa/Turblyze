@@ -17,29 +17,32 @@ struct Cell {
     size_t id = 0;
     std::vector<size_t> faceIndices;
     std::vector<size_t> neighbourCellIndices;
-    std::vector<int> faceSigns;                   // This to adjust normal vector direction to be always pointing outward 
+    std::vector<int> faceSigns;                   // to adjust normal vector direction to be always pointing outward 
     Vector centroid;
     Scalar volume = 0.0;
     bool geometricPropertiesCalculated = false;
 
-    // Default constructor >>> Parameterized constructor
+    // ----- Constructors ----- //
 
     Cell() = default;
 
     Cell(size_t cellId, const std::vector<size_t>& faces, const std::vector<size_t>& neighbours, const std::vector<int>& signs)
         : id(cellId),
           faceIndices(faces),
-          neighbourCellIndices(neighbours),  // Moved before faceSigns
+          neighbourCellIndices(neighbours),
           faceSigns(signs)
           {}
 
     /* Calculate geometric properties of the cell
-     * Input: allFaces >>> Vector of all faces in the mesh
-     * Output: necessary geometric properties of the cell like volume, centroid, etc.
-     * The function starts with basic validation of the cell's faces count and face indices
-     * The function then calculates the geometric properties of the cell based on the number of faces
-     * The cell volume is calculated using the divergence theorem: V = (1/3) * sum(face_centroid . face_area_vector)
-     * The cell centroid is calculated using the second moments of the faces
+     *
+     * Input: allFaces.
+     * Output: Cell volume and centroid.
+     * 
+     * The function calculates the geometric properties of the cell based on the number of faces.
+     * The cell volume is calculated using the divergence theorem: V = (1/3) * sum(face_centroid . face_area_vector).
+     * The cell centroid is calculated using the second moments of the faces.
+     *
+     * The function sets the geometricPropertiesCalculated flag to true and returns it.
      */
     void calculateGeometricProperties(const std::vector<Face>& allFaces) {
         geometricPropertiesCalculated = false;
@@ -52,24 +55,21 @@ struct Cell {
         }
 
         for (size_t i = 0; i < faceIndices.size(); ++i) {
+            
             size_t faceIndex = faceIndices[i];
+            const Face& face = allFaces[faceIndex];
 
-            // Index validation
             if (faceIndex >= allFaces.size()) {
                 throw std::out_of_range("Error in Cell" + std::to_string(id) + "calculation: " +
                 "Face index " + std::to_string(faceIndex) + " is out of range for face list (size " +
                 std::to_string(allFaces.size()) + ").");
             }
 
-            const Face& face = allFaces[faceIndex];
-
-            // Ensure the face properties were calculated
             if(!face.geometricPropertiesCalculated) {
                 throw std::runtime_error("Error in Cell " + std::to_string(id) + " calculation: " +
                                          "Geometric properties for bounding Face " + std::to_string(face.id) + " were not calculated.");
             }
-
-            // Calculate cell centroid and volume
+            
             Vector adjustedNormal = faceSigns[i] * face.normal;
 
             Scalar cf_dot_Sf = faceSigns[i] * face.area * dot(face.centroid, face.normal);
@@ -82,6 +82,7 @@ struct Cell {
         }
 
         volume /= S(3.0);
+        
         if (std::abs(volume) > DIVISION_TOLERANCE) {
             centroid = centroidSum / (S(2.0) * volume);
         } else {
@@ -100,28 +101,25 @@ struct Cell {
     }
 };
 
-/* This function is used to print the cell to the console
- * It prints the cell's id, faces, neighbours, and calculated properties if available
- * The function sets the precision for floating Vector output within this scope
- * The function then prints the cell's id, faces, neighbours, and calculated properties if available
- * The function then restores the precision for floating Vector output within this scope
- * The function then returns the ostream object
+/* This function prints the cell to the console
+ *
+ * Input: ostream object
+ * Output: ostream object
+ *
+ * The function prints the cell's id, faces, neighbours, and calculated properties if available
  */
 inline std::ostream& operator<<(std::ostream& os, const Cell& c) {
     os << "Cell(ID: " << c.id
        << ", Faces: [";
-    // Print face indices
     for (size_t i = 0; i < c.faceIndices.size(); ++i) {
         os << c.faceIndices[i] << (i == c.faceIndices.size() - 1 ? "" : ", ");
     }
     os << "], Neighbours: [";
-    // Print neighbour indices
      for (size_t i = 0; i < c.neighbourCellIndices.size(); ++i) {
         os << c.neighbourCellIndices[i] << (i == c.neighbourCellIndices.size() - 1 ? "" : ", ");
     }
     os << "]";
 
-    // Print calculated properties if available
     if (c.geometricPropertiesCalculated) {
         std::ios_base::fmtflags flags = os.flags(); 
         int                      prec = os.precision(); 
