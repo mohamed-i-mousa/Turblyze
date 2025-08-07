@@ -10,7 +10,7 @@ SIMPLE::SIMPLE(const std::vector<Face>& faces,
                const std::vector<Cell>& cells, 
                const BoundaryConditions& bc,
                const GradientScheme& gradScheme,
-               const ConvectionDiscretization& convScheme)
+               const ConvectionScheme& convScheme)
     : allFaces(faces),
       allCells(cells),
       bcManager(bc),
@@ -322,57 +322,8 @@ void SIMPLE::calculateRhieChowFaceVelocities() {
         const Face& face = allFaces[faceIdx];
         
         if (face.isBoundary()) {
-            // --- Boundary face handling ---
-            size_t P = face.ownerCell;
-            Vector U_b(0.0, 0.0, 0.0);
-
-            // Build (or reuse) face-to-patch map
-            static std::map<size_t, const BoundaryPatch*> faceToPatchMap;
-            if (faceToPatchMap.empty()) {
-                for (const auto& patch : bcManager.patches) {
-                    for (size_t f = patch.firstFaceIndex; f <= patch.lastFaceIndex; ++f) {
-                        faceToPatchMap[f] = &patch;
-                    }
-                }
-            }
-
-            const BoundaryPatch* patch = faceToPatchMap.at(face.id);
-            const BoundaryData* bc = bcManager.getFieldBC(patch->patchName, "U");
-
-            if (bc) {
-                switch (bc->type) {
-                    case BCType::FIXED_VALUE:
-                        if (bc->valueType == BCValueType::VECTOR) {
-                            U_b = bc->vectorValue;
-                        } else {
-                            // Treat scalar value as magnitude normal to the face
-                            U_b = face.normal * bc->scalarValue;
-                        }
-                        break;
-                    case BCType::NO_SLIP:
-                        U_b = Vector(0.0, 0.0, 0.0);
-                        break;
-                    case BCType::ZERO_GRADIENT:
-                        U_b = U[P];
-                        break;
-                    case BCType::FIXED_GRADIENT: {
-                        Vector d_Pf = face.centroid - allCells[P].centroid;
-                        if (bc->gradientType == BCValueType::VECTOR) {
-                            U_b = U[P] + bc->vectorGradient * d_Pf.magnitude();
-                        } else {
-                            U_b = U[P] + face.normal * bc->scalarGradient * d_Pf.magnitude();
-                        }
-                        break;
-                    }
-                    default:
-                        U_b = U[P];
-                        break;
-                }
-            } else {
-                // Fallback to owner cell velocity
-                U_b = U[P];
-            }
-
+            // Use centralized boundary condition handling
+            Vector U_b = bcManager.calculateBoundaryFaceVectorValue(face, U, allCells, "U");
             U_face[faceIdx] = U_b;
             continue;
         }
@@ -387,26 +338,27 @@ void SIMPLE::calculateRhieChowFaceVelocities() {
         
         Scalar d_P = d_Pf.magnitude();
         Scalar d_N = d_Nf.magnitude();
-        Scalar total_dist = d_P + d_N;
-        Scalar w_f = d_N / (total_dist + 1e-20);  // Weight for P cell
+        Scalar total_dist = d_P + d_N + 1e-20;
+        
+        // Correct distance-weighted interpolation coefficients
+        Scalar w_P = d_N / total_dist; // weight for owner cell P
+        Scalar w_N = d_P / total_dist; // weight for neighbour cell N
         
         // Standard interpolated face velocity
-        Vector U_f_interpolated = (1.0 - w_f) * U[P] + w_f * U[N];
+        Vector U_f_interpolated = w_P * U[P] + w_N * U[N];
         
         // Interpolated pressure gradient
-        Vector grad_P_f_interpolated = (1.0 - w_f) * grad_P[P] + w_f * grad_P[N];
+        Vector grad_P_f_interpolated = w_P * grad_P[P] + w_N * grad_P[N];
         
-        // Face-based pressure gradient (using neighbor cell pressures)
-        // Project pressure difference onto face normal direction
-        Vector face_normal_unit = face.normal;
-
+        // Use the line-of-centres unit vector for the face pressure gradient
+        Vector e_PN = d_PN / (d_PN.magnitude() + 1e-20);
         
         // Interpolated diffusion coefficient D_f (Rhie-Chow)
-        Scalar a_P_interp = (1.0 - w_f) * a_U[P] + w_f * a_U[N];
+        Scalar a_P_interp = w_P * a_U[P] + w_N * a_U[N];
         Scalar D_f = face.area / (a_P_interp + 1e-20);  // Standard Rhie-Chow coefficient
         
-        // Rhie-Chow correction: 
-        Vector gradP_f_face = ((p[N] - p[P]) / (d_PN.magnitude() + 1e-20)) * face_normal_unit;
+        // Rhie-Chow correction: align with cell-centre line
+        Vector gradP_f_face = ((p[N] - p[P]) / (d_PN.magnitude() + 1e-20)) * e_PN;
         Vector correction = D_f * (grad_P_f_interpolated - gradP_f_face);
         
         // Final face velocity
@@ -467,6 +419,13 @@ void SIMPLE::solvePressureCorrection() {
     }
     
     // Build diffusion matrix for pressure correction equation
+    bool hasFixedPressureBC = false;
+    // Detect if any fixed pressure boundary exists (to avoid double anchoring later)
+    for (const auto& patch : bcManager.patches) {
+        const BoundaryData* bc = bcManager.getFieldBC(patch.patchName, "p");
+        if (bc && bc->type == BCType::FIXED_VALUE) { hasFixedPressureBC = true; break; }
+    }
+
     for (size_t faceIdx = 0; faceIdx < allFaces.size(); ++faceIdx) {
         const Face& face = allFaces[faceIdx];
         if (!face.geometricPropertiesCalculated) continue;
@@ -496,11 +455,27 @@ void SIMPLE::solvePressureCorrection() {
         } else {
             // Internal face - add diffusion terms
             size_t N = face.neighbourCell.value();
-        
-            // Pressure correction diffusion coefficient (Rhie-Chow consistent)
-            Scalar a_P_interp = 0.5 * (a_U[P] + a_U[N]);
-            Scalar D_f = rho * face.area / (a_P_interp + 1e-20);
             
+            // Pressure correction diffusion coefficient (Rhie-Chow consistent)
+            // Distance-weighted interpolation of a_U for face
+            Vector d_PN = allCells[N].centroid - allCells[P].centroid;
+            Vector d_Pf = face.centroid - allCells[P].centroid;
+            Vector d_Nf = face.centroid - allCells[N].centroid;
+            Scalar d_P = d_Pf.magnitude();
+            Scalar d_N = d_Nf.magnitude();
+            Scalar total_dist = d_P + d_N + 1e-20;
+            Scalar w_P = d_N / total_dist;
+            Scalar w_N = d_P / total_dist;
+            Scalar a_face = w_P * a_U[P] + w_N * a_U[N];
+
+            // Orthogonal projection of area vector on line-of-centres
+            Vector S_f = face.normal * face.area;
+            Vector e_PN = d_PN / (d_PN.magnitude() + 1e-20);
+            Scalar E_mag = std::abs(dot(S_f, e_PN));
+
+            // Coefficient making the units consistent with mass flux correction
+            Scalar D_f = rho * E_mag / (a_face + 1e-20);
+
             // Add diffusion coefficients to matrix
             triplets.emplace_back(P, P, D_f);
             triplets.emplace_back(P, N, -D_f);
@@ -511,9 +486,11 @@ void SIMPLE::solvePressureCorrection() {
     
     A_matrix.setFromTriplets(triplets.begin(), triplets.end());
     
-    // Fix one pressure correction value to avoid singular matrix
-    A_matrix.coeffRef(0, 0) += 1e12;
-    b_vector(0) = 0.0;
+    // Fix one pressure correction value to avoid singular matrix when no fixed-pressure BC is present
+    if (!hasFixedPressureBC && A_matrix.rows() > 0) {
+        A_matrix.coeffRef(0, 0) += 1e12;
+        b_vector(0) = 0.0;
+    }
     
     // Solve pressure correction equation
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> p_prime_solution(allCells.size());
