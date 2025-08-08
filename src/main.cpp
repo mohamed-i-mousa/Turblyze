@@ -108,26 +108,27 @@ int main() {
         bcManager.setZeroGradient("symmetry4", p_field);  // Zero gradient for pressure at wall
 
         
-        bcManager.printSummary(false);
+        bcManager.printSummary();
 
         // --- Discretization Scheme Selection ---
-        CentralDifferenceScheme convScheme;         // Use central difference scheme
-        GradientScheme gradScheme;                  // Gradient calculation scheme
+        CentralDifferenceScheme CDS;             // Use central difference scheme
+        SecondOrderUpwindScheme SOUS;            // Use second-order upwind scheme
+        UpwindScheme UDS;                        // Use first-order upwind scheme
+        GradientScheme gradScheme;               // Gradient calculation scheme
+
 
         // =========================================================================
         // --- 3. SIMPLE SOLVER SETUP ---
         // =========================================================================
         std::cout << "\n--- 3. Initializing SIMPLE Solver with k-omega SST Turbulence ---" << std::endl;
         
-        SIMPLE simpleSolver(allFaces, allCells, bcManager, gradScheme, convScheme);
+        SIMPLE simpleSolver(allFaces, allCells, bcManager, gradScheme, UDS);
         
         // Configure SIMPLE parameters
-        // Note: For stability, start with conservative relaxation factors
-        // Typical ranges: U=0.3-0.7, p=0.1-0.3
-        // Lower values = more stable but slower convergence
-        simpleSolver.setRelaxationFactors(0.7, 0.3);  // Under-relaxation: U=0.7, p=0.3
+        // Typical under-relaxation factors: U = 0.7, p = 0.3
+        simpleSolver.setRelaxationFactors(0.7, 0.3);  // Under-relaxation: U = 0.7, p = 0.3
         simpleSolver.setConvergenceTolerance(1e-6);   // Convergence tolerance
-        simpleSolver.setMaxIterations(1000);          // Maximum iterations
+        simpleSolver.setMaxIterations(30);          // Maximum iterations
         
         // Enable k-omega SST turbulence modeling
         simpleSolver.enableTurbulenceModeling(false);
@@ -405,10 +406,8 @@ int main() {
     
     std::cout << "\n--- CFD Simulation with SIMPLE + k-omega SST Turbulence Complete ---" << std::endl;
     std::cout << "\n=== EXECUTION TIME SUMMARY ===" << std::endl;
-    std::cout << "Total execution time: " << duration.count() << " milliseconds" << std::endl;
-    std::cout << "Total execution time: " << duration.count() / 1000.0 << " seconds" << std::endl;
     
-    // Format time in hours:minutes:seconds for longer runs
+    // Format time in hours:minutes:seconds
     auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
     auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration - hours);
     auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration - hours - minutes);

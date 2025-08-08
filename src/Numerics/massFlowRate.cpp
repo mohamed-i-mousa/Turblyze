@@ -6,7 +6,7 @@ FaceFluxField calculateMassFlowRate(
     const VectorField& U_field,
     Scalar rho,
     const BoundaryConditions& bcManager,
-    const std::map<size_t, const BoundaryPatch*>& faceToPatchMap
+    const std::map<size_t, const BoundaryPatch*>& /* faceToPatchMap */
 ) {
     FaceFluxField mdot("massFlowRate", faces.size(), 0.0);
     
@@ -17,45 +17,8 @@ FaceFluxField calculateMassFlowRate(
         Vector S_f = face.normal * face.area;
         
         if (face.isBoundary()) {
-            Vector U_face;
-            
-            // Get boundary condition information
-            const BoundaryPatch* patch = faceToPatchMap.at(faceId);
-            const BoundaryData* bc = bcManager.getFieldBC(patch->patchName, "U");
-            
-            // Check if boundary condition is properly configured
-            if (bc == nullptr) {
-                // No boundary condition configured, use zero gradient as fallback
-                std::cerr << "Warning: No boundary condition configured for patch '" 
-                          << patch->patchName << "' field 'U'. Using zero gradient fallback." << std::endl;
-                U_face = U_field[P];
-            } else {
-                switch (bc->type) {
-                case BCType::FIXED_VALUE:
-                    U_face = bc->vectorValue;
-                    break;
-                    
-                case BCType::FIXED_GRADIENT: {
-                    Vector d_Pf = face.centroid - cells[P].centroid;
-                    U_face = U_field[P] + bc->vectorGradient * d_Pf.magnitude();
-                    break;
-                }
-                    
-                case BCType::ZERO_GRADIENT:
-                    U_face = U_field[P];
-                    break;
-                    
-                case BCType::NO_SLIP:
-                    U_face = Vector(0.0, 0.0, 0.0);
-                    break;
-                    
-                default:
-                    // Fallback to owner cell velocity
-                    U_face = U_field[P];
-                    break;
-                }
-            }
-            
+            // Use centralized boundary condition handling
+            Vector U_face = bcManager.calculateBoundaryFaceVectorValue(face, U_field, cells, "U");
             mdot[faceId] = rho * dot(U_face, S_f);
         } else {
             // Internal face: distance-weighted interpolation

@@ -29,9 +29,11 @@ SIMPLE::SIMPLE(const std::vector<Face>& faces,
       U_face("U_face", faces.size(), Vector(0.0, 0.0, 0.0)),
       massFlux("massFlux", faces.size(), 0.0),
       volumeFlux("volumeFlux", faces.size(), 0.0),
+      U_prev("U_prev", cells.size(), Vector(0.0, 0.0, 0.0)),
+      U_face_prev("U_face_prev", faces.size(), Vector(0.0, 0.0, 0.0)),
       a_U("a_U", cells.size(), 0.0),
       H_U("H_U", cells.size(), Vector(0.0, 0.0, 0.0)),
-      grad_P("grad_P", cells.size(), Vector(0.0, 0.0, 0.0))
+      gradP("gradP", cells.size(), Vector(0.0, 0.0, 0.0))
 {
     initialize(Vector(0.0, 0.0, -0.1), 0.0);
 }
@@ -55,10 +57,6 @@ void SIMPLE::initialize(const Vector& initialVelocity, Scalar initialPressure) {
         std::cout << "k-omega SST turbulence model initialized." << std::endl;
     }
     
-    // Apply initial boundary conditions
-    applyVelocityBoundaryConditions();
-    applyPressureBoundaryConditions();
-    
     std::cout << "SIMPLE algorithm initialized with " << allCells.size() 
               << " cells and " << allFaces.size() << " faces." << std::endl;
 }
@@ -70,36 +68,30 @@ void SIMPLE::solve() {
     int iteration = 0;
     bool converged = false;
     
-    // Initial cache build
-    matrixConstruct->refreshIterationCaches(p, U, rho, turbulenceModel.get());
-    grad_P = matrixConstruct->gradP;
-    
     while (!converged && iteration < maxIterations) {
         std::cout << "\n--- SIMPLE Iteration " << iteration + 1 << " ---" << std::endl;
 
+        U_prev = U;
+        U_face_prev = U_face;
+   
         // Refresh caches (gradients, mdot) for this iteration
         matrixConstruct->refreshIterationCaches(p, U, rho, turbulenceModel.get());
-        grad_P = matrixConstruct->gradP;
+        gradP = matrixConstruct->gradP;
         
-        // Step 1: Solve momentum equations with effective viscosity
         solveMomentumEquations();
             
-        // Step 2: Calculate face fluxes using Rhie-Chow interpolation
         calculateRhieChowFaceVelocities();
         calculateMassFluxes();
         
-        // Step 3: Solve pressure correction equation
         solvePressureCorrection();
         
-        // Step 4: Correct velocities and pressure
         correctVelocity();
+        correctMassFluxes();
         correctPressure();
         
-        // Step 5: Solve turbulence equations (k-omega SST sequence)
         if (enableTurbulence && turbulenceModel) {
             std::cout << "  Solving turbulence equations..." << std::endl;
             
-            // Solve complete k-omega SST model using cached velocity gradients
             turbulenceModel->solve(U,
                                  matrixConstruct->gradUx,
                                  matrixConstruct->gradUy,
@@ -107,11 +99,6 @@ void SIMPLE::solve() {
                                  rho, mu);
         }
         
-        // Step 6: Update boundary conditions
-        applyVelocityBoundaryConditions();
-        applyPressureBoundaryConditions();
-        
-        // Step 7: Check convergence
         converged = checkConvergence();
         
         iteration++;
@@ -131,24 +118,18 @@ void SIMPLE::solve() {
     }
 }
 
+/*
+ * Solve momentum equations:
+ * ∂(ρU)/∂t + ∇·(ρUU) = -∇p + ∇·[(μ + μₜ)∇U] + S
+  */
 void SIMPLE::solveMomentumEquations() {
-    /**
-     * Solve momentum equations with effective viscosity (laminar + turbulent):
-     * ∂(ρU)/∂t + ∇·(ρUU) = -∇p + ∇·[(μ + μₜ)∇U] + S
-     * 
-     * Where μₜ is the turbulent viscosity from k-omega SST model
-     */
-    
-    // Obtain pressure gradient from cache
-    grad_P = matrixConstruct->gradP;
-    
-    // Reset momentum equation diagonal accumulator
+
+    // Reset diagonal accumulator
     for (size_t i = 0; i < allCells.size(); ++i) {
         a_U[i] = 0.0;
     }
     
-    // Get effective viscosity (laminar + turbulent)
-    Scalar mu_eff = mu;  // Default to laminar viscosity
+    Scalar mu_eff = mu;  // Laminar flow
     
     if (enableTurbulence && turbulenceModel) {
         // For turbulent flow, use average effective viscosity
@@ -161,49 +142,50 @@ void SIMPLE::solveMomentumEquations() {
         std::cout << "  Using averaged effective viscosity (μ_lam + μ_t): " << mu_eff << std::endl;
     }
     
-    // Extract U.x component and old values for transient
+    // ********************************************************** //
+    // *********************** x-momentum *********************** //
+    // ********************************************************** //
+
+    // Extract U.x component
     ScalarField U_x("U_x", allCells.size());
     for (size_t i = 0; i < allCells.size(); ++i) {
         U_x[i] = U[i].x;
     }
     
-    // Solve U-momentum equation with effective viscosity
-    matrixConstruct->constructScalarTransportMatrix(
+    // Calculate pressure gradient source term: Sx = -(∂p/∂x) * V
+    ScalarField Ux_source("U_x_source", allCells.size());
+    for (size_t i = 0; i < allCells.size(); ++i) {
+        Ux_source[i] = -gradP[i].x * allCells[i].volume;
+    }
+
+    // Build x-momentum matrix
+    matrixConstruct->buildMomentumMatrix(
         "U_x", 
-        U_x,  // Current U.x component
-        ScalarField("U_x_old", allCells.size()), // Previous time step
-        U, // Transport velocity - use actual velocity field
-        ScalarField("U_x_source", allCells.size()), // Source term (zero for momentum)
-        rho,    // Density
-        mu_eff, // Effective viscosity (laminar + turbulent)
+        U_x,
+        ScalarField("U_x_old", allCells.size()),
+        Ux_source,
+        rho,
+        mu_eff,
         TimeScheme::Steady,
-        0.0,    // dt
-        1.0, // theta
+        0.0,
+        1.0,
+        matrixConstruct->gradUx,
+        matrixConstruct->gradUx_f,
         convectionScheme
     );
     
-    // Old values already extracted above
+    // Apply implicit under-relaxation before solving (Patankar's relaxation)
+    matrixConstruct->relax(alpha_U, U_x);
     
-    // Add pressure gradient source term and under-relaxation
+    // Get references to the assembled matrix and vector
     auto& b_vector = const_cast<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&>(
         matrixConstruct->getVectorB());
     auto& A_matrix = const_cast<Eigen::SparseMatrix<Scalar>&>(
         matrixConstruct->getMatrixA());
     
+    // Store the diagonal coefficient for Rhie-Chow interpolation (pre-relaxation)
     for (size_t i = 0; i < allCells.size(); ++i) {
-        Scalar cellVolume = allCells[i].volume;
-        
-        // Add pressure gradient source term: -∇p·V
-        b_vector(i) -= grad_P[i].x * cellVolume;
-        
-        
-        // Apply under-relaxation: a_P = a_P/α + (1-α)/α * a_P_old
-        Scalar a_P = A_matrix.coeff(i, i);
-        Scalar a_P_relaxed = a_P / alpha_U;
-        a_U[i] = a_P_relaxed;   // Store diagonal coefficient for Rhie-Chow
-        A_matrix.coeffRef(i, i) = a_P_relaxed;
-        b_vector(i) += (1.0 - alpha_U) / alpha_U * a_P * U[i].x;
-        
+        a_U[i] = A_matrix.coeff(i, i);
     }
     
     // Solve for U.x
@@ -221,38 +203,49 @@ void SIMPLE::solveMomentumEquations() {
         }
     }
     
-    // Solve V-momentum equation (y-component)
+    // ********************************************************** //
+    // *********************** y-momentum *********************** //
+    // ********************************************************** //
+
+    // Extract U.y component
     ScalarField U_y("U_y", allCells.size());
     for (size_t i = 0; i < allCells.size(); ++i) {
         U_y[i] = U[i].y;
     }
     
-    matrixConstruct->constructScalarTransportMatrix(
+    // Calculate pressure gradient source term: Sy = -(∂p/∂y) * V
+    ScalarField Uy_source("U_y_source", allCells.size());
+    for (size_t i = 0; i < allCells.size(); ++i) {
+        Uy_source[i] = -gradP[i].y * allCells[i].volume;
+    }
+
+    // Build y-momentum matrix
+    matrixConstruct->buildMomentumMatrix(
         "U_y", U_y, ScalarField("U_y_old", allCells.size()),
-        U, // Transport velocity - use actual velocity field
-        ScalarField("U_y_source", allCells.size()), // Source term (zero for momentum)
+        Uy_source,
         rho, mu_eff, 
         TimeScheme::Steady,
         0.0, 
         1.0, 
+        matrixConstruct->gradUy,
+        matrixConstruct->gradUy_f,
         convectionScheme);
     
+    // Get references to the assembled matrix and vector
     auto& b_vector_y = const_cast<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&>(
         matrixConstruct->getVectorB());
     auto& A_matrix_y = const_cast<Eigen::SparseMatrix<Scalar>&>(
         matrixConstruct->getMatrixA());
-    
-    for (size_t i = 0; i < allCells.size(); ++i) {
-        Scalar cellVolume = allCells[i].volume;
-        b_vector_y(i) -= grad_P[i].y * cellVolume;
         
-        Scalar a_P = A_matrix_y.coeff(i, i);
-        Scalar a_P_relaxed = a_P / alpha_U;
-        a_U[i] = 0.5 * (a_U[i] + a_P_relaxed); // Blend with X-momentum coefficient for Rhie-Chow
-        A_matrix_y.coeffRef(i, i) = a_P_relaxed;
-        b_vector_y(i) += (1.0 - alpha_U) / alpha_U * a_P * U[i].y;
+    // Apply implicit under-relaxation before solving (Patankar's relaxation)
+    matrixConstruct->relax(alpha_U, U_y);
+    
+    // Update blended diagonal coefficient for Rhie-Chow interpolation
+    for (size_t i = 0; i < allCells.size(); ++i) {
+        a_U[i] = 0.5 * (a_U[i] + A_matrix_y.coeff(i, i));
     }
     
+    // Solve for U.y
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> U_y_solution(allCells.size());
     for (size_t i = 0; i < allCells.size(); ++i) {
         U_y_solution(i) = U[i].y;
@@ -267,38 +260,49 @@ void SIMPLE::solveMomentumEquations() {
         }
     }
     
-    // Solve W-momentum equation (z-component)
+    // ********************************************************** //
+    // *********************** z-momentum *********************** //
+    // ********************************************************** //
+
+    // Extract U.z component
     ScalarField U_z("U_z", allCells.size());
     for (size_t i = 0; i < allCells.size(); ++i) {
         U_z[i] = U[i].z;
     }
     
-    matrixConstruct->constructScalarTransportMatrix(
+    // Build pressure source term: Sz = -(∂p/∂z) * V
+    ScalarField Uz_source("U_z_source", allCells.size());
+    for (size_t i = 0; i < allCells.size(); ++i) {
+        Uz_source[i] = -gradP[i].z * allCells[i].volume;
+    }
+
+    // Build z-momentum matrix
+    matrixConstruct->buildMomentumMatrix(
         "U_z", U_z, ScalarField("U_z_old", allCells.size()),
-        U, // Transport velocity - use actual velocity field
-        ScalarField("U_z_source", allCells.size()), // Source term (zero for momentum)
+        Uz_source,
         rho, mu_eff, 
         TimeScheme::Steady,
         0.0, 
         1.0, 
+        matrixConstruct->gradUz,
+        matrixConstruct->gradUz_f,
         convectionScheme);
     
+    // Get references to the assembled matrix and vector
     auto& b_vector_z = const_cast<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&>(
         matrixConstruct->getVectorB());
     auto& A_matrix_z = const_cast<Eigen::SparseMatrix<Scalar>&>(
         matrixConstruct->getMatrixA());
-    
-    for (size_t i = 0; i < allCells.size(); ++i) {
-        Scalar cellVolume = allCells[i].volume;
-        b_vector_z(i) -= grad_P[i].z * cellVolume;
         
-        Scalar a_P = A_matrix_z.coeff(i, i);
-        Scalar a_P_relaxed = a_P / alpha_U;
-        a_U[i] = (a_U[i] + a_P_relaxed) * 0.5; // Update blended coefficient for Rhie-Chow
-        A_matrix_z.coeffRef(i, i) = a_P_relaxed;
-        b_vector_z(i) += (1.0 - alpha_U) / alpha_U * a_P * U[i].z;  
+    // Apply implicit under-relaxation before solving (Patankar's relaxation)
+    matrixConstruct->relax(alpha_U, U_z);
+    
+    // Update blended diagonal coefficient for Rhie-Chow interpolation
+    for (size_t i = 0; i < allCells.size(); ++i) {
+        a_U[i] = (a_U[i] + A_matrix_z.coeff(i, i)) * 0.5;
     }
     
+    // Solve for U.z
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> U_z_solution(allCells.size());
     for (size_t i = 0; i < allCells.size(); ++i) {
         U_z_solution(i) = U[i].z;
@@ -317,6 +321,8 @@ void SIMPLE::solveMomentumEquations() {
 void SIMPLE::calculateRhieChowFaceVelocities() {
     // Rhie-Chow interpolation for face velocities
     // U_f = U_f_interpolated + D_f * (∇p_cell_interpolated - ∇p_face_from_neighbors)
+    //          + (1-alpha_U) * (m_f_interpolated - m_f_from_neighbors)
+    //          + DT_f (U_f_interpolated - U_f_from_neighbors)
     
     for (size_t faceIdx = 0; faceIdx < allFaces.size(); ++faceIdx) {
         const Face& face = allFaces[faceIdx];
@@ -348,21 +354,34 @@ void SIMPLE::calculateRhieChowFaceVelocities() {
         Vector U_f_interpolated = w_P * U[P] + w_N * U[N];
         
         // Interpolated pressure gradient
-        Vector grad_P_f_interpolated = w_P * grad_P[P] + w_N * grad_P[N];
+        Vector gradP_f_interpolated = w_P * gradP[P] + w_N * gradP[N];
         
         // Use the line-of-centres unit vector for the face pressure gradient
         Vector e_PN = d_PN / (d_PN.magnitude() + 1e-20);
         
         // Interpolated diffusion coefficient D_f (Rhie-Chow)
         Scalar a_P_interp = w_P * a_U[P] + w_N * a_U[N];
-        Scalar D_f = face.area / (a_P_interp + 1e-20);  // Standard Rhie-Chow coefficient
+        Vector S_f = face.normal * face.area;
+        Scalar dPN = d_PN.magnitude() + 1e-20;
+        Scalar En = std::abs(dot(S_f, d_PN / dPN));
+        // Use consistent coefficient including line-of-centres distance
+        Scalar D_f = En / ((a_P_interp) * dPN + 1e-20);
         
         // Rhie-Chow correction: align with cell-centre line
-        Vector gradP_f_face = ((p[N] - p[P]) / (d_PN.magnitude() + 1e-20)) * e_PN;
-        Vector correction = D_f * (grad_P_f_interpolated - gradP_f_face);
+        Vector gradP_f_face = ((p[N] - p[P]) / (dPN)) * e_PN;
+        Vector correction = D_f * (gradP_f_interpolated - gradP_f_face);
         
-        // Final face velocity
-        U_face[faceIdx] = U_f_interpolated - correction;
+        // Final face velocity with under-relaxation effect from previous iteration
+        Vector U_f = U_f_interpolated - correction;
+
+        if (hasPrevIterData && !face.isBoundary()) {
+            // Compute previous-iteration interpolated face velocity using previous cell values
+            Vector U_f_interpolated_prev = w_P * U_prev[P] + w_N * U_prev[N];
+            // Add (1 - alpha_U) * (v_f_prev - v_f_avg_prev)
+            U_f = U_f + (S(1.0) - alpha_U) * (U_face_prev[faceIdx] - U_f_interpolated_prev);
+        }
+
+        U_face[faceIdx] = U_f;
     }
 }
 
@@ -379,126 +398,27 @@ void SIMPLE::calculateMassFluxes() {
     }
 }
 
+void SIMPLE::calculateFaceFluxes() {
+    // Backward-compatible wrapper: compute face velocities then fluxes
+    // Ensures that callers of calculateFaceFluxes() get up-to-date mass/volume fluxes
+    calculateRhieChowFaceVelocities();
+    calculateMassFluxes();
+}
+
 void SIMPLE::solvePressureCorrection() {
     // Build pressure correction equation
-    // ∇·(D_f ∇p') = ∇·ρU
-    
-    matrixConstruct->constructScalarTransportMatrix(
-        "p_prime", p_prime, ScalarField("p_prime_old", allCells.size()),
-        VectorField("zero_velocity", allCells.size(), Vector(0.0, 0.0, 0.0)),
-        ScalarField("p_prime_source", allCells.size()), // Source term (zero for pressure correction)
-        0.0,  // No convection for pressure correction
-        1.0,  // Diffusion coefficient (will be overridden)
-        TimeScheme::Steady, 0.0, 1.0, convectionScheme); // Pressure correction always steady
-    
-    auto& A_matrix = const_cast<Eigen::SparseMatrix<Scalar>&>(
-        matrixConstruct->getMatrixA());
-    auto& b_vector = const_cast<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&>(
-        matrixConstruct->getVectorB());
-    
-    // Clear the matrix and rebuild for pressure correction
-    A_matrix.setZero();
-    b_vector.setZero();
-    
-    std::vector<Eigen::Triplet<Scalar>> triplets;
-    
-    // Initialize source term from mass conservation violation
-    for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx) {
-        const Cell& cell = allCells[cellIdx];
-        Scalar mass_imbalance = 0.0;
-        
-        // Sum mass flux through all faces of this cell
-        for (size_t j = 0; j < cell.faceIndices.size(); ++j) {
-            size_t faceIdx = cell.faceIndices[j];
-            int sign = cell.faceSigns[j];  // +1 if normal points out, -1 if points in
-            mass_imbalance += sign * massFlux[faceIdx];
-        }
-        
-        // Source term equals mass imbalance (divergence of provisional mass flux)
-        b_vector(cellIdx) = mass_imbalance;
-    }
-    
-    // Build diffusion matrix for pressure correction equation
-    bool hasFixedPressureBC = false;
-    // Detect if any fixed pressure boundary exists (to avoid double anchoring later)
-    for (const auto& patch : bcManager.patches) {
-        const BoundaryData* bc = bcManager.getFieldBC(patch.patchName, "p");
-        if (bc && bc->type == BCType::FIXED_VALUE) { hasFixedPressureBC = true; break; }
-    }
+    // ∇·(D_f ∇p') = ∇·ρU  >> ∇·(D_f ∇p') = -∑ m*_f
+    matrixConstruct->buildPressureMatrix(massFlux, a_U, rho);
 
-    for (size_t faceIdx = 0; faceIdx < allFaces.size(); ++faceIdx) {
-        const Face& face = allFaces[faceIdx];
-        if (!face.geometricPropertiesCalculated) continue;
-        
-        size_t P = face.ownerCell;
-        
-        if (face.isBoundary()) {
-            // Build face-to-patch map if not already done
-            static std::map<size_t, const BoundaryPatch*> faceToPatchMap;
-            if (faceToPatchMap.empty()) {
-                for (const auto& patch : bcManager.patches) {
-                    for (size_t i = patch.firstFaceIndex; i <= patch.lastFaceIndex; ++i) {
-                        faceToPatchMap[i] = &patch;
-                    }
-                }
-            }
-            
-            const BoundaryPatch* patch = faceToPatchMap.at(face.id);
-            const BoundaryData* bc = bcManager.getFieldBC(patch->patchName, "p");
-            
-            if (bc && bc->type == BCType::FIXED_VALUE) {
-                // Fixed pressure boundary: p' = 0
-                triplets.emplace_back(P, P, 1e10);
-                b_vector(P) = 0.0;  // Override source term
-            }
-            // For other boundary conditions, no diffusion contribution
-        } else {
-            // Internal face - add diffusion terms
-            size_t N = face.neighbourCell.value();
-            
-            // Pressure correction diffusion coefficient (Rhie-Chow consistent)
-            // Distance-weighted interpolation of a_U for face
-            Vector d_PN = allCells[N].centroid - allCells[P].centroid;
-            Vector d_Pf = face.centroid - allCells[P].centroid;
-            Vector d_Nf = face.centroid - allCells[N].centroid;
-            Scalar d_P = d_Pf.magnitude();
-            Scalar d_N = d_Nf.magnitude();
-            Scalar total_dist = d_P + d_N + 1e-20;
-            Scalar w_P = d_N / total_dist;
-            Scalar w_N = d_P / total_dist;
-            Scalar a_face = w_P * a_U[P] + w_N * a_U[N];
+    auto& A_matrix = const_cast<Eigen::SparseMatrix<Scalar>&>(matrixConstruct->getMatrixA());
+    auto& b_vector = const_cast<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&>(matrixConstruct->getVectorB());
 
-            // Orthogonal projection of area vector on line-of-centres
-            Vector S_f = face.normal * face.area;
-            Vector e_PN = d_PN / (d_PN.magnitude() + 1e-20);
-            Scalar E_mag = std::abs(dot(S_f, e_PN));
-
-            // Coefficient making the units consistent with mass flux correction
-            Scalar D_f = rho * E_mag / (a_face + 1e-20);
-
-            // Add diffusion coefficients to matrix
-            triplets.emplace_back(P, P, D_f);
-            triplets.emplace_back(P, N, -D_f);
-            triplets.emplace_back(N, N, D_f);
-            triplets.emplace_back(N, P, -D_f);
-        }
-    }
-    
-    A_matrix.setFromTriplets(triplets.begin(), triplets.end());
-    
-    // Fix one pressure correction value to avoid singular matrix when no fixed-pressure BC is present
-    if (!hasFixedPressureBC && A_matrix.rows() > 0) {
-        A_matrix.coeffRef(0, 0) += 1e12;
-        b_vector(0) = 0.0;
-    }
-    
-    // Solve pressure correction equation
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> p_prime_solution(allCells.size());
     p_prime_solution.setZero();
-    
+
     bool solved = LinearSolvers::BiCGSTAB(
         p_prime_solution, A_matrix, b_vector, 1e-8, 1000, "p_prime");
-    
+
     if (solved) {
         for (size_t i = 0; i < allCells.size(); ++i) {
             p_prime[i] = p_prime_solution(i);
@@ -507,12 +427,11 @@ void SIMPLE::solvePressureCorrection() {
 }
 
 void SIMPLE::correctVelocity() {
-    // Velocity correction: U = U* - (V/a_U) * ∇p'
+    // Velocity correction: U = U* - (1/a_U) * ∇p'
     VectorField gradP_prime = gradientScheme.LeastSquares(p_prime, allCells);
     
     for (size_t i = 0; i < allCells.size(); ++i) {
-        Scalar cellVolume = allCells[i].volume;
-        Vector correction = (cellVolume / (a_U[i] + 1e-20)) * gradP_prime[i];
+        Vector correction = (S(1.0) / (a_U[i] + 1e-20)) * gradP_prime[i];
         U[i] = U[i] - correction;
     }
 }
@@ -526,6 +445,38 @@ void SIMPLE::correctPressure() {
     // Reset pressure correction
     for (size_t i = 0; i < allCells.size(); ++i) {
         p_prime[i] = 0.0;
+    }
+}
+
+void SIMPLE::correctMassFluxes() {
+    // Update mass flux on faces to be consistent with corrected pressure
+    // m_f = m_f* - D_f * (p'_N - p'_P)
+    for (size_t faceIdx = 0; faceIdx < allFaces.size(); ++faceIdx) {
+        const Face& face = allFaces[faceIdx];
+        if (face.isBoundary()) continue; // boundary handled by BCs
+
+        size_t P = face.ownerCell;
+        size_t N = face.neighbourCell.value();
+
+        Vector d_PN = allCells[N].centroid - allCells[P].centroid;
+        Vector d_Pf = face.centroid - allCells[P].centroid;
+        Vector d_Nf = face.centroid - allCells[N].centroid;
+        Scalar d_P = d_Pf.magnitude();
+        Scalar d_N = d_Nf.magnitude();
+        Scalar total_dist = d_P + d_N + 1e-20;
+        Scalar w_P = d_N / total_dist;
+        Scalar w_N = d_P / total_dist;
+        Scalar a_face = w_P * a_U[P] + w_N * a_U[N];
+
+        Vector S_f = face.normal * face.area;
+        Vector e_PN = d_PN / (d_PN.magnitude() + 1e-20);
+        Scalar E_mag = std::abs(dot(S_f, e_PN));
+        Scalar dPN = d_PN.magnitude() + 1e-20;
+        Scalar D_f = rho * (E_mag / (a_face + 1e-20)) / dPN;
+
+        // Use alpha_p-scaled correction compatible with pressure update
+        Scalar dp_prime = alpha_p * (p_prime[N] - p_prime[P]);
+        massFlux[faceIdx] -= D_f * dp_prime;
     }
 }
 
@@ -554,118 +505,6 @@ bool SIMPLE::checkConvergence() {
     }
     
     return converged;
-}
-
-void SIMPLE::applyVelocityBoundaryConditions() {
-    // Build face-to-patch map for boundary lookup
-    std::map<size_t, const BoundaryPatch*> faceToPatchMap;
-    for (const auto& patch : bcManager.patches) {
-        for (size_t i = patch.firstFaceIndex; i <= patch.lastFaceIndex; ++i) {
-            faceToPatchMap[i] = &patch;
-        }
-    }
-    
-    // Apply velocity boundary conditions
-    for (const auto& face : allFaces) {
-        if (!face.isBoundary()) continue;
-        
-        size_t P = face.ownerCell;  // Owner cell adjacent to boundary
-        
-        // Get boundary patch and condition
-        const BoundaryPatch* patch = faceToPatchMap.at(face.id);
-        const BoundaryData* bc = bcManager.getFieldBC(patch->patchName, "U");
-        
-        if (!bc) {
-            // No BC specified for this patch - skip
-            continue;
-        }
-        
-        // Apply boundary condition based on type
-        switch (bc->type) {
-            case BCType::FIXED_VALUE:
-                // For fixed value, directly set the cell value (can be improved with ghost cells)
-                // This is a simple implementation - production code would use ghost cells
-                U[P] = bc->getFixedVectorValue();
-                break;
-                
-            case BCType::NO_SLIP:
-                // No-slip wall: velocity = 0
-                U[P] = Vector(0.0, 0.0, 0.0);
-                break;
-                
-            case BCType::ZERO_GRADIENT:
-                // Zero gradient: no modification needed as gradients are computed
-                // The cell value remains as calculated by momentum equations
-                break;
-                
-            case BCType::FIXED_GRADIENT:
-                // Fixed gradient: U_boundary = U_cell + grad * distance
-                // For simplicity, assume zero gradient (can be enhanced)
-                {
-                    // const Vector& gradValue = bc->getFixedVectorGradient();
-                    // For now, implement as zero gradient since we need face distance calculation
-                    // which would require more complex geometric calculations
-                    // U[P] remains unchanged (zero gradient effect)
-                }
-                break;
-                
-            default:
-                break;
-        }
-    }
-}
-
-void SIMPLE::applyPressureBoundaryConditions() {
-    // Build face-to-patch map for boundary lookup
-    std::map<size_t, const BoundaryPatch*> faceToPatchMap;
-    for (const auto& patch : bcManager.patches) {
-        for (size_t i = patch.firstFaceIndex; i <= patch.lastFaceIndex; ++i) {
-            faceToPatchMap[i] = &patch;
-        }
-    }
-    
-    // Apply pressure boundary conditions
-    for (const auto& face : allFaces) {
-        if (!face.isBoundary()) continue;
-        
-        size_t P = face.ownerCell;  // Owner cell adjacent to boundary
-        
-        // Get boundary patch and condition
-        const BoundaryPatch* patch = faceToPatchMap.at(face.id);
-        const BoundaryData* bc = bcManager.getFieldBC(patch->patchName, "p");
-        
-        if (!bc) {
-            // No BC specified for this patch - skip
-            continue;
-        }
-        
-        // Apply boundary condition based on type
-        switch (bc->type) {
-            case BCType::FIXED_VALUE:
-                // For fixed pressure outlet
-                p[P] = bc->getFixedScalarValue();
-                break;
-                
-            case BCType::ZERO_GRADIENT:
-                // Zero gradient: no modification needed
-                // The cell value remains as calculated by pressure correction
-                break;
-                
-            case BCType::FIXED_GRADIENT:
-                // Fixed gradient: p_boundary = p_cell + grad * distance  
-                // For simplicity, assume zero gradient (can be enhanced)
-                {
-                    // Scalar gradValue = bc->getFixedScalarGradient();
-                    // For now, implement as zero gradient since we need face distance calculation
-                    // which would require more complex geometric calculations
-                    // p[P] remains unchanged (zero gradient effect)
-                }
-                break;
-                
-            default:
-                break;
-        }
-    }
 }
 
 Scalar SIMPLE::calculateMassImbalance() const {

@@ -7,11 +7,14 @@
 #include "Cell.h"
 #include "CellData.h"
 #include "FaceData.h"
+#include "BoundaryConditions.h"
+#include "BoundaryData.h"
+
 
 // Base class for all convection discretization schemes
-class ConvectionDiscretization {
+class ConvectionScheme {
 public:
-    virtual ~ConvectionDiscretization() = default;
+    virtual ~ConvectionScheme() = default;
     virtual void getFluxCoefficients(
         Scalar F, // Convective mass flux rate through the face
         Scalar& a_P_conv,
@@ -19,8 +22,12 @@ public:
     ) const = 0;
 };
 
-// First-order Upwind Differencing Scheme (UDS)
-class UpwindScheme : public ConvectionDiscretization {
+/* First-order Upwind Differencing Scheme (UDS)
+ * φ_f = φ_upwind
+ * For F >= 0: φ_f = φ_P, so a_P = F, a_N = 0
+ * For F < 0:  φ_f = φ_N, so a_P = 0, a_N = F
+ */
+class UpwindScheme : public ConvectionScheme {
 public:
     void getFluxCoefficients(
         Scalar F,
@@ -29,8 +36,12 @@ public:
     ) const override;
 };
 
-// Bounded Central Differencing Scheme (BCDS) with gradient reformulation
-class CentralDifferenceScheme : public ConvectionDiscretization {
+/* Bounded Central Differencing Scheme (BCDS) with gradient reformulation
+ * φ_f = φ_P*w + φ_N*(1-w) + (∇φ_f · d_Pf)
+ * Matrix uses upwind coefficients for stability
+ * Higher-order accuracy via explicit correction term (deferred-correction)
+ */
+class CentralDifferenceScheme : public ConvectionScheme {
 public:
     void getFluxCoefficients(
         Scalar F,
@@ -44,8 +55,9 @@ public:
         const std::vector<Cell>& cells,
         const ScalarField& phi,
         const FaceVectorField& grad_phi_f,
-
-        Scalar F
+        Scalar F,
+        const BoundaryConditions* bcManager = nullptr,
+        const std::string& fieldName = ""
     ) const;
 
     // Calculate face value using gradient-based interpolation
@@ -53,12 +65,18 @@ public:
         const Face& face,
         const std::vector<Cell>& cells,
         const ScalarField& phi,
-        const FaceVectorField& grad_phi_f
+        const FaceVectorField& grad_phi_f,
+        const BoundaryConditions* bcManager = nullptr,
+        const std::string& fieldName = ""
     ) const;
 };
 
-// Second-order Upwind Scheme with gradient-based formulation
-class SecondOrderUpwindScheme : public ConvectionDiscretization {
+/* Second-order Upwind Scheme with gradient-based formulation
+ * φ_f = φ_P + (∇φ_P · d_Pf)
+ * Matrix uses upwind coefficients for stability
+ * Higher-order accuracy via explicit correction term (deferred-correction)
+ */
+class SecondOrderUpwindScheme : public ConvectionScheme {
 public:
     void getFluxCoefficients(
         Scalar F,
@@ -72,7 +90,9 @@ public:
         const std::vector<Cell>& cells,
         const ScalarField& phi,
         const VectorField& grad_phi,
-        Scalar F
+        Scalar F,
+        const BoundaryConditions* bcManager = nullptr,
+        const std::string& fieldName = ""
     ) const;
 
     // Calculate face value using gradient-based upwind interpolation
@@ -81,8 +101,10 @@ public:
         const std::vector<Cell>& cells,
         const ScalarField& phi,
         const VectorField& grad_phi,
-        Scalar F
+        Scalar F,
+        const BoundaryConditions* bcManager = nullptr,
+        const std::string& fieldName = ""
     ) const;
 };
 
-#endif // CONVECTIONSCHEME_H
+#endif

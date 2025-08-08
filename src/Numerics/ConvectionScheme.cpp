@@ -1,16 +1,11 @@
 #include <algorithm>
 #include <cmath>
 
-#include "Face.h"
-#include "Cell.h"
 #include "ConvectionScheme.h"
 #include "GradientScheme.h"
 
 
-/* First-order upwind: φ_f = φ_upwind
- * For F >= 0: φ_f = φ_P, so a_P = F, a_N = 0
- * For F < 0:  φ_f = φ_N, so a_P = 0, a_N = F
- */
+// First-order Upwind Differencing Scheme (UDS)
 void UpwindScheme::getFluxCoefficients(
     Scalar F,
     Scalar& a_P_conv,
@@ -21,10 +16,7 @@ void UpwindScheme::getFluxCoefficients(
 }
 
 
-/* Central difference: φ_f = φ_P*w + φ_N*(1-w) + (∇φ_f · d_Pf)
- * Matrix uses upwind coefficients for stability
- * Higher-order accuracy via explicit correction term (deferred-correction)
- */
+// Bounded Central Differencing Scheme (BCDS) with gradient reformulation
 void CentralDifferenceScheme::getFluxCoefficients(
     Scalar F,
     Scalar& a_P_conv,
@@ -39,12 +31,13 @@ Scalar CentralDifferenceScheme::calculateCentralDifferenceCorrection(
     const std::vector<Cell>& cells,
     const ScalarField& phi,
     const FaceVectorField& grad_phi_f,
-    Scalar F) const
+    Scalar F,
+    const BoundaryConditions* bcManager,
+    const std::string& fieldName) const
 {
     if (face.isBoundary()) return 0.0;
 
-
-    Scalar phi_face_central = calculateFaceValue(face, cells, phi, grad_phi_f);
+    Scalar phi_face_central = calculateFaceValue(face, cells, phi, grad_phi_f, bcManager, fieldName);
 
     size_t upwind_cell = (F >= 0.0) ? face.ownerCell : face.neighbourCell.value();
 
@@ -58,9 +51,15 @@ Scalar CentralDifferenceScheme::calculateFaceValue(
     const Face& face,
     const std::vector<Cell>& cells,
     const ScalarField& phi,
-    const FaceVectorField& grad_phi_f) const
+    const FaceVectorField& grad_phi_f,
+    const BoundaryConditions* bcManager,
+    const std::string& fieldName) const
 {
     if (face.isBoundary()) {
+        if (bcManager && !fieldName.empty()) {
+            return bcManager->calculateBoundaryFaceValue(face, phi, cells, fieldName);
+        }
+        // Fallback to zero gradient if no BC info available
         return phi[face.ownerCell];
     }
 
@@ -83,10 +82,7 @@ Scalar CentralDifferenceScheme::calculateFaceValue(
     return phi_f;  
 }
 
-/* Second-order upwind: φ_f = φ_P + (∇φ_P · d_Pf)
- * Matrix uses upwind coefficients for stability
- * Higher-order accuracy via explicit correction term (deferred-correction)
- */
+// Second-order Upwind Scheme with gradient-based formulation
 void SecondOrderUpwindScheme::getFluxCoefficients(
     Scalar F,
     Scalar& a_P_conv,
@@ -101,11 +97,13 @@ Scalar SecondOrderUpwindScheme::calculateSecondOrderCorrection(
     const std::vector<Cell>& cells,
     const ScalarField& phi,
     const VectorField& grad_phi,
-    Scalar F) const
+    Scalar F,
+    const BoundaryConditions* bcManager,
+    const std::string& fieldName) const
 {
     if (face.isBoundary()) return 0.0;
 
-    Scalar phi_face_SOU = calculateFaceValue(face, cells, phi, grad_phi, F);
+    Scalar phi_face_SOU = calculateFaceValue(face, cells, phi, grad_phi, F, bcManager, fieldName);
     
     size_t upwind_cell = (F >= 0.0) ? face.ownerCell : face.neighbourCell.value();
     Scalar phi_face_UDS = phi[upwind_cell];
@@ -119,10 +117,17 @@ Scalar SecondOrderUpwindScheme::calculateFaceValue(
     const std::vector<Cell>& cells,
     const ScalarField& phi,
     const VectorField& grad_phi,
-    Scalar F) const
+    Scalar F,
+    const BoundaryConditions* bcManager,
+    const std::string& fieldName) const
 {
     if (face.isBoundary()) {
-        return phi[face.ownerCell];
+        if (bcManager && !fieldName.empty()) {
+            return bcManager->calculateBoundaryFaceValue(face, phi, cells, fieldName);
+        } else {
+            // Fallback to zero gradient if no BC info available
+            return phi[face.ownerCell];
+        }
     }
 
     // Determine upwind cell based on flow direction

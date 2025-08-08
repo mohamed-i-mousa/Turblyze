@@ -22,7 +22,7 @@ public:
            const std::vector<Cell>& cells, 
            const BoundaryConditions& bc,
            const GradientScheme& gradScheme,
-           const ConvectionDiscretization& convScheme);
+           const ConvectionScheme& convScheme);
 
     // Main SIMPLE algorithm steps
     void solve();
@@ -33,7 +33,9 @@ public:
     void solvePressureCorrection();
     void correctVelocity();
     void correctPressure();
+    void correctMassFluxes();
     bool checkConvergence();
+    bool checkDivergence();
 
     // Rhie-Chow interpolation
     void calculateRhieChowFaceVelocities();
@@ -67,7 +69,7 @@ private:
     const std::vector<Cell>& allCells;
     const BoundaryConditions& bcManager;
     const GradientScheme& gradientScheme;
-    const ConvectionDiscretization& convectionScheme;
+    const ConvectionScheme& convectionScheme;
 
     // Physical properties
     Scalar rho;           // Density
@@ -93,26 +95,31 @@ private:
     FaceFluxField massFlux;      // Mass flux through faces
     FaceFluxField volumeFlux;    // Volume flux through faces
 
+     // Previous-iteration fields (for under-relaxation effects at faces)
+     VectorField U_prev;          // Cell-centered velocity from previous iteration
+     FaceVectorField U_face_prev; // Face velocity from previous iteration
+
     // Momentum equation coefficients (needed for Rhie-Chow)
     ScalarField a_U;      // Diagonal coefficients for momentum equations
     VectorField H_U;      // H/A terms for momentum equations
     
     // Gradient fields
-    VectorField grad_P;    // Pressure gradient
+    VectorField gradP;    // Pressure gradient
     
     // Matrix constructor and solver objects
     std::unique_ptr<Matrix> matrixConstruct;
     
     // Helper functions
     void initialize(const Vector& initialVelocity, Scalar initialPressure);
-    void applyVelocityBoundaryConditions();
-    void applyPressureBoundaryConditions();
     
     // Utilities
     Scalar calculateMassImbalance() const;
     Scalar calculateVelocityResidual() const;
     Scalar calculatePressureResidual() const;
     void printSolutionStatistics();
+
+     // Iteration bookkeeping
+     bool hasPrevIterData = false;
 };
 
 #endif

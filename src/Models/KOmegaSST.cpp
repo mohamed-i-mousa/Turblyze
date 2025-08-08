@@ -87,7 +87,7 @@ void KOmegaSST::calculateWallDistance() {
     ScalarField phi_old = phi;
     
     // Construct Poisson equation: ∇²φ = -1
-    matrixConstruct->constructScalarTransportMatrix(
+    matrixConstruct->buildScalarTransportMatrix(
         "phi_wall",
         phi,
         phi_old,
@@ -112,17 +112,24 @@ void KOmegaSST::calculateWallDistance() {
         b_vector(i) = -allCells[i].volume;  // -1 * cell_volume
     }
     
-    // Apply boundary condition: φ = 0 at walls
+    // Apply boundary condition: φ = 0 at walls only; Neumann elsewhere
+    // Build face-to-patch map
+    std::map<size_t, const BoundaryPatch*> faceToPatch;
+    for (const auto& patch : bcManager.patches) {
+        for (size_t i = patch.firstFaceIndex; i <= patch.lastFaceIndex; ++i) {
+            faceToPatch[i] = &patch;
+        }
+    }
+
     for (const auto& face : allFaces) {
-        if (face.isBoundary()) {
-            // Check if this is a wall boundary
-            // (Implementation depends on how walls are identified in boundary patches)
-            size_t P = face.ownerCell;
-            
-            // For simplicity, assume all boundaries are walls
-            // In practice, you'd check boundary patch type
-            A_matrix.coeffRef(P, P) += 1e12;  // Large penalty method
-            b_vector(P) = 0.0;  // φ = 0 at wall
+        if (!face.isBoundary()) continue;
+        size_t P = face.ownerCell;
+        const BoundaryPatch* patch = faceToPatch.at(face.id);
+        if (patch->type == BoundaryConditionType::WALL) {
+            A_matrix.coeffRef(P, P) += 1e12;  // Dirichlet pin
+            b_vector(P) = 0.0;               // φ = 0 at wall
+        } else {
+            // Zero normal gradient elsewhere: no extra constraint (already implicit)
         }
     }
     
@@ -153,8 +160,8 @@ void KOmegaSST::calculateWallDistance() {
             wallDistance[i] = 1e-6;  // Minimum wall distance
         }
         
-        // Ensure positive wall distance
-        wallDistance[i] = std::max(wallDistance[i], 1e-6);
+        // Ensure positive wall distance with a much smaller floor
+        wallDistance[i] = std::max(wallDistance[i], 1e-9);
     }
     
     std::cout << "  Wall distance calculation completed." << std::endl;
@@ -239,7 +246,7 @@ void KOmegaSST::solveOmegaEquation(const VectorField& U_field,
     // omega_old is already stored as a member variable
     
     // Construct transport matrix for omega
-    matrixConstruct->constructScalarTransportMatrix(
+    matrixConstruct->buildScalarTransportMatrix(
         "omega",
         omega,
         omega_old,
@@ -312,13 +319,9 @@ void KOmegaSST::applyNearWallTreatmentOmega(Scalar rho, Scalar mu_lam) {
     
     for (size_t i = 0; i < allCells.size(); ++i) {
         Scalar y = wallDistance[i];
-        
-        // For very near-wall cells, impose viscous sublayer value
-        if (y < 1e-6) {  // Very close to wall
-            // Viscous sublayer omega: ω = 6μ/(ρβ₁y²)
+        // Trigger near-wall if y is very small (tolerant threshold)
+        if (y < 5e-6) {
             omega[i] = 6.0 * mu_lam / (rho * constants.beta_1 * y * y + 1e-20);
-            
-            // Limit to reasonable values
             omega[i] = std::min(omega[i], 1e6);
             omega[i] = std::max(omega[i], 1e-4);
         }
@@ -345,7 +348,7 @@ void KOmegaSST::solveKEquation(const VectorField& U_field,
     // k_old is already stored as a member variable
     
     // Construct transport matrix for k
-    matrixConstruct->constructScalarTransportMatrix(
+    matrixConstruct->buildScalarTransportMatrix(
         "k",
         k,
         k_old,

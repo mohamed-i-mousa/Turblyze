@@ -65,7 +65,31 @@ public:
 
     void refreshIterationCaches(const PressureField& p, const VelocityField& U, Scalar rho, const KOmegaSST* turbulenceModel);
 
-    void constructScalarTransportMatrix(
+    // Build matrix for momentum equations
+    void buildMomentumMatrix(
+        const std::string& fieldName,
+        const ScalarField& phi,
+        const ScalarField& phi_old,
+        const ScalarField& phi_source,
+        Scalar rho,
+        Scalar Gamma,
+        TimeScheme timeScheme,
+        Scalar dt,
+        Scalar theta,
+        const VectorField& grad_phi,
+        const FaceVectorField& grad_phi_f,
+        const ConvectionScheme& convScheme
+    );
+
+    // Build pressure correction matrix and RHS from mass flux imbalance and momentum diagonals
+    void buildPressureMatrix(
+        const FaceFluxField& massFlux,
+        const ScalarField& a_U,
+        Scalar rho
+    );
+
+    // Build matrix for general scalar transport equations (k, omega, etc.)
+    void buildScalarTransportMatrix(
         const std::string& fieldName,
         const ScalarField& phi,
         const ScalarField& phi_old,
@@ -76,17 +100,24 @@ public:
         TimeScheme timeScheme,
         Scalar dt,
         Scalar theta,
-        const ConvectionDiscretization& convScheme
+        const ConvectionScheme& convScheme
     );
 
     const Eigen::SparseMatrix<Scalar>& getMatrixA() const { return A_matrix; }
     const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& getVectorB() const { return b_vector; }
+
+    // Apply implicit under-relaxation to the assembled linear system (Ax=b)
+    void relax(Scalar alpha, const ScalarField& phi_prev);
 
 private:
     std::vector<Eigen::Triplet<Scalar>> tripletList;
     std::map<size_t, const BoundaryPatch*> faceToPatchMap;
 
     void clear();
+
+    // Helpers functions
+    std::string resolveBCFieldName(const std::string& fieldName) const;
+    Scalar computeDirichletValue(const BoundaryData* bc, const std::string& fieldName) const;
 };
 
 #endif

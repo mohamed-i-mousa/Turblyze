@@ -44,7 +44,14 @@ bool BiCGSTAB(Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& x,
 
     std::cout << "\n--- Solver Statistics for Field: '" << fieldName << "' ---" << std::endl;
     std::cout << "  Iterations:     " << bicgstab.iterations() << std::endl;
-    std::cout << "  Estimated Error (solver reported): " << bicgstab.error() << std::endl;
+    Scalar estimatedError = static_cast<Scalar>(bicgstab.error());
+    std::cout << "  Estimated Error (solver reported): " << estimatedError << std::endl;
+
+    // Abort on non-finite estimated error (divergence)
+    if (!std::isfinite(static_cast<double>(estimatedError))) {
+        throw std::runtime_error("  Divergence detected for field '" + fieldName +
+                                 "': estimated error is not finite (" + std::to_string(estimatedError) + ")");
+    }
     
     bool converged = (bicgstab.info() == Eigen::Success);
     if (converged) {
@@ -81,6 +88,12 @@ bool BiCGSTAB(Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& x,
         std::cout << "  Residual Reduction (Avg Abs Ratio):    " << r_norm_ratio << std::endl;
     }
     std::cout << "  Final Residual L2 Norm:                " << exact_residual_norm_L2 << std::endl;
+    if (!std::isfinite(static_cast<double>(r_norm_final_avg)) ||
+        !std::isfinite(static_cast<double>(exact_residual_norm_L2))) {
+        std::cerr << "  Divergence detected for field '" << fieldName
+                  << "': residual norms are not finite." << std::endl;
+        return false;
+    }
     std::cout << "----------------------------------------" << std::endl;
 
     return converged;
