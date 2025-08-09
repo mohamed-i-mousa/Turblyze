@@ -99,8 +99,10 @@ private:
      VectorField U_prev;          // Cell-centered velocity from previous iteration
      FaceVectorField U_face_prev; // Face velocity from previous iteration
 
-    // Momentum equation coefficients (needed for Rhie-Chow)
-    ScalarField a_U;      // Diagonal coefficients for momentum equations
+    // Momentum equation coefficients per component (needed for Rhie-Chow)
+    ScalarField a_Ux;     // Diagonal coefficients of U_x momentum equation
+    ScalarField a_Uy;     // Diagonal coefficients of U_y momentum equation
+    ScalarField a_Uz;     // Diagonal coefficients of U_z momentum equation
     VectorField H_U;      // H/A terms for momentum equations
     
     // Gradient fields
@@ -116,10 +118,12 @@ private:
     Scalar calculateMassImbalance() const;
     Scalar calculateVelocityResidual() const;
     Scalar calculatePressureResidual() const;
-    void printSolutionStatistics();
+     void printSolutionStatistics();
 
-     // Iteration bookkeeping
-     bool hasPrevIterData = false;
+    // Linear interpolation utilities used in Rhie-Chow and elsewhere
+    void computeLinearWeights(const Face& face, Scalar& w_P, Scalar& w_N) const;
+    Vector linearInterpolation(const Face& face, const VectorField& cellField) const;
+    Scalar linearInterpolation(const Face& face, const ScalarField& cellField) const;
 };
 
 #endif

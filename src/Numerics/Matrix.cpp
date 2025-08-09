@@ -624,7 +624,9 @@ void Matrix::buildScalarTransportMatrix(
 
 void Matrix::buildPressureMatrix(
     const FaceFluxField& massFlux,
-    const ScalarField& a_U,
+    const ScalarField& a_Ux,
+    const ScalarField& a_Uy,
+    const ScalarField& a_Uz,
     Scalar rho)
 {
     clear();
@@ -682,13 +684,19 @@ void Matrix::buildPressureMatrix(
         const Scalar total_dist = d_P + d_N + 1e-20;
         const Scalar w_P = d_N / total_dist;
         const Scalar w_N = d_P / total_dist;
-        const Scalar a_face = w_P * a_U[P] + w_N * a_U[N];
 
+        // Per-component diagonal at face
+        const Scalar a_face_x = w_P * a_Ux[P] + w_N * a_Ux[N];
+        const Scalar a_face_y = w_P * a_Uy[P] + w_N * a_Uy[N];
+        const Scalar a_face_z = w_P * a_Uz[P] + w_N * a_Uz[N];
+
+        // Minimum-correction coefficient with non-orthogonality (pressure equation needs rho)
         const Vector S_f = face.normal * face.area;
-        const Vector e_PN = d_PN / (d_PN.magnitude() + 1e-20);
-        const Scalar E_mag = std::abs(dot(S_f, e_PN));
-        const Scalar dPN = d_PN.magnitude() + 1e-20;
-        const Scalar D_f = rho * (E_mag / (a_face + 1e-20)) / dPN;
+        const Scalar denom = d_PN.magnitudeSquared() + 1e-20;
+        const Scalar numer = d_PN.x * S_f.x / (a_face_x + 1e-20)
+                           + d_PN.y * S_f.y / (a_face_y + 1e-20)
+                           + d_PN.z * S_f.z / (a_face_z + 1e-20);
+        const Scalar D_f = rho * (numer / denom);
 
         tripletList.emplace_back(P, P, D_f);
         tripletList.emplace_back(P, N, -D_f);

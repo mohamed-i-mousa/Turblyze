@@ -84,7 +84,9 @@ public:
     // Build pressure correction matrix and RHS from mass flux imbalance and momentum diagonals
     void buildPressureMatrix(
         const FaceFluxField& massFlux,
-        const ScalarField& a_U,
+        const ScalarField& a_Ux,
+        const ScalarField& a_Uy,
+        const ScalarField& a_Uz,
         Scalar rho
     );
 
