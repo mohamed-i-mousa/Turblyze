@@ -89,6 +89,7 @@ private:
     VectorField U;        // Velocity field
     ScalarField p;        // Pressure field
     ScalarField p_prime;  // Pressure correction field
+    Scalar lastPressureCorrectionRMS = S(1e9); // track p' RMS before reset
     
     // Face-based fields for Rhie-Chow interpolation
     FaceVectorField U_face;      // Face velocities

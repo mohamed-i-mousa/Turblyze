@@ -93,8 +93,8 @@ void KOmegaSST::calculateWallDistance() {
         phi_old,
         VectorField("zero_velocity", allCells.size(), Vector(0.0, 0.0, 0.0)), // No convection
         ScalarField("phi_wall_source", allCells.size()), // Source term (zero for wall distance)
-        0.0,    // No convection
-        1.0,    // Unit diffusion coefficient
+        0.0,    // density (not used)
+        ScalarField("Gamma_phi_wall", allCells.size(), 1.0),    // Unit diffusion coefficient per cell
         TimeScheme::Steady,
         0.0,    // No time derivative
         1.0,    // Full implicit
@@ -245,7 +245,15 @@ void KOmegaSST::solveOmegaEquation(const VectorField& U_field,
     
     // omega_old is already stored as a member variable
     
-    // Construct transport matrix for omega
+    // Construct transport matrix for omega (variable effective diffusion: μ + σ_ω μ_t)
+    // Build per-cell effective diffusion Gamma = μ_lam + σ_ω * μ_t (blend σ_ω with F1)
+    ScalarField GammaOmega("GammaOmega", allCells.size());
+    for (size_t i = 0; i < allCells.size(); ++i) {
+        Scalar sigma_omega = F1[i] * constants.sigma_omega1 + (S(1.0) - F1[i]) * constants.sigma_omega2;
+        GammaOmega[i] = mu_lam + sigma_omega * mu_t[i];
+    }
+
+    // Construct transport matrix for omega with variable diffusion
     matrixConstruct->buildScalarTransportMatrix(
         "omega",
         omega,
@@ -253,7 +261,7 @@ void KOmegaSST::solveOmegaEquation(const VectorField& U_field,
         U_field,
         ScalarField("omega_source", allCells.size()), // Source term (zero for omega)
         rho,
-        mu_lam,  // Base viscosity (will be modified below)
+        GammaOmega,
         enableTransient ? TimeScheme::Transient : TimeScheme::Steady,
         enableTransient ? dt : 0.0,
         enableTransient ? theta : 1.0,
@@ -273,8 +281,14 @@ void KOmegaSST::solveOmegaEquation(const VectorField& U_field,
         const Scalar blended_gamma = F1[i] * constants.gamma_1 + (1.0 - F1[i]) * constants.gamma_2;
         const Scalar beta = F1[i] * constants.beta_1 + (1.0 - F1[i]) * constants.beta_2;
         
-        // Production term: γ·P_ω
-        const Scalar P_omega = blended_gamma * production_omega[i];
+        // Production term for omega: α * P_k / (μ_t/ρ) = α * ρ * P_k / μ_t
+        // Use production_omega as S^2 from calculateProductionTerms; convert to P_k via μ_t S^2
+        Scalar Pk = production_k[i];
+        Scalar nu_t = mu_t[i] / (rho + 1e-20);
+        Scalar P_omega = 0.0;
+        if (nu_t > 1e-20) {
+            P_omega = blended_gamma * (Pk / (nu_t + 1e-20));
+        }
         b_vector(i) += P_omega * cellVolume;
         
         // Destruction term: -β·ρω²
@@ -347,15 +361,20 @@ void KOmegaSST::solveKEquation(const VectorField& U_field,
     
     // k_old is already stored as a member variable
     
-    // Construct transport matrix for k
-    matrixConstruct->buildScalarTransportMatrix(
+    // Construct transport matrix for k (variable effective diffusion: μ + σ_k μ_t)
+    ScalarField GammaK("GammaK", allCells.size());
+    for (size_t i = 0; i < allCells.size(); ++i) {
+        Scalar sigma_k = F1[i] * constants.sigma_k1 + (S(1.0) - F1[i]) * constants.sigma_k2;
+        GammaK[i] = mu_lam + sigma_k * mu_t[i];
+    }
+        matrixConstruct->buildScalarTransportMatrix(
         "k",
         k,
         k_old,
         U_field,
         ScalarField("k_source", allCells.size()), // Source term (zero for k)
         rho,
-        mu_lam,  // Base viscosity
+        GammaK,
         enableTransient ? TimeScheme::Transient : TimeScheme::Steady,
         enableTransient ? dt : 0.0,
         enableTransient ? theta : 1.0,

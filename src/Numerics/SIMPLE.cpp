@@ -1,5 +1,6 @@
 #include "SIMPLE.h"
 #include "Scalar.h"
+#include "massFlowRate.h"
 #include <cmath>
 #include <iostream>
 #include <algorithm>
@@ -91,6 +92,18 @@ void SIMPLE::solve() {
         matrixConstruct->refreshIterationCaches(p, U, rho, turbulenceModel.get());
         gradP = matrixConstruct->gradP;
         
+        // Use previous-iteration face velocities to assemble momentum with consistent mdot
+        // Assemble momentum with mdot from previous iteration to avoid coupling lag
+        {
+            // Build mdot from previous iteration's face velocities for consistency
+            FaceFluxField mdot_prev("mdot_prev", allFaces.size(), 0.0);
+            for (size_t faceIdx = 0; faceIdx < allFaces.size(); ++faceIdx) {
+                const Face& face = allFaces[faceIdx];
+                const Vector S_f = face.normal * face.area;
+                mdot_prev[faceIdx] = rho * dot(U_face_prev[faceIdx], S_f);
+            }
+            matrixConstruct->setFaceMassFluxes(mdot_prev);
+        }
         solveMomentumEquations();
             
         calculateRhieChowFaceVelocities();
@@ -144,17 +157,12 @@ void SIMPLE::solveMomentumEquations() {
         a_Uz[i] = 0.0;
     }
     
-    Scalar mu_eff = mu;  // Laminar flow
-    
+    // Build per-cell effective viscosity μ_eff = μ + μ_t (spatially varying when turbulence enabled)
+    ScalarField mu_eff("mu_eff", allCells.size());
     if (enableTurbulence && turbulenceModel) {
-        // For turbulent flow, use average effective viscosity
-        ScalarField mu_effective = turbulenceModel->getEffectiveViscosity(mu);
-        Scalar sum_mu = 0.0;
-        for (size_t i = 0; i < allCells.size(); ++i) {
-            sum_mu += mu_effective[i];
-        }
-        mu_eff = sum_mu / allCells.size();
-        std::cout << "  Using averaged effective viscosity (μ_lam + μ_t): " << mu_eff << std::endl;
+        mu_eff = turbulenceModel->getEffectiveViscosity(mu);
+    } else {
+        for (size_t i = 0; i < allCells.size(); ++i) mu_eff[i] = mu;
     }
     
     // ********************************************************** //
@@ -481,6 +489,13 @@ void SIMPLE::correctVelocity() {
 
 void SIMPLE::correctPressure() {
     // Pressure correction: p = p + α_p * p'
+    // Track p' RMS before reset to report meaningful pressure residual
+    Scalar sumSq = 0.0;
+    for (size_t i = 0; i < allCells.size(); ++i) {
+        sumSq += p_prime[i] * p_prime[i];
+    }
+    lastPressureCorrectionRMS = std::sqrt(sumSq / allCells.size());
+
     for (size_t i = 0; i < allCells.size(); ++i) {
         p[i] += alpha_p * p_prime[i];
     }
@@ -582,12 +597,8 @@ Scalar SIMPLE::calculateVelocityResidual() const {
 }
 
 Scalar SIMPLE::calculatePressureResidual() const {
-    // Calculate RMS of pressure correction
-    Scalar sumSq = 0.0;
-    for (size_t i = 0; i < allCells.size(); ++i) {
-        sumSq += p_prime[i] * p_prime[i];
-    }
-    return std::sqrt(sumSq / allCells.size());
+    // Use stored RMS of p' computed prior to reset
+    return lastPressureCorrectionRMS;
 }
 
 // Setter methods

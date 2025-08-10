@@ -95,7 +95,8 @@ public:
                 return &(field_it->second);
             }
         }
-        throw std::runtime_error("Field " + fieldName + " not found in patch " + patchName);
+        return nullptr;
+        ;
     }
 
     // ----- Boundary Face Value Calculations ----- //

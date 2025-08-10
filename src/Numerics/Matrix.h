@@ -65,14 +65,14 @@ public:
 
     void refreshIterationCaches(const PressureField& p, const VelocityField& U, Scalar rho, const KOmegaSST* turbulenceModel);
 
-    // Build matrix for momentum equations
+    // Build momentum matrix
     void buildMomentumMatrix(
         const std::string& fieldName,
         const ScalarField& phi,
         const ScalarField& phi_old,
         const ScalarField& phi_source,
         Scalar rho,
-        Scalar Gamma,
+        const ScalarField& Gamma,
         TimeScheme timeScheme,
         Scalar dt,
         Scalar theta,
@@ -90,7 +90,7 @@ public:
         Scalar rho
     );
 
-    // Build matrix for general scalar transport equations (k, omega, etc.)
+    // Build scalar transport with variable diffusion (Gamma per cell)
     void buildScalarTransportMatrix(
         const std::string& fieldName,
         const ScalarField& phi,
@@ -98,7 +98,7 @@ public:
         const VectorField& U_field,
         const ScalarField& phi_source,
         Scalar rho,
-        Scalar Gamma,
+        const ScalarField& Gamma,
         TimeScheme timeScheme,
         Scalar dt,
         Scalar theta,
@@ -110,6 +110,9 @@ public:
 
     // Apply implicit under-relaxation to the assembled linear system (Ax=b)
     void relax(Scalar alpha, const ScalarField& phi_prev);
+
+    // Inject precomputed face mass fluxes (e.g., Rhie–Chow from previous iteration)
+    void setFaceMassFluxes(const FaceFluxField& mdot_in) { mdotFaces = mdot_in; }
 
 private:
     std::vector<Eigen::Triplet<Scalar>> tripletList;
