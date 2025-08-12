@@ -4,6 +4,13 @@ build/
 # Output files
 output_files/
 
+# Large mesh files (can be very large)
+*.msh
+*.mesh
+*.stl
+*.obj
+*.ply
+
 # CMake generated files
 CMakeCache.txt
 CMakeFiles/

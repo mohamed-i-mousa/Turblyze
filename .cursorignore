@@ -1,0 +1,44 @@
+# Build artifacts
+build/
+cmake-build-*/
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Output files
+output_files/
+*.vtk
+*.vtu
+*.pvd
+
+# Large mesh files
+*.msh
+*.mesh
+*.stl
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+*.out
+
+# Temporary files
+*.tmp
+*.temp
