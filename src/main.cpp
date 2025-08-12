@@ -60,6 +60,11 @@ int main() {
             //std::cout << face << std::endl;   // For debugging
         }
 
+        for (auto& face : allFaces) {
+            face.calculateDistanceProperties(allCells);
+        }
+        std::cout << "Distance properties calculated for faces." << std::endl;
+
         for (auto& cell : allCells) {
             cell.calculateGeometricProperties(allFaces);
             //std::cout << cell << std::endl;   // For debugging

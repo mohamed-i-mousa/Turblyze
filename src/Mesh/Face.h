@@ -27,7 +27,16 @@ struct Face {
     Vector normal;
     Scalar area = 0.0;
 
+    // Pre-computed distance vectors and properties for efficiency
+    Vector d_Pf;
+    std::optional<Vector> d_Nf;
+    Scalar d_Pf_mag = 0.0;
+    std::optional<Scalar> d_Nf_mag;
+    Vector e_Pf;
+    std::optional<Vector> e_Nf;
+
     bool geometricPropertiesCalculated = false;
+    bool distancePropertiesCalculated = false;
 
     // ----- Constructors ----- //
 
@@ -168,6 +177,47 @@ struct Face {
         }
     }
 
+    /* Calculate distance properties of the face
+     *
+     * Input: allCells (Vector of all cells in the mesh).
+     * Output: distance vectors, magnitudes, and unit vectors.
+     * 
+     * The function calculates:
+     * - d_Pf: distance vector from owner cell center to face center
+     * - d_Nf: distance vector from neighbor cell center to face center (internal faces only)
+     * - d_P, d_N: magnitudes of d_Pf and d_Nf
+     * - e_Pf, e_Nf: unit vectors of d_Pf and d_Nf
+     */
+    template<typename CellContainer>
+    void calculateDistanceProperties(const CellContainer& allCells) {
+        
+        d_Pf = centroid - allCells[ownerCell].centroid;
+        d_Pf_mag = d_Pf.magnitude();
+        
+        if (d_Pf_mag > DIVISION_TOLERANCE) {
+            e_Pf = d_Pf / d_Pf_mag;
+        } else {
+            throw std::runtime_error("Face " + std::to_string(id) + ": distance from owner cell to face is nearly zero.");
+        }
+
+        // Calculate d_Nf only for internal faces
+        if (!isBoundary()) {
+            size_t N = neighbourCell.value();
+            
+            Vector d_Nf_vec = centroid - allCells[N].centroid;
+            Scalar d_Nf_magnitude = d_Nf_vec.magnitude();
+            
+            if (d_Nf_magnitude > DIVISION_TOLERANCE) {
+                d_Nf = d_Nf_vec;
+                d_Nf_mag = d_Nf_magnitude;
+                e_Nf = d_Nf_vec / d_Nf_magnitude;
+            } else {
+                throw std::runtime_error("Face " + std::to_string(id) + ": distance from neighbor cell to face is nearly zero.");
+            }
+        }
+        distancePropertiesCalculated = true;
+    }
+
     bool isBoundary() const {
         return !neighbourCell.has_value();
     }
@@ -198,6 +248,14 @@ struct Face {
         os << ", Centroid: " << f.centroid
         << ", Area: " << f.area
         << ", Normal: " << f.normal;
+        
+        if (f.distancePropertiesCalculated) {
+            os << ", d_Pf_mag: " << f.d_Pf_mag;
+            if (f.d_Nf_mag.has_value()) {
+                os << ", d_Nf_mag: " << f.d_Nf_mag.value();
+            }
+        }
+        
         os.flags(flags);
         os.precision(prec);
     } else {

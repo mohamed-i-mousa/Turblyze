@@ -56,7 +56,7 @@ void SIMPLE::initialize(const Vector& initialVelocity, Scalar initialPressure) {
     for (size_t faceIdx = 0; faceIdx < allFaces.size(); ++faceIdx) {
         const Face& face = allFaces[faceIdx];
         if (face.isBoundary()) {
-            U_face[faceIdx] = bcManager.calculateBoundaryFaceVectorValue(face, U, allCells, "U");
+            U_face[faceIdx] = bcManager.calculateBoundaryFaceVectorValue(face, U, "U");
         } else {
             U_face[faceIdx] = linearInterpolation(face, U);
         }
@@ -351,7 +351,7 @@ void SIMPLE::calculateRhieChowFaceVelocities() {
 
         if (face.isBoundary()) {
             // Centralized boundary condition handling for velocity
-            U_face[faceIdx] = bcManager.calculateBoundaryFaceVectorValue(face, U, allCells, "U");
+            U_face[faceIdx] = bcManager.calculateBoundaryFaceVectorValue(face, U, "U");
             continue;
         }
 
@@ -396,17 +396,13 @@ void SIMPLE::calculateRhieChowFaceVelocities() {
 
 // ----- Linear interpolation helpers ----- //
 void SIMPLE::computeLinearWeights(const Face& face, Scalar& w_P, Scalar& w_N) const {
-    const size_t P = face.ownerCell;
     if (face.isBoundary()) {
         w_P = S(1.0);
         w_N = 0.0;
         return;
     }
-    const size_t N = face.neighbourCell.value();
-    const Vector d_Pf = face.centroid - allCells[P].centroid;
-    const Vector d_Nf = face.centroid - allCells[N].centroid;
-    const Scalar d_P = d_Pf.magnitude();
-    const Scalar d_N = d_Nf.magnitude();
+    const Scalar d_P = face.d_Pf_mag;
+    const Scalar d_N = face.d_Nf_mag.value();
     const Scalar total = d_P + d_N + 1e-20;
     w_P = d_N / total;
     w_N = d_P / total;
@@ -517,13 +513,11 @@ void SIMPLE::correctMassFluxes() {
         size_t N = face.neighbourCell.value();
 
         Vector d_PN = allCells[N].centroid - allCells[P].centroid;
-        Vector d_Pf = face.centroid - allCells[P].centroid;
-        Vector d_Nf = face.centroid - allCells[N].centroid;
-        Scalar d_P = d_Pf.magnitude();
-        Scalar d_N = d_Nf.magnitude();
-        Scalar total_dist = d_P + d_N + 1e-20;
-        Scalar w_P = d_N / total_dist;
-        Scalar w_N = d_P / total_dist;
+        Scalar d_Pf = face.d_Pf_mag;
+        Scalar d_Nf = face.d_Nf_mag.value();
+        Scalar total_dist = d_Pf + d_Nf + 1e-20;
+        Scalar w_P = d_Nf / total_dist;
+        Scalar w_N = d_Pf / total_dist;
         Scalar a_face_x = w_P * a_Ux[P] + w_N * a_Ux[N];
         Scalar a_face_y = w_P * a_Uy[P] + w_N * a_Uy[N];
         Scalar a_face_z = w_P * a_Uz[P] + w_N * a_Uz[N];

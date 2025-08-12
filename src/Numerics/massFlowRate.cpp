@@ -18,7 +18,7 @@ FaceFluxField calculateMassFlowRate(
         
         if (face.isBoundary()) {
             // Use centralized boundary condition handling
-            Vector U_face = bcManager.calculateBoundaryFaceVectorValue(face, U_field, cells, "U");
+            Vector U_face = bcManager.calculateBoundaryFaceVectorValue(face, U_field, "U");
             mdot[faceId] = rho * dot(U_face, S_f);
         } else {
             // Internal face: distance-weighted interpolation

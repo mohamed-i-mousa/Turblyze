@@ -178,11 +178,10 @@ void Matrix::buildMomentumMatrix(
                 const BoundaryData* bc = bcManager.getFieldBC(faceToPatchMap.at(face.id)->patchName, bcField);
                 if (!bc) continue;
 
-                Vector d_Pf = face.centroid - allCells[P].centroid;
-                Vector e_Pf = d_Pf / d_Pf.magnitude();
+                const Vector& e_Pf = face.e_Pf;
                 Vector E_f = dot(S_f, e_Pf) * e_Pf;  // orthogonal component E_f (minimum approach)
                 Scalar Gamma_f = Gamma[P];
-                Scalar D = Gamma_f * E_f.magnitude() / d_Pf.magnitude();
+                Scalar D = Gamma_f * E_f.magnitude() / face.d_Pf_mag;
                 Scalar F = mdot[face.id];
                 Scalar a_P_conv, a_N_conv;
                 convScheme.getFluxCoefficients(F, a_P_conv, a_N_conv);
@@ -240,9 +239,9 @@ void Matrix::buildMomentumMatrix(
                 // High-order correction
                 Scalar correction = 0.0;
                 if (const CentralDifferenceScheme* cds = dynamic_cast<const CentralDifferenceScheme*>(&convScheme)) {
-                    correction = cds->calculateCentralDifferenceCorrection(face, allCells, phi, grad_phi_f, F);
+                    correction = cds->calculateCentralDifferenceCorrection(face, phi, grad_phi_f, F);
                 } else if (const SecondOrderUpwindScheme* sous = dynamic_cast<const SecondOrderUpwindScheme*>(&convScheme)) {
-                    correction = sous->calculateSecondOrderCorrection(face, allCells, phi, grad_phi_ref, F);
+                    correction = sous->calculateSecondOrderCorrection(face, phi, grad_phi_ref, F);
                 } else if (dynamic_cast<const UpwindScheme*>(&convScheme)) {
                     correction = 0.0;
                 }
@@ -285,11 +284,10 @@ void Matrix::buildMomentumMatrix(
                 if (!bc) continue; // Skip if no BC is set for this field
 
                 Vector S_f = face.normal * face.area;
-                Vector d_Pf = face.centroid - allCells[P].centroid;
-                Vector e_Pf = d_Pf / d_Pf.magnitude();
+                const Vector& e_Pf = face.e_Pf;
                 Vector E_f = dot(S_f, e_Pf) * e_Pf;  // orthogonal component
                 Scalar Gamma_f = Gamma[P];
-                Scalar D = Gamma_f * E_f.magnitude() / d_Pf.magnitude();
+                Scalar D = Gamma_f * E_f.magnitude() / face.d_Pf_mag;
 
                 // --- IMPLICIT PART (contributes to A and b) ---
                 Scalar F_new = mdot[face.id];
@@ -459,11 +457,10 @@ void Matrix::buildScalarTransportMatrix(
                 const BoundaryData* bc = bcManager.getFieldBC(faceToPatchMap.at(face.id)->patchName, bcField);
                 if (!bc) continue;
 
-                Vector d_Pf = face.centroid - allCells[P].centroid;
-                Vector e_Pf = d_Pf / d_Pf.magnitude();
+                const Vector& e_Pf = face.e_Pf;
                 Vector E_f = dot(S_f, e_Pf) * e_Pf;  // orthogonal component E_f (minimum approach)
                 Scalar Gamma_f = Gamma[P];
-                Scalar D = Gamma_f * E_f.magnitude() / d_Pf.magnitude();
+                Scalar D = Gamma_f * E_f.magnitude() / face.d_Pf_mag;
                 Scalar F = mdot[face.id];
                 Scalar a_P_conv, a_N_conv;
                 convScheme.getFluxCoefficients(F, a_P_conv, a_N_conv);
@@ -517,9 +514,9 @@ void Matrix::buildScalarTransportMatrix(
                 // High-order correction
                 Scalar correction = 0.0;
                 if (const CentralDifferenceScheme* cds = dynamic_cast<const CentralDifferenceScheme*>(&convScheme)) {
-                    correction = cds->calculateCentralDifferenceCorrection(face, allCells, phi, grad_phi_f, F);
+                    correction = cds->calculateCentralDifferenceCorrection(face, phi, grad_phi_f, F);
                 } else if (const SecondOrderUpwindScheme* sous = dynamic_cast<const SecondOrderUpwindScheme*>(&convScheme)) {
-                    correction = sous->calculateSecondOrderCorrection(face, allCells, phi, grad_phi_ref, F);
+                    correction = sous->calculateSecondOrderCorrection(face, phi, grad_phi_ref, F);
                 } else if (dynamic_cast<const UpwindScheme*>(&convScheme)) {
                     correction = 0.0;
                 }
@@ -562,11 +559,10 @@ void Matrix::buildScalarTransportMatrix(
                 if (!bc) continue; // Skip if no BC is set for this field
 
                 Vector S_f = face.normal * face.area;
-                Vector d_Pf = face.centroid - allCells[P].centroid;
-                Vector e_Pf = d_Pf / d_Pf.magnitude();
+                const Vector& e_Pf = face.e_Pf;
                 Vector E_f = dot(S_f, e_Pf) * e_Pf;  // orthogonal component
                 Scalar Gamma_f = Gamma[P];
-                Scalar D = Gamma_f * E_f.magnitude() / d_Pf.magnitude();
+                Scalar D = Gamma_f * E_f.magnitude() / face.d_Pf_mag;
 
                 // --- IMPLICIT PART (contributes to A and b) ---
                 Scalar F_new = mdot[face.id];
@@ -704,11 +700,9 @@ void Matrix::buildPressureMatrix(
 
         const size_t N = face.neighbourCell.value();
         const Vector d_PN = allCells[N].centroid - allCells[P].centroid;
-        const Vector d_Pf = face.centroid - allCells[P].centroid;
-        const Vector d_Nf = face.centroid - allCells[N].centroid;
-        const Scalar d_P = d_Pf.magnitude();
-        const Scalar d_N = d_Nf.magnitude();
-        const Scalar total_dist = d_P + d_N + 1e-20;
+        const Scalar d_P = face.d_Pf_mag;
+        const Scalar d_N = face.d_Nf_mag.value();
+        const Scalar total_dist = d_P + d_N;
         const Scalar w_P = d_N / total_dist;
         const Scalar w_N = d_P / total_dist;
 
@@ -719,7 +713,7 @@ void Matrix::buildPressureMatrix(
 
         // Minimum-correction coefficient with non-orthogonality (pressure equation needs rho)
         const Vector S_f = face.normal * face.area;
-        const Scalar denom = d_PN.magnitudeSquared() + 1e-20;
+        const Scalar denom = d_PN.magnitudeSquared();
         const Scalar numer = d_PN.x * S_f.x / (a_face_x + 1e-20)
                            + d_PN.y * S_f.y / (a_face_y + 1e-20)
                            + d_PN.z * S_f.z / (a_face_z + 1e-20);

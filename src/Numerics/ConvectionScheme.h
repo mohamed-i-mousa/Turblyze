@@ -52,7 +52,6 @@ public:
     // Calculate the correction term using gradients
     Scalar calculateCentralDifferenceCorrection(
         const Face& face,
-        const std::vector<Cell>& cells,
         const ScalarField& phi,
         const FaceVectorField& grad_phi_f,
         Scalar F,
@@ -63,7 +62,6 @@ public:
     // Calculate face value using gradient-based interpolation
     Scalar calculateFaceValue(
         const Face& face,
-        const std::vector<Cell>& cells,
         const ScalarField& phi,
         const FaceVectorField& grad_phi_f,
         const BoundaryConditions* bcManager = nullptr,
@@ -87,7 +85,6 @@ public:
     // Calculate the second-order correction term using gradients
     Scalar calculateSecondOrderCorrection(
         const Face& face,
-        const std::vector<Cell>& cells,
         const ScalarField& phi,
         const VectorField& grad_phi,
         Scalar F,
@@ -98,7 +95,6 @@ public:
     // Calculate face value using gradient-based upwind interpolation
     Scalar calculateFaceValue(
         const Face& face,
-        const std::vector<Cell>& cells,
         const ScalarField& phi,
         const VectorField& grad_phi,
         Scalar F,

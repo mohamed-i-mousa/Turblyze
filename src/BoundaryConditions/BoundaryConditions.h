@@ -7,12 +7,12 @@
 #include <stdexcept>
 #include <iostream>
 
+#include "Scalar.h"
+#include "Vector.h"
 #include "Face.h"
 #include "Cell.h"
 #include "BoundaryPatch.h"
 #include "BoundaryData.h"
-#include "Vector.h"
-#include "Scalar.h"
 #include "CellData.h"
 
 class BoundaryConditions {
@@ -104,7 +104,6 @@ public:
     Scalar calculateBoundaryFaceValue(
         const Face& face,
         const ScalarField& phi,
-        const std::vector<Cell>& cells,
         const std::string& fieldName) const {
             
         // Use shared face-to-patch cache
@@ -131,8 +130,7 @@ public:
                 
             case BCType::FIXED_GRADIENT: {
                 // Fixed gradient: φ_f = φ_P + grad * distance
-                Vector d_Pf = face.centroid - cells[face.ownerCell].centroid;
-                Scalar d_n = dot(d_Pf, face.normal);
+                Scalar d_n = dot(face.e_Pf, face.normal);
                 return phi[face.ownerCell] + bc->getFixedScalarGradient() * d_n;
             }
             
@@ -146,7 +144,6 @@ public:
     Vector calculateBoundaryFaceVectorValue(
         const Face& face,
         const VectorField& phi,
-        const std::vector<Cell>& cells,
         const std::string& fieldName) const {
             
         // Use shared face-to-patch cache
@@ -176,9 +173,9 @@ public:
                 
             case BCType::FIXED_GRADIENT: {
                 // Fixed gradient: φ_f = φ_P + grad * distance
-                Vector d_Pf = face.centroid - cells[face.ownerCell].centroid;
+                const Vector& d_Pf = face.d_Pf;
                 Scalar d_n = dot(d_Pf, face.normal);
-                return phi[face.ownerCell] + bc->vectorGradient * d_n;  // Simplified: assume normal gradient
+                return phi[face.ownerCell] + bc->vectorGradient * d_n;
             }
             
             default:

@@ -28,7 +28,6 @@ void CentralDifferenceScheme::getFluxCoefficients(
 
 Scalar CentralDifferenceScheme::calculateCentralDifferenceCorrection(
     const Face& face,
-    const std::vector<Cell>& cells,
     const ScalarField& phi,
     const FaceVectorField& grad_phi_f,
     Scalar F,
@@ -37,7 +36,7 @@ Scalar CentralDifferenceScheme::calculateCentralDifferenceCorrection(
 {
     if (face.isBoundary()) return 0.0;
 
-    Scalar phi_face_central = calculateFaceValue(face, cells, phi, grad_phi_f, bcManager, fieldName);
+    Scalar phi_face_central = calculateFaceValue(face, phi, grad_phi_f, bcManager, fieldName);
 
     size_t upwind_cell = (F >= 0.0) ? face.ownerCell : face.neighbourCell.value();
 
@@ -49,7 +48,6 @@ Scalar CentralDifferenceScheme::calculateCentralDifferenceCorrection(
 
 Scalar CentralDifferenceScheme::calculateFaceValue(
     const Face& face,
-    const std::vector<Cell>& cells,
     const ScalarField& phi,
     const FaceVectorField& grad_phi_f,
     const BoundaryConditions* bcManager,
@@ -57,7 +55,7 @@ Scalar CentralDifferenceScheme::calculateFaceValue(
 {
     if (face.isBoundary()) {
         if (bcManager && !fieldName.empty()) {
-            return bcManager->calculateBoundaryFaceValue(face, phi, cells, fieldName);
+            return bcManager->calculateBoundaryFaceValue(face, phi, fieldName);
         }
         // Fallback to zero gradient if no BC info available
         return phi[face.ownerCell];
@@ -66,14 +64,10 @@ Scalar CentralDifferenceScheme::calculateFaceValue(
     size_t P = face.ownerCell;
     size_t N = face.neighbourCell.value();
     
-    const Cell& cell_P = cells[P];
-    const Cell& cell_N = cells[N];
-    
     // Calculate interpolation weight
-    Vector d_Nf = face.centroid - cell_N.centroid;
-    Vector d_Pf = face.centroid - cell_P.centroid;
-    Scalar d_P = d_Pf.magnitude();
-    Scalar d_N = d_Nf.magnitude();
+    const Vector& d_Pf = face.d_Pf;
+    Scalar d_P = face.d_Pf_mag;
+    Scalar d_N = face.d_Nf_mag.value();
     Scalar w = d_N / (d_P + d_N);
     
     // Central difference formula: φ_f = φ_P*w + φ_N*(1-w) + (∇φ_f · d_Pf)
@@ -94,7 +88,6 @@ void SecondOrderUpwindScheme::getFluxCoefficients(
 
 Scalar SecondOrderUpwindScheme::calculateSecondOrderCorrection(
     const Face& face,
-    const std::vector<Cell>& cells,
     const ScalarField& phi,
     const VectorField& grad_phi,
     Scalar F,
@@ -103,7 +96,7 @@ Scalar SecondOrderUpwindScheme::calculateSecondOrderCorrection(
 {
     if (face.isBoundary()) return 0.0;
 
-    Scalar phi_face_SOU = calculateFaceValue(face, cells, phi, grad_phi, F, bcManager, fieldName);
+    Scalar phi_face_SOU = calculateFaceValue(face, phi, grad_phi, F, bcManager, fieldName);
     
     size_t upwind_cell = (F >= 0.0) ? face.ownerCell : face.neighbourCell.value();
     Scalar phi_face_UDS = phi[upwind_cell];
@@ -114,7 +107,6 @@ Scalar SecondOrderUpwindScheme::calculateSecondOrderCorrection(
 
 Scalar SecondOrderUpwindScheme::calculateFaceValue(
     const Face& face,
-    const std::vector<Cell>& cells,
     const ScalarField& phi,
     const VectorField& grad_phi,
     Scalar F,
@@ -123,7 +115,7 @@ Scalar SecondOrderUpwindScheme::calculateFaceValue(
 {
     if (face.isBoundary()) {
         if (bcManager && !fieldName.empty()) {
-            return bcManager->calculateBoundaryFaceValue(face, phi, cells, fieldName);
+            return bcManager->calculateBoundaryFaceValue(face, phi, fieldName);
         } else {
             // Fallback to zero gradient if no BC info available
             return phi[face.ownerCell];
@@ -132,10 +124,9 @@ Scalar SecondOrderUpwindScheme::calculateFaceValue(
 
     // Determine upwind cell based on flow direction
     size_t upwind_cell = (F >= 0.0) ? face.ownerCell : face.neighbourCell.value();
-    const Cell& cell_upwind = cells[upwind_cell];
     
     // Second-order upwind formula: φ_f = φ_P + (∇φ_P · d_Pf)
-    Vector d_Pf = face.centroid - cell_upwind.centroid;
+    const Vector& d_Pf = face.d_Pf;
     Scalar phi_f = phi[upwind_cell] + dot(grad_phi[upwind_cell], d_Pf);
     
     return phi_f;

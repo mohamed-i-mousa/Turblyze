@@ -203,15 +203,13 @@ FaceVectorField GradientScheme::interpolateGradientsToFaces(
             Vector e_PN = d_PN / d_PN_mag;
             
             // Calculate interpolation weights (distance-based)
-            Scalar d_Pf = (face.centroid - allCells[P].centroid).magnitude();
-            Scalar d_Nf = (face.centroid - allCells[N].centroid).magnitude();
+            Scalar d_Pf = face.d_Pf_mag;
+            Scalar d_Nf = face.d_Nf_mag.value();
             Scalar total_dist = d_Pf + d_Nf;
             
             Scalar g_P, g_N;
             if (total_dist < GRADIENT_TOLERANCE) {
-                // Face is equidistant, use simple average
-                g_P = S(0.5);
-                g_N = S(0.5);
+                throw std::runtime_error("GradientScheme::interpolateGradientsToFaces: Face is equidistant, use simple average");
             } else {
                 // Distance-weighted interpolation
                 g_P = d_Nf / total_dist; // Weight for cell P
