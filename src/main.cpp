@@ -423,6 +423,9 @@ int main() {
     } else if (minutes.count() > 0) {
         std::cout << "Total execution time: " << minutes.count() << "m " 
                   << seconds.count() << "s" << std::endl;
+    } else {
+        std::cout << "Total execution time: " << seconds.count() << "s ("
+                  << duration.count() << " ms)" << std::endl;
     }
     
     return 0;

@@ -26,11 +26,19 @@ bool BiCGSTAB(Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& x,
         r_sum_initial += std::abs(r_initial(i));
     }
     r_norm_initial_avg = (system_size > 0) ? (r_sum_initial / static_cast<Scalar>(system_size)) : S(0.0);
-    // --- Main Solve ---
-    Eigen::BiCGSTAB<Eigen::SparseMatrix<Scalar>> bicgstab;
+    // --- Main Solve (with ILU preconditioning) ---
+    Eigen::BiCGSTAB<
+        Eigen::SparseMatrix<Scalar>,
+        Eigen::IncompleteLUT<Scalar>
+    > bicgstab;
     bicgstab.setMaxIterations(max_iterations);
     bicgstab.setTolerance(tolerance);
-    
+
+    // Configure ILU (ILUT) preconditioner parameters
+    // Note: higher fill-factor typically improves convergence but costs memory/time.
+    bicgstab.preconditioner().setFillfactor(5);
+    bicgstab.preconditioner().setDroptol(S(1e-4));
+
     bicgstab.compute(A);
     if (bicgstab.info() != Eigen::Success) {
         std::cerr << "Error for field '" << fieldName << "': BiCGSTAB compute (matrix decomposition/analysis) failed!" << std::endl;
