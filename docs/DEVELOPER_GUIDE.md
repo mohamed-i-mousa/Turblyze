@@ -255,10 +255,10 @@ flowchart TD
   I --> J[solve Ux,Uy,Uz]
   J --> K[Rhie-Chow face U]
   K --> L[calc mass flux]
-  L --> M[solve p_prime]
+  L --> M[solve p prime]
   M --> N[correct U, mdot, p]
-  N --> O[k-omega SST (optional)]
-  O --> P[convergence check]
+  N -.-> T[k omega SST]
+  T --> P[convergence check]
   P -->|loop| I
   P --> Q[post-process + VTK]
 ```
