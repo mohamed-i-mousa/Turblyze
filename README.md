@@ -1,159 +1,150 @@
-# 3D CFD Solver with SIMPLE Algorithm
+## 3D CFD Solver for Unstructure Grids
 
-A comprehensive 3D Computational Fluid Dynamics (CFD) solver implementing the SIMPLE (Semi-Implicit Method for Pressure Linked Equations) algorithm with support for both laminar and turbulent flows using the k-omega SST turbulence model.
+A 3D incompressible CFD solver using the SIMPLE algorithm with k-omega SST turbulence modeling. Reads Fluent `.msh` meshes, solves the steady-state flow, and exports results to VTK (`.vtp`) for ParaView.
 
-## Features
+### Highlights
+- **3D solver**: Solves U, V, W momentum with pressure coupling via SIMPLE
+- **Rhie–Chow**: Face-velocity interpolation to avoid pressure checkerboarding
+- **Schemes**: Upwind, second-order upwind, and central-difference convection; least-squares gradients; non-orthogonal diffusion treatment
+- **BCs**: Fixed value, fixed gradient, zero gradient, no-slip wall
+- **Turbulence (optional)**: k-omega SST with wall distance, μ_t, and derived quantities
+- **VTK output**: Exports cell fields mapped to faces for visualization in ParaView
 
-### 3D Flow Solver
-- **Complete 3D Implementation**: Solves all three momentum equations (U, V, W components)
-- **SIMPLE Algorithm**: Pressure-velocity coupling for incompressible flows
-- **Rhie-Chow Interpolation**: Prevents checkerboard pressure fields
-- **Under-relaxation**: Stable convergence for complex flows
+## Requirements
 
-### Turbulence Modeling
-- **k-omega SST Model**: Shear Stress Transport turbulence model
-- **Automatic Detection**: 3D mesh analysis and turbulence parameter calculation
-- **Wall Functions**: Proper near-wall treatment
+- **C++**: C++17-compatible compiler
+- **CMake**: >= 3.10
+- **Dependencies**:
+  - Eigen 3 (headers)
+  - VTK (Core, DataModel, IOLegacy, IOXML)
 
-### Discretization Schemes
-- **Convection**: Central difference, upwind, and hybrid schemes
-- **Diffusion**: Central difference with non-orthogonal correction
-- **Gradients**: Least squares method for unstructured meshes
-
-### Boundary Conditions
-- **Velocity**: Fixed value, fixed gradient, no-slip wall
-- **Pressure**: Fixed value, fixed gradient, zero gradient
-- **Turbulence**: Automatic wall treatment, inlet/outlet conditions
-
-## 3D Implementation Details
-
-### Momentum Equations
-The solver now properly handles all three velocity components:
-
-```cpp
-// U-momentum (x-component)
-∂(ρU)/∂t + ∇·(ρUU) = -∂p/∂x + ∇·[(μ + μₜ)∇U]
-
-// V-momentum (y-component)  
-∂(ρV)/∂t + ∇·(ρVV) = -∂p/∂y + ∇·[(μ + μₜ)∇V]
-
-// W-momentum (z-component)
-∂(ρW)/∂t + ∇·(ρWW) = -∂p/∂z + ∇·[(μ + μₜ)∇W]
+On Debian/Ubuntu:
+```bash
+sudo apt update
+sudo apt install -y build-essential cmake libeigen3-dev libvtk9-dev
 ```
 
-### 3D Velocity Components
-- **getVelocityX()**: Returns U_x component field
-- **getVelocityY()**: Returns U_y component field  
-- **getVelocityZ()**: Returns U_z component field
-- **getVelocity()**: Returns complete 3D velocity vector field
-
-### Mesh Analysis
-The solver automatically detects 3D mesh characteristics:
-- Analyzes z-range vs. cell size
-- Warns if mesh appears 2D
-- Provides 3D solution statistics
-
-## Usage
-
-### Basic Setup
-```cpp
-#include "SIMPLE.h"
-
-// Create solver
-SIMPLE simpleSolver(faces, cells, boundaryConditions, gradientScheme, convectionScheme);
-
-// Configure parameters
-simpleSolver.setRelaxationFactors(0.7, 0.3);  // U=0.7, p=0.3
-simpleSolver.setConvergenceTolerance(1e-6);
-simpleSolver.setMaxIterations(500);
-
-// Enable turbulence modeling
-simpleSolver.enableTurbulenceModeling(true);
-
-// Solve
-simpleSolver.solve();
+If CMake cannot find VTK automatically, set `VTK_DIR` to the CMake config folder:
+```bash
+cmake -DVTK_DIR=/usr/lib/cmake/vtk-9.1 ..
 ```
 
-### Extract 3D Results
-```cpp
-// Get complete velocity field
-const VectorField& velocity = simpleSolver.getVelocity();
-
-// Get individual velocity components
-ScalarField U_x = simpleSolver.getVelocityX();
-ScalarField U_y = simpleSolver.getVelocityY();
-ScalarField U_z = simpleSolver.getVelocityZ();
-
-// Get pressure and other fields
-const ScalarField& pressure = simpleSolver.getPressure();
-const FaceFluxField& massFlux = simpleSolver.getMassFlux();
-```
-
-## Output
-
-### 3D Solution Statistics
-The solver provides comprehensive 3D statistics:
-- Maximum and average velocity magnitudes
-- Individual velocity component statistics (U_x, U_y, U_z)
-- Pressure range and distribution
-- Turbulence parameters (k, ω, μₜ)
-- Mass conservation verification
-
-### VTK Export
-All solution fields are exported to VTK format for visualization:
-- Velocity components (U_x, U_y, U_z)
-- Pressure and pressure coefficient
-- Turbulence fields (k, ω, μₜ, wall distance)
-- Derived quantities (turbulent intensity, y+)
-
-## Building
+## Build
 
 ```bash
 mkdir build
 cd build
 cmake ..
-make
+make -j
 ```
 
-## Running
+The executable is `./MyCFDCode` (same as the project name in `CMakeLists.txt`).
 
+## Run
+
+Run from the `build/` directory so relative input/output paths resolve correctly:
 ```bash
-./cfd_solver
+./MyCFDCode
 ```
 
-The solver will:
-1. Read 3D mesh from input files
-2. Detect mesh dimensionality
-3. Solve 3D flow with SIMPLE algorithm
-4. Apply turbulence modeling if enabled
-5. Export results to VTK format
-6. Provide comprehensive 3D statistics
+Default behavior (as defined in `src/main.cpp`):
+- Reads mesh: `../input_files/cylinder_coarse.msh`
+- Applies inlet/outlet/cylinder/symmetry boundary conditions
+- Uses Upwind convection, least-squares gradients
+- Solves with SIMPLE (under-relaxation U=0.7, p=0.3, tol=1e-6, 30 iters)
+- Exports VTK: `../output_files/cylinder_flow.vtp`
 
-## Mesh Requirements
+You will see iteration logs, residuals (mass, velocity, pressure), statistics, and a runtime summary.
 
-- **3D Unstructured Mesh**: Tetrahedral, hexahedral, or mixed elements
-- **Boundary Patches**: Properly defined inlet, outlet, and wall boundaries
-- **Mesh Quality**: Good aspect ratios and non-degenerate elements
+## Input mesh
 
-## Performance
+- Format: Fluent `.msh` (ANSYS Meshing export)
+- Dimensionality: 3D only (the reader throws on 2D meshes)
+- Boundary patches are read from section 45 and mapped to internal BC types
+- Example patches used by the stock case: `inlet`, `outlet`, `cylinder`, `symmetry1..4`
 
-The 3D implementation includes:
-- Efficient sparse matrix solvers (BiCGSTAB)
-- Optimized memory usage for large 3D meshes
-- Parallel-ready data structures
-- Convergence monitoring and diagnostics
+## Configuring a case
 
-## Validation
+Edit `src/main.cpp` to change the mesh, boundary conditions, schemes, and solver controls. Example:
+```cpp
+// Mesh
+std::string meshFilePath = "../input_files/cylinder_coarse.msh";
+readMshFile(meshFilePath, allNodes, allFaces, allCells, allBoundaryPatches);
 
-The solver has been validated for:
-- 3D laminar flows
-- 3D turbulent flows with k-omega SST
-- Mass conservation
-- Energy conservation
-- Boundary condition implementation
+// Boundary conditions
+BoundaryConditions bcManager;
+for (const auto& patch : allBoundaryPatches) bcManager.addPatch(patch);
+bcManager.setFixedValue("inlet", "U", Vector(0.0, 0.0, -0.1));
+bcManager.setZeroGradient("inlet", "p");
+bcManager.setFixedValue("outlet", "p", 0.0);
+bcManager.setZeroGradient("outlet", "U");
+bcManager.setNoSlip("cylinder", "U");
 
-## Future Enhancements
+// Schemes
+GradientScheme gradScheme;
+UpwindScheme UDS;               // or CentralDifferenceScheme, SecondOrderUpwindScheme
+
+// SIMPLE setup
+SIMPLE simpleSolver(allFaces, allCells, bcManager, gradScheme, UDS);
+simpleSolver.setRelaxationFactors(0.7, 0.3);
+simpleSolver.setConvergenceTolerance(1e-6);
+simpleSolver.setMaxIterations(100);
+simpleSolver.enableTurbulenceModeling(true); // set false for laminar
+simpleSolver.solve();
+```
+
+Notes:
+- Physical properties (ρ, μ) currently use defaults inside `SIMPLE` (air-like). Provide setters if you need to vary fluids globally.
+- Precision is double by default. See Precision section to change.
+
+## Outputs and visualization
+
+- File: `../output_files/cylinder_flow.vtp` (VTK PolyData)
+- Fields exported by default:
+  - **pressure** (cell → mapped to faces)
+  - **velocityMagnitude**, **U_x**, **U_y**, **U_z**
+  - With turbulence enabled: **k**, **omega**, **mu_t**, **wallDistance**, and derived: **turbulentIntensity**, **turbulentViscosityRatio**, **yPlus**
+
+Open the `.vtp` file in ParaView. Since PolyData stores faces as cells, cell-centered quantities are mapped to faces via owner cell. Color by any of the arrays listed above.
+
+## Convergence and diagnostics
+
+- Iteration log prints RMS-like residuals for mass, velocity, and pressure (based on p' RMS)
+- Mass conservation is summarized post-solve as average per-cell imbalance
+- If residuals grow very large, the solver warns and suggests actions (reduce relaxation, check BCs, improve initial guess)
+
+## Precision control
+
+By default, the build defines `PROJECT_USE_DOUBLE_PRECISION` (FP64). To switch to float (FP32):
+1) Remove the compile definition in `CMakeLists.txt`:
+```cmake
+# target_compile_definitions(MyCFDCode PUBLIC PROJECT_USE_DOUBLE_PRECISION)
+```
+2) Reconfigure and rebuild. At runtime the program prints the current mode via `SCALAR_MODE`.
+
+## Project layout
+
+- `src/Mesh/`: mesh structures and Fluent `.msh` reader
+- `src/BoundaryConditions/`: patch metadata and boundary condition handling
+- `src/Numerics/`: gradient/convection schemes, matrix assembly, linear solvers, SIMPLE algorithm
+- `src/Models/`: k-omega SST turbulence model
+- `src/PostProcessing/`: VTK exporter (PolyData writer)
+- `input_files/`: put your `.msh` meshes here
+- `output_files/`: VTK results written here
+
+## Troubleshooting
+
+- VTK not found: set `VTK_DIR` to the correct CMake config dir and re-run CMake
+- Eigen not found: install `libeigen3-dev` (or provide your Eigen include path)
+- 2D mesh error: the reader only supports 3D; export a 3D `.msh`
+- Missing input: run from the `build/` folder so `../input_files` resolves correctly
+- Empty/odd visuals: PolyData stores faces; ensure you are coloring by a face array in ParaView
+
+## Roadmap
+
 - Advanced no-slip boundary condition 
 - Parallel processing for large 3D meshes
 - Additional turbulence models (LES)
+
+
 

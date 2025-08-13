@@ -563,36 +563,44 @@ bool SIMPLE::checkConvergence() {
 }
 
 Scalar SIMPLE::calculateMassImbalance() const {
-    Scalar totalImbalance = 0.0;
-    
+    // Dimensionless normalized continuity residual per cell, averaged
+    Scalar totalNormImbalance = 0.0;
     for (size_t i = 0; i < allCells.size(); ++i) {
-        Scalar cellImbalance = 0.0;
-        
-        // Sum mass fluxes for each cell
+        Scalar net = 0.0;
+        Scalar sumAbs = 0.0;
         for (size_t j = 0; j < allCells[i].faceIndices.size(); ++j) {
-            size_t faceIdx = allCells[i].faceIndices[j];
-            int sign = allCells[i].faceSigns[j];
-            cellImbalance += sign * massFlux[faceIdx];
+            const size_t faceIdx = allCells[i].faceIndices[j];
+            const int sign = allCells[i].faceSigns[j];
+            const Scalar mf = massFlux[faceIdx];
+            net += sign * mf;
+            sumAbs += std::abs(mf);
         }
-        
-        totalImbalance += std::abs(cellImbalance);
+        const Scalar denom = sumAbs + 1e-30;
+        totalNormImbalance += std::abs(net) / denom;
     }
-    
-    return totalImbalance / allCells.size();
+    return totalNormImbalance / std::max<size_t>(1, allCells.size());
 }
 
 Scalar SIMPLE::calculateVelocityResidual() const {
-    // Calculate RMS of velocity magnitude
-    Scalar sumSq = 0.0;
+    // Normalized delta-based residual: ||U - U_prev||_2 / (||U_prev||_2 + eps)
+    Scalar num = 0.0;
+    Scalar den = 0.0;
     for (size_t i = 0; i < allCells.size(); ++i) {
-        sumSq += U[i].magnitudeSquared();
+        const Vector d = U[i] - U_prev[i];
+        num += d.magnitudeSquared();
+        den += U_prev[i].magnitudeSquared();
     }
-    return std::sqrt(sumSq / allCells.size());
+    num = std::sqrt(num + 1e-30);
+    den = std::sqrt(den + 1e-30);
+    return num / den;
 }
 
 Scalar SIMPLE::calculatePressureResidual() const {
-    // Use stored RMS of p' computed prior to reset
-    return lastPressureCorrectionRMS;
+    // Normalize p' RMS by RMS(p)
+    Scalar sumP2 = 0.0;
+    for (size_t i = 0; i < allCells.size(); ++i) sumP2 += p[i] * p[i];
+    const Scalar p_rms = std::sqrt(sumP2 / (allCells.size() + 1e-30)) + 1e-30;
+    return lastPressureCorrectionRMS / p_rms;
 }
 
 // Setter methods

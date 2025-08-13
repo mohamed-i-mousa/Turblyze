@@ -11,6 +11,7 @@ enum class BCType {
     FIXED_GRADIENT,
     ZERO_GRADIENT,
     NO_SLIP,
+    SYMMETRY,
     UNDEFINED
 };
 
@@ -94,6 +95,17 @@ struct BoundaryData {
 
         valueType = BCValueType::UNDEFINED;
         gradientType = BCValueType::UNDEFINED;
+    }
+
+    void setSymmetry() {
+        type = BCType::SYMMETRY;
+        // Symmetry implies zero normal gradient for scalars and zero normal component for vectors
+        valueType = BCValueType::UNDEFINED;
+        gradientType = BCValueType::UNDEFINED;
+        scalarValue = S(0.0);
+        vectorValue = Vector(S(0.0), S(0.0), S(0.0));
+        scalarGradient = S(0.0);
+        vectorGradient = Vector(S(0.0), S(0.0), S(0.0));
     }
 
     // This is the simple implementation of no slip boundary condition.

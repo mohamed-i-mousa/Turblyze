@@ -32,8 +32,7 @@
 #include "VtkWriter.h"
 
 int main() {
-    // Start timing the total execution
-    auto start_time = std::chrono::high_resolution_clock::now();
+    auto start_time = std::chrono::high_resolution_clock::now();    // Start timing the total execution
     
     std::cout << "--- Welcome to the CFD Solver with SIMPLE Algorithm ---" << std::endl;
     std::cout << "Running with precision: " << SCALAR_MODE << std::endl;
@@ -77,8 +76,8 @@ int main() {
         std::cout << "\n--- 2. Setting up CFD Problem ---" << std::endl;
 
         // --- Physical Properties ---
-        const Scalar rho = 1.25;           // Density (kg/m^3)
-        const Scalar mu = 1.8e-5;          // Dynamic viscosity (Pa·s)
+        const Scalar rho = 1.225;           // Density (kg/m^3)
+        const Scalar mu = 1.7894e-5;          // Dynamic viscosity (Pa·s)
 
         // --- Boundary Conditions ---
         BoundaryConditions bcManager;
@@ -86,7 +85,6 @@ int main() {
             bcManager.addPatch(patch);
         }
 
-        // Set velocity boundary conditions
         const std::string U_field = "U";
         const std::string p_field = "p";
         
@@ -102,46 +100,45 @@ int main() {
         bcManager.setNoSlip("cylinder", U_field);  // No-slip condition for velocity at wall
         bcManager.setZeroGradient("cylinder", p_field);  // Zero gradient for pressure at wall
         
-        // Symmetry walls: zero gradient condition for velocity, zero gradient for pressure
-        bcManager.setZeroGradient("symmetry1", U_field);  // Zero gradient for velocity at wall
-        bcManager.setZeroGradient("symmetry2", U_field);  // Zero gradient for velocity at wall
-        bcManager.setZeroGradient("symmetry3", U_field);  // Zero gradient for velocity at wall
-        bcManager.setZeroGradient("symmetry4", U_field);  // Zero gradient for velocity at wall
+        // Symmetry walls: zero normal velocity and zero gradient for pressure
+        bcManager.setSymmetry("symmetry1", U_field);
+        bcManager.setSymmetry("symmetry2", U_field);
+        bcManager.setSymmetry("symmetry3", U_field);
+        bcManager.setSymmetry("symmetry4", U_field);
         bcManager.setZeroGradient("symmetry1", p_field);  // Zero gradient for pressure at wall
         bcManager.setZeroGradient("symmetry2", p_field);  // Zero gradient for pressure at wall
         bcManager.setZeroGradient("symmetry3", p_field);  // Zero gradient for pressure at wall
         bcManager.setZeroGradient("symmetry4", p_field);  // Zero gradient for pressure at wall
 
-        
         bcManager.printSummary();
 
         // --- Discretization Scheme Selection ---
-        CentralDifferenceScheme CDS;             // Use central difference scheme
-        SecondOrderUpwindScheme SOUS;            // Use second-order upwind scheme
-        UpwindScheme UDS;                        // Use first-order upwind scheme
-        GradientScheme gradScheme;               // Gradient calculation scheme
+        CentralDifferenceScheme CDS;
+        SecondOrderUpwindScheme SOUS;
+        UpwindScheme UDS;
+        GradientScheme gradScheme;
 
 
         // =========================================================================
         // --- 3. SIMPLE SOLVER SETUP ---
         // =========================================================================
-        std::cout << "\n--- 3. Initializing SIMPLE Solver with k-omega SST Turbulence ---" << std::endl;
+        std::cout << "\n--- 3. Initializing SIMPLE Solver ---" << std::endl;
         
         SIMPLE simpleSolver(allFaces, allCells, bcManager, gradScheme, UDS);
+        simpleSolver.setPhysicalProperties(rho, mu);
         
         // Configure SIMPLE parameters
-        // Typical under-relaxation factors: U = 0.7, p = 0.3
         simpleSolver.setRelaxationFactors(0.7, 0.3);  // Under-relaxation: U = 0.7, p = 0.3
         simpleSolver.setConvergenceTolerance(1e-6);   // Convergence tolerance
-        simpleSolver.setMaxIterations(30);          // Maximum iterations
+        simpleSolver.setMaxIterations(30);            // Maximum iterations
         
-        // Enable k-omega SST turbulence modeling
+        // Enable turbulence modeling
         simpleSolver.enableTurbulenceModeling(false);
 
         // =========================================================================
         // --- 4. SOLVE STEADY-STATE FLOW EQUATIONS ---
         // =========================================================================
-        std::cout << "\n--- 4. Solving Steady-State Flow with SIMPLE + k-omega SST ---" << std::endl;
+        std::cout << "\n--- 4. Solving Steady-State Flow with SIMPLE ---" << std::endl;
         simpleSolver.solve();
 
         // =========================================================================
@@ -186,16 +183,6 @@ int main() {
         ScalarField velocityMagnitude("velocityMagnitude", velocity.size());
         for (size_t i = 0; i < velocity.size(); ++i) {
             velocityMagnitude[i] = velocity[i].magnitude();
-        }
-        
-        // Calculate pressure coefficient (Cp)
-        ScalarField pressureCoeff("pressureCoeff", pressure.size());
-        Scalar pRef = 0.0;  // Reference pressure
-        Scalar uRef = 0.1;  // Reference velocity (inlet velocity)
-        Scalar dynamicPressure = 0.5 * rho * uRef * uRef;
-        
-        for (size_t i = 0; i < pressure.size(); ++i) {
-            pressureCoeff[i] = (pressure[i] - pRef) / dynamicPressure;
         }
         
         // Print some statistics
@@ -280,16 +267,11 @@ int main() {
         std::map<std::string, const ScalarField*> scalarFieldsToVtk;
         scalarFieldsToVtk["pressure"] = &pressure;
         scalarFieldsToVtk["velocityMagnitude"] = &velocityMagnitude;
-        scalarFieldsToVtk["pressureCoeff"] = &pressureCoeff;
-
-        // Use 3D velocity components from solver
-        // (Already extracted above using getVelocityX(), getVelocityY(), getVelocityZ())
-        
         scalarFieldsToVtk["U_x"] = &U_x;
         scalarFieldsToVtk["U_y"] = &U_y;
         scalarFieldsToVtk["U_z"] = &U_z;
         
-        // Add turbulence fields to export if available
+        // Add turbulence fields if available
         if (k_field && omega_field && mu_t_field && wallDist_field) {
             scalarFieldsToVtk["k"] = k_field;
             scalarFieldsToVtk["omega"] = omega_field;
@@ -327,7 +309,7 @@ int main() {
         }
 
         VtkWriter::writeVtkFile(vtkOutputFilename, allNodes, allFaces, allCells, scalarFieldsToVtk);
-        std::cout << "k-omega SST turbulent flow solution written to " << vtkOutputFilename << std::endl;
+        std::cout << "Flow solution written to " << vtkOutputFilename << std::endl;
 
         // =========================================================================
         // --- 8. VALIDATION AND DIAGNOSTICS ---
@@ -351,65 +333,23 @@ int main() {
         std::cout << "  Average mass imbalance per cell: " << avgMassImbalance << " kg/s" << std::endl;
         
         if (avgMassImbalance < 1e-8) {
-            std::cout << "  ✓ Mass conservation satisfied" << std::endl;
+            std::cout << "  Mass conservation satisfied" << std::endl;
         } else if (avgMassImbalance < 1e-6) {
-            std::cout << "  ⚠ Mass conservation acceptable" << std::endl;
+            std::cout << "  Mass conservation acceptable" << std::endl;
         } else {
-            std::cout << "  ✗ Mass conservation violated - check solution" << std::endl;
-        }
-
-        // Reynolds number calculation
-        Scalar characteristicLength = 1.0;  // Assume 1m characteristic length
-        Scalar Re = rho * avgVelocity * characteristicLength / mu;
-        std::cout << "Flow Parameters:" << std::endl;
-        std::cout << "  Reynolds number: " << Re << std::endl;
-        
-        if (Re < 1) {
-            std::cout << "  Flow regime: Stokes flow (very low Re)" << std::endl;
-        } else if (Re < 100) {
-            std::cout << "  Flow regime: Laminar flow (low Re)" << std::endl;
-        } else if (Re < 2300) {
-            std::cout << "  Flow regime: Laminar flow" << std::endl;
-        } else {
-            std::cout << "  Flow regime: Transitional/Turbulent (high Re)" << std::endl;
-        }
-        
-        // Turbulent flow parameters
-        if (k_field && omega_field && mu_t_field) {
-            Scalar avgK = 0.0, avgOmega = 0.0;
-            for (size_t i = 0; i < k_field->size(); ++i) {
-                avgK += (*k_field)[i];
-                avgOmega += (*omega_field)[i];
-            }
-            avgK /= k_field->size();
-            avgOmega /= omega_field->size();
-            
-            // Turbulent Reynolds number: Re_t = ρ * k / (μ * ω)
-            Scalar Re_t = rho * avgK / (mu * avgOmega + 1e-20);
-            
-            // Turbulent time scale: T_t = 1/ω
-            Scalar T_t = 1.0 / (avgOmega + 1e-20);
-            
-            // Turbulent length scale: L_t = √k / ω
-            Scalar L_t = std::sqrt(avgK) / (avgOmega + 1e-20);
-            
-            std::cout << "Turbulent Flow Parameters:" << std::endl;
-            std::cout << "  Turbulent Reynolds number: " << Re_t << std::endl;
-            std::cout << "  Turbulent time scale: " << T_t << " s" << std::endl;
-            std::cout << "  Turbulent length scale: " << L_t << " m" << std::endl;
-            std::cout << "  Average turbulent intensity: " << std::sqrt(2.0*avgK/3.0)/avgVelocity*100.0 << " %" << std::endl;
+            std::cout << "  Mass conservation violated - check solution" << std::endl;
         }
 
     } catch (const std::exception& e) {
         std::cerr << "\n*** A critical error occurred in main: " << e.what() << " ***" << std::endl;
-        return 1; // Indicate failure
+        return 1;
     }
 
     // Calculate and print total execution time
     auto end_time = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
     
-    std::cout << "\n--- CFD Simulation with SIMPLE + k-omega SST Turbulence Complete ---" << std::endl;
+    std::cout << "\n--- CFD Simulation Complete ---" << std::endl;
     std::cout << "\n=== EXECUTION TIME SUMMARY ===" << std::endl;
     
     // Format time in hours:minutes:seconds

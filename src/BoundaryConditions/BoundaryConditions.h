@@ -84,6 +84,12 @@ public:
         return setBC(patchName, fieldName, bc_config);
     }
 
+    bool setSymmetry(const std::string& patchName, const std::string& fieldName) {
+        BoundaryData bc_config;
+        bc_config.setSymmetry();
+        return setBC(patchName, fieldName, bc_config);
+    }
+
     // ----- Boundary Condition Getters ----- //
     // Get boundary condition configuration
     const BoundaryData* getFieldBC(const std::string& patchName, const std::string& fieldName) const {
@@ -118,6 +124,10 @@ public:
         
         const BoundaryPatch* patch = patch_it->second;
         const BoundaryData* bc = getFieldBC(patch->patchName, fieldName);
+        if (!bc) {
+            // Default to zero-gradient for scalars if not specified
+            return phi[face.ownerCell];
+        }
         
         // Apply boundary condition based on type
         switch (bc->type) {
@@ -130,9 +140,12 @@ public:
                 
             case BCType::FIXED_GRADIENT: {
                 // Fixed gradient: φ_f = φ_P + grad * distance
-                Scalar d_n = dot(face.e_Pf, face.normal);
+                Scalar d_n = dot(face.d_Pf, face.normal);
                 return phi[face.ownerCell] + bc->getFixedScalarGradient() * d_n;
             }
+            case BCType::SYMMETRY:
+                // Symmetry: zero normal gradient for scalars
+                return phi[face.ownerCell];
             
             default:
                 throw std::runtime_error("Unknown BC type for face " + std::to_string(face.id) + 
@@ -158,6 +171,10 @@ public:
         
         const BoundaryPatch* patch = patch_it->second;
         const BoundaryData* bc = getFieldBC(patch->patchName, fieldName);
+        if (!bc) {
+            // Default to copy owner for vectors if not specified
+            return phi[face.ownerCell];
+        }
         
         // Apply boundary condition based on type
         switch (bc->type) {
@@ -170,6 +187,12 @@ public:
             case BCType::ZERO_GRADIENT:
                 // Zero gradient: φ_f = φ_P
                 return phi[face.ownerCell];
+            case BCType::SYMMETRY: {
+                // Zero normal component at symmetry plane: U_f = U_P - (U_P·n) n
+                Vector U_P = phi[face.ownerCell];
+                Vector n = face.normal;
+                return U_P - dot(U_P, n) * n;
+            }
                 
             case BCType::FIXED_GRADIENT: {
                 // Fixed gradient: φ_f = φ_P + grad * distance
@@ -193,6 +216,7 @@ public:
             case BCType::FIXED_GRADIENT: return "FIXED_GRADIENT";
             case BCType::ZERO_GRADIENT: return "ZERO_GRADIENT";
             case BCType::NO_SLIP: return "NO_SLIP";
+            case BCType::SYMMETRY: return "SYMMETRY";
             default: 
                 throw std::runtime_error("Unknown BC type: " + std::to_string(static_cast<int>(bctype)));
         }

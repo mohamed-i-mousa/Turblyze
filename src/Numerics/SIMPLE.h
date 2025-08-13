@@ -56,6 +56,7 @@ public:
     void setConvergenceTolerance(Scalar tol);
     void setMaxIterations(int maxIter);
     void enableTurbulenceModeling(bool enable = true);
+    void setPhysicalProperties(Scalar rho_in, Scalar mu_in) { rho = rho_in; mu = mu_in; }
     
     // Turbulence getters
     const ScalarField* getTurbulentKineticEnergy() const;

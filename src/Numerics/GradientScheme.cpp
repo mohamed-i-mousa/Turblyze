@@ -113,9 +113,9 @@ VectorField GradientScheme::LeastSquares(
         }
     }
     
-    // Print statistics
-    std::cout << "LeastSquares gradient: " << cellsProcessed << " cells processed, " 
-              << cellsSkipped << " cells skipped" << std::endl;
+    // Debug: enable if needed
+    // std::cout << "LeastSquares gradient: " << cellsProcessed << " cells processed, "
+    //           << cellsSkipped << " cells skipped" << std::endl;
 
     return grad_phi;
 }
@@ -229,9 +229,9 @@ FaceVectorField GradientScheme::interpolateGradientsToFaces(
         }
     }
     
-    // Print performance statistics
-    std::cout << "Gradient interpolation: " << internalFacesProcessed << " internal faces, " 
-              << boundaryFacesProcessed << " boundary faces, " << facesSkipped << " faces skipped" << std::endl;
+    // Debug: enable if needed
+    // std::cout << "Gradient interpolation: " << internalFacesProcessed << " internal faces, "
+    //           << boundaryFacesProcessed << " boundary faces, " << facesSkipped << " faces skipped" << std::endl;
     
     return grad_phi_faces;
 }
