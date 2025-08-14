@@ -104,6 +104,7 @@ void SIMPLE::solve() {
             }
             matrixConstruct->setFaceMassFluxes(mdot_prev);
         }
+        
         solveMomentumEquations();
             
         calculateRhieChowFaceVelocities();

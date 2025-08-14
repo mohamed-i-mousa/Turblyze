@@ -102,7 +102,6 @@ public:
             }
         }
         return nullptr;
-        ;
     }
 
     // ----- Boundary Face Value Calculations ----- //
@@ -126,12 +125,14 @@ public:
         const BoundaryData* bc = getFieldBC(patch->patchName, fieldName);
         if (!bc) {
             // Default to zero-gradient for scalars if not specified
+            std::cerr << "No BC specified for face " << face.id << " in patch " << patch->patchName << ". Defaulting to zero-gradient." << std::endl;
             return phi[face.ownerCell];
         }
         
         // Apply boundary condition based on type
         switch (bc->type) {
             case BCType::FIXED_VALUE:
+                // Fixed value: φ_f = φ_b
                 return bc->getFixedScalarValue();
 
             case BCType::ZERO_GRADIENT:
@@ -173,20 +174,24 @@ public:
         const BoundaryData* bc = getFieldBC(patch->patchName, fieldName);
         if (!bc) {
             // Default to copy owner for vectors if not specified
+            std::cerr << "No BC specified for face " << face.id << " in patch " << patch->patchName << ". Defaulting to copy owner." << std::endl;
             return phi[face.ownerCell];
         }
         
         // Apply boundary condition based on type
         switch (bc->type) {
             case BCType::FIXED_VALUE:
+                // Fixed value: φ_f = φ_b
                 return bc->vectorValue;
                 
             case BCType::NO_SLIP:
+                // No slip: φ_f = (0.0, 0.0, 0.0)
                 return bc->vectorValue; 
                 
             case BCType::ZERO_GRADIENT:
                 // Zero gradient: φ_f = φ_P
                 return phi[face.ownerCell];
+
             case BCType::SYMMETRY: {
                 // Zero normal component at symmetry plane: U_f = U_P - (U_P·n) n
                 Vector U_P = phi[face.ownerCell];

@@ -240,7 +240,7 @@ Class `KOmegaSST`:
 - ParaView: Remember PolyData cells are faces; color by face arrays.
 
 
-## Call flow (high level)
+## Call flow
 
 ```mermaid
 flowchart TD
@@ -249,7 +249,7 @@ flowchart TD
   C --> D[compute face distances]
   D --> E[compute cell geometry]
   E --> F[BoundaryConditions setup]
-  F --> G[SIMPLE ctor]
+  F --> G[SIMPLE constructor]
   G --> H[SIMPLE.solve]
   H --> I[refresh caches]
   I --> J[solve Ux,Uy,Uz]

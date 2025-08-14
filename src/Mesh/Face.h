@@ -68,11 +68,6 @@ struct Face {
         geometricPropertiesCalculated = false;         
         const size_t nNodes = nodeIndices.size();
 
-        if (nNodes < 3) {
-            throw std::runtime_error("Warning: Face " + std::to_string(id) + " has fewer than 3 nodes (" + std::to_string(nNodes)
-                      + "). Cannot calculate geometric properties. Skipping.");
-        }
-
         for (size_t i = 0; i < nNodes; ++i) {
             if (nodeIndices[i] >= allNodes.size()) {
                 throw std::out_of_range("Error calculating properties for Face " + std::to_string(id) +

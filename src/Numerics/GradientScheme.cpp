@@ -22,10 +22,6 @@ VectorField GradientScheme::LeastSquares(
     const ScalarField& phi,
     const std::vector<Cell>& allCells) const
 {
-    if (allCells.empty()) {
-        throw std::invalid_argument("LeastSquares: Empty cell list provided");
-    }
-    
     size_t numCells = allCells.size();
     if (phi.size() != numCells) {
         throw std::invalid_argument("LeastSquares: Field size (" + std::to_string(phi.size()) + 
@@ -46,11 +42,6 @@ VectorField GradientScheme::LeastSquares(
     // Loop over all cells and solve small 3x3 least-squares system
     for (size_t i = 0; i < numCells; ++i) {
         const Cell& cell = allCells[i];
-
-        if (cell.neighbourCellIndices.empty()) {
-            cellsSkipped++;
-            continue; 
-        }
 
         if (cell.neighbourCellIndices.size() < 3) {
             cellsSkipped++;
@@ -138,28 +129,8 @@ FaceVectorField GradientScheme::interpolateGradientsToFaces(
     const std::vector<Cell>& allCells,
     const std::vector<Face>& allFaces) const
 {
-    // Input validation
-    if (allFaces.empty()) {
-        throw std::invalid_argument("interpolateGradientsToFaces: Empty face list provided");
-    }
-    if (allCells.empty()) {
-        throw std::invalid_argument("interpolateGradientsToFaces: Empty cell list provided");
-    }
     
     size_t numFaces = allFaces.size();
-    size_t numCells = allCells.size();
-    
-    if (grad_phi.size() != numCells) {
-        throw std::invalid_argument("interpolateGradientsToFaces: Gradient field size (" + 
-                                   std::to_string(grad_phi.size()) + 
-                                   ") does not match cell count (" + std::to_string(numCells) + ")");
-    }
-    
-    if (phi.size() != numCells) {
-        throw std::invalid_argument("interpolateGradientsToFaces: Scalar field size (" + 
-                                   std::to_string(phi.size()) + 
-                                   ") does not match cell count (" + std::to_string(numCells) + ")");
-    }
     
     // Initialize face gradient field
     FaceVectorField grad_phi_faces("grad_phi_faces", numFaces, Vector(0,0,0));

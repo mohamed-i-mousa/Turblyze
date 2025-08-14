@@ -16,7 +16,7 @@ class ConvectionScheme {
 public:
     virtual ~ConvectionScheme() = default;
     virtual void getFluxCoefficients(
-        Scalar F, // Convective mass flux rate through the face
+        Scalar massFlowRate,               // Convective mass flux rate through the face
         Scalar& a_P_conv,
         Scalar& a_N_conv
     ) const = 0;
@@ -30,7 +30,7 @@ public:
 class UpwindScheme : public ConvectionScheme {
 public:
     void getFluxCoefficients(
-        Scalar F,
+        Scalar massFlowRate,
         Scalar& a_P_conv,
         Scalar& a_N_conv
     ) const override;
@@ -44,7 +44,7 @@ public:
 class CentralDifferenceScheme : public ConvectionScheme {
 public:
     void getFluxCoefficients(
-        Scalar F,
+        Scalar massFlowRate,
         Scalar& a_P_conv,
         Scalar& a_N_conv
     ) const override;
@@ -54,7 +54,7 @@ public:
         const Face& face,
         const ScalarField& phi,
         const FaceVectorField& grad_phi_f,
-        Scalar F,
+        Scalar massFlowRate,
         const BoundaryConditions* bcManager = nullptr,
         const std::string& fieldName = ""
     ) const;
@@ -77,7 +77,7 @@ public:
 class SecondOrderUpwindScheme : public ConvectionScheme {
 public:
     void getFluxCoefficients(
-        Scalar F,
+        Scalar massFlowRate,
         Scalar& a_P_conv,
         Scalar& a_N_conv
     ) const override;
@@ -87,7 +87,7 @@ public:
         const Face& face,
         const ScalarField& phi,
         const VectorField& grad_phi,
-        Scalar F,
+        Scalar massFlowRate,
         const BoundaryConditions* bcManager = nullptr,
         const std::string& fieldName = ""
     ) const;
@@ -97,7 +97,7 @@ public:
         const Face& face,
         const ScalarField& phi,
         const VectorField& grad_phi,
-        Scalar F,
+        Scalar massFlowRate,
         const BoundaryConditions* bcManager = nullptr,
         const std::string& fieldName = ""
     ) const;

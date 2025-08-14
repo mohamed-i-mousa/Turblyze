@@ -50,20 +50,10 @@ struct Cell {
         centroid = Vector(0.0, 0.0, 0.0);
         Vector centroidSum(0.0, 0.0, 0.0);
 
-        if (faceIndices.empty()) {
-            throw std::runtime_error("Warning: Cell " + std::to_string(id) + " has no assigned faces. Calculations cannot proceed!");
-        }
-
         for (size_t i = 0; i < faceIndices.size(); ++i) {
             
             size_t faceIndex = faceIndices[i];
             const Face& face = allFaces[faceIndex];
-
-            if (faceIndex >= allFaces.size()) {
-                throw std::out_of_range("Error in Cell" + std::to_string(id) + "calculation: " +
-                "Face index " + std::to_string(faceIndex) + " is out of range for face list (size " +
-                std::to_string(allFaces.size()) + ").");
-            }
 
             if(!face.geometricPropertiesCalculated) {
                 throw std::runtime_error("Error in Cell " + std::to_string(id) + " calculation: " +

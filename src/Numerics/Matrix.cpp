@@ -140,7 +140,7 @@ void Matrix::buildMomentumMatrix(
     TimeScheme timeScheme,
     Scalar dt,
     Scalar theta,
-    const VectorField& grad_phi_ref,
+    const VectorField& grad_phi,
     const FaceVectorField& grad_phi_f,
     const ConvectionScheme& convScheme)
 {
@@ -148,7 +148,7 @@ void Matrix::buildMomentumMatrix(
     size_t numCells = allCells.size();
 
     // Use cached mass flow rate for momentum equations
-    FaceFluxField mdot = mdotFaces; // copy cached by default
+    const FaceFluxField& mdot = mdotFaces;
 
     // Rough estimate to minimise reallocations of tripletList
     size_t internalFaces = 0, boundaryFaces = 0;
@@ -181,28 +181,27 @@ void Matrix::buildMomentumMatrix(
                 const Vector& e_Pf = face.e_Pf;
                 Vector E_f = dot(S_f, e_Pf) * e_Pf;  // orthogonal component E_f (minimum approach)
                 Scalar Gamma_f = Gamma[P];
-                Scalar D = Gamma_f * E_f.magnitude() / face.d_Pf_mag;
-                Scalar F = mdot[face.id];
+                Scalar a_diff = Gamma_f * E_f.magnitude() / face.d_Pf_mag;
                 Scalar a_P_conv, a_N_conv;
-                convScheme.getFluxCoefficients(F, a_P_conv, a_N_conv);
+                convScheme.getFluxCoefficients(mdot[face.id], a_P_conv, a_N_conv);
 
                 // if (bc->type == BCType::FIXED_VALUE) {
                 if (bc->type == BCType::FIXED_VALUE) {
                     Scalar phi_b = computeDirichletValue(bc, fieldName);
                     // Include convective diagonal contribution for stability (TO BE CHECKED)
-                    tripletList.emplace_back(P, P, D + a_P_conv);
+                    tripletList.emplace_back(P, P, a_diff + a_P_conv);
                     // RHS gets opposing side contribution (TO BE CHECKED)
-                    b_vector(P) += (D - a_N_conv) * phi_b;
+                    b_vector(P) += (a_diff - a_N_conv) * phi_b;
                     // Non-orthogonal correction
                     Vector T_f = S_f - E_f;
-                    Scalar flux_nonOrth = Gamma_f * dot(grad_phi_ref[P], T_f);
+                    Scalar flux_nonOrth = Gamma_f * dot(grad_phi[P], T_f);
                     b_vector(P) -= flux_nonOrth;
                 } else if (bc->type == BCType::FIXED_GRADIENT) {
                     b_vector(P) -= Gamma_f * bc->getFixedScalarGradient() * E_f.magnitude();
                     tripletList.emplace_back(P, P, a_P_conv);
                     // Non-orthogonal correction
                     Vector T_f = S_f - E_f;
-                    Scalar flux_nonOrth = Gamma_f * dot(grad_phi_ref[P], T_f);
+                    Scalar flux_nonOrth = Gamma_f * dot(grad_phi[P], T_f);
                     b_vector(P) -= flux_nonOrth;
                 } else if (bc->type == BCType::ZERO_GRADIENT) {
                     // Zero normal gradient -> no diffusive flux; keep convective diag contribution only
@@ -224,7 +223,7 @@ void Matrix::buildMomentumMatrix(
                 Scalar d_PN_mag = d_PN.magnitude();
                 Scalar denom = d_P / (Gamma[P] + 1e-20) + d_N / (Gamma[N] + 1e-20);
                 Scalar Gamma_f = d_PN_mag / (denom + 1e-20);
-                Scalar D = Gamma_f * E_f.magnitude() / d_PN_mag;
+                Scalar a_diff = Gamma_f * E_f.magnitude() / d_PN_mag;
 
                 // Non-orthogonal correction
                 Vector T_f = S_f - dot(S_f, e_PN) * e_PN; // perpendicular component of S_f
@@ -237,26 +236,26 @@ void Matrix::buildMomentumMatrix(
                 convScheme.getFluxCoefficients(F, a_P_conv, a_N_conv);
 
                 // High-order correction
-                Scalar correction = 0.0;
+                Scalar highOrderCorrection = 0.0;
                 if (const CentralDifferenceScheme* cds = dynamic_cast<const CentralDifferenceScheme*>(&convScheme)) {
-                    correction = cds->calculateCentralDifferenceCorrection(face, phi, grad_phi_f, F);
+                    highOrderCorrection = cds->calculateCentralDifferenceCorrection(face, phi, grad_phi_f, F);
                 } else if (const SecondOrderUpwindScheme* sous = dynamic_cast<const SecondOrderUpwindScheme*>(&convScheme)) {
-                    correction = sous->calculateSecondOrderCorrection(face, phi, grad_phi_ref, F);
+                    highOrderCorrection = sous->calculateSecondOrderCorrection(face, phi, grad_phi, F);
                 } else if (dynamic_cast<const UpwindScheme*>(&convScheme)) {
-                    correction = 0.0;
+                    highOrderCorrection = 0.0;
                 }
                 
-                b_vector(P) -= correction;   // subtract from owner
-                b_vector(N) += correction;   // add to neighbour (conservation)
+                b_vector(P) -= highOrderCorrection;   // subtract from owner
+                b_vector(N) += highOrderCorrection;   // add to neighbour (conservation)
 
                 
                 // Contribution to cell P
-                tripletList.emplace_back(P, P, D + a_P_conv);
-                tripletList.emplace_back(P, N, -D + a_N_conv);
+                tripletList.emplace_back(P, P, a_diff + a_P_conv);
+                tripletList.emplace_back(P, N, -a_diff + a_N_conv);
 
                 // Contribution to cell N is opposite
-                tripletList.emplace_back(N, N, D - a_N_conv);
-                tripletList.emplace_back(N, P, -D - a_P_conv);
+                tripletList.emplace_back(N, N, a_diff - a_N_conv);
+                tripletList.emplace_back(N, P, -a_diff - a_P_conv);
             }
         }
     } else { // TRANSIENT
@@ -287,7 +286,7 @@ void Matrix::buildMomentumMatrix(
                 const Vector& e_Pf = face.e_Pf;
                 Vector E_f = dot(S_f, e_Pf) * e_Pf;  // orthogonal component
                 Scalar Gamma_f = Gamma[P];
-                Scalar D = Gamma_f * E_f.magnitude() / face.d_Pf_mag;
+                Scalar a_diff = Gamma_f * E_f.magnitude() / face.d_Pf_mag;
 
                 // --- IMPLICIT PART (contributes to A and b) ---
                 Scalar F_new = mdot[face.id];
@@ -297,9 +296,9 @@ void Matrix::buildMomentumMatrix(
                 if (bc->type == BCType::FIXED_VALUE) {
                     // The implicit flux is: (D + a_P_conv_new)*phi_P - (D - min(F,0))*phi_b
                     // The phi_P term goes to the matrix diagonal
-                    tripletList.emplace_back(P, P, theta * (D + a_P_conv_new));
+                    tripletList.emplace_back(P, P, theta * (a_diff + a_P_conv_new));
                     // The phi_b term goes to the source vector
-                    b_vector(P) += theta * (D - a_N_conv_new) * bc->getFixedScalarValue();
+                    b_vector(P) += theta * (a_diff - a_N_conv_new) * bc->getFixedScalarValue();
                 } else if (bc->type == BCType::FIXED_GRADIENT) {
                     b_vector(P) -= theta * Gamma_f * bc->getFixedScalarGradient() * E_f.magnitude();
                     tripletList.emplace_back(P, P, theta * a_P_conv_new);
@@ -313,7 +312,7 @@ void Matrix::buildMomentumMatrix(
 
                     if (bc->type == BCType::FIXED_VALUE) {
                         // Total spatial flux from the previous time step
-                        Scalar flux_old = (D + a_P_conv_old) * phi_old[P] + (-D + a_N_conv_old) * bc->getFixedScalarValue();
+                        Scalar flux_old = (a_diff + a_P_conv_old) * phi_old[P] + (-a_diff + a_N_conv_old) * bc->getFixedScalarValue();
                         b_vector(P) -= (S(1.0) - theta) * flux_old;
                     } else if (bc->type == BCType::FIXED_GRADIENT) {
                     b_vector(P) -= (S(1.0) - theta) * Gamma_f * bc->getFixedScalarGradient() * E_f.magnitude();
@@ -323,7 +322,7 @@ void Matrix::buildMomentumMatrix(
 
                 // ----- Non-orthogonal correction (over-relaxed) ----- //
                 Vector t_f_b = S_f - dot(S_f, e_Pf) * e_Pf;
-                Scalar flux_nonOrth_bnd = Gamma_f * dot(grad_phi_ref[P], t_f_b);
+                Scalar flux_nonOrth_bnd = Gamma_f * dot(grad_phi[P], t_f_b);
                 b_vector(P) -= flux_nonOrth_bnd;
             } else {
                 // --- INTERNAL FACE LOGIC ---
@@ -337,7 +336,7 @@ void Matrix::buildMomentumMatrix(
                 Scalar d_PN_mag = d_PN.magnitude();
                 Scalar denom = d_P / (Gamma[P] + 1e-20) + d_N / (Gamma[N] + 1e-20);
                 Scalar Gamma_f = d_PN_mag / (denom + 1e-20);
-                Scalar D = Gamma_f * E_f.magnitude() / d_PN_mag;
+                Scalar a_diff = Gamma_f * E_f.magnitude() / d_PN_mag;
 
                 // Implicit part using pre-computed mass flow rate
                 Scalar F_new = mdot[face.id];
@@ -345,12 +344,12 @@ void Matrix::buildMomentumMatrix(
                 convScheme.getFluxCoefficients(F_new, a_P_conv_new, a_N_conv_new);
                 
                 // Contribution to P
-                tripletList.emplace_back(P, P, theta * (D + a_P_conv_new));
-                tripletList.emplace_back(P, N, theta * (-D + a_N_conv_new));
+                tripletList.emplace_back(P, P, theta * (a_diff + a_P_conv_new));
+                tripletList.emplace_back(P, N, theta * (-a_diff + a_N_conv_new));
                 
                 // Contribution to N is opposite
-                tripletList.emplace_back(N, N, theta * (D - a_N_conv_new));
-                tripletList.emplace_back(N, P, theta * (-D - a_P_conv_new));
+                tripletList.emplace_back(N, N, theta * (a_diff - a_N_conv_new));
+                tripletList.emplace_back(N, P, theta * (-a_diff - a_P_conv_new));
 
                 // Explicit part
                 if (dt > 0 && theta < 1.0) {
@@ -358,7 +357,7 @@ void Matrix::buildMomentumMatrix(
                     Scalar a_P_conv_old, a_N_conv_old;
                     convScheme.getFluxCoefficients(F_old, a_P_conv_old, a_N_conv_old);
                     
-                    Scalar flux_old = (D + a_P_conv_old) * phi_old[P] + (-D + a_N_conv_old) * phi_old[N];
+                    Scalar flux_old = (a_diff + a_P_conv_old) * phi_old[P] + (-a_diff + a_N_conv_old) * phi_old[N];
 
                     b_vector(P) -= (S(1.0) - theta) * flux_old;
                     b_vector(N) += (S(1.0) - theta) * flux_old;
@@ -460,15 +459,14 @@ void Matrix::buildScalarTransportMatrix(
                 const Vector& e_Pf = face.e_Pf;
                 Vector E_f = dot(S_f, e_Pf) * e_Pf;  // orthogonal component E_f (minimum approach)
                 Scalar Gamma_f = Gamma[P];
-                Scalar D = Gamma_f * E_f.magnitude() / face.d_Pf_mag;
-                Scalar F = mdot[face.id];
+                Scalar a_diff = Gamma_f * E_f.magnitude() / face.d_Pf_mag;
                 Scalar a_P_conv, a_N_conv;
-                convScheme.getFluxCoefficients(F, a_P_conv, a_N_conv);
+                convScheme.getFluxCoefficients(mdot[face.id], a_P_conv, a_N_conv);
 
                 if (bc->type == BCType::FIXED_VALUE) {
                     Scalar phi_b = computeDirichletValue(bc, fieldName);
-                    tripletList.emplace_back(P, P, D);
-                    b_vector(P) += (D - F) * phi_b;
+                    tripletList.emplace_back(P, P, a_diff);
+                    b_vector(P) += (a_diff - mdot[face.id]) * phi_b;
                     // Non-orthogonal correction
                     Vector T_f = S_f - E_f;
                     Scalar flux_nonOrth = Gamma_f * dot(grad_phi_ref[P], T_f);
@@ -499,7 +497,7 @@ void Matrix::buildScalarTransportMatrix(
                 // Harmonic interpolation of Gamma at face
                 Scalar denom_gamma = d_P / (Gamma[P] + 1e-20) + d_N / (Gamma[N] + 1e-20);
                 Scalar Gamma_f = (d_P + d_N) / (denom_gamma + 1e-20);
-                Scalar D = Gamma_f * E_f.magnitude() / d_PN.magnitude();
+                Scalar a_diff = Gamma_f * E_f.magnitude() / d_PN.magnitude();
 
                 // Non-orthogonal correction
                 Vector T_f = S_f - dot(S_f, e_PN) * e_PN; // perpendicular component of S_f
@@ -512,26 +510,26 @@ void Matrix::buildScalarTransportMatrix(
                 convScheme.getFluxCoefficients(F, a_P_conv, a_N_conv);
 
                 // High-order correction
-                Scalar correction = 0.0;
+                Scalar highOrderCorrection = 0.0;
                 if (const CentralDifferenceScheme* cds = dynamic_cast<const CentralDifferenceScheme*>(&convScheme)) {
-                    correction = cds->calculateCentralDifferenceCorrection(face, phi, grad_phi_f, F);
+                    highOrderCorrection = cds->calculateCentralDifferenceCorrection(face, phi, grad_phi_f, F);
                 } else if (const SecondOrderUpwindScheme* sous = dynamic_cast<const SecondOrderUpwindScheme*>(&convScheme)) {
-                    correction = sous->calculateSecondOrderCorrection(face, phi, grad_phi_ref, F);
+                    highOrderCorrection = sous->calculateSecondOrderCorrection(face, phi, grad_phi_ref, F);
                 } else if (dynamic_cast<const UpwindScheme*>(&convScheme)) {
-                    correction = 0.0;
+                    highOrderCorrection = 0.0;
                 }
                 
-                b_vector(P) -= correction;   // subtract from owner
-                b_vector(N) += correction;   // add to neighbour (conservation)
+                b_vector(P) -= highOrderCorrection;   // subtract from owner
+                b_vector(N) += highOrderCorrection;   // add to neighbour (conservation)
 
                 
                 // Contribution to cell P
-                tripletList.emplace_back(P, P, D + a_P_conv);
-                tripletList.emplace_back(P, N, -D + a_N_conv);
+                tripletList.emplace_back(P, P, a_diff + a_P_conv);
+                tripletList.emplace_back(P, N, -a_diff + a_N_conv);
 
                 // Contribution to cell N is opposite
-                tripletList.emplace_back(N, N, D - a_N_conv);
-                tripletList.emplace_back(N, P, -D - a_P_conv);
+                tripletList.emplace_back(N, N, a_diff - a_N_conv);
+                tripletList.emplace_back(N, P, -a_diff - a_P_conv);
             }
         }
     } else { // TRANSIENT
@@ -562,7 +560,7 @@ void Matrix::buildScalarTransportMatrix(
                 const Vector& e_Pf = face.e_Pf;
                 Vector E_f = dot(S_f, e_Pf) * e_Pf;  // orthogonal component
                 Scalar Gamma_f = Gamma[P];
-                Scalar D = Gamma_f * E_f.magnitude() / face.d_Pf_mag;
+                Scalar a_diff = Gamma_f * E_f.magnitude() / face.d_Pf_mag;
 
                 // --- IMPLICIT PART (contributes to A and b) ---
                 Scalar F_new = mdot[face.id];
@@ -572,9 +570,9 @@ void Matrix::buildScalarTransportMatrix(
                 if (bc->type == BCType::FIXED_VALUE) {
                     // The implicit flux is: (D + a_P_conv_new)*phi_P - (D - min(F,0))*phi_b
                     // The phi_P term goes to the matrix diagonal
-                    tripletList.emplace_back(P, P, theta * (D + a_P_conv_new));
+                    tripletList.emplace_back(P, P, theta * (a_diff + a_P_conv_new));
                     // The phi_b term goes to the source vector
-                    b_vector(P) += theta * (D - a_N_conv_new) * bc->getFixedScalarValue();
+                    b_vector(P) += theta * (a_diff - a_N_conv_new) * bc->getFixedScalarValue();
                 } else if (bc->type == BCType::FIXED_GRADIENT) {
                     b_vector(P) -= theta * Gamma_f * bc->getFixedScalarGradient() * E_f.magnitude();
                     tripletList.emplace_back(P, P, theta * a_P_conv_new);
@@ -588,7 +586,7 @@ void Matrix::buildScalarTransportMatrix(
 
                     if (bc->type == BCType::FIXED_VALUE) {
                         // Total spatial flux from the previous time step
-                        Scalar flux_old = (D + a_P_conv_old) * phi_old[P] + (-D + a_N_conv_old) * bc->getFixedScalarValue();
+                        Scalar flux_old = (a_diff + a_P_conv_old) * phi_old[P] + (-a_diff + a_N_conv_old) * bc->getFixedScalarValue();
                         b_vector(P) -= (S(1.0) - theta) * flux_old;
                     } else if (bc->type == BCType::FIXED_GRADIENT) {
                     b_vector(P) -= (S(1.0) - theta) * Gamma_f * bc->getFixedScalarGradient() * E_f.magnitude();
@@ -612,20 +610,19 @@ void Matrix::buildScalarTransportMatrix(
                 // Harmonic interpolation of Gamma at face
                 Scalar denom_gamma = d_P / (Gamma[P] + 1e-20) + d_N / (Gamma[N] + 1e-20);
                 Scalar Gamma_f = (d_P + d_N) / (denom_gamma + 1e-20);
-                Scalar D = Gamma_f * E_f.magnitude() / d_PN.magnitude();
+                Scalar a_diff = Gamma_f * E_f.magnitude() / d_PN.magnitude();
 
                 // Implicit part using pre-computed mass flow rate
-                Scalar F_new = mdot[face.id];
                 Scalar a_P_conv_new, a_N_conv_new;
-                convScheme.getFluxCoefficients(F_new, a_P_conv_new, a_N_conv_new);
+                convScheme.getFluxCoefficients(mdot[face.id], a_P_conv_new, a_N_conv_new);
                 
                 // Contribution to P
-                tripletList.emplace_back(P, P, theta * (D + a_P_conv_new));
-                tripletList.emplace_back(P, N, theta * (-D + a_N_conv_new));
+                tripletList.emplace_back(P, P, theta * (a_diff + a_P_conv_new));
+                tripletList.emplace_back(P, N, theta * (-a_diff + a_N_conv_new));
                 
                 // Contribution to N is opposite
-                tripletList.emplace_back(N, N, theta * (D - a_N_conv_new));
-                tripletList.emplace_back(N, P, theta * (-D - a_P_conv_new));
+                tripletList.emplace_back(N, N, theta * (a_diff - a_N_conv_new));
+                tripletList.emplace_back(N, P, theta * (-a_diff - a_P_conv_new));
 
                 // Explicit part
                 if (dt > 0 && theta < 1.0) {
@@ -633,7 +630,7 @@ void Matrix::buildScalarTransportMatrix(
                     Scalar a_P_conv_old, a_N_conv_old;
                     convScheme.getFluxCoefficients(F_old, a_P_conv_old, a_N_conv_old);
                     
-                    Scalar flux_old = (D + a_P_conv_old) * phi_old[P] + (-D + a_N_conv_old) * phi_old[N];
+                    Scalar flux_old = (a_diff + a_P_conv_old) * phi_old[P] + (-a_diff + a_N_conv_old) * phi_old[N];
 
                     b_vector(P) -= (S(1.0) - theta) * flux_old;
                     b_vector(N) += (S(1.0) - theta) * flux_old;

@@ -291,15 +291,9 @@ void readMshFile(const std::string &filePath,
 
   // Initialize cell's ID and pre-allocate vectors for better performance
   for (size_t i = 0; i < num_cells; ++i) {
-    if (i < allCells.size())
-    {
-      allCells[i].id = i;
-      allCells[i].faceIndices.clear();
-      allCells[i].neighbourCellIndices.clear();
-    }
-    else {
-      throw std::runtime_error("Error: Cell vector out of bounds during initialization. num_cells: " + std::to_string(num_cells) + ", index: " + std::to_string(i));
-    }
+    allCells[i].id = i;
+    allCells[i].faceIndices.clear();
+    allCells[i].neighbourCellIndices.clear();
   }
 
   // Temporary storage for accumulating unique neighbor cell indices for each cell.
@@ -356,16 +350,6 @@ void readMshFile(const std::string &filePath,
     }
   }
 
-  // ----- Final Mesh Validation ----- //
-  
-  // Validate that all cells have at least 4 faces (minimum for 3D)
-  for (size_t i = 0; i < allCells.size(); ++i) {
-    if (allCells[i].faceIndices.size() < 4) {
-      std::cerr << "Warning: Cell " << i << " has only " << allCells[i].faceIndices.size() 
-                << " faces, which is below the minimum of 4 for 3D cells." << std::endl;
-    }
-  }
-  
   // Validate that all faces have at least 3 nodes
   for (size_t i = 0; i < allFaces.size(); ++i) {
     if (allFaces[i].nodeIndices.size() < 3) {
