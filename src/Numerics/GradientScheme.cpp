@@ -1,6 +1,8 @@
 #include "GradientScheme.h"
 
 #include <stdexcept>
+#include <iostream>
+#include <cmath>
 #include <eigen3/Eigen/Dense>
 
 
@@ -16,7 +18,7 @@
 *   b_i = w_i * (phi_i - phi_P)
 *   w_i = 1/|r_i - r_P|² (inverse distance squared weighting)
 * 
-* The solution ∇φ_P is obtained by solving the 3x3 system using LLT decomposition.
+* The solution ∇φ_P is obtained by solving the 3x3 system.
 */
 VectorField GradientScheme::LeastSquares(
     const ScalarField& phi,
@@ -24,8 +26,9 @@ VectorField GradientScheme::LeastSquares(
 {
     size_t numCells = allCells.size();
     if (phi.size() != numCells) {
-        throw std::invalid_argument("LeastSquares: Field size (" + std::to_string(phi.size()) + 
-                                   ") does not match cell count (" + std::to_string(numCells) + ")");
+        throw std::invalid_argument(
+            "LeastSquares: Field size (" + std::to_string(phi.size()) + 
+            ") does not match cell count (" + std::to_string(numCells) + ")");
     }
     
     VectorField grad_phi("grad(" + phi.name + ")", numCells, Vector(0,0,0));
@@ -105,29 +108,31 @@ VectorField GradientScheme::LeastSquares(
     }
     
     // Debug: enable if needed
-    // std::cout << "LeastSquares gradient: " << cellsProcessed << " cells processed, "
-    //           << cellsSkipped << " cells skipped" << std::endl;
-
+    // std::cout << "LeastSquares gradient: " << cellsProcessed 
+    //           << " cells processed, " << cellsSkipped 
+    //           << " cells skipped" << std::endl;
     return grad_phi;
 }
 
 /* Interpolate cell-centered gradients to face values using the scheme:
-* ∇φ_f = average(∇φ_f) + [(φ_N - φ_P)/2 - dot(average(∇φ_f), e_PN)] * e_PN
-* 
-* where:
-*   average(∇φ_f) = (g_P * ∇φ_P + g_N * ∇φ_N)
-*   e_PN = d_PN / |d_PN|
-*   g_P, g_N are interpolation weights (distance-based)
-* 
-* This scheme provides second-order accuracy and ensures consistency
-* between the gradient interpolation and the underlying field values.
-*/
+ * ∇φ_f = ∇φ_avg + [ (φ_N - φ_P)/|d_PN| - (∇φ_avg · e_PN) ] e_PN
+ *
+ * where:
+ *   ∇φ_avg = g_P ∇φ_P + g_N ∇φ_N (distance-weighted average)
+ *   e_PN   = d_PN / |d_PN| (unit vector P→N)
+ *   g_P, g_N are interpolation weights (distance-based)
+ *
+ * This scheme enforces consistency of the directional derivative along the
+ * line connecting cell centers while preserving second-order accuracy.
+ */
 
 FaceVectorField GradientScheme::interpolateGradientsToFaces(
     const VectorField& grad_phi,
     const ScalarField& phi,
     const std::vector<Cell>& allCells,
-    const std::vector<Face>& allFaces) const
+    const std::vector<Face>& allFaces,
+    const BoundaryConditions& boundaryConditions,
+    const std::string& fieldName) const
 {
     
     size_t numFaces = allFaces.size();
@@ -138,25 +143,21 @@ FaceVectorField GradientScheme::interpolateGradientsToFaces(
     // Performance monitoring
     size_t internalFacesProcessed = 0;
     size_t boundaryFacesProcessed = 0;
-    size_t facesSkipped = 0;
     
     // Loop over all faces
     for (size_t faceId = 0; faceId < numFaces; ++faceId) {
         const Face& face = allFaces[faceId];
         
-        if (!face.geometricPropertiesCalculated) {
-            facesSkipped++;
-            continue;
-        }
-        
         size_t P = face.ownerCell;
         
         if (face.isBoundary()) {
-            // For boundary faces, use the owner cell gradient
-            // This is a simple approach; more sophisticated boundary treatments
-            // could be implemented based on boundary conditions
-            grad_phi_faces[faceId] = grad_phi[P];
+            grad_phi_faces[faceId] = calculateBoundaryFaceGradient
+            (
+                face, grad_phi[P], phi, boundaryConditions, fieldName
+            );
+
             boundaryFacesProcessed++;
+        
         } else {
             // For internal faces, use the specified interpolation scheme
             size_t N = face.neighbourCell.value();
@@ -180,13 +181,15 @@ FaceVectorField GradientScheme::interpolateGradientsToFaces(
             
             Scalar g_P, g_N;
             if (total_dist < GRADIENT_TOLERANCE) {
-                throw std::runtime_error("GradientScheme::interpolateGradientsToFaces: Face is equidistant, use simple average");
+                throw std::runtime_error(
+                    "GradientScheme::interpolateGradientsToFaces: "
+                    "Face is equidistant, use simple average");
             } else {
                 // Distance-weighted interpolation
                 g_P = d_Nf / total_dist; // Weight for cell P
                 g_N = d_Pf / total_dist; // Weight for cell N
             }
-            
+
             // Calculate average gradient at face
             Vector grad_avg = g_P * grad_phi[P] + g_N * grad_phi[N];
             
@@ -201,8 +204,111 @@ FaceVectorField GradientScheme::interpolateGradientsToFaces(
     }
     
     // Debug: enable if needed
-    // std::cout << "Gradient interpolation: " << internalFacesProcessed << " internal faces, "
-    //           << boundaryFacesProcessed << " boundary faces, " << facesSkipped << " faces skipped" << std::endl;
-    
+    // std::cout << "Gradient interpolation: " << internalFacesProcessed 
+    //           << " internal faces, " << boundaryFacesProcessed 
+    //           << " boundary faces, " << facesSkipped << " faces skipped" 
+    //           << std::endl;
+
     return grad_phi_faces;
+}
+
+/* Calculate boundary face gradient based on boundary condition type
+*
+* For different BC types:
+* - FIXED_VALUE: Calculates normal gradient from boundary-cell value difference
+* - ZERO_GRADIENT: Uses cell gradient (traditional approach)
+* - FIXED_GRADIENT: Applies the specified gradient value
+* - SYMMETRY: Enforces zero normal gradient for scalars
+*/
+Vector GradientScheme::calculateBoundaryFaceGradient(
+    const Face& face,
+    const Vector& cellGradient,
+    const ScalarField& phi,
+    const BoundaryConditions& boundaryConditions,
+    const std::string& fieldName) const
+{
+    // Find the boundary patch for this face
+    const BoundaryPatch* patch = nullptr;
+    for (const auto& p : boundaryConditions.patches) {
+        if (face.id >= p.firstFaceIndex && face.id <= p.lastFaceIndex) {
+            patch = &p;
+            break;
+        }
+    }
+
+    // Get the boundary condition for this field 
+    const BoundaryData* bc = 
+        boundaryConditions.getFieldBC(patch->patchName, fieldName);
+    
+    // If no BC specified, use cell gradient
+    if (!bc) return cellGradient;
+    
+    switch (bc->type) {
+        case BCType::FIXED_VALUE: {
+            // For fixed value BC, calculate normal gradient from boundary-cell
+            // difference and keep tangential components from cell gradient
+            
+            Scalar boundaryValue = S(0.0);
+            if (bc->valueType == BCValueType::SCALAR) {
+                boundaryValue = bc->getFixedScalarValue();
+            } else if (bc->valueType == BCValueType::VECTOR) {
+                // Determine component from scalar field name
+                if (phi.name == "Ux" || phi.name == "U_x") {
+                    boundaryValue = bc->vectorValue.x;
+                } else if (phi.name == "Uy" || phi.name == "U_y") {
+                    boundaryValue = bc->vectorValue.y;
+                } else if (phi.name == "Uz" || phi.name == "U_z") {
+                    boundaryValue = bc->vectorValue.z;
+                } else {
+                    // Fallback: assume zero normal gradient
+                    return cellGradient;
+                }
+            } else {
+                // Unknown BC value type: fallback to cell gradient
+                return cellGradient;
+            }
+
+            Scalar cellValue = phi[face.ownerCell];
+            
+            // Calculate normal distance from cell center to face
+            Scalar d_n = dot(face.d_Pf, face.normal);
+            if (std::abs(d_n) < GRADIENT_TOLERANCE) {
+                return cellGradient;
+            }
+            
+            // Calculate normal gradient: ∂φ/∂n = (φ_boundary - φ_cell) / d_n
+            Scalar normalGradient = (boundaryValue - cellValue) / d_n;
+            
+            // Project cell gradient onto tangential directions
+            Vector tangentialGradient = 
+                cellGradient - dot(cellGradient, face.normal) * face.normal;
+            
+            return tangentialGradient + normalGradient * face.normal;
+        }
+        
+        case BCType::ZERO_GRADIENT:
+            // Zero gradient: use cell gradient
+            return cellGradient;
+            
+        case BCType::FIXED_GRADIENT: {
+            // For fixed gradient BC, apply the specified gradient value
+            Scalar specifiedGradient = bc->getFixedScalarGradient();
+            
+            // Project cell gradient onto tangential directions and combine
+            // with specified normal gradient
+            Vector tangentialGradient = 
+                cellGradient - dot(cellGradient, face.normal) * face.normal;
+            
+            return tangentialGradient + specifiedGradient * face.normal;
+        }
+        
+        case BCType::SYMMETRY:
+            // Symmetry: zero normal gradient for scalars
+            // Remove normal component of gradient
+            return cellGradient - dot(cellGradient, face.normal) * face.normal;
+            
+        default:
+            // For unknown/unhandled BC types, assume zero-gradient
+            return cellGradient;
+    }
 }

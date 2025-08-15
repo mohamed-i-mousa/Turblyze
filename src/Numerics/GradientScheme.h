@@ -44,7 +44,19 @@ public:
         const VectorField& grad_phi,
         const ScalarField& phi,
         const std::vector<Cell>& allCells,
-        const std::vector<Face>& allFaces
+        const std::vector<Face>& allFaces,
+        const BoundaryConditions& boundaryConditions,
+        const std::string& fieldName
+    ) const;
+
+private:
+    // Calculate boundary face gradient based on boundary condition type
+    Vector calculateBoundaryFaceGradient(
+        const Face& face,
+        const Vector& cellGradient,
+        const ScalarField& phi,
+        const BoundaryConditions& boundaryConditions,
+        const std::string& fieldName
     ) const;
 };
 

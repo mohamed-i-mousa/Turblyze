@@ -107,12 +107,12 @@ void Matrix::refreshIterationCaches(const PressureField& p, const VelocityField&
     mdotFaces = calculateMassFlowRate(allFaces, allCells, U, rho, bcManager, faceToPatchMap);
 
     // Interpolate pressure gradient to faces
-    gradP_f = gradScheme.interpolateGradientsToFaces(gradP, p, allCells, allFaces);
+    gradP_f = gradScheme.interpolateGradientsToFaces(gradP, p, allCells, allFaces, bcManager, "p");
 
     // Interpolate velocity gradients to faces
-    gradUx_f = gradScheme.interpolateGradientsToFaces(gradUx, Ux, allCells, allFaces);
-    gradUy_f = gradScheme.interpolateGradientsToFaces(gradUy, Uy, allCells, allFaces);
-    gradUz_f = gradScheme.interpolateGradientsToFaces(gradUz, Uz, allCells, allFaces);
+    gradUx_f = gradScheme.interpolateGradientsToFaces(gradUx, Ux, allCells, allFaces, bcManager, "U");
+    gradUy_f = gradScheme.interpolateGradientsToFaces(gradUy, Uy, allCells, allFaces, bcManager, "U");
+    gradUz_f = gradScheme.interpolateGradientsToFaces(gradUz, Uz, allCells, allFaces, bcManager, "U");
 
     // Compute turbulence gradients if turbulence model is available
     if (turbulenceModel) {
@@ -123,8 +123,8 @@ void Matrix::refreshIterationCaches(const PressureField& p, const VelocityField&
         gradOmega = gradScheme.LeastSquares(omega_field, allCells);
         
         // Interpolate turbulence gradients to faces
-        gradk_f = gradScheme.interpolateGradientsToFaces(gradk, k_field, allCells, allFaces);
-        gradOmega_f = gradScheme.interpolateGradientsToFaces(gradOmega, omega_field, allCells, allFaces);
+        gradk_f = gradScheme.interpolateGradientsToFaces(gradk, k_field, allCells, allFaces, bcManager, "k");
+        gradOmega_f = gradScheme.interpolateGradientsToFaces(gradOmega, omega_field, allCells, allFaces, bcManager, "omega");
     }
 
     cachesValid = true;
@@ -420,7 +420,7 @@ void Matrix::buildScalarTransportMatrix(
     else if (isOmega)       grad_phi_f = gradOmega_f;
     else {
         // For other fields, interpolate gradients to faces
-        grad_phi_f = gradScheme.interpolateGradientsToFaces(grad_phi, phi, allCells, allFaces);
+        grad_phi_f = gradScheme.interpolateGradientsToFaces(grad_phi, phi, allCells, allFaces, bcManager, fieldName);
     }
 
     // Re-use cached mdot for velocity equations; otherwise compute locally
