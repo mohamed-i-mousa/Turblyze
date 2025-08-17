@@ -7,62 +7,80 @@
 
 #include "Face.h"
 
-// Enum contains the common boundary condition
-enum class BoundaryConditionType {
-    VELOCITY_INLET,
-    PRESSURE_INLET,
-    PRESSURE_OUTLET,
-    WALL,
-    SYMMETRY,
-    PERIODIC,
-    MASS_FLOW_INLET,
-    OUTFLOW,
-    INTERFACE,
-    INTERIOR,
-    SOLID,
-    FLUID,
-    UNDEFINED
+/**
+ * @brief Enumeration of boundary condition types from mesh files
+ */
+enum class BoundaryConditionType 
+{
+    VELOCITY_INLET,     ///< Velocity inlet boundary
+    PRESSURE_INLET,     ///< Pressure inlet boundary
+    PRESSURE_OUTLET,    ///< Pressure outlet boundary
+    WALL,               ///< Wall boundary
+    SYMMETRY,           ///< Symmetry boundary
+    PERIODIC,           ///< Periodic boundary
+    MASS_FLOW_INLET,    ///< Mass flow inlet boundary
+    OUTFLOW,            ///< Outflow boundary
+    INTERFACE,          ///< Interface boundary
+    INTERIOR,           ///< Interior boundary
+    SOLID,              ///< Solid boundary
+    FLUID,              ///< Fluid boundary
+    UNDEFINED           ///< Undefined boundary type
 };
 
-// Function reads the boundary type from the mesh file
-inline BoundaryConditionType mapFluentBCToEnum(const std::string& fluentType) {
-    if (fluentType == "velocity-inlet") return BoundaryConditionType::VELOCITY_INLET;
-    if (fluentType == "pressure-inlet") return BoundaryConditionType::PRESSURE_INLET;
-    if (fluentType == "pressure-outlet") return BoundaryConditionType::PRESSURE_OUTLET;
-    if (fluentType == "wall") return BoundaryConditionType::WALL;
-    if (fluentType == "symmetry") return BoundaryConditionType::SYMMETRY;
-    if (fluentType == "periodic" || fluentType == "periodic-shadow") return BoundaryConditionType::PERIODIC;
-    if (fluentType == "mass-flow-inlet") return BoundaryConditionType::MASS_FLOW_INLET;
-    if (fluentType == "outflow") return BoundaryConditionType::OUTFLOW;
-    if (fluentType == "interface") return BoundaryConditionType::INTERFACE;
-    if (fluentType == "interior") return BoundaryConditionType::INTERIOR;
-    if (fluentType == "solid") return BoundaryConditionType::SOLID;
-    if (fluentType == "fluid") return BoundaryConditionType::FLUID;
+/**
+ * @brief Maps Fluent boundary type string to enumeration
+ * @param fluentType String representation from Fluent mesh file
+ * @return Corresponding BoundaryConditionType enumeration
+ */
+BoundaryConditionType mapFluentBCToEnum(const std::string& fluentType);
 
-    std::cerr << "Warning: Unknown Fluent boundary type encountered: " << fluentType << std::endl;
-    return BoundaryConditionType::UNDEFINED;
-}
-
-struct BoundaryPatch {
-  // ----- Members ----- //
+/**
+ * @brief Represents a boundary patch in the mesh
+ * 
+ * A boundary patch is a collection of boundary faces that share
+ * the same boundary condition type. Contains mesh connectivity
+ * information and boundary type classification.
+ */
+struct BoundaryPatch 
+{
+    /// Human-readable patch name
     std::string patchName;
+    
+    /// Original Fluent boundary type string
     std::string fluentType;
+    
+    /// Mapped boundary condition type
     BoundaryConditionType type;
+    
+    /// Zone identifier from mesh file
     size_t zoneID;
+    
+    /// Index of first face in this patch
     size_t firstFaceIndex;
+    
+    /// Index of last face in this patch
     size_t lastFaceIndex;
 
-  // ----- Constructor ----- //
-  BoundaryPatch(size_t id, size_t start_id, size_t end_id)
-      : zoneID(id), firstFaceIndex(start_id), lastFaceIndex(end_id) {}
+    /**
+     * @brief Constructor for boundary patch
+     * @param id Zone identifier
+     * @param start_id Index of first face
+     * @param end_id Index of last face
+     */
+    BoundaryPatch
+    (
+        size_t id, 
+        size_t start_id, 
+        size_t end_id
+    ) : zoneID(id), 
+        firstFaceIndex(start_id), 
+        lastFaceIndex(end_id) {}
 
-  // ----- Functions ----- //
-
-  size_t getNumberOfBoundaryFaces() const {
-      size_t numFaces;
-      numFaces = lastFaceIndex - firstFaceIndex + 1;
-      return numFaces;
-  }
+    /**
+     * @brief Get number of faces in this boundary patch
+     * @return Number of boundary faces
+     */
+    size_t getNumberOfBoundaryFaces() const;
 };
 
 #endif

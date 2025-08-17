@@ -125,7 +125,8 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
             y2_integral += y2_part;
             z2_integral += z2_part;
 
-            if (triangleArea > AREA_TOLERANCE) {
+            if (triangleArea > AREA_TOLERANCE)
+            {
                 Vector triangleCentroid = (p1_tri + p2_tri + p3_tri) / S(3.0);
                 totalArea += triangleArea;
                 weightedCentroidSum += triangleCentroid * triangleArea;
@@ -142,7 +143,8 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
 
         area = totalArea;
 
-        if (area < AREA_TOLERANCE) {
+        if (area < AREA_TOLERANCE)
+        {
              throw std::runtime_error
                 (
                     "Warning: Polygonal Face " + std::to_string(id)
@@ -152,7 +154,8 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
         } 
         else 
         {
-             if (std::abs(area) > DIVISION_TOLERANCE) {
+             if (std::abs(area) > DIVISION_TOLERANCE)
+             {
                  centroid = weightedCentroidSum / area;
              } 
              else 

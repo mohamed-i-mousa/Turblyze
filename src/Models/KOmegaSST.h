@@ -33,52 +33,70 @@ class Matrix;
  * - Wall distance calculation using Poisson equation
  * - Proper wall shear stress computation
  */
-class KOmegaSST {
+class KOmegaSST 
+{
 public:
     // Constructor
-    KOmegaSST(const std::vector<Face>& faces,
-              const std::vector<Cell>& cells,
-              const BoundaryConditions& bc,
-              const GradientScheme& gradScheme);
+    KOmegaSST
+    (
+        const std::vector<Face>& faces,
+        const std::vector<Cell>& cells,
+        const BoundaryConditions& bc,
+        const GradientScheme& gradScheme
+    );
     
     ~KOmegaSST();
-
 
     void initialize(const VectorField& U_field, Scalar rho, Scalar mu_lam);
 
     // New overload that avoids constructing a std::vector every call
-    void solve(const VectorField& U_field,
-               const VectorField& gradUx,
-               const VectorField& gradUy,
-               const VectorField& gradUz,
-               Scalar rho,
-               Scalar mu_lam);
+    void solve
+    (
+        const VectorField& U_field,
+        const VectorField& gradUx,
+        const VectorField& gradUy,
+        const VectorField& gradUz,
+        Scalar rho,
+        Scalar mu_lam
+    );
 
     // Legacy interface kept for internal use
-    void solve(const VectorField& U_field,
-               const std::vector<VectorField>& gradU,
-               Scalar rho,
-               Scalar mu_lam);
+    void solve
+    (
+        const VectorField& U_field,
+        const std::vector<VectorField>& gradU,
+        Scalar rho,
+        Scalar mu_lam
+    );
 
     void calculateWallDistance();
 
-    void solveOmegaEquation(const VectorField& U_field,
-                           const std::vector<VectorField>& gradU,
-                           Scalar rho,
-                           Scalar mu_lam);
+    void solveOmegaEquation
+    (
+        const VectorField& U_field,
+        const std::vector<VectorField>& gradU,
+        Scalar rho,
+        Scalar mu_lam
+    );
 
 
     void applyNearWallTreatmentOmega(Scalar rho, Scalar mu_lam);
 
-    void solveKEquation(const VectorField& U_field,
-                       const std::vector<VectorField>& gradU,
-                       Scalar rho,
-                       Scalar mu_lam);
+    void solveKEquation
+    (
+        const VectorField& U_field,
+        const std::vector<VectorField>& gradU,
+        Scalar rho,
+        Scalar mu_lam
+    );
 
-    void calculateTurbulentViscosity(const VectorField& U_field,
-                                    const std::vector<VectorField>& gradU,
-                                    Scalar rho,
-                                    Scalar mu_lam);
+    void calculateTurbulentViscosity
+    (
+        const VectorField& U_field,
+        const std::vector<VectorField>& gradU,
+        Scalar rho,
+        Scalar mu_lam
+    );
 
     /**
      * @brief Apply wall corrections for turbulent viscosity
@@ -109,7 +127,12 @@ public:
     ScalarField getEffectiveViscosity(Scalar mu_lam) const;
 
     // Setters for model parameters
-    void setModelConstants(Scalar C_mu = 0.09, Scalar beta_1 = 0.075, Scalar beta_2 = 0.0828);
+    void setModelConstants
+    (
+        Scalar C_mu = 0.09,
+        Scalar beta_1 = 0.075,
+        Scalar beta_2 = 0.0828
+    );
     
     // Transient time stepping parameters
     void setTransientMode(bool enable, Scalar dt = 0.001, Scalar theta = 0.5);
@@ -180,9 +203,12 @@ private:
     std::unique_ptr<Matrix> matrixConstruct;
 
     // Private helper methods
-    void calculateBlendingFunctions(const std::vector<VectorField>& gradU,
-                                   Scalar rho,
-                                   Scalar mu_lam);
+    void calculateBlendingFunctions
+    (
+        const std::vector<VectorField>& gradU,
+        Scalar rho,
+        Scalar mu_lam
+    );
 
     /**
      * @brief Calculate production terms for k and omega
@@ -205,11 +231,14 @@ private:
      * @param mu_lam Laminar dynamic viscosity
      * @param rho Fluid density
      */
-    void applyTurbulenceBoundaryConditions(const std::string& fieldName,
-                                         ScalarField& field,
-                                         const VectorField& U_field,
-                                         Scalar mu_lam,
-                                         Scalar rho);
+    void applyTurbulenceBoundaryConditions
+    (
+        const std::string& fieldName,
+        ScalarField& field,
+        const VectorField& U_field,
+        Scalar mu_lam,
+        Scalar rho
+    );
 
     /**
      * @brief Calculate y+ value for wall treatment
@@ -219,10 +248,13 @@ private:
      * @param rho Density
      * @return y+ value
      */
-    Scalar calculateYPlus(size_t cellIdx,
-                         const VectorField& U_field,
-                         Scalar mu_lam,
-                         Scalar rho) const;
+    Scalar calculateYPlus
+    (
+        size_t cellIdx,
+        const VectorField& U_field,
+        Scalar mu_lam,
+        Scalar rho
+    ) const;
 
     /**
      * @brief Limit production to prevent unrealistic values

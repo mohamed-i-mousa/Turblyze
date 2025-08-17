@@ -20,7 +20,15 @@ find_package(VTK REQUIRED COMPONENTS
 # --- List your source files ---
 add_executable(${PROJECT_NAME}
     src/main.cpp
+    src/Mesh/Vector.cpp
+    src/Mesh/Face.cpp
+    src/Mesh/Cell.cpp
+    src/Mesh/CellData.cpp
+    src/Mesh/FaceData.cpp
     src/Mesh/MeshReader.cpp
+    src/BoundaryConditions/BoundaryData.cpp
+    src/BoundaryConditions/BoundaryPatch.cpp
+    src/BoundaryConditions/BoundaryConditions.cpp
     src/Numerics/GradientScheme.cpp
     src/Numerics/ConvectionScheme.cpp
     src/Numerics/Matrix.cpp

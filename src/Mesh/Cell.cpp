@@ -79,25 +79,31 @@ void Cell::calculateGeometricProperties(const std::vector<Face>& allFaces)
 
 std::ostream& operator<<(std::ostream& os, const Cell& c)
 {
-    os  << "Cell(ID: " << c.id
-        << ", Faces: [";
+    os  << "Cell(ID: " << c.id << ", Faces: [";
+    
     for (size_t i = 0; i < c.faceIndices.size(); ++i) 
     {
         os  << c.faceIndices[i] << (i == c.faceIndices.size() - 1 ? "" : ", ");
     }
+
     os  << "], Neighbours: [";
-     for (size_t i = 0; i < c.neighbourCellIndices.size(); ++i) {
+    
+    for (size_t i = 0; i < c.neighbourCellIndices.size(); ++i)
+    {
         os << c.neighbourCellIndices[i] << (i == c.neighbourCellIndices.size() - 1 ? "" : ", ");
     }
+    
     os  << "]";
 
-    if (c.geometricPropertiesCalculated) {
+    if (c.geometricPropertiesCalculated)
+    {
         std::ios_base::fmtflags flags = os.flags(); 
         int prec = os.precision(); 
 
         os  << std::fixed << std::setprecision(6); 
         os  << ", Volume: " << c.volume
             << ", Centroid: " << c.centroid;
+            
         os.flags(flags);
         os.precision(prec);
     }
@@ -105,7 +111,8 @@ std::ostream& operator<<(std::ostream& os, const Cell& c)
     {
         os  << ", Geometry: N/A";
     }
-    os  << ")";
-
+    
+    os << ")";
+    
     return os;
 }

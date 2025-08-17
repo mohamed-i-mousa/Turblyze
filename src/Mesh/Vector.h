@@ -2,162 +2,180 @@
 #define VECTOR_H
 
 #include <iostream>
-#include <cmath>
-#include <stdexcept>
-#include <limits>
-
 #include "Scalar.h"
 
-struct Vector {
-    // ----- Members ----- //
+/**
+ * @brief A 3D vector class for geometric operations
+ * 
+ * Represents a 3D vector with x, y, z components and provides
+ * standard vector operations including arithmetic, normalization,
+ * and geometric calculations.
+ */
+struct Vector 
+{
+    /// X, Y, Z components of the vector
     Scalar x, y, z;
 
-    // ----- Constructors ----- //
+    /**
+     * @brief Default constructor - creates zero vector (0,0,0)
+     */
+    Vector();
+    
+    /**
+     * @brief Constructs vector with specified components
+     * @param x_val X component
+     * @param y_val Y component 
+     * @param z_val Z component
+     */
+    Vector(Scalar x_val, Scalar y_val, Scalar z_val);
 
-    Vector() : x(0.0), y(0.0), z(0.0) {}
+    /**
+     * @brief Vector addition operator
+     * @param other Vector to add
+     * @return Sum of the two vectors
+     */
+    Vector operator+(const Vector& other) const;
+    
+    /**
+     * @brief Vector subtraction operator
+     * @param other Vector to subtract
+     * @return Difference of the two vectors
+     */
+    Vector operator-(const Vector& other) const;
+    
+    /**
+     * @brief Scalar multiplication operator
+     * @param scalar Scalar to multiply by
+     * @return Vector scaled by scalar
+     */
+    Vector operator*(Scalar scalar) const;
+    
+    /**
+     * @brief Scalar division operator
+     * @param scalar Scalar to divide by
+     * @return Vector divided by scalar
+     * @throws std::runtime_error if scalar is near zero
+     */
+    Vector operator/(Scalar scalar) const;
+    
+    /**
+     * @brief Compound addition assignment operator
+     * @param other Vector to add
+     * @return Reference to this vector
+     */
+    Vector& operator+=(const Vector& other);
+    
+    /**
+     * @brief Compound subtraction assignment operator
+     * @param other Vector to subtract
+     * @return Reference to this vector
+     */
+    Vector& operator-=(const Vector& other);
+    
+    /**
+     * @brief Compound multiplication assignment operator
+     * @param scalar Scalar to multiply by
+     * @return Reference to this vector
+     */
+    Vector& operator*=(Scalar scalar);
+    
+    /**
+     * @brief Compound division assignment operator
+     * @param scalar Scalar to divide by
+     * @return Reference to this vector
+     * @throws std::runtime_error if scalar is near zero
+     */
+    Vector& operator/=(Scalar scalar);
+    
+    /**
+     * @brief Equality comparison operator
+     * @param other Vector to compare with
+     * @return True if vectors are equal within tolerance
+     */
+    bool operator==(const Vector& other) const;
+    
+    /**
+     * @brief Inequality comparison operator
+     * @param other Vector to compare with
+     * @return True if vectors are not equal
+     */
+    bool operator!=(const Vector& other) const;
 
-    Vector(Scalar x_val, Scalar y_val, Scalar z_val) : x(x_val), y(y_val), z(z_val) {}
-
-    // ----- Operators ----- //
-
-    // Addition of two vectors
-    Vector operator+(const Vector& other) const {
-        return Vector(x + other.x, y + other.y, z + other.z);
-    }
-
-    // Subtraction of two vectors
-    Vector operator-(const Vector& other) const {
-        return Vector(x - other.x, y - other.y, z - other.z);
-    }
-
-    // Multiplication of a vector with a scalar
-    Vector operator*(Scalar scalar) const {
-        return Vector(x * scalar, y * scalar, z * scalar);
-    }
-
-    // Division of a vector by a scalar
-    Vector operator/(Scalar scalar) const {
-        if (std::abs(scalar) < DIVISION_TOLERANCE) {
-            throw std::runtime_error("Error: Division by zero in Vector::operator/");
-        }
-        return Vector(x / scalar, y / scalar, z / scalar);
-    }
-
-    // Compound assignment operators
-    Vector& operator+=(const Vector& other) {
-        x += other.x;
-        y += other.y;
-        z += other.z;
-        return *this;
-    }
-
-    Vector& operator-=(const Vector& other) {
-        x -= other.x;
-        y -= other.y;
-        z -= other.z;
-        return *this;
-    }
-
-    Vector& operator*=(Scalar scalar) {
-        x *= scalar;
-        y *= scalar;
-        z *= scalar;
-        return *this;
-    }
-
-    Vector& operator/=(Scalar scalar) {
-        if (std::abs(scalar) < DIVISION_TOLERANCE) {
-            throw std::runtime_error("Error: Division by zero in Vector::operator/=");
-        }
-        x /= scalar;
-        y /= scalar;
-        z /= scalar;
-        return *this;
-    }
-
-    // Equality comparison: Vector1 == Vector2
-    // Uses a small tolerance for floating-point comparisons
-    bool operator==(const Vector& other) const {
-        return (std::abs(x - other.x) < EQUALITY_TOLERANCE) &&
-               (std::abs(y - other.y) < EQUALITY_TOLERANCE) &&
-               (std::abs(z - other.z) < EQUALITY_TOLERANCE);
-    }
-
-    // Inequality comparison: Vector1 != Vector2
-    bool operator!=(const Vector& other) const {
-        return !(*this == other);
-    }
-
-    // ----- Methods ----- //
-
-    // Calculate the squared magnitude
-    Scalar magnitudeSquared() const {
-        return x * x + y * y + z * z;
-    }
-
-    // Calculate the magnitude
-    Scalar magnitude() const {
-        return std::sqrt(magnitudeSquared());
-    }
-
-    // Normalize the vector
-    Vector& normalize() {
-        Scalar mag = magnitude();
-        if (std::abs(mag) > DIVISION_TOLERANCE) {
-            x /= mag;
-            y /= mag;
-            z /= mag;
-        }
-        else {
-            throw std::runtime_error("Error: Division by zero in Vector::normalize");
-        }
-        return *this;
-    }
-
-    // Get a normalized copy
-    Vector normalized() const {
-        Vector result = *this;
-        return result.normalize();
-    }
+    /**
+     * @brief Calculates squared magnitude of vector
+     * @return Squared magnitude (x² + y² + z²)
+     * @note More efficient than magnitude() for comparisons
+     */
+    Scalar magnitudeSquared() const;
+    
+    /**
+     * @brief Calculates magnitude (length) of vector
+     * @return Vector magnitude
+     */
+    Scalar magnitude() const;
+    
+    /**
+     * @brief Normalizes this vector to unit length
+     * @return Reference to this vector for chaining
+     * @throws std::runtime_error if vector has zero magnitude
+     */
+    Vector& normalize();
+    
+    /**
+     * @brief Returns normalized copy of this vector
+     * @return Normalized vector
+     * @throws std::runtime_error if vector has zero magnitude
+     */
+    Vector normalized() const;
 };
 
-    // ----- Operator Overloads ----- //
+/**
+ * @brief Scalar multiplication operator (scalar * vector)
+ * @param scalar Scalar multiplier
+ * @param p Vector to multiply
+ * @return Scaled vector
+ */
+Vector operator*(Scalar scalar, const Vector& p);
 
-    // Scalar Multiplication: scalar * P (allows Scalar * Vector syntax)
-    inline Vector operator*(Scalar scalar, const Vector& p) {
-        return Vector(scalar * p.x, scalar * p.y, scalar * p.z);
-    }
+/**
+ * @brief Stream output operator for Vector
+ * @param os Output stream
+ * @param p Vector to output
+ * @return Reference to output stream
+ */
+std::ostream& operator<<(std::ostream& os, const Vector& p);
 
-    // Overload for std::ostream to print Vector objects: cout << P
-    inline std::ostream& operator<<(std::ostream& os, const Vector& p) {
-        os << "(" << p.x << ", " << p.y << ", " << p.z << ")";
-        return os;
-    }
+/**
+ * @brief Computes dot product of two vectors
+ * @param p1 First vector
+ * @param p2 Second vector
+ * @return Scalar dot product
+ */
+Scalar dot(const Vector& p1, const Vector& p2);
 
-    // ----- Common Geometric Methods ----- //
+/**
+ * @brief Computes cross product of two vectors
+ * @param p1 First vector
+ * @param p2 Second vector
+ * @return Cross product vector
+ */
+Vector cross(const Vector& p1, const Vector& p2);
 
-    // Dot product of two vectors (vectors from origin)
-    inline Scalar dot(const Vector& p1, const Vector& p2) {
-        return p1.x * p2.x + p1.y * p2.y + p1.z * p2.z;
-    }
+/**
+ * @brief Calculates distance between two vectors
+ * @param p1 First vector
+ * @param p2 Second vector
+ * @return Distance between vectors
+ */
+Scalar distance(const Vector& p1, const Vector& p2);
 
-    // Cross product of two vectors (vectors from origin)
-    inline Vector cross(const Vector& p1, const Vector& p2) {
-        return Vector(
-        p1.y * p2.z - p1.z * p2.y,
-        p1.z * p2.x - p1.x * p2.z,
-        p1.x * p2.y - p1.y * p2.x
-        );
-    }
-
-    // Distance between two vectors
-    inline Scalar distance(const Vector& p1, const Vector& p2) {
-        return (p2 - p1).magnitude();
-    }
-
-    // Squared distance between two vectors
-    inline Scalar distanceSquared(const Vector& p1, const Vector& p2) {
-        return (p2 - p1).magnitudeSquared();
-    }
+/**
+ * @brief Calculates squared distance between two vectors
+ * @param p1 First vector
+ * @param p2 Second vector
+ * @return Squared distance between vectors
+ * @note More efficient than distance() for comparisons
+ */
+Scalar distanceSquared(const Vector& p1, const Vector& p2);
 
 #endif

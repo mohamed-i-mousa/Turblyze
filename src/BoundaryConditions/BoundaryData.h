@@ -6,153 +6,133 @@
 #include "Scalar.h"
 #include "Vector.h"
 
-enum class BCType {
-    FIXED_VALUE,
-    FIXED_GRADIENT,
-    ZERO_GRADIENT,
-    NO_SLIP,
-    SYMMETRY,
-    UNDEFINED
-};
-
-enum class BCValueType {
-    SCALAR,
-    VECTOR,
-    UNDEFINED
-};
-
-/*
- * This struct stores the boundary data for a patch.
- * For each patch, a BoundaryData object is created and stores a value and a gradient (scalar and vector).
- * Depending on the type of boundary condition, the value and gradient are stored in the appropriate variable, 
- * and the other variable is set to undefined.For example, if the boundary condition is a fixed value, the value 
- * is stored in the scalarValue variable, and the gradient is set to undefined.
+/**
+ * @brief Enumeration of boundary condition types
  */
-struct BoundaryData {
-    
+enum class BCType 
+{
+    FIXED_VALUE,     ///< Fixed value (Dirichlet) boundary condition
+    FIXED_GRADIENT,  ///< Fixed gradient (Neumann) boundary condition
+    ZERO_GRADIENT,   ///< Zero gradient boundary condition
+    NO_SLIP,         ///< No-slip wall boundary condition
+    SYMMETRY,        ///< Symmetry boundary condition
+    UNDEFINED        ///< Undefined boundary condition type
+};
+
+/**
+ * @brief Enumeration of boundary condition value types
+ */
+enum class BCValueType 
+{
+    SCALAR,      ///< Scalar-valued boundary condition
+    VECTOR,      ///< Vector-valued boundary condition
+    UNDEFINED    ///< Undefined value type
+};
+
+/**
+ * @brief Stores boundary condition data for a patch
+ * 
+ * This struct encapsulates boundary condition information including type,
+ * values, and gradients. Depending on the boundary condition type, either
+ * scalar or vector values/gradients are used while others remain undefined.
+ * 
+ * For gradient boundary conditions, only the normal component of the
+ * gradient ∂φ/∂n is specified.
+ */
+struct BoundaryData 
+{
+    /// Boundary condition type
     BCType type = BCType::UNDEFINED;
 
-    // ----- Value storage ----- //
+    /// Type of boundary value (scalar or vector)
     BCValueType valueType = BCValueType::UNDEFINED;
+    
+    /// Scalar boundary value
     Scalar scalarValue = S(0.0);
+    
+    /// Vector boundary value
     Vector vectorValue; 
 
-    // ----- Gradient storage ----- //
-    // Gradients are vectors/tensors. But as BC, only the normal component of the gradient ∂φ/∂n is assigned. 
+    /// Type of boundary gradient (scalar or vector)
     BCValueType gradientType = BCValueType::UNDEFINED;
-    Scalar scalarGradient = S(0.0);     
+    
+    /// Scalar boundary gradient (normal component)
+    Scalar scalarGradient = S(0.0);
+    
+    /// Vector boundary gradient (normal component)
     Vector vectorGradient;         
 
-    // ----- Constructor ----- //
+    /**
+     * @brief Default constructor
+     */
     BoundaryData() = default;
 
-    // ----- Setting Methods ----- // 
+    /**
+     * @brief Set fixed scalar value boundary condition
+     * @param s_val Scalar value to fix at boundary
+     */
+    void setFixedValue(Scalar s_val);
+    
+    /**
+     * @brief Set fixed vector value boundary condition
+     * @param v_val Vector value to fix at boundary
+     */
+    void setFixedValue(const Vector& v_val);
+    
+    /**
+     * @brief Set fixed scalar gradient boundary condition
+     * @param s_grad Scalar gradient (normal component) at boundary
+     */
+    void setFixedGradient(Scalar s_grad);
+    
+    /**
+     * @brief Set fixed vector gradient boundary condition
+     * @param v_grad Vector gradient (normal component) at boundary
+     */
+    void setFixedGradient(const Vector& v_grad);
+    
+    /**
+     * @brief Set zero gradient boundary condition
+     */
+    void setZeroGradient();
+    
+    /**
+     * @brief Set symmetry boundary condition
+     */
+    void setSymmetry();
+    
+    /**
+     * @brief Set no-slip boundary condition (for velocity)
+     */
+    void setNoSlip();
 
-    void setFixedValue(Scalar s_val) {
-        type = BCType::FIXED_VALUE;
-        scalarValue = s_val; 
-        valueType = BCValueType::SCALAR;
-
-        // Clear other value types
-        vectorValue = Vector();
-        gradientType = BCValueType::UNDEFINED;
-    }
-
-    void setFixedValue(const Vector& v_val) {
-        type = BCType::FIXED_VALUE;
-        vectorValue = v_val; 
-        valueType = BCValueType::VECTOR;
-
-        // Clear other value types
-        scalarValue = S(0.0);
-        gradientType = BCValueType::UNDEFINED;
-    }
-
-    void setFixedGradient(Scalar s_grad) {
-        type = BCType::FIXED_GRADIENT;
-        scalarGradient = s_grad; 
-        gradientType = BCValueType::SCALAR;
-
-        // Clear other value types
-        vectorValue = Vector();
-        valueType = BCValueType::UNDEFINED;
-    }
-
-    void setFixedGradient(const Vector& v_grad) {
-        type = BCType::FIXED_GRADIENT;
-        vectorGradient = v_grad; 
-        gradientType = BCValueType::VECTOR;
-
-        // Clear other value types
-        scalarValue = S(0.0);
-        valueType = BCValueType::UNDEFINED;
-    }
-
-    void setZeroGradient() {
-        type = BCType::ZERO_GRADIENT;
-        scalarGradient = S(0.0);
-        vectorGradient = Vector(S(0.0), S(0.0), S(0.0));
-
-        valueType = BCValueType::UNDEFINED;
-        gradientType = BCValueType::UNDEFINED;
-    }
-
-    void setSymmetry() {
-        type = BCType::SYMMETRY;
-        // Symmetry implies zero normal gradient for scalars and zero normal component for vectors
-        valueType = BCValueType::UNDEFINED;
-        gradientType = BCValueType::UNDEFINED;
-        scalarValue = S(0.0);
-        vectorValue = Vector(S(0.0), S(0.0), S(0.0));
-        scalarGradient = S(0.0);
-        vectorGradient = Vector(S(0.0), S(0.0), S(0.0));
-    }
-
-    // This is the simple implementation of no slip boundary condition.
-    // This implementatin is not suitable for turbulent flow where the wall shear stress calculations depend on 
-    // the parallel to wall velocity only. Zero gradient is an important addition for turbulent flows.
-    void setNoSlip() {
-        type = BCType::NO_SLIP;
-        vectorValue = Vector(S(0.0), S(0.0), S(0.0));
-        valueType = BCValueType::VECTOR;
-
-        scalarValue = S(0.0);
-        gradientType = BCValueType::UNDEFINED;
-    }
-
-    // ----- Getting Methods ----- // 
-
-    Scalar getFixedScalarValue() const {
-        if (type == BCType::FIXED_VALUE && valueType == BCValueType::SCALAR) {
-            return scalarValue;
-        }
-        throw std::runtime_error("Attempted to get fixed scalar value, but BC is not set to FIXED_VALUE with SCALAR type.");
-    }
-
-    const Vector& getFixedVectorValue() const {
-        if (type == BCType::FIXED_VALUE && valueType == BCValueType::VECTOR) {
-            return vectorValue;
-        }
-        // No slip is a special case of vector value
-        if (type == BCType::NO_SLIP && valueType == BCValueType::VECTOR) {
-            return vectorValue; // which should be (0,0,0)
-        }
-        throw std::runtime_error("Attempted to get fixed vector value, but BC is not set to FIXED_VALUE/NO_SLIP with VECTOR type.");
-    }
-
-    Scalar getFixedScalarGradient() const {
-        if (type == BCType::FIXED_GRADIENT && gradientType == BCValueType::SCALAR) {
-            return scalarGradient;
-        }
-        throw std::runtime_error("Attempted to get fixed scalar gradient, but BC is not set to FIXED_GRADIENT with SCALAR type.");
-    }
-
-    const Vector& getFixedVectorGradient() const {
-        if (type == BCType::FIXED_GRADIENT && gradientType == BCValueType::VECTOR) {
-            return vectorGradient;
-        }
-        throw std::runtime_error("Attempted to get fixed vector gradient, but BC is not set to FIXED_GRADIENT with VECTOR type.");
-    }
+    /**
+     * @brief Get fixed scalar value
+     * @return Fixed scalar value
+     * @throws std::runtime_error if not a fixed scalar value BC
+     */
+    Scalar getFixedScalarValue() const;
+    
+    /**
+     * @brief Get fixed vector value
+     * @return Fixed vector value
+     * @throws std::runtime_error if not a fixed vector value BC
+     */
+    const Vector& getFixedVectorValue() const;
+    
+    /**
+     * @brief Get fixed scalar gradient
+     * @return Fixed scalar gradient (normal component)
+     * @throws std::runtime_error if not a fixed scalar gradient BC
+     */
+    Scalar getFixedScalarGradient() const;
+    
+    /**
+     * @brief Get fixed vector gradient
+     * @return Fixed vector gradient (normal component)
+     * @throws std::runtime_error if not a fixed vector gradient BC
+     */
+    const Vector& getFixedVectorGradient() const;
 };
 
 #endif

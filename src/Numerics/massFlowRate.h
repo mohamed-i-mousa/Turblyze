@@ -20,10 +20,12 @@
  * - ZERO_GRADIENT: Use owner cell velocity (current implementation)
  * - NO_SLIP: Use zero velocity (wall boundary)
  * 
- * For internal faces: mdot = rho * dot([U_field[P] * (1 - w) + U_field[N] * w], Sf)
- * where w is the distance-weighted interpolation factor
+ * For internal faces: 
+ *      mdot = rho * dot([U_field[P] * (1 - w) + U_field[N] * w], Sf)
+ *      where w is the distance-weighted interpolation factor.
  */
-FaceFluxField calculateMassFlowRate(
+FaceFluxField calculateMassFlowRate
+(
     const std::vector<Face>& faces,
     const std::vector<Cell>& cells,
     const VectorField& U_field,
@@ -32,4 +34,4 @@ FaceFluxField calculateMassFlowRate(
     const std::map<size_t, const BoundaryPatch*>& faceToPatchMap
 );
 
-#endif // MASS_FLOW_RATE_H
+#endif

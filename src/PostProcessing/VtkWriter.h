@@ -5,15 +5,11 @@
 #include <vector>
 #include <map>
 
-struct Vector;
-struct Face;
-struct Cell;
-
 #include "Scalar.h" 
-#include "Face.h"
-#include "Cell.h"
-#include "CellData.h"
 #include "Vector.h"
+#include "Face.h"
+#include "Vector.h"
+#include "CellData.h"
 
 namespace VtkWriter {
 
@@ -24,11 +20,14 @@ namespace VtkWriter {
  * that can be visualized in ParaView. Cell-centered scalar fields are
  * mapped to face data for visualization.
  */
-void writeVtkFile(const std::string& filename,
-                  const std::vector<Vector>& allNodes,
-                  const std::vector<Face>& allFaces,
-                  const std::vector<Cell>& allCells,
-                  const std::map<std::string, const ScalarField*>& scalarCellFields = {});
+void writeVtkFile
+(
+    const std::string& filename,
+    const std::vector<Vector>& allNodes,
+    const std::vector<Face>& allFaces,
+    const std::map<std::string, 
+    const ScalarField*>& scalarCellFields = {}
+);
 
 } // namespace VtkWriter
 

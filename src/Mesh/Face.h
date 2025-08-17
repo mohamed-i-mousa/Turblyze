@@ -8,115 +8,146 @@
 #include "Scalar.h"
 #include "Vector.h"    
 
-struct Face {
-    // ----- Members ----- //
-    size_t id = 0;                                                  
-    std::vector<size_t> nodeIndices;                           
+/**
+ * @brief Represents a face in the computational mesh
+ * 
+ * A face is a boundary between cells or a boundary of the domain.
+ * It stores connectivity information, geometric properties, and
+ * distance vectors for finite volume calculations.
+ */
+struct Face 
+{
+    /// Unique face identifier
+    size_t id = 0;
+    
+    /// Indices of nodes that define this face
+    std::vector<size_t> nodeIndices;
+    
+    /// Index of the owner cell
     size_t ownerCell = 0;
-    std::optional<size_t> neighbourCell;  // No value = boundary face
+    
+    /// Index of neighbor cell (nullopt for boundary faces)
+    std::optional<size_t> neighbourCell;
 
+    /// Second moment integrals for centroid calculation
     Scalar x2_integral = 0.0;
     Scalar y2_integral = 0.0;
     Scalar z2_integral = 0.0;
 
-    Vector centroid;   
+    /// Face geometric center
+    Vector centroid;
+    
+    /// Face normal vector (unit vector)
     Vector normal;
+    
+    /// Face area
     Scalar area = 0.0;
 
-    // Pre-computed distance vectors and properties for efficiency
+    /// Distance vector from owner cell center to face center
     Vector d_Pf;
+    
+    /// Distance vector from neighbor cell center to face center
     std::optional<Vector> d_Nf;
+    
+    /// Magnitude of d_Pf
     Scalar d_Pf_mag = 0.0;
+    
+    /// Magnitude of d_Nf
     std::optional<Scalar> d_Nf_mag;
+    
+    /// Unit vector in d_Pf direction
     Vector e_Pf;
+    
+    /// Unit vector in d_Nf direction
     std::optional<Vector> e_Nf;
 
+    /// Flag indicating if geometric properties calculated
     bool geometricPropertiesCalculated = false;
+    
+    /// Flag indicating if distance properties calculated
     bool distancePropertiesCalculated = false;
 
-    // ----- Constructors ----- //
-
+    /**
+     * @brief Default constructor
+     */
     Face() = default;
 
-    // Constructor for internal faces
+    /**
+     * @brief Constructor for internal faces
+     * @param faceId Unique face identifier
+     * @param nodes Indices of face nodes
+     * @param owner Index of owner cell
+     * @param neighbour Index of neighbor cell
+     */
     Face
     (
         size_t faceId, 
         const std::vector<size_t>& nodes, 
         size_t owner,
         size_t neighbour
-    ) 
-    :   id(faceId), 
+    ) : id(faceId), 
         nodeIndices(nodes), 
         ownerCell(owner), 
-        neighbourCell(neighbour) 
-        {}
+        neighbourCell(neighbour) {}
     
-    // Constructor for boundary faces
+    /**
+     * @brief Constructor for boundary faces
+     * @param faceId Unique face identifier
+     * @param nodes Indices of face nodes
+     * @param owner Index of owner cell
+     */
     Face
     (
         size_t faceId, 
         const std::vector<size_t>& nodes, 
         size_t owner
-    )
-    :   id(faceId), 
+    ) : id(faceId), 
         nodeIndices(nodes), 
         ownerCell(owner),
-        neighbourCell(std::nullopt) 
-        {}
+        neighbourCell(std::nullopt) {}
 
-    // ----- Member Methods ----- //
-
-    /* Calculate geometric properties of the face
-     *
-     * Input: allNodes (Vector of all nodes in the mesh and connectivity).
-     * Output: necessary geometric properties of the face like area, centroid,
-     * normal, etc.
+    /**
+     * @brief Calculate geometric properties of the face
+     * @param allNodes Vector of all mesh nodes
+     * @throws std::out_of_range if node index is invalid
+     * @throws std::runtime_error if face is degenerate
      * 
-     * The function calculates the geometric properties of the face based on the
-     * number of nodes.
-     * 
-     * If the face is a triangle, the function calculates the area and normal
-     * using the cross product.
-     * 
-     * If the face is a polygon, the function decomposes the face into triangles
-     * and calculates the area and normal using the cross product
-     *
-     * The function calculates the centroid of the face using the weighted
-     * average of the centroids of the triangles
-     * 
-     * The function calculates the x2_integral, y2_integral, and z2_integral of
-     * the face using the weighted average of the x2_integral, y2_integral, and
-     * z2_integral of the triangles
-     * 
-     * The function sets the geometricPropertiesCalculated flag to true and
-     * returns it.
+     * Calculates face area, centroid, normal vector, and second moment
+     * integrals. For triangles, uses direct cross product. For polygons,
+     * decomposes into triangles and uses weighted averaging.
+     * Sets geometricPropertiesCalculated flag to true upon success.
      */
     void calculateGeometricProperties(const std::vector<Vector>& allNodes);
 
-    /* Calculate distance properties of the face
-     *
-     * Input: allCells (Vector of all cells in the mesh).
-     * Output: distance vectors, magnitudes, and unit vectors.
+    /**
+     * @brief Calculate distance properties of the face
+     * @tparam CellContainer Container type holding cells
+     * @param allCells Container of all mesh cells
+     * @throws std::runtime_error if distances are near zero
      * 
-     * The function calculates:
-     * - d_Pf: distance vector from owner cell center to face center
-     * - d_Nf: distance vector from neighbor cell center to face center 
-     * - d_P, d_N: magnitudes of d_Pf and d_Nf
-     * - e_Pf, e_Nf: unit vectors of d_Pf and d_Nf
+     * Calculates distance vectors, magnitudes, and unit vectors
+     * from cell centers to face center. For boundary faces,
+     * only owner cell distances are calculated.
      */
     template<typename CellContainer>
     void calculateDistanceProperties(const CellContainer& allCells);
 
+    /**
+     * @brief Check if this is a boundary face
+     * @return True if face is on domain boundary
+     */
     bool isBoundary() const
     {
         return !neighbourCell.has_value();
     }
 };
 
-// ----- Operator Overloads ----- //
-
-// Forward declaration for operator<<
+/**
+ * @brief Stream output operator for Face
+ * @param os Output stream
+ * @param f Face to output
+ * @return Reference to output stream
+ */
 std::ostream& operator<<(std::ostream& os, const Face& f);
 
 #endif

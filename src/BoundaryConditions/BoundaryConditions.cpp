@@ -19,7 +19,7 @@ BoundaryConditions::getPatch(const std::string& name) const
             return &patch;
         }
     }
-    // if not found
+    
     throw std::runtime_error("Patch " + name + " not found");
 }
 
@@ -85,8 +85,7 @@ bool BoundaryConditions::setFixedGradient
 bool BoundaryConditions::setZeroGradient
 (
     const std::string& patchName,
-    const std::string&
-    fieldName
+    const std::string& fieldName
 )
 {
     BoundaryData bc_config;
@@ -127,7 +126,9 @@ const BoundaryData* BoundaryConditions::getFieldBC
     if (patch_it != patchBoundaryData.end()) 
     {
         const auto& field_map = patch_it->second;
+
         auto field_it = field_map.find(fieldName);
+
         if (field_it != field_map.end())
         {
             return &(field_it->second);
@@ -149,6 +150,7 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
     
     // Find the boundary patch for this face
     auto patch_it = faceToPatchCache.find(face.id);
+
     if (patch_it == faceToPatchCache.end()) 
     {
         throw std::runtime_error
@@ -161,6 +163,7 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
     
     const BoundaryPatch* patch = patch_it->second;
     const BoundaryData* bc = getFieldBC(patch->patchName, fieldName);
+
     if (!bc) {
         // Default to zero-gradient for scalars if not specified
         std::cerr   << "No BC specified for face " << face.id << " in patch "
@@ -170,7 +173,6 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
         return phi[face.ownerCell];
     }
     
-    // Apply boundary condition based on type
     switch (bc->type) 
     {
         case BCType::FIXED_VALUE:
@@ -308,6 +310,7 @@ std::string BoundaryConditions::bcTypeToString(BCType bctype) const {
 void BoundaryConditions::printSummary() const 
 {
     std::cout << "\n--- Boundary Conditions Setup Summary ---" << std::endl;
+
     if (patches.empty()) 
     {
         std::cout << "  No mesh patches loaded." << std::endl;
@@ -334,8 +337,8 @@ void BoundaryConditions::printSummary() const
         std::cout   << "  Number of Faces         : " 
                     << meshPatch.getNumberOfBoundaryFaces() << std::endl;
 
-        // Print the configured physical BCs for this patch
         auto patch_bc_it = patchBoundaryData.find(meshPatch.patchName);
+
         if 
         (
             patch_bc_it != patchBoundaryData.end() 
@@ -343,7 +346,9 @@ void BoundaryConditions::printSummary() const
         ) 
         {
             std::cout << "  Configured Physical BCs :" << std::endl;
-            for (const auto& field_bc_pair : patch_bc_it->second) {
+
+            for (const auto& field_bc_pair : patch_bc_it->second) 
+            {
                 const std::string& fieldName = field_bc_pair.first;
                 const BoundaryData& fbc = field_bc_pair.second;
                 
@@ -378,13 +383,16 @@ void BoundaryConditions::printSummary() const
                 else if (fbc.type == BCType::FIXED_GRADIENT)
                 {
                     std::cout << ", Gradient: ";
+
                     if (fbc.gradientType == BCValueType::SCALAR)
                     {
                         std::cout << fbc.scalarGradient;
-                    } else if (fbc.gradientType == BCValueType::VECTOR)
+                    } 
+                    else if (fbc.gradientType == BCValueType::VECTOR)
                     {
                         std::cout << fbc.vectorGradient;
-                    } else
+                    } 
+                    else
                     {
                         throw std::runtime_error
                         (
@@ -410,6 +418,7 @@ void BoundaryConditions::ensureFaceToPatchCacheBuilt() const
     if (!cacheBuilt)
     {
         faceToPatchCache.clear();
+        
         for (const auto& patch : patches)
         {
             for 

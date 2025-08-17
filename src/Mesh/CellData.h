@@ -9,64 +9,93 @@
 #include "Scalar.h"
 #include "Vector.h"
 
+/**
+ * @brief Template class for storing cell-centered field data
+ * @tparam T Data type (Scalar, Vector, etc.)
+ * 
+ * Provides storage and access methods for field data defined at cell centers.
+ * Supports both scalar and vector fields with bounds checking and 
+ * initialization options.
+ */
 template<typename T>
-class CellData {
+class CellData 
+{
 public:
-  // ----- Members ----- //
-  std::string name;
-  std::vector<T> internalField;
+    /// Field name identifier
+    std::string name;
+    
+    /// Cell-centered field values
+    std::vector<T> internalField;
 
-  // ----- Constructors ----- //
-  CellData(const std::string& fieldName, size_t numCells)
-    : name(fieldName), internalField(numCells) {}
+    /**
+     * @brief Constructor for uninitialized field
+     * @param fieldName Name identifier for the field
+     * @param numCells Number of cells in the mesh
+     */
+    CellData
+    (
+        const std::string& fieldName,
+        size_t numCells
+    );
 
-  CellData(const std::string& fieldName, size_t numCells, const T& initialValue)
-    : name(fieldName), internalField(numCells, initialValue) {}
+    /**
+     * @brief Constructor with initial value
+     * @param fieldName Name identifier for the field
+     * @param numCells Number of cells in the mesh
+     * @param initialValue Value to initialize all cells with
+     */
+    CellData
+    (
+        const std::string& fieldName,
+        size_t numCells,
+        const T& initialValue
+    );
 
-  // ----- Access operators ----- //
-  T& operator[](size_t cellIndex) {
-    if (cellIndex >= internalField.size()) {
-      throw std::out_of_range("Cell index out of range in CellData '" + name + "'");
-    }
-    return internalField[cellIndex];
-  }
+    /**
+     * @brief Subscript operator
+     * @param cellIndex Index of the cell to access
+     * @return Reference to field value at the cell
+     * @throws std::out_of_range if cellIndex is invalid
+     */
+    T& operator[](size_t cellIndex);
+    
+    /**
+     * @brief Const subscript operator
+     * @param cellIndex Index of the cell to access
+     * @return Const reference to field value at the cell
+     * @throws std::out_of_range if cellIndex is invalid
+     */
+    const T& operator[](size_t cellIndex) const;
 
-  const T& operator[](size_t cellIndex) const{
-    if (cellIndex >= internalField.size()) {
-      throw std::out_of_range("Cell index out of range in CellData '" + name + "'");
-    }
-    return internalField[cellIndex];
-  }
-
-  // ----- Methods ----- //
-
-  // Get the size of the field
-  size_t size() const {
-    return internalField.size();
-  }
-
-  // Initialize values of the field
-  void setAll(const T& value) {
-    for (size_t i = 0; i < internalField.size(); i++) {
-      internalField[i] = value;
-    }
-  }
-
-  // Print a summary
-  void printSummary(size_t itemsToShow) const {
-    std::cout << "CellData: " << name << " (Size: " << internalField.size() << ")" << std::endl;
-    for (size_t i = 0; i < std::min(internalField.size(), itemsToShow); ++i) {
-        std::cout << "  Cell " << i << ": " << internalField[i] << std::endl;
-    }
-    if (internalField.size() > itemsToShow) {
-        std::cout << "  ..." << std::endl;
-    }
-  }
+    /**
+     * @brief Get number of cells in the field
+     * @return Number of cells
+     */
+    size_t size() const;
+    
+    /**
+     * @brief Set all field values to a given value
+     * @param value Value to assign to all cells
+     */
+    void setAll(const T& value);
+    
+    /**
+     * @brief Print field summary for debugging
+     * @param itemsToShow Number of items to display
+     */
+    void printSummary(size_t itemsToShow) const;
 };
 
+/// Type alias for velocity fields (Vector-valued)
 using VelocityField = CellData<Vector>;
+
+/// Type alias for pressure fields (Scalar-valued)
 using PressureField = CellData<Scalar>;
+
+/// Type alias for general scalar fields
 using ScalarField = CellData<Scalar>;
+
+/// Type alias for general vector fields
 using VectorField = CellData<Vector>;
 
 #endif

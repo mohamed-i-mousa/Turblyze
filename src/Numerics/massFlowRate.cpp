@@ -1,26 +1,34 @@
 #include "massFlowRate.h"
 
-FaceFluxField calculateMassFlowRate(
+FaceFluxField calculateMassFlowRate
+(
     const std::vector<Face>& faces,
     const std::vector<Cell>& cells,
     const VectorField& U_field,
     Scalar rho,
     const BoundaryConditions& bcManager,
     const std::map<size_t, const BoundaryPatch*>& /* faceToPatchMap */
-) {
+) 
+{
     FaceFluxField mdot("massFlowRate", faces.size(), 0.0);
     
-    for (size_t faceId = 0; faceId < faces.size(); ++faceId) {
+    for (size_t faceId = 0; faceId < faces.size(); ++faceId)
+    {
         const Face& face = faces[faceId];
         
         size_t P = face.ownerCell;
         Vector S_f = face.normal * face.area;
         
-        if (face.isBoundary()) {
+        if (face.isBoundary())
+        {
             // Use centralized boundary condition handling
-            Vector U_face = bcManager.calculateBoundaryFaceVectorValue(face, U_field, "U");
+            Vector U_face = 
+                bcManager.calculateBoundaryFaceVectorValue(face, U_field, "U");
+                
             mdot[faceId] = rho * dot(U_face, S_f);
-        } else {
+        }
+        else
+        {
             // Internal face: distance-weighted interpolation
             size_t N = face.neighbourCell.value();
             

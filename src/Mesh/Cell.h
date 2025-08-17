@@ -7,54 +7,80 @@
 #include "Vector.h"
 #include "Face.h"
 
-
+/**
+ * @brief Represents a computational cell in the mesh
+ * 
+ * A cell is a finite volume element bounded by faces. It stores
+ * connectivity information, geometric properties, and provides
+ * methods for calculating volume and centroid.
+ */
 struct Cell
 {
-    // ----- Members ----- //
+    /// Unique cell identifier
     size_t id = 0;
+    
+    /// Indices of faces that bound this cell
     std::vector<size_t> faceIndices;
+    
+    /// Indices of neighboring cells
     std::vector<size_t> neighbourCellIndices;
-    std::vector<int> faceSigns;                   // to adjust normal vector direction to be always pointing outward 
+    
+    /// Face normal direction signs (+1 outward, -1 inward)
+    std::vector<int> faceSigns;
+    
+    /// Cell geometric center
     Vector centroid;
+    
+    /// Cell volume
     Scalar volume = 0.0;
+    
+    /// Flag indicating if geometry has been calculated
     bool geometricPropertiesCalculated = false;
 
-    // ----- Constructors ----- //
-
+    /**
+     * @brief Default constructor
+     */
     Cell() = default;
 
+    /**
+     * @brief Constructs cell with connectivity data
+     * @param cellId Unique cell identifier
+     * @param faces Indices of bounding faces
+     * @param neighbours Indices of neighboring cells
+     * @param signs Face normal direction signs
+     */
     Cell
     (
         size_t cellId, 
         const std::vector<size_t>& faces, 
         const std::vector<size_t>& neighbours, 
         const std::vector<int>& signs
-    )
-    : id(cellId),
-      faceIndices(faces),
-      neighbourCellIndices(neighbours),
-      faceSigns(signs)
-      {}
+    ) : id(cellId),
+        faceIndices(faces),
+        neighbourCellIndices(neighbours),
+        faceSigns(signs) {}
 
-    /* Calculate geometric properties of the cell
-     *
-     * Input: allFaces.
-     * Output: Cell volume and centroid.
+    /**
+     * @brief Calculate geometric properties of the cell
+     * @param allFaces Vector containing all mesh faces
+     * @throws std::runtime_error if face properties not calculated
+     * @throws std::runtime_error if cell has zero or negative volume
      * 
-     * The function calculates the geometric properties of the cell based on
-     * the number of faces.
-     * The cell volume is calculated using the divergence theorem: 
-     *      V = (1/3) * sum(face_centroid . face_area_vector)
+     * Calculates cell volume using the divergence theorem:
+     * V = (1/3) * Σ(face_centroid · face_area_vector)
      * 
-     * The cell centroid is calculated using the second moments of the faces.
-     *
-     * The function sets the geometricPropertiesCalculated flag to true and
-     * returns it.
+     * Calculates cell centroid using second moments of the faces.
+     * Sets geometricPropertiesCalculated flag to true upon success.
      */
     void calculateGeometricProperties(const std::vector<Face>& allFaces);
 };
 
-// Forward declaration for operator<<
+/**
+ * @brief Stream output operator for Cell
+ * @param os Output stream
+ * @param c Cell to output
+ * @return Reference to output stream
+ */
 std::ostream& operator<<(std::ostream& os, const Cell& c);
 
 #endif
