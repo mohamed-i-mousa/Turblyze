@@ -12,17 +12,22 @@
 #include "BoundaryConditions.h"
 
 /**
- * Calculate mass flow rate at each face
+ * @brief Calculate mass flow rate at each face
  * 
- * For boundary faces: 
- * - FIXED_VALUE: Use the fixed velocity value from BC
- * - FIXED_GRADIENT: Extrapolate velocity using gradient
- * - ZERO_GRADIENT: Use owner cell velocity (current implementation)
- * - NO_SLIP: Use zero velocity (wall boundary)
+ * @param faces Vector of mesh faces
+ * @param cells Vector of mesh cells  
+ * @param U_field Velocity field at cell centers
+ * @param rho Fluid density
+ * @param bcManager Boundary conditions manager
+ * @param faceToPatchMap Mapping from face ID to boundary patch
+ * @return FaceFluxField Mass flow rate at each face
  * 
  * For internal faces: 
  *      mdot = rho * dot([U_field[P] * (1 - w) + U_field[N] * w], Sf)
  *      where w is the distance-weighted interpolation factor.
+ * 
+ * For boundary faces, uses boundary condition handling from bcManager.
+ * 
  */
 FaceFluxField calculateMassFlowRate
 (
