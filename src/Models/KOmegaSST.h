@@ -47,7 +47,7 @@ public:
     
     ~KOmegaSST();
 
-    void initialize(const VectorField& U_field, Scalar rho, Scalar mu_lam);
+    void initialize(const VectorField& U_field, Scalar nu_lam);
 
     // New overload that avoids constructing a std::vector every call
     void solve
@@ -56,8 +56,7 @@ public:
         const VectorField& gradUx,
         const VectorField& gradUy,
         const VectorField& gradUz,
-        Scalar rho,
-        Scalar mu_lam
+        Scalar nu_lam
     );
 
     // Legacy interface kept for internal use
@@ -65,8 +64,7 @@ public:
     (
         const VectorField& U_field,
         const std::vector<VectorField>& gradU,
-        Scalar rho,
-        Scalar mu_lam
+        Scalar nu_lam
     );
 
     void calculateWallDistance();
@@ -75,27 +73,24 @@ public:
     (
         const VectorField& U_field,
         const std::vector<VectorField>& gradU,
-        Scalar rho,
-        Scalar mu_lam
+        Scalar nu_lam
     );
 
 
-    void applyNearWallTreatmentOmega(Scalar rho, Scalar mu_lam);
+    void applyNearWallTreatmentOmega(Scalar nu_lam);
 
     void solveKEquation
     (
         const VectorField& U_field,
         const std::vector<VectorField>& gradU,
-        Scalar rho,
-        Scalar mu_lam
+        Scalar nu_lam
     );
 
     void calculateTurbulentViscosity
     (
         const VectorField& U_field,
         const std::vector<VectorField>& gradU,
-        Scalar rho,
-        Scalar mu_lam
+        Scalar nu_lam
     );
 
     /**
@@ -108,9 +103,9 @@ public:
      * @brief Calculate wall shear stress using parallel velocity only
      * τ_wall = μ_eff * (∂U_parallel/∂n)_wall
      * @param U_field Current velocity field
-     * @param mu_lam Laminar dynamic viscosity
+     * @param nu_lam Laminar kinematic viscosity
      */
-    void calculateWallShearStress(const VectorField& U_field, Scalar mu_lam);
+    void calculateWallShearStress(const VectorField& U_field, Scalar nu_lam);
 
     // Getters for turbulence fields
     const ScalarField& getK() const { return k; }
@@ -121,10 +116,10 @@ public:
 
     /**
      * @brief Get effective viscosity (laminar + turbulent)
-     * @param mu_lam Laminar dynamic viscosity
+     * @param nu_lam Laminar kinematic viscosity
      * @return Effective viscosity field
      */
-    ScalarField getEffectiveViscosity(Scalar mu_lam) const;
+    ScalarField getEffectiveViscosity(Scalar nu_lam) const;
 
     // Setters for model parameters
     void setModelConstants
@@ -198,6 +193,9 @@ private:
     // Previous time step fields for transient
     ScalarField k_old;          // k from previous time step
     ScalarField omega_old;      // omega from previous time step
+    
+    // Physical properties
+    Scalar rho;                 // Fluid density
 
     // Matrix constructor for equation solving
     std::unique_ptr<Matrix> matrixConstruct;
@@ -206,8 +204,7 @@ private:
     void calculateBlendingFunctions
     (
         const std::vector<VectorField>& gradU,
-        Scalar rho,
-        Scalar mu_lam
+        Scalar nu_lam
     );
 
     /**
@@ -221,30 +218,28 @@ private:
      * @brief Calculate cross-diffusion term for omega equation
      * @param rho Fluid density
      */
-    void calculateCrossDiffusion(Scalar rho);
+    void calculateCrossDiffusion();
 
     /**
      * @brief Apply turbulence boundary conditions
      * @param fieldName Name of the turbulence field ("k" or "omega")
      * @param field Reference to the field
      * @param U_field Current velocity field
-     * @param mu_lam Laminar dynamic viscosity
-     * @param rho Fluid density
+     * @param nu_lam Laminar kinematic viscosity
      */
     void applyTurbulenceBoundaryConditions
     (
         const std::string& fieldName,
         ScalarField& field,
         const VectorField& U_field,
-        Scalar mu_lam,
-        Scalar rho
+        Scalar nu_lam
     );
 
     /**
      * @brief Calculate y+ value for wall treatment
      * @param cellIdx Cell index
      * @param U_field Velocity field
-     * @param mu_lam Laminar viscosity
+     * @param nu_lam Laminar kinematic viscosity
      * @param rho Density
      * @return y+ value
      */
@@ -252,8 +247,7 @@ private:
     (
         size_t cellIdx,
         const VectorField& U_field,
-        Scalar mu_lam,
-        Scalar rho
+        Scalar nu_lam
     ) const;
 
     /**
@@ -263,7 +257,7 @@ private:
      * @param cellIdx Cell index
      * @return Limited production
      */
-    Scalar limitProduction(Scalar P_k, Scalar rho, size_t cellIdx) const;
+    Scalar limitProduction(Scalar P_k, size_t cellIdx) const;
 };
 
 #endif

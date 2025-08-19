@@ -56,7 +56,7 @@ int main()
         std::vector<Cell> allCells;
         std::vector<BoundaryPatch> allBoundaryPatches;
 
-        std::string meshFilePath = "../inputFiles/cylinder_coarse.msh";
+        std::string meshFilePath = "../inputFiles/cylinder.msh";
 
         readMshFile
         (
@@ -154,10 +154,10 @@ int main()
         // Under-relaxation: U = 0.7, p = 0.3
         simpleSolver.setRelaxationFactors(0.7, 0.3);  
         simpleSolver.setConvergenceTolerance(1e-6);   // Convergence tolerance
-        simpleSolver.setMaxIterations(30);            // Maximum iterations
+        simpleSolver.setMaxIterations(100);            // Maximum iterations
         
         // Enable turbulence modeling
-        simpleSolver.enableTurbulenceModeling(false);
+        simpleSolver.enableTurbulenceModeling(true);
 
         // ====================================================================
         // -------------------- 4. SOLVE STEADY-STATE FLOW --------------------
@@ -175,7 +175,6 @@ int main()
         
         const VectorField& velocity = simpleSolver.getVelocity();
         const ScalarField& pressure = simpleSolver.getPressure();
-        const FaceFluxField& massFlux = simpleSolver.getMassFlux();
         
         // Extract turbulence fields if available
         const ScalarField* k_field = simpleSolver.getTurbulentKineticEnergy();
@@ -199,9 +198,6 @@ int main()
                     << std::endl;
 
         std::cout   << "  Pressure field size: " << pressure.size()
-                    << std::endl;
-
-        std::cout   << "  Mass flux field size: " << massFlux.size()
                     << std::endl;
         
         if (k_field && omega_field && mu_t_field)
@@ -343,7 +339,7 @@ int main()
 
         std::cout << "\n--- 7. Exporting Results to VTK ---" << std::endl;
         // Create output filename for steady-state solution
-        std::string vtkOutputFilename = "../outputFiles/cylinder_flow.vtp";
+        std::string vtkOutputFilename = "../outputFiles/cylinder_flow_fine.vtp";
 
         // Prepare scalar fields for export
         std::map<std::string, const ScalarField*> scalarFieldsToVtk;
@@ -431,7 +427,7 @@ int main()
             {
                 size_t faceIdx = allCells[i].faceIndices[j];
                 int sign = allCells[i].faceSigns[j];
-                cellImbalance += sign * massFlux[faceIdx];
+                cellImbalance += sign * simpleSolver.getRhieChowMassFlux()[faceIdx];
             }
             totalMassImbalance += std::abs(cellImbalance);
         }
@@ -503,7 +499,7 @@ int main()
     else
     {
         std::cout   << "Total execution time: " << seconds.count() << "s ("
-                    << duration.count() << " ms)" << std::endl;
+                    << std::endl;
     }
     
     return 0;

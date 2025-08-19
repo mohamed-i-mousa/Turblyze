@@ -4,6 +4,7 @@
 #include <algorithm>
 #include "CellData.h"
 #include "massFlowRate.h"
+#include "linearInterpolation.h"
 
 std::string Matrix::resolveBCFieldName(const std::string& fieldName) const
 {
@@ -77,7 +78,7 @@ Matrix::Matrix
     gradUz("gradUz", cells.size(), Vector(0.0,0.0,0.0)),
     gradk("gradk", cells.size(), Vector(0.0,0.0,0.0)),
     gradOmega("gradOmega", cells.size(), Vector(0.0,0.0,0.0)),
-    mdotFaces("mdot", faces.size(), 0.0),
+    mDotFaces("mDot", faces.size(), 0.0),
     gradP_f("gradP_f", faces.size(), Vector(0.0,0.0,0.0)),
     gradUx_f("gradUx_f", faces.size(), Vector(0.0,0.0,0.0)),
     gradUy_f("gradUy_f", faces.size(), Vector(0.0,0.0,0.0)),
@@ -120,7 +121,6 @@ void Matrix::refreshIterationCaches
 (
     const PressureField& p,
     const VelocityField& U,
-    Scalar rho,
     const KOmegaSST* turbulenceModel
 )
 {
@@ -141,13 +141,12 @@ void Matrix::refreshIterationCaches
     gradUy = gradScheme.LeastSquares(Uy, allCells);
     gradUz = gradScheme.LeastSquares(Uz, allCells);
 
-    mdotFaces = 
+    mDotFaces = 
         calculateMassFlowRate
         (
             allFaces, 
             allCells, 
-            U, 
-            rho, 
+            U,
             bcManager, 
             faceToPatchMap
         );
@@ -235,7 +234,6 @@ void Matrix::buildMomentumMatrix
     const ScalarField& phi,
     const ScalarField& phi_old,
     const ScalarField& phi_source,
-    Scalar rho,
     const ScalarField& Gamma,
     TimeScheme timeScheme,
     Scalar dt,
@@ -249,7 +247,7 @@ void Matrix::buildMomentumMatrix
     size_t numCells = allCells.size();
 
     // Use cached mass flow rate for momentum equations
-    const FaceFluxField& mdot = mdotFaces;
+    const FaceFluxField& mDot = mDotFaces;
 
     size_t internalFaces = 0, boundaryFaces = 0;
     for (const auto &f : allFaces) 
@@ -294,7 +292,7 @@ void Matrix::buildMomentumMatrix
 
                 convScheme.getFluxCoefficients
                 (
-                    mdot[face.id],
+                    mDot[face.id],
                     a_P_conv,
                     a_N_conv
                 );
@@ -355,7 +353,7 @@ void Matrix::buildMomentumMatrix
                 b_vector(P) -= flux_nonOrth;   // subtract from owner
                 b_vector(N) += flux_nonOrth;   // add to neighbour (conservation)
 
-                Scalar F = mdot[face.id];
+                Scalar F = mDot[face.id];
                 Scalar a_P_conv, a_N_conv;
                 convScheme.getFluxCoefficients(F, a_P_conv, a_N_conv);
 
@@ -419,7 +417,7 @@ void Matrix::buildMomentumMatrix
         {
             for (size_t i = 0; i < numCells; ++i)
             {
-                Scalar term = rho * allCells[i].volume / dt;
+                Scalar term = allCells[i].volume / dt;
                 tripletList.emplace_back(i, i, term);
                 b_vector(i) += term * phi_old[i];
                 b_vector(i) += phi_source[i];
@@ -451,7 +449,7 @@ void Matrix::buildMomentumMatrix
                 Scalar a_diff = Gamma_f * E_f.magnitude() / face.d_Pf_mag;
 
                 // --- IMPLICIT PART (contributes to A and b) ---
-                Scalar F_new = mdot[face.id];
+                Scalar F_new = mDot[face.id];
                 Scalar a_P_conv_new, a_N_conv_new;
                 convScheme.getFluxCoefficients
                 (
@@ -474,7 +472,7 @@ void Matrix::buildMomentumMatrix
                 // --- EXPLICIT PART (contributes only to b) ---
                 if (dt > 0 && theta < 1.0)
                 {
-                    Scalar F_old = mdot[face.id]; // Assuming U is constant over dt
+                    Scalar F_old = mDot[face.id]; // Assuming U is constant over dt
                     Scalar a_P_conv_old, a_N_conv_old;
                     convScheme.getFluxCoefficients(F_old, a_P_conv_old, a_N_conv_old);
 
@@ -512,7 +510,7 @@ void Matrix::buildMomentumMatrix
                 Scalar a_diff = Gamma_f * E_f.magnitude() / d_PN_mag;
 
                 // Implicit part using pre-computed mass flow rate
-                Scalar F_new = mdot[face.id];
+                Scalar F_new = mDot[face.id];
                 Scalar a_P_conv_new, a_N_conv_new;
                 convScheme.getFluxCoefficients(F_new, a_P_conv_new, a_N_conv_new);
                 
@@ -527,7 +525,7 @@ void Matrix::buildMomentumMatrix
                 // Explicit part
                 if (dt > 0 && theta < 1.0)
                 {
-                    Scalar F_old = mdot[face.id]; // Assuming U is constant over dt
+                    Scalar F_old = mDot[face.id]; // Assuming U is constant over dt
                     Scalar a_P_conv_old, a_N_conv_old;
                     convScheme.getFluxCoefficients(F_old, a_P_conv_old, a_N_conv_old);
                     
@@ -550,7 +548,6 @@ void Matrix::buildScalarTransportMatrix
     const ScalarField& phi_old,
     const VectorField& U_field,
     const ScalarField& phi_source,
-    Scalar rho,
     const ScalarField& Gamma,
     TimeScheme timeScheme,
     Scalar dt,
@@ -601,11 +598,11 @@ void Matrix::buildScalarTransportMatrix
     }
 
     // Re-use cached mdot for velocity equations; otherwise compute locally
-    FaceFluxField mdot = mdotFaces; // copy cached by default
+    FaceFluxField mDot = mDotFaces; // copy cached by default
 
     if (!(isUx || isUy || isUz)) 
     {
-        mdot = calculateMassFlowRate(allFaces, allCells, U_field, rho, bcManager, faceToPatchMap);
+        mDot = calculateMassFlowRate(allFaces, allCells, U_field, bcManager, faceToPatchMap);
     }
 
     size_t internalFaces = 0, boundaryFaces = 0;
@@ -651,13 +648,13 @@ void Matrix::buildScalarTransportMatrix
                 Scalar Gamma_f = Gamma[P];
                 Scalar a_diff = Gamma_f * E_f.magnitude() / face.d_Pf_mag;
                 Scalar a_P_conv, a_N_conv;
-                convScheme.getFluxCoefficients(mdot[face.id], a_P_conv, a_N_conv);
+                convScheme.getFluxCoefficients(mDot[face.id], a_P_conv, a_N_conv);
 
                 if (bc->type == BCType::FIXED_VALUE)
                 {
                     Scalar phi_b = computeDirichletValue(bc, fieldName);
                     tripletList.emplace_back(P, P, a_diff);
-                    b_vector(P) += (a_diff - mdot[face.id]) * phi_b;
+                    b_vector(P) += (a_diff - mDot[face.id]) * phi_b;
                     // Non-orthogonal correction
                     Vector T_f = S_f - E_f;
                     Scalar flux_nonOrth = Gamma_f * dot(grad_phi_ref[P], T_f);
@@ -700,7 +697,7 @@ void Matrix::buildScalarTransportMatrix
                 b_vector(P) -= flux_nonOrth;   // subtract from owner
                 b_vector(N) += flux_nonOrth;   // add to neighbour (conservation)
 
-                Scalar F = mdot[face.id];
+                Scalar F = mDot[face.id];
                 Scalar a_P_conv, a_N_conv;
                 convScheme.getFluxCoefficients(F, a_P_conv, a_N_conv);
 
@@ -740,7 +737,7 @@ void Matrix::buildScalarTransportMatrix
         {
             for (size_t i = 0; i < numCells; ++i) 
             {
-                Scalar term = rho * allCells[i].volume / dt;    // implicit transient term
+                Scalar term = allCells[i].volume / dt;    // implicit transient term
                 tripletList.emplace_back(i, i, term);   
                 b_vector(i) += term * phi_old[i];       // explicit transient term
                 b_vector(i) += phi_source[i];           // source term 
@@ -768,7 +765,7 @@ void Matrix::buildScalarTransportMatrix
                 Scalar a_diff = Gamma_f * E_f.magnitude() / face.d_Pf_mag;
 
                 // --- IMPLICIT PART (contributes to A and b) ---
-                Scalar F_new = mdot[face.id];
+                Scalar F_new = mDot[face.id];
                 Scalar a_P_conv_new, a_N_conv_new; // a_N is not used for BCs but required by function
                 convScheme.getFluxCoefficients(F_new, a_P_conv_new, a_N_conv_new);
 
@@ -789,7 +786,7 @@ void Matrix::buildScalarTransportMatrix
                 // --- EXPLICIT PART (contributes only to b) ---
                 if (dt > 0 && theta < 1.0)
                 {
-                    Scalar F_old = mdot[face.id]; // Assuming U is constant over dt
+                    Scalar F_old = mDot[face.id]; // Assuming U is constant over dt
                     Scalar a_P_conv_old, a_N_conv_old;
                     convScheme.getFluxCoefficients(F_old, a_P_conv_old, a_N_conv_old);
 
@@ -828,7 +825,7 @@ void Matrix::buildScalarTransportMatrix
 
                 // Implicit part using pre-computed mass flow rate
                 Scalar a_P_conv_new, a_N_conv_new;
-                convScheme.getFluxCoefficients(mdot[face.id], a_P_conv_new, a_N_conv_new);
+                convScheme.getFluxCoefficients(mDot[face.id], a_P_conv_new, a_N_conv_new);
                 
                 // Contribution to P
                 tripletList.emplace_back(P, P, theta * (a_diff + a_P_conv_new));
@@ -841,7 +838,7 @@ void Matrix::buildScalarTransportMatrix
                 // Explicit part
                 if (dt > 0 && theta < 1.0)
                 {
-                    Scalar F_old = mdot[face.id]; // Assuming U is constant over dt
+                    Scalar F_old = mDot[face.id]; // Assuming U is constant over dt
                     Scalar a_P_conv_old, a_N_conv_old;
                     convScheme.getFluxCoefficients(F_old, a_P_conv_old, a_N_conv_old);
                     
@@ -859,44 +856,33 @@ void Matrix::buildScalarTransportMatrix
 
 void Matrix::buildPressureMatrix
 (
-    const FaceFluxField& massFlux,
+    const FaceFluxField& RhieChowMassFlux,
     const ScalarField& a_Ux,
     const ScalarField& a_Uy,
-    const ScalarField& a_Uz,
-    Scalar rho
+    const ScalarField& a_Uz
 )
 {
     clear();
+
     const size_t numCells = allCells.size();
 
-    // Build RHS from mass imbalance: b = -sum(massFlux)
+    // Build RHS from mass imbalance: b = -sum(RhieChowMassFlux)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Cell& cell = allCells[cellIdx];
 
-        Scalar mass_imbalance = 0.0;
+        Scalar massImbalance = 0.0;
 
         for (size_t j = 0; j < cell.faceIndices.size(); ++j)
         {
             const size_t faceIdx = cell.faceIndices[j];
+
             const int sign = cell.faceSigns[j];
-            mass_imbalance += sign * massFlux[faceIdx];
+
+            massImbalance += sign * RhieChowMassFlux[faceIdx];
         }
 
-        b_vector(cellIdx) = -mass_imbalance;
-    }
-
-    // Detect whether there is a fixed pressure boundary
-    bool hasFixedPressureBC = false;
-
-    for (const auto& patch : bcManager.patches)
-    {
-        const BoundaryData* bc = bcManager.getFieldBC(patch.patchName, "p");
-
-        if (bc && bc->type == BCType::FIXED_VALUE) 
-        {
-            hasFixedPressureBC = true; break; 
-        }
+        b_vector(cellIdx) = -massImbalance;
     }
 
     // Reserve triplets (rough estimate)
@@ -904,7 +890,14 @@ void Matrix::buildPressureMatrix
 
     for (const auto &f : allFaces) 
     {
-        if (f.isBoundary()) ++boundaryFaces; else ++internalFaces;
+        if (f.isBoundary()) 
+        {
+            ++boundaryFaces;
+        }
+        else
+        {
+            ++internalFaces;
+        }
     }
 
     tripletList.clear();
@@ -913,9 +906,8 @@ void Matrix::buildPressureMatrix
     // Assemble diffusion-like matrix using Rhie-Chow-consistent coefficients
     for (const auto& face : allFaces)
     {
-        if (!face.geometricPropertiesCalculated) continue;
-
         const size_t P = face.ownerCell;
+        
         if (face.isBoundary())
         {
             // Fixed pressure boundary: enforce p' = 0
@@ -930,27 +922,23 @@ void Matrix::buildPressureMatrix
         
             continue;
         }
-
+                
         const size_t N = face.neighbourCell.value();
+        
         const Vector d_PN = allCells[N].centroid - allCells[P].centroid;
-        const Scalar d_P = face.d_Pf_mag;
-        const Scalar d_N = face.d_Nf_mag.value();
-        const Scalar total_dist = d_P + d_N;
-        const Scalar w_P = d_N / total_dist;
-        const Scalar w_N = d_P / total_dist;
 
         // Per-component diagonal at face
-        const Scalar a_face_x = w_P * a_Ux[P] + w_N * a_Ux[N];
-        const Scalar a_face_y = w_P * a_Uy[P] + w_N * a_Uy[N];
-        const Scalar a_face_z = w_P * a_Uz[P] + w_N * a_Uz[N];
+        const Scalar a_Ux_f = linearInterpolation(face, a_Ux);
+        const Scalar a_Uy_f = linearInterpolation(face, a_Uy);
+        const Scalar a_Uz_f = linearInterpolation(face, a_Uz);
 
-        // Minimum-correction coefficient with non-orthogonality (pressure equation needs rho)
+        // Minimum-correction coefficient with non-orthogonality
         const Vector S_f = face.normal * face.area;
         const Scalar denom = d_PN.magnitudeSquared();
-        const Scalar numer = d_PN.x * S_f.x / (a_face_x + 1e-20)
-                           + d_PN.y * S_f.y / (a_face_y + 1e-20)
-                           + d_PN.z * S_f.z / (a_face_z + 1e-20);
-        const Scalar D_f = rho * (numer / denom);
+        const Scalar numer = d_PN.x * S_f.x / (a_Ux_f)
+                           + d_PN.y * S_f.y / (a_Uy_f)
+                           + d_PN.z * S_f.z / (a_Uz_f);
+        const Scalar D_f = (numer / denom);
 
         tripletList.emplace_back(P, P, D_f);
         tripletList.emplace_back(P, N, -D_f);
@@ -959,13 +947,6 @@ void Matrix::buildPressureMatrix
     }
 
     A_matrix.setFromTriplets(tripletList.begin(), tripletList.end());
-
-    // Anchor if no fixed-pressure boundary is present
-    if (!hasFixedPressureBC && A_matrix.rows() > 0)
-    {
-        A_matrix.coeffRef(0, 0) += 1e12;
-        b_vector(0) = 0.0;
-    }
 }
 
 // Apply under-relaxation to the assembled linear system (Ax=b)

@@ -34,7 +34,6 @@ FaceFluxField calculateMassFlowRate
     const std::vector<Face>& faces,
     const std::vector<Cell>& cells,
     const VectorField& U_field,
-    Scalar rho,
     const BoundaryConditions& bcManager,
     const std::map<size_t, const BoundaryPatch*>& faceToPatchMap
 );

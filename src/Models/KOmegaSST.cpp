@@ -32,7 +32,8 @@ KOmegaSST::KOmegaSST
       dt(0.001),
       theta(0.5),
       k_old("k_old", cells.size(), 1e-6),
-      omega_old("omega_old", cells.size(), 1.0)
+      omega_old("omega_old", cells.size(), 1.0),
+      rho(1.225)  // Default air density
 {
     // Initialize matrix constructor for equation solving
     matrixConstruct = std::make_unique<Matrix>(
@@ -47,8 +48,7 @@ KOmegaSST::~KOmegaSST() = default;
 void KOmegaSST::initialize
 (
     const VectorField& U_field,
-    Scalar rho,
-    Scalar mu_lam
+    Scalar nu_lam
 )
 {
     std::cout   << "\n=== Initializing k-omega SST Turbulence Model ==="
@@ -79,13 +79,13 @@ void KOmegaSST::initialize
             1e-4
         );
         
-        // Initialize turbulent viscosity: μₜ = ρ * k / ω
-        mu_t[i] = rho * k[i] / omega[i];
+        // Initialize turbulent kinematic viscosity: νₜ = k / ω  
+        mu_t[i] = k[i] / omega[i];  // This is actually nu_t (kinematic)
     }
     
     // Step 3: Apply turbulence boundary conditions
-    applyTurbulenceBoundaryConditions("k", k, U_field, mu_lam, rho);
-    applyTurbulenceBoundaryConditions("omega", omega, U_field, mu_lam, rho);
+    applyTurbulenceBoundaryConditions("k", k, U_field, nu_lam);
+    applyTurbulenceBoundaryConditions("omega", omega, U_field, nu_lam);
     
     std::cout   << "Turbulence fields initialized successfully." << std::endl;
 }
@@ -108,19 +108,23 @@ void KOmegaSST::calculateWallDistance()
     ScalarField phi_old = phi;
     
     // Construct Poisson equation: ∇²φ = -1
+    VectorField zero_velocity("zero_velocity", allCells.size(), Vector(0.0, 0.0, 0.0));
+    ScalarField phi_wall_source("phi_wall_source", allCells.size(), 0.0);
+    ScalarField Gamma_phi_wall("Gamma_phi_wall", allCells.size(), 1.0);
+    CentralDifferenceScheme cds;
+    
     matrixConstruct->buildScalarTransportMatrix
     (
         "phi_wall",
         phi,
         phi_old,
-        VectorField("zero_velocity", allCells.size(), Vector(0.0, 0.0, 0.0)), // No convection
-        ScalarField("phi_wall_source", allCells.size()), // Source term (zero for wall distance)
-        0.0,    // density (not used)
-        ScalarField("Gamma_phi_wall", allCells.size(), 1.0),    // Unit diffusion coefficient per cell
+        zero_velocity, // No convection
+        phi_wall_source, // Source term (zero for wall distance)
+        Gamma_phi_wall,    // Unit diffusion coefficient per cell
         TimeScheme::Steady,
         0.0,    // No time derivative
         1.0,    // Full implicit
-        CentralDifferenceScheme()
+        cds
     );
     
     // Modify source term: b = -1 (Laplacian = -1)
@@ -225,12 +229,11 @@ void KOmegaSST::solve
     const VectorField& gradUx,
     const VectorField& gradUy,
     const VectorField& gradUz,
-    Scalar rho,
-    Scalar mu_lam
+    Scalar nu_lam
 )
 {
     std::vector<VectorField> gradUVec = { gradUx, gradUy, gradUz };
-    solve(U_field, gradUVec, rho, mu_lam);
+    solve(U_field, gradUVec, nu_lam);
 }
 
 // Legacy vector-based interface (unchanged)
@@ -238,8 +241,7 @@ void KOmegaSST::solve
 (
     const VectorField& U_field, 
     const std::vector<VectorField>& gradU,
-    Scalar rho, 
-    Scalar mu_lam
+    Scalar nu_lam
 )
 {
     /**
@@ -256,47 +258,46 @@ void KOmegaSST::solve
     grad_omega = gradientScheme.LeastSquares(omega, allCells);
     
     // Step 2: Calculate blending functions
-    calculateBlendingFunctions(gradU, rho, mu_lam);
+    calculateBlendingFunctions(gradU, nu_lam);
     
     // Step 3: Calculate production terms
     calculateProductionTerms(gradU);
     
     // Step 4: Calculate cross-diffusion term
-    calculateCrossDiffusion(rho);
+    calculateCrossDiffusion();
     
     // Step 5: Solve omega equation
-    solveOmegaEquation(U_field, gradU, rho, mu_lam);
+    solveOmegaEquation(U_field, gradU, nu_lam);
     
     // Step 6: Apply near-wall treatment for omega
-    applyNearWallTreatmentOmega(rho, mu_lam);
+    applyNearWallTreatmentOmega(nu_lam);
     
     // Step 7: Solve k equation
-    solveKEquation(U_field, gradU, rho, mu_lam);
+    solveKEquation(U_field, gradU, nu_lam);
     
     // Step 8: Calculate turbulent viscosity
-    calculateTurbulentViscosity(U_field, gradU, rho, mu_lam);
+    calculateTurbulentViscosity(U_field, gradU, nu_lam);
     
     // Step 9: Apply wall corrections
     applyWallCorrections();
     
     // Step 10: Calculate wall shear stress
-    calculateWallShearStress(U_field, mu_lam);
+    calculateWallShearStress(U_field, nu_lam);
 }
 
 void KOmegaSST::solveOmegaEquation
 (
     const VectorField& U_field,
     const std::vector<VectorField>&,
-    Scalar rho,
-    Scalar mu_lam
+    Scalar nu_lam
 )
 {   
     /**
-     * Omega transport equation:
-     * ∂(ρω)/∂t + ∇·(ρUω) = γ·P_ω - β·ρω² + ∇·[(μ + σ_ω·μₜ)∇ω] + D_ω
+     * Omega transport equation (kinematic formulation):
+     * ∂ω/∂t + ∇·(Uω) = γ·S² - β·ω² + ∇·[(ν + σ_ω·νₜ)∇ω] + D_ω
      * 
      * Where:
-     * - P_ω = production term
+     * - γ·S² = production term (kinematic)
      * - D_ω = cross-diffusion term (only for SST model)
      * - γ, β, σ_ω are blended constants
      */
@@ -305,8 +306,8 @@ void KOmegaSST::solveOmegaEquation
     
     // omega_old is already stored as a member variable
     
-    // Construct transport matrix for omega (variable effective diffusion: μ + σ_ω μ_t)
-    // Build per-cell effective diffusion Gamma = μ_lam + σ_ω * μ_t (blend σ_ω with F1)
+    // Construct transport matrix for omega (variable effective diffusion: ν + σ_ω ν_t)
+    // Build per-cell effective diffusion Gamma = ν_lam + σ_ω * ν_t (kinematic viscosity)
     ScalarField GammaOmega("GammaOmega", allCells.size());
 
     for (size_t i = 0; i < allCells.size(); ++i)
@@ -315,23 +316,25 @@ void KOmegaSST::solveOmegaEquation
             F1[i] * constants.sigma_omega1 
           + (S(1.0) - F1[i]) * constants.sigma_omega2;
 
-        GammaOmega[i] = mu_lam + sigma_omega * mu_t[i];
+        GammaOmega[i] = nu_lam + sigma_omega * mu_t[i];  // All kinematic
     }
 
     // Construct transport matrix for omega with variable diffusion
+    ScalarField omega_source("omega_source", allCells.size(), 0.0);
+    CentralDifferenceScheme cds_omega;
+    
     matrixConstruct->buildScalarTransportMatrix
     (
         "omega",
         omega,
         omega_old,
         U_field,
-        ScalarField("omega_source", allCells.size()), // Source term (zero for omega)
-        rho,
+        omega_source, // Source term (zero for omega)
         GammaOmega,
         enableTransient ? TimeScheme::Transient : TimeScheme::Steady,
         enableTransient ? dt : 0.0,
         enableTransient ? theta : 1.0,
-        CentralDifferenceScheme()
+        cds_omega
     );
     
     auto& A_matrix = const_cast<Eigen::SparseMatrix<Scalar>&>
@@ -358,21 +361,14 @@ void KOmegaSST::solveOmegaEquation
             F1[i] * constants.beta_1 
           + (1.0 - F1[i]) * constants.beta_2;
         
-        // Production term for omega: α * P_k / (μ_t/ρ) = α * ρ * P_k / μ_t
-        // Use production_omega as S^2 from calculateProductionTerms; convert to P_k via μ_t S^2
-        Scalar Pk = production_k[i];
-        Scalar nu_t = mu_t[i] / (rho + 1e-20);
-        Scalar P_omega = 0.0;
-
-        if (nu_t > 1e-20) 
-        {
-            P_omega = blended_gamma * (Pk / (nu_t + 1e-20));
-        }
+        // Production term for omega: γ * S² (kinematic formulation)
+        // production_omega is already S² from calculateProductionTerms
+        Scalar P_omega = blended_gamma * production_omega[i];
 
         b_vector(i) += P_omega * cellVolume;
         
-        // Destruction term: -β·ρω²
-        const Scalar destruction = beta * rho * omega[i] * omega[i];
+        // Destruction term: -β·ω² (kinematic formulation)
+        const Scalar destruction = beta * omega[i] * omega[i];
         A_matrix.coeffRef(i, i) += destruction / omega[i] * cellVolume;  // Linearized
         
         // Cross-diffusion term (SST specific)
@@ -409,17 +405,17 @@ void KOmegaSST::solveOmegaEquation
     }
     
     // Apply boundary conditions
-    applyTurbulenceBoundaryConditions("omega", omega, U_field, mu_lam, rho);
+    applyTurbulenceBoundaryConditions("omega", omega, U_field, nu_lam);
 }
 
-void KOmegaSST::applyNearWallTreatmentOmega(Scalar rho, Scalar mu_lam) 
+void KOmegaSST::applyNearWallTreatmentOmega(Scalar nu_lam) 
 {
     /**
      * Near-wall treatment for omega:
      * For cells very close to the wall (y+ < 2), use the viscous sublayer relation:
-     * ω_wall = 6μ/(ρβ₁y²)
+     * ω_wall = 6μ/(ρβ₁y²) = 6ν/(β₁y²)
      */
-    
+        
     std::cout << "  Applying near-wall treatment for omega..." << std::endl;
     
     for (size_t i = 0; i < allCells.size(); ++i) 
@@ -428,7 +424,7 @@ void KOmegaSST::applyNearWallTreatmentOmega(Scalar rho, Scalar mu_lam)
         // Trigger near-wall if y is very small (tolerant threshold)
         if (y < 5e-6) 
         {
-            omega[i] = 6.0 * mu_lam / (rho * constants.beta_1 * y * y + 1e-20);
+            omega[i] = 6.0 * nu_lam / (constants.beta_1 * y * y + 1e-20);
             omega[i] = std::min(omega[i], 1e6);
             omega[i] = std::max(omega[i], 1e-4);
         }
@@ -439,17 +435,16 @@ void KOmegaSST::solveKEquation
 (
     const VectorField& U_field,
     const std::vector<VectorField>&,
-    Scalar rho,
-    Scalar mu_lam
+    Scalar nu_lam
 )
 {
     /**
-     * k transport equation:
-     * ∂(ρk)/∂t + ∇·(ρUk) = P_k - β*·ρkω + ∇·[(μ + σ_k·μₜ)∇k]
+     * k transport equation (kinematic formulation):
+     * ∂k/∂t + ∇·(Uk) = P_k - β*·kω + ∇·[(ν + σ_k·νₜ)∇k]
      * 
      * Where:
-     * - P_k = limited production term
-     * - β* = 0.09 (destruction coefficient)
+     * - P_k = limited production term (kinematic)
+     * - β* = 0.09 (destruction coefficient) 
      * - σ_k = blended diffusion coefficient
      */
     
@@ -466,21 +461,23 @@ void KOmegaSST::solveKEquation
             F1[i] * constants.sigma_k1 
           + (S(1.0) - F1[i]) * constants.sigma_k2;
           
-        GammaK[i] = mu_lam + sigma_k * mu_t[i];
+        GammaK[i] = nu_lam + sigma_k * mu_t[i];  // All kinematic
     }
+    ScalarField k_source("k_source", allCells.size(), 0.0);
+    CentralDifferenceScheme cds_k;
+    
     matrixConstruct->buildScalarTransportMatrix
     (
         "k",
         k,
         k_old,
         U_field,
-        ScalarField("k_source", allCells.size()), // Source term (zero for k)
-        rho,
+        k_source, // Source term (zero for k)
         GammaK,
         enableTransient ? TimeScheme::Transient : TimeScheme::Steady,
         enableTransient ? dt : 0.0,
         enableTransient ? theta : 1.0,
-        CentralDifferenceScheme()
+        cds_k
     );
     
     auto& A_matrix = const_cast<Eigen::SparseMatrix<Scalar>&>
@@ -499,11 +496,11 @@ void KOmegaSST::solveKEquation
         Scalar cellVolume = allCells[i].volume;
         
         // Production term (limited to prevent unrealistic values)
-        const Scalar P_k_limited = limitProduction(production_k[i], rho, i);
+        const Scalar P_k_limited = limitProduction(production_k[i], i);
         b_vector(i) += P_k_limited * cellVolume;
         
-        // Destruction term: -β*·ρkω
-        const Scalar destruction = constants.beta_star * rho * omega[i];
+        // Destruction term: -β*·kω (kinematic formulation)  
+        const Scalar destruction = constants.beta_star * omega[i];
         A_matrix.coeffRef(i, i) += destruction * cellVolume;
     }
     
@@ -532,15 +529,14 @@ void KOmegaSST::solveKEquation
     }
     
     // Apply boundary conditions
-    applyTurbulenceBoundaryConditions("k", k, U_field, mu_lam, rho);
+    applyTurbulenceBoundaryConditions("k", k, U_field, nu_lam);
 }
 
 void KOmegaSST::calculateTurbulentViscosity
 (
     const VectorField&,
     const std::vector<VectorField>& gradU,
-    Scalar rho,
-    Scalar mu_lam
+    Scalar nu_lam
 )
 {
     /**
@@ -584,12 +580,12 @@ void KOmegaSST::calculateTurbulentViscosity
             S = std::sqrt(2.0 * (S11*S11 + S22*S22 + 2.0*S12*S12));
         }
         
-        // SST turbulent viscosity formula: μₜ = ρ * a₁ * k / max(a₁ * ω, S * F₂)
+        // SST turbulent viscosity formula: νₜ = a₁ * k / max(a₁ * ω, S * F₂)
         Scalar denominator = std::max(constants.a1 * omega[i], S * F2[i]);
-        mu_t[i] = rho * constants.a1 * k[i] / (denominator + 1e-20);
+        mu_t[i] = constants.a1 * k[i] / (denominator + 1e-20);  // This is actually nu_t (kinematic)
         
         // Limit turbulent viscosity to reasonable values
-        mu_t[i] = std::min(mu_t[i], 1000.0 * mu_lam);  // Max 1000 times laminar viscosity
+        mu_t[i] = std::min(mu_t[i], 1000.0 * nu_lam);  // Max 1000 times laminar kinematic viscosity
         mu_t[i] = std::max(mu_t[i], 0.0);              // Ensure non-negative
     }
 }
@@ -625,7 +621,7 @@ void KOmegaSST::applyWallCorrections()
     }
 }
 
-void KOmegaSST::calculateWallShearStress(const VectorField& U_field, Scalar mu_lam)
+void KOmegaSST::calculateWallShearStress(const VectorField& U_field, Scalar nu_lam)
 {
     /**
      * Calculate wall shear stress using parallel velocity component:
@@ -648,8 +644,8 @@ void KOmegaSST::calculateWallShearStress(const VectorField& U_field, Scalar mu_l
             // Approximate wall shear using first cell velocity and distance
             Scalar U_magnitude = U_field[i].magnitude();
             
-            // Wall shear stress: τ = μ * ∂U/∂y ≈ μ * U / y
-            wallShearStress[i] = mu_lam * U_magnitude / (y + 1e-12);
+            // Wall shear stress: τ = μ * ∂U/∂y ≈ μ * U / y = ρ * ν * U / y
+            wallShearStress[i] = rho * nu_lam * U_magnitude / (y + 1e-12);
             
             // Limit to reasonable values
             wallShearStress[i] = std::min(wallShearStress[i], 1000.0);
@@ -661,21 +657,21 @@ void KOmegaSST::calculateWallShearStress(const VectorField& U_field, Scalar mu_l
     }
 }
 
-ScalarField KOmegaSST::getEffectiveViscosity(Scalar mu_lam) const
+ScalarField KOmegaSST::getEffectiveViscosity(Scalar nu_lam) const
 {
     /**
-     * Calculate effective viscosity: μ_eff = μ_lam + μₜ
+     * Calculate effective kinematic viscosity: ν_eff = ν_lam + νₜ
      * This is used in momentum equations for turbulent flow
      */
     
-    ScalarField mu_eff("mu_eff", allCells.size());
+    ScalarField nu_eff("nu_eff", allCells.size());
     
     for (size_t i = 0; i < allCells.size(); ++i) 
     {
-        mu_eff[i] = mu_lam + mu_t[i];
+        nu_eff[i] = nu_lam + mu_t[i];  // mu_t is actually nu_t (kinematic)
     }
     
-    return mu_eff;
+    return nu_eff;
 }
 
 // Private helper methods implementation
@@ -683,8 +679,7 @@ ScalarField KOmegaSST::getEffectiveViscosity(Scalar mu_lam) const
 void KOmegaSST::calculateBlendingFunctions
 (
     const std::vector<VectorField>&,
-    Scalar rho,
-    Scalar mu_lam
+    Scalar nu_lam
 )
 {
     /**
@@ -707,7 +702,7 @@ void KOmegaSST::calculateBlendingFunctions
         
         // Arguments for blending functions
         Scalar arg1_1 = sqrt_k / (constants.beta_star * omega[i] * y);
-        Scalar arg1_2 = 500.0 * mu_lam / (rho * omega[i] * y * y);
+        Scalar arg1_2 = 500.0 * rho * nu_lam / (omega[i] * y * y);
         
         // Calculate CDkw for arg1_3 (cross-diffusion for blending function)
         Scalar dot_product = dot(grad_k[i], grad_omega[i]);
@@ -715,12 +710,12 @@ void KOmegaSST::calculateBlendingFunctions
         Scalar CDkw = 
             std::max
             (
-                2.0 * rho * constants.sigma_omega2 / omega[i] * dot_product,
+                2.0 * constants.sigma_omega2 / omega[i] * dot_product,
                 1e-10
             );
 
         Scalar arg1_3 = 
-            4.0 * rho * constants.sigma_omega2 * k[i] / (CDkw * y * y);
+            4.0 * constants.sigma_omega2 * k[i] / (CDkw * y * y);
         
         Scalar arg1 = std::min(std::max(arg1_1, arg1_2), arg1_3);
         F1[i] = std::tanh(std::pow(arg1, 4.0));
@@ -778,8 +773,8 @@ void KOmegaSST::calculateProductionTerms
             S = std::sqrt(2.0 * (S11*S11 + S22*S22 + 2.0*S12*S12));
         }
         
-        // Production of k: P_k = μₜ * S²
-        production_k[i] = mu_t[i] * S * S;
+        // Production of k: P_k = νₜ * S² (kinematic formulation)
+        production_k[i] = mu_t[i] * S * S;  // mu_t is actually nu_t
         
         // Production of omega: P_ω = (γ/νₜ) * P_k = γ * S²
         Scalar gamma = 
@@ -789,23 +784,23 @@ void KOmegaSST::calculateProductionTerms
     }
 }
 
-void KOmegaSST::calculateCrossDiffusion(Scalar rho)
+void KOmegaSST::calculateCrossDiffusion()
 {
     /**
-     * Calculate cross-diffusion term for SST model:
-     * D_ω = 2(1-F1) * σ_ω2 * ρ/ω * ∇k · ∇ω
+     * Calculate cross-diffusion term for SST model (kinematic formulation):
+     * D_ω = 2(1-F1) * σ_ω2 / ω * ∇k · ∇ω
      * 
      * This term appears only in the omega equation and is crucial for SST behavior
      */
-    
+        
     for (size_t i = 0; i < allCells.size(); ++i) 
     {
-        // Cross-diffusion: 2(1-F1) * σ_ω2 * ρ/ω * ∇k · ∇ω
+        // Cross-diffusion: 2(1-F1) * σ_ω2 / ω * ∇k · ∇ω (kinematic formulation)
         Scalar dot_product = dot(grad_k[i], grad_omega[i]);
         
         cross_diffusion[i] = 
-            2.0 * (1.0 - F1[i]) * constants.sigma_omega2 
-          * rho / (omega[i] + 1e-12) * dot_product;
+            2.0 * (1.0 - F1[i]) * constants.sigma_omega2
+          / (omega[i] + 1e-12) * dot_product;
         
         // Ensure positive contribution (only for SST formulation)
         cross_diffusion[i] = std::max(cross_diffusion[i], 0.0);
@@ -817,8 +812,7 @@ void KOmegaSST::applyTurbulenceBoundaryConditions
     const std::string& fieldName,
     ScalarField& field,
     const VectorField&,
-    Scalar mu_lam,
-    Scalar rho
+    Scalar nu_lam
 )
 {
     /**
@@ -849,7 +843,7 @@ void KOmegaSST::applyTurbulenceBoundaryConditions
             {
                 // ω_wall = 6μ/(ρβ₁y²) for viscous sublayer
                 Scalar y = std::max(wallDistance[i], 1e-8);
-                field[i] = 6.0 * mu_lam / (rho * constants.beta_1 * y * y);
+                field[i] = 6.0 * nu_lam / (constants.beta_1 * y * y);
                 field[i] = std::min(field[i], 1e6);  // Limit maximum value
             }
         }
@@ -860,8 +854,7 @@ Scalar KOmegaSST::calculateYPlus
 (
     size_t cellIdx,
     const VectorField&,
-    Scalar mu_lam,
-    Scalar rho
+    Scalar nu_lam
 ) const
 {
     /**
@@ -871,22 +864,22 @@ Scalar KOmegaSST::calculateYPlus
     
     Scalar y = wallDistance[cellIdx];
     Scalar tau_wall = wallShearStress[cellIdx];
-    Scalar u_tau = std::sqrt(tau_wall / rho);
+    Scalar u_tau = std::sqrt(tau_wall);
     
-    return rho * u_tau * y / mu_lam;
+    return u_tau * y / nu_lam;
 }
 
-Scalar KOmegaSST::limitProduction(Scalar P_k, Scalar rho, size_t cellIdx) const
+Scalar KOmegaSST::limitProduction(Scalar P_k, size_t cellIdx) const
 {
     /**
      * Limit production to prevent unrealistic values:
-     * P_k = min(P_k, 10 * β* * ρ * k * ω)
+     * P_k = min(P_k, 10 * β* * k * ω)  (kinematic formulation)
      * 
      * This prevents excessive production in stagnation regions
      */
     
     Scalar limit = 
-        10.0 * constants.beta_star * rho * k[cellIdx] * omega[cellIdx];
+        10.0 * constants.beta_star * k[cellIdx] * omega[cellIdx];
 
     return std::min(P_k, limit);
 }

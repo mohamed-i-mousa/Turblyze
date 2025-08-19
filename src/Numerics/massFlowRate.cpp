@@ -5,7 +5,6 @@ FaceFluxField calculateMassFlowRate
     const std::vector<Face>& faces,
     const std::vector<Cell>& cells,
     const VectorField& U_field,
-    Scalar rho,
     const BoundaryConditions& bcManager,
     const std::map<size_t, const BoundaryPatch*>& /* faceToPatchMap */
 ) 
@@ -25,7 +24,7 @@ FaceFluxField calculateMassFlowRate
             Vector U_face = 
                 bcManager.calculateBoundaryFaceVectorValue(face, U_field, "U");
                 
-            mdot[faceId] = rho * dot(U_face, S_f);
+            mdot[faceId] = dot(U_face, S_f);
         }
         else
         {
@@ -41,7 +40,7 @@ FaceFluxField calculateMassFlowRate
             // Interpolated velocity: U_field[P] * (1 - w) + U_field[N] * w
             Vector U_f = U_field[P] * (1.0 - w) + U_field[N] * w;
             
-            mdot[faceId] = rho * dot(U_f, S_f);
+            mdot[faceId] = dot(U_f, S_f);
         }
     }
     

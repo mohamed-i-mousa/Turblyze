@@ -54,10 +54,10 @@ public:
     void solveMomentumEquations();
     
     /**
-     * @brief Calculate face fluxes using current velocity field
+     * @brief Calculate mass fluxes using Rhie-Chow interpolation
      */
-    void calculateFaceFluxes();
-    
+    void calculateRhieChowMassFlux();
+
     /**
      * @brief Solve pressure correction equation
      */
@@ -85,16 +85,6 @@ public:
     bool checkConvergence();
 
     /**
-     * @brief Calculate face velocities using Rhie-Chow interpolation
-     */
-    void calculateRhieChowFaceVelocities();
-    
-    /**
-     * @brief Calculate mass fluxes through faces
-     */
-    void calculateMassFluxes();
-
-    /**
      * @brief Get velocity field
      * @return Reference to velocity field
      */
@@ -110,7 +100,10 @@ public:
      * @brief Get mass flux field
      * @return Reference to mass flux field
      */
-    const FaceFluxField& getMassFlux() const { return massFlux; }
+    const FaceFluxField& getRhieChowMassFlux() const 
+    { 
+        return RhieChowMassFlux; 
+    }
     
     /**
      * @brief Get x-component of velocity field
@@ -157,10 +150,15 @@ public:
     
     /**
      * @brief Set physical properties
-     * @param rho_in Fluid density
-     * @param mu_in Dynamic viscosity
+     * @param rho_new Fluid density
+     * @param mu_new Dynamic viscosity
      */
-    void setPhysicalProperties(Scalar rho_in, Scalar mu_in) { rho = rho_in; mu = mu_in; }
+    void setPhysicalProperties(Scalar rho_new, Scalar mu_new) 
+    {
+        this->rho = rho_new;
+        this->mu = mu_new;
+        this->nu = mu_new / rho_new;
+    }
     
     /**
      * @brief Get turbulent kinetic energy field
@@ -176,7 +174,7 @@ public:
     
     /**
      * @brief Get turbulent viscosity field
-     * @return Pointer to mu_t field (null if turbulence disabled)
+     * @return Pointer to nu_t field (null if turbulence disabled)
      */
     const ScalarField* getTurbulentViscosity() const;
     
@@ -197,6 +195,7 @@ private:
     /// Physical properties
     Scalar rho;           ///< Fluid density
     Scalar mu;            ///< Dynamic viscosity
+    Scalar nu;            ///< Kinematic viscosity
 
     /// Algorithm parameters
     Scalar alpha_U;         ///< Under-relaxation factor for velocity
@@ -215,13 +214,12 @@ private:
     Scalar lastPressureCorrectionRMS = S(1e9); ///< Track p' RMS before reset
     
     /// Face-based fields for Rhie-Chow interpolation
-    FaceVectorField U_face;      ///< Face velocities
-    FaceFluxField massFlux;      ///< Mass flux through faces
-    FaceFluxField volumeFlux;    ///< Volume flux through faces
+    FaceFluxField RhieChowMassFlux;      ///< Mass flux through faces
+    FaceVectorField U_face;              ///< Face velocity field
 
     /// Previous-iteration fields (for under-relaxation effects at faces)
     VectorField U_prev;          ///< Cell-centered velocity from previous iteration
-    FaceVectorField U_face_prev; ///< Face velocity from previous iteration
+    FaceVectorField U_face_prev; ///< Face velocity from previous iteration 
 
     /// Momentum equation coefficients per component (needed for Rhie-Chow)
     ScalarField a_Ux;     ///< Diagonal coefficients of U_x momentum equation
@@ -259,35 +257,6 @@ private:
      * @return Pressure residual value
      */
     Scalar calculatePressureResidual() const;
-    
-    /**
-     * @brief Print solution statistics
-     */
-    void printSolutionStatistics();
-
-    /**
-     * @brief Compute linear interpolation weights for a face
-     * @param face Face for interpolation
-     * @param w_P Weight for owner cell
-     * @param w_N Weight for neighbor cell
-     */
-    void computeLinearWeights(const Face& face, Scalar& w_P, Scalar& w_N) const;
-    
-    /**
-     * @brief Linear interpolation of vector field to face
-     * @param face Face for interpolation
-     * @param cellField Cell-centered vector field
-     * @return Interpolated vector value at face
-     */
-    Vector linearInterpolation(const Face& face, const VectorField& cellField) const;
-    
-    /**
-     * @brief Linear interpolation of scalar field to face
-     * @param face Face for interpolation
-     * @param cellField Cell-centered scalar field
-     * @return Interpolated scalar value at face
-     */
-    Scalar linearInterpolation(const Face& face, const ScalarField& cellField) const;
 };
 
 #endif

@@ -42,3 +42,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# KOmegaSST files
+#src/Models/KOmegaSST.cpp
+#src/Models/KOmegaSST.h

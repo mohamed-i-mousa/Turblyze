@@ -35,6 +35,7 @@ add_executable(${PROJECT_NAME}
     src/Numerics/massFlowRate.cpp
     src/Numerics/LinearSolvers.cpp
     src/Numerics/SIMPLE.cpp
+    src/Numerics/linearInterpolation.cpp
     src/Models/KOmegaSST.cpp
     src/PostProcessing/VtkWriter.cpp
 )

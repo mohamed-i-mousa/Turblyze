@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <limits>
 #include <map>
+#include "linearInterpolation.h"
 
 SIMPLE::SIMPLE
 (
@@ -14,32 +15,31 @@ SIMPLE::SIMPLE
     const BoundaryConditions& bc,
     const GradientScheme& gradScheme,
     const ConvectionScheme& convScheme
-)
-    : allFaces(faces),
-      allCells(cells),
-      bcManager(bc),
-      gradientScheme(gradScheme),
-      convectionScheme(convScheme),
-      rho(1.225),
-      mu(1.7894e-5),
-      alpha_U(0.7),
-      alpha_p(0.3),
-      maxIterations(500),
-      tolerance(1e-6),
-      enableTurbulence(false),
-      U("U", cells.size(), Vector(0.0, 0.0, 0.0)),
-      p("p", cells.size(), 0.0),
-      p_prime("p_prime", cells.size(), 0.0),
-      U_face("U_face", faces.size(), Vector(0.0, 0.0, 0.0)),
-      massFlux("massFlux", faces.size(), 0.0),
-      volumeFlux("volumeFlux", faces.size(), 0.0),
-      U_prev("U_prev", cells.size(), Vector(0.0, 0.0, 0.0)),
-      U_face_prev("U_face_prev", faces.size(), Vector(0.0, 0.0, 0.0)),
-      a_Ux("a_Ux", cells.size(), 0.0),
-      a_Uy("a_Uy", cells.size(), 0.0),
-      a_Uz("a_Uz", cells.size(), 0.0),
-      H_U("H_U", cells.size(), Vector(0.0, 0.0, 0.0)),
-      gradP("gradP", cells.size(), Vector(0.0, 0.0, 0.0))
+) : allFaces(faces),
+    allCells(cells),
+    bcManager(bc),
+    gradientScheme(gradScheme),
+    convectionScheme(convScheme),
+    rho(1.225),
+    mu(1.7894e-5),
+    nu(1.7894e-5 / 1.225),
+    alpha_U(0.7),
+    alpha_p(0.3),
+    maxIterations(500),
+    tolerance(1e-6),
+    enableTurbulence(false),
+    U("U", cells.size(), Vector(0.0, 0.0, 0.0)),
+    p("p", cells.size(), 0.0),
+    p_prime("p_prime", cells.size(), 0.0),
+    RhieChowMassFlux("RhieChowMassFlux", faces.size(), 0.0),
+    U_face("U_face", faces.size(), Vector(0.0, 0.0, 0.0)),
+    U_prev("U_prev", cells.size(), Vector(0.0, 0.0, 0.0)),
+    U_face_prev("U_face_prev", faces.size(), Vector(0.0, 0.0, 0.0)),
+    a_Ux("a_Ux", cells.size(), 0.0),
+    a_Uy("a_Uy", cells.size(), 0.0),
+    a_Uz("a_Uz", cells.size(), 0.0),
+    H_U("H_U", cells.size(), Vector(0.0, 0.0, 0.0)),
+    gradP("gradP", cells.size(), Vector(0.0, 0.0, 0.0))
 {
     initialize(Vector(0.0, 0.0, -0.1), 0.0);
 }
@@ -60,22 +60,17 @@ void SIMPLE::initialize(const Vector& initialVelocity, Scalar initialPressure)
         p[i] = initialPressure;                     
     }
 
-    for (size_t faceIdx = 0; faceIdx < allFaces.size(); ++faceIdx)
-    {
-        const Face& face = allFaces[faceIdx];
+    FaceFluxField mdot_prev = 
+        calculateMassFlowRate
+        (
+            allFaces,
+            allCells,
+            U,
+            bcManager,
+            std::map<size_t, const BoundaryPatch*>()
+        );
 
-        if (face.isBoundary())
-        {
-            U_face[faceIdx] = 
-                bcManager.calculateBoundaryFaceVectorValue(face, U, "U");
-        }
-        else
-        {
-            U_face[faceIdx] = linearInterpolation(face, U);
-        }
-
-        U_face_prev[faceIdx] = U_face[faceIdx];
-    }
+    matrixConstruct->setFaceMassFluxes(mdot_prev);
     
     if (enableTurbulence)
     {
@@ -87,7 +82,7 @@ void SIMPLE::initialize(const Vector& initialVelocity, Scalar initialPressure)
             gradientScheme
         );
 
-        turbulenceModel->initialize(U, rho, mu);
+        turbulenceModel->initialize(U, nu);
 
         std::cout << "k-omega SST turbulence model initialized." << std::endl;
     }
@@ -98,7 +93,6 @@ void SIMPLE::initialize(const Vector& initialVelocity, Scalar initialPressure)
 
 void SIMPLE::solve()
 {
-
     std::cout << "\n=== Starting SIMPLE Loop ===" << std::endl;
     
     int iteration = 0;
@@ -117,14 +111,13 @@ void SIMPLE::solve()
         (
             p,
             U,
-            rho,
             turbulenceModel.get()
         );
 
         gradP = matrixConstruct->gradP;
-        
-        // Use previous-iteration face velocities to assemble momentum with consistent mdot
-        // Assemble momentum with mdot from previous iteration to avoid coupling lag
+
+        // Assemble momentum with mdot from previous iteration to avoid 
+        // coupling lag
         {
             // Build mdot from previous iteration's face velocities for consistency
             FaceFluxField mdot_prev("mdot_prev", allFaces.size(), 0.0);
@@ -133,7 +126,7 @@ void SIMPLE::solve()
             {
                 const Face& face = allFaces[faceIdx];
                 const Vector S_f = face.normal * face.area;
-                mdot_prev[faceIdx] = rho * dot(U_face_prev[faceIdx], S_f);
+                mdot_prev[faceIdx] = dot(U_face_prev[faceIdx], S_f);
             }
 
             matrixConstruct->setFaceMassFluxes(mdot_prev);
@@ -141,9 +134,8 @@ void SIMPLE::solve()
         
         solveMomentumEquations();
             
-        calculateRhieChowFaceVelocities();
-        calculateMassFluxes();
-        
+        calculateRhieChowMassFlux();
+
         solvePressureCorrection();
         
         correctVelocity();
@@ -160,20 +152,13 @@ void SIMPLE::solve()
                 matrixConstruct->gradUx,
                 matrixConstruct->gradUy,
                 matrixConstruct->gradUz,
-                rho, mu
+                nu
             );
         }
         
         converged = checkConvergence();
         
         iteration++;
-        
-        if (iteration % 10 == 0 || converged)
-        {
-            std::cout << "Iteration: " << iteration;
-            if (converged) std::cout << " - CONVERGED";
-            std::cout << std::endl;
-        }
     }
     
     if (!converged)
@@ -183,7 +168,7 @@ void SIMPLE::solve()
     }
     else
     {
-        std::cout   << "SIMPLE algorithm converged in " << iteration 
+        std::cout   << "SIMPLE algorithm converged in " << iteration
                     << " iterations." << std::endl;
     }
 }
@@ -203,17 +188,22 @@ void SIMPLE::solveMomentumEquations()
     }
     
     // Build per-cell effective viscosity μ_eff = μ + μ_t (spatially varying when turbulence enabled)
-    ScalarField mu_eff("mu_eff", allCells.size());
+    ScalarField nu_eff("nu_eff", allCells.size());
 
     if (enableTurbulence && turbulenceModel) 
     {
-        mu_eff = turbulenceModel->getEffectiveViscosity(mu);
+        // Get turbulent dynamic viscosity and add to laminar dynamic viscosity
+        const ScalarField& nu_t = turbulenceModel->getTurbulentViscosity();
+        for (size_t i = 0; i < allCells.size(); ++i) 
+        {
+            nu_eff[i] = nu + nu_t[i];  // nu_eff = nu_lam + nu_t
+        }
     }
     else
     {
         for (size_t i = 0; i < allCells.size(); ++i) 
         {
-            mu_eff[i] = mu;
+            nu_eff[i] = nu;
         }
     }
     
@@ -242,8 +232,7 @@ void SIMPLE::solveMomentumEquations()
         U_x,
         ScalarField("U_x_old", allCells.size()),
         Ux_source,
-        rho,
-        mu_eff,
+        nu_eff,
         TimeScheme::Steady,
         0.0,
         1.0,
@@ -263,14 +252,14 @@ void SIMPLE::solveMomentumEquations()
         matrixConstruct->getMatrixA()
     );
 
-    // Store the diagonal coefficient for Rhie-Chow interpolation
+    // Apply implicit under-relaxation before solving (Patankar's relaxation)
+    matrixConstruct->relax(alpha_U, U_x);
+
+    // Store the relaxed diagonal coefficient for Rhie-Chow interpolation
     for (size_t i = 0; i < allCells.size(); ++i)
     {
         a_Ux[i] = A_matrix.coeff(i, i);
     }
-
-    // Apply implicit under-relaxation before solving (Patankar's relaxation)
-    matrixConstruct->relax(alpha_U, U_x);
     
     // Solve for U.x
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> U_x_solution(allCells.size());
@@ -325,8 +314,7 @@ void SIMPLE::solveMomentumEquations()
         U_y,
         ScalarField("U_y_old", allCells.size()),
         Uy_source,
-        rho,
-        mu_eff, 
+        nu_eff, 
         TimeScheme::Steady,
         0.0, 
         1.0, 
@@ -346,14 +334,14 @@ void SIMPLE::solveMomentumEquations()
         matrixConstruct->getMatrixA()
     );
 
-    // Store y-diagonal
+    // Apply implicit under-relaxation before solving (Patankar's relaxation)
+    matrixConstruct->relax(alpha_U, U_y);
+
+    // Store relaxed y-diagonal
     for (size_t i = 0; i < allCells.size(); ++i)
     {
         a_Uy[i] = A_matrix_y.coeff(i, i);
     }
-
-    // Apply implicit under-relaxation before solving (Patankar's relaxation)
-    matrixConstruct->relax(alpha_U, U_y);
     
     // Solve for U.y
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> U_y_solution(allCells.size());
@@ -407,8 +395,7 @@ void SIMPLE::solveMomentumEquations()
         U_z,
         ScalarField("U_z_old", allCells.size()),
         Uz_source,
-        rho,
-        mu_eff, 
+        nu_eff, 
         TimeScheme::Steady,
         0.0, 
         1.0, 
@@ -428,14 +415,14 @@ void SIMPLE::solveMomentumEquations()
         matrixConstruct->getMatrixA()
     );
 
-    // Store z-diagonal
+    // Apply implicit under-relaxation before solving (Patankar's relaxation)
+    matrixConstruct->relax(alpha_U, U_z);
+
+    // Store relaxed z-diagonal
     for (size_t i = 0; i < allCells.size(); ++i)
     {
         a_Uz[i] = A_matrix_z.coeff(i, i);
     }
-
-    // Apply implicit under-relaxation before solving (Patankar's relaxation)
-    matrixConstruct->relax(alpha_U, U_z);
     
     // Solve for U.z
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> U_z_solution(allCells.size());
@@ -464,7 +451,7 @@ void SIMPLE::solveMomentumEquations()
     }
 }
 
-void SIMPLE::calculateRhieChowFaceVelocities()
+void SIMPLE::calculateRhieChowMassFlux()
 {
     // U_f = U_f_linearInterpolated
     //       + D_f * (∇p_face_linearInterpolated - ∇p_face_from_cache)
@@ -479,135 +466,61 @@ void SIMPLE::calculateRhieChowFaceVelocities()
             // Centralized boundary condition handling for velocity
             U_face[faceIdx] = 
                 bcManager.calculateBoundaryFaceVectorValue(face, U, "U");
-
+            
+            RhieChowMassFlux[faceIdx] =
+                dot(U_face[faceIdx], face.normal * face.area);
+                
             continue;
         }
 
         const size_t P = face.ownerCell;
         const size_t N = face.neighbourCell.value();
 
-        // Linear interpolation weights
-        Scalar w_P = 0.0, w_N = 0.0;
-        computeLinearWeights(face, w_P, w_N);
-
         // Linear-interpolated values
-        const Vector U_f_lin = w_P * U[P] + w_N * U[N];
-        const Vector gradP_f_lin = w_P * gradP[P] + w_N * gradP[N];
+        const Vector U_f_avg = VectorLinearInterpolation(face, U);
+        const Vector gradP_f_avg = VectorLinearInterpolation(face, gradP);
 
         // Cached face gradient from gradient scheme (more accurate face value)
-        const Vector gradP_f_cache = matrixConstruct->gradP_f[faceIdx];
+        const Vector gradP_f = matrixConstruct->gradP_f[faceIdx];
 
         // Interpolated momentum diagonals on face per component
-        const Scalar a_face_x = w_P * a_Ux[P] + w_N * a_Ux[N];
-        const Scalar a_face_y = w_P * a_Uy[P] + w_N * a_Uy[N];
-        const Scalar a_face_z = w_P * a_Uz[P] + w_N * a_Uz[N];
+        const Scalar a_face_x = linearInterpolation(face, a_Ux);
+        const Scalar a_face_y = linearInterpolation(face, a_Uy);
+        const Scalar a_face_z = linearInterpolation(face, a_Uz);
 
         // Minimum-correction D_f with non-orthogonal consideration (face-velocity RC, no rho)
         const Vector d_PN = allCells[N].centroid - allCells[P].centroid;
         const Vector S_f = face.normal * face.area;
-        const Scalar denom = d_PN.magnitudeSquared() + 1e-20;
-        const Scalar numer = d_PN.x * S_f.x / (a_face_x + 1e-20)
-                           + d_PN.y * S_f.y / (a_face_y + 1e-20)
-                           + d_PN.z * S_f.z / (a_face_z + 1e-20);
+        const Scalar denom = d_PN.magnitudeSquared();
+        const Scalar numer = d_PN.x * S_f.x / (a_face_x)
+                           + d_PN.y * S_f.y / (a_face_y)
+                           + d_PN.z * S_f.z / (a_face_z);
         const Scalar D_f = numer / denom;
 
         // Core Rhie-Chow correction using face gradient cache
-        Vector U_f = U_f_lin + D_f * (gradP_f_lin - gradP_f_cache);
+        Vector U_f = U_f_avg + D_f * (gradP_f_avg - gradP_f);
 
         // Previous-iteration face under-relaxation term
-        const Vector U_f_lin_prev = w_P * U_prev[P] + w_N * U_prev[N];
-        U_f += (S(1.0) - alpha_U) * (U_face_prev[faceIdx] - U_f_lin_prev);
+        const Vector U_f_avg_prev = VectorLinearInterpolation(face, U_prev);
+        U_f += (S(1.0) - alpha_U) * (U_face_prev[faceIdx] - U_f_avg_prev);
 
+        // Store face velocity for use in next iteration and compute flux
         U_face[faceIdx] = U_f;
+        RhieChowMassFlux[faceIdx] = dot(U_f, face.normal * face.area);
     }
-}
-
-// ----- Linear interpolation helpers ----- //
-void SIMPLE::computeLinearWeights
-(
-    const Face& face,
-    Scalar& w_P,
-    Scalar& w_N
-) const
-{
-    if (face.isBoundary())
-    {
-        w_P = S(1.0);
-        w_N = 0.0;
-        return;
-    }
-
-    const Scalar d_P = face.d_Pf_mag;
-    const Scalar d_N = face.d_Nf_mag.value();
-    const Scalar total = d_P + d_N + 1e-20;
-    w_P = d_N / total;
-    w_N = d_P / total;
-}
-
-Vector SIMPLE::linearInterpolation
-(
-    const Face& face,
-    const VectorField& cellField
-) const
-{
-    if (face.isBoundary())
-    {
-        return cellField[face.ownerCell];
-    }
-
-    Scalar w_P = 0.0, w_N = 0.0;
-    computeLinearWeights(face, w_P, w_N);
-    const size_t P = face.ownerCell;
-    const size_t N = face.neighbourCell.value();
-    return w_P * cellField[P] + w_N * cellField[N];
-}
-
-Scalar SIMPLE::linearInterpolation
-(
-    const Face& face,
-    const ScalarField& cellField
-) const
-{
-    if (face.isBoundary())
-    {
-        return cellField[face.ownerCell];
-    }
-
-    Scalar w_P = 0.0, w_N = 0.0;
-    computeLinearWeights(face, w_P, w_N);
-    const size_t P = face.ownerCell;
-    const size_t N = face.neighbourCell.value();
-    return w_P * cellField[P] + w_N * cellField[N];
-}
-
-void SIMPLE::calculateMassFluxes()
-{
-    // Calculate mass flux through each face using Rhie-Chow face velocities
-    for (size_t faceIdx = 0; faceIdx < allFaces.size(); ++faceIdx)
-    {
-        const Face& face = allFaces[faceIdx];
-        
-        // Volume flux: U_f · S_f
-        volumeFlux[faceIdx] = dot(U_face[faceIdx], face.normal * face.area);
-        
-        // Mass flux: ρ * (U_f · S_f)
-        massFlux[faceIdx] = rho * volumeFlux[faceIdx];
-    }
-}
-
-void SIMPLE::calculateFaceFluxes() 
-{
-    // Backward-compatible wrapper: compute face velocities then fluxes
-    // Ensures that callers of calculateFaceFluxes() get up-to-date mass/volume fluxes
-    calculateRhieChowFaceVelocities();
-    calculateMassFluxes();
 }
 
 void SIMPLE::solvePressureCorrection()
 {
     // Build pressure correction equation
     // ∇·(D_f ∇p') = ∇·ρU  >> ∇·(D_f ∇p') = -∑ m*_f
-    matrixConstruct->buildPressureMatrix(massFlux, a_Ux, a_Uy, a_Uz, rho);
+    matrixConstruct->buildPressureMatrix
+    (
+        RhieChowMassFlux,
+        a_Ux,
+        a_Uy,
+        a_Uz
+    );
 
     auto& A_matrix = const_cast<Eigen::SparseMatrix<Scalar>&>
     (
@@ -649,10 +562,13 @@ void SIMPLE::correctVelocity()
     
     for (size_t i = 0; i < allCells.size(); ++i)
     {
-        // Use a representative diagonal; choose the maximum for stability
-        Scalar a_rep = std::max(a_Ux[i], std::max(a_Uy[i], a_Uz[i]));
-        Vector correction = (S(1.0) / (a_rep + 1e-20)) * gradP_prime[i];
-        U[i] = U[i] - correction;
+        Vector g = gradP_prime[i];
+        Scalar inv_ax = S(1.0) / (a_Ux[i] + 1e-20);
+        Scalar inv_ay = S(1.0) / (a_Uy[i] + 1e-20);
+        Scalar inv_az = S(1.0) / (a_Uz[i] + 1e-20);
+        U[i].x -= inv_ax * g.x;
+        U[i].y -= inv_ay * g.y;
+        U[i].z -= inv_az * g.z;
     }
 }
 
@@ -710,11 +626,11 @@ void SIMPLE::correctMassFluxes()
         Scalar numer = d_PN.x * S_f.x / (a_face_x + 1e-20)
                      + d_PN.y * S_f.y / (a_face_y + 1e-20)
                      + d_PN.z * S_f.z / (a_face_z + 1e-20);
-        Scalar D_f = rho * (numer / denom);
+        Scalar D_f = (numer / denom);
 
         // Use alpha_p-scaled correction compatible with pressure update
         Scalar dp_prime = alpha_p * (p_prime[N] - p_prime[P]);
-        massFlux[faceIdx] -= D_f * dp_prime;
+        RhieChowMassFlux[faceIdx] -= D_f * dp_prime;
     }
 }
 
@@ -770,7 +686,7 @@ Scalar SIMPLE::calculateMassImbalance() const
         {
             const size_t faceIdx = allCells[i].faceIndices[j];
             const int sign = allCells[i].faceSigns[j];
-            const Scalar mf = massFlux[faceIdx];
+            const Scalar mf = RhieChowMassFlux[faceIdx];
             net += sign * mf;
             sumAbs += std::abs(mf);
         }
@@ -924,3 +840,4 @@ ScalarField SIMPLE::getVelocityZ() const
     
     return U_z;
 }
+

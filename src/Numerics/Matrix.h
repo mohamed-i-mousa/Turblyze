@@ -52,7 +52,7 @@ public:
     VectorField gradOmega;
 
     /// Face-level interpolated data
-    FaceFluxField mdotFaces;
+    FaceFluxField mDotFaces;
     FaceVectorField gradP_f;
     FaceVectorField gradUx_f;
     FaceVectorField gradUy_f;
@@ -86,14 +86,12 @@ public:
      * @brief Refresh iteration caches for current solution
      * @param p Current pressure field
      * @param U Current velocity field
-     * @param rho Fluid density
      * @param turbulenceModel Pointer to turbulence model (optional)
      */
     void refreshIterationCaches
     (
         const PressureField& p,
         const VelocityField& U,
-        Scalar rho,
         const KOmegaSST* turbulenceModel
     );
 
@@ -103,7 +101,6 @@ public:
      * @param phi Current field values
      * @param phi_old Previous time step values
      * @param phi_source Source term values
-     * @param rho Fluid density
      * @param Gamma Diffusion coefficient field
      * @param timeScheme Time discretization scheme
      * @param dt Time step size
@@ -118,7 +115,6 @@ public:
         const ScalarField& phi,
         const ScalarField& phi_old,
         const ScalarField& phi_source,
-        Scalar rho,
         const ScalarField& Gamma,
         TimeScheme timeScheme,
         Scalar dt,
@@ -130,19 +126,17 @@ public:
 
     /**
      * @brief Build pressure correction matrix
-     * @param massFlux Face mass fluxes
+     * @param RhieChowMassFlux Face mass fluxes
      * @param a_Ux Momentum matrix diagonal for x-velocity
      * @param a_Uy Momentum matrix diagonal for y-velocity
      * @param a_Uz Momentum matrix diagonal for z-velocity
-     * @param rho Fluid density
      */
     void buildPressureMatrix
     (
-        const FaceFluxField& massFlux,
+        const FaceFluxField& RhieChowMassFlux,
         const ScalarField& a_Ux,
         const ScalarField& a_Uy,
-        const ScalarField& a_Uz,
-        Scalar rho
+        const ScalarField& a_Uz
     );
 
     /**
@@ -152,7 +146,6 @@ public:
      * @param phi_old Previous time step values
      * @param U_field Velocity field for convection
      * @param phi_source Source term values
-     * @param rho Fluid density
      * @param Gamma Diffusion coefficient field
      * @param timeScheme Time discretization scheme
      * @param dt Time step size
@@ -166,7 +159,6 @@ public:
         const ScalarField& phi_old,
         const VectorField& U_field,
         const ScalarField& phi_source,
-        Scalar rho,
         const ScalarField& Gamma,
         TimeScheme timeScheme,
         Scalar dt,
@@ -201,11 +193,11 @@ public:
 
     /**
      * @brief Set face mass fluxes for current iteration
-     * @param mdot_in Input face mass flux field
+     * @param mDot Input face mass flux field
      */
-    void setFaceMassFluxes(const FaceFluxField& mdot_in) 
+    void setFaceMassFluxes(const FaceFluxField& mDot) 
     {
-        mdotFaces = mdot_in; 
+        mDotFaces = mDot;
     }
 
 private:
