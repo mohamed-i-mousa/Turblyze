@@ -26,6 +26,7 @@ add_executable(${PROJECT_NAME}
     src/Mesh/CellData.cpp
     src/Mesh/FaceData.cpp
     src/Mesh/MeshReader.cpp
+    src/Mesh/checkMesh.cpp
     src/BoundaryConditions/BoundaryData.cpp
     src/BoundaryConditions/BoundaryPatch.cpp
     src/BoundaryConditions/BoundaryConditions.cpp
@@ -40,14 +41,14 @@ add_executable(${PROJECT_NAME}
     src/PostProcessing/VtkWriter.cpp
 )
 
-# --- Tell CMake about your subdirectories for includes ---
+# --- Tell CMake about your include directories ---
 target_include_directories(${PROJECT_NAME} PUBLIC
-    src 
-    src/Mesh
-    src/BoundaryConditions
-    src/Numerics
-    src/Models
-    src/PostProcessing
+    include/Core/
+    include/Mesh/
+    include/BoundaryConditions/
+    include/Numerics/
+    include/Models/
+    include/PostProcessing/
 )
 
 # Set output directory for executable
