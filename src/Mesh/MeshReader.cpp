@@ -95,7 +95,7 @@ void readMshFile
     std::string token;
     char ch;
 
-    size_t num_cells = 0;
+    size_t numCells = 0;
 
     std::ifstream ifs(filePath);
     if (!ifs.is_open()) 
@@ -215,7 +215,7 @@ void readMshFile
                 size_t last_idx = hexToDec(last_idx_str);
 
                 allCells.resize(last_idx);
-                num_cells = allCells.size();
+                numCells = allCells.size();
             }
         }
 
@@ -250,6 +250,9 @@ void readMshFile
 
                 elementType_str.pop_back();
                 elementType_str.pop_back();
+                
+                // Check if this is a mixed element section (node count included)
+                bool hasMixedElements = (elementType_str == "0");
 
                 size_t zone_id = hexToDec(zone_id_str);
                 size_t start_id = hexToDec(start_id_str);
@@ -304,6 +307,12 @@ void readMshFile
                     while (line_stream >> item_hex)
                     {
                         hex_items.push_back(item_hex);
+                    }
+                    
+                    // If mixed elements, discard the first item (node count)
+                    if (hasMixedElements)
+                    {
+                        hex_items.erase(hex_items.begin());
                     }
 
                     // The last two ids are for owner and neighbor cells.
@@ -370,20 +379,20 @@ void readMshFile
 
     ifs.close();
 
-    for (size_t i = 0; i < num_cells; ++i) 
+    for (size_t i = 0; i < allCells.size(); ++i) 
     {
         allCells[i].id = i;
         allCells[i].faceIndices.clear();
         allCells[i].neighbourCellIndices.clear();
     }
 
-    std::vector<std::vector<size_t>> tempCellNeighbors(num_cells);
+    std::vector<std::vector<size_t>> tempCellNeighbors(numCells);
 
     for (size_t face_idx = 0; face_idx < allFaces.size(); ++face_idx)
     {
         const Face &currentFace = allFaces[face_idx];
 
-        if (currentFace.ownerCell < num_cells) 
+        if (currentFace.ownerCell < allCells.size()) 
         {
             allCells[currentFace.ownerCell].faceIndices.push_back(face_idx);
             allCells[currentFace.ownerCell].faceSigns.push_back(1);
@@ -392,7 +401,7 @@ void readMshFile
             if 
             (
                 currentFace.neighbourCell.has_value() 
-             && currentFace.neighbourCell.value() < num_cells
+             && currentFace.neighbourCell.value() < allCells.size()
             ) 
             {
                 tempCellNeighbors[currentFace.ownerCell].push_back
@@ -406,14 +415,14 @@ void readMshFile
         if 
         (
             currentFace.neighbourCell.has_value() 
-         && currentFace.neighbourCell.value() < num_cells
+         && currentFace.neighbourCell.value() < allCells.size()
         ) 
         {
             size_t neighborIdx = currentFace.neighbourCell.value();
             allCells[neighborIdx].faceIndices.push_back(face_idx);
             allCells[neighborIdx].faceSigns.push_back(-1);
 
-            if (currentFace.ownerCell < num_cells)
+            if (currentFace.ownerCell < allCells.size())
             {
                 tempCellNeighbors[neighborIdx].push_back(
                     currentFace.ownerCell);
@@ -421,7 +430,7 @@ void readMshFile
         }
     }
 
-    for (size_t i = 0; i < num_cells; ++i) 
+    for (size_t i = 0; i < allCells.size(); ++i) 
     {
         if (i < allCells.size() && i < tempCellNeighbors.size()) 
         {
@@ -453,7 +462,7 @@ void readMshFile
                       << allCells.size()
                       << ", tempCellNeighbors.size(): " 
                       << tempCellNeighbors.size()
-                      << ", num_cells: " << num_cells << std::endl;
+                      << ", numCells: " << numCells << std::endl;
         }
     }
 
