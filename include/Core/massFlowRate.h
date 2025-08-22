@@ -17,7 +17,6 @@
  * @param faces Vector of mesh faces
  * @param cells Vector of mesh cells  
  * @param U_field Velocity field at cell centers
- * @param rho Fluid density
  * @param bcManager Boundary conditions manager
  * @param faceToPatchMap Mapping from face ID to boundary patch
  * @return FaceFluxField Mass flow rate at each face

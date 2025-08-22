@@ -11,6 +11,7 @@
 #include "BoundaryConditions.h"
 #include "CellData.h"
 #include "FaceData.h"
+#include "linearInterpolation.h"
 
 /**
  * @file GradientScheme.h
@@ -24,28 +25,14 @@
  *   A_ij = w_i * (r_i - r_P)_j
  *   b_i = w_i * (phi_i - phi_P)
  *   w_i = 1/|r_i - r_P|² (inverse distance squared weighting)
- *
- * @example
- * // 1. Calculate cell-centered gradients using least-squares
- * VectorField grad_phi = gradientScheme.LeastSquares(phi, allCells);
- * 
- * // 2. Interpolate gradients to face values
- * FaceVectorField grad_phi_faces = gradientScheme.interpolateGradientsToFaces(
- *     grad_phi, phi, allCells, allFaces, boundaryConditions, "phi");
- * 
- * // 3. Use the face gradients for flux calculations, etc.
- * for (size_t faceId = 0; faceId < allFaces.size(); ++faceId) {
- *     Vector grad_at_face = grad_phi_faces[faceId];
- *     // ... use grad_at_face for calculations
- * }
  */
 
 /**
- * @brief Gradient reconstruction and interpolation schemes
+ * @brief Element-level gradient reconstruction and interpolation
  * 
- * This class provides methods for calculating cell-centered gradients
- * using least-squares reconstruction and interpolating them to face
- * values for use in flux calculations.
+ * Provides cell-level gradient computation and face-level gradient
+ * interpolation using least-squares reconstruction.
+ * 
  */
 class GradientScheme
 {
@@ -53,40 +40,35 @@ public:
     GradientScheme() = default;
 
     /**
-     * @brief Calculate cell-centered gradients using least-squares
+     * @brief Calculate gradient at a single cell using least-squares
+     * @param cellIndex Index of the cell to compute gradient for
      * @param phi Scalar field for gradient calculation
      * @param allCells Vector of all cells in the mesh
-     * @return Vector field containing gradients at cell centers
+     * @return Gradient vector at the specified cell
      */
-    VectorField LeastSquares
+    Vector CellGradient
     (
+        size_t cellIndex,
         const ScalarField& phi,
         const std::vector<Cell>& allCells
     ) const;
 
     /**
-     * @brief Interpolate cell-centered gradients to face values
-     * * Interpolate cell-centered gradients to face values:
-     * ∇φ_f = ∇φ_avg + [ (φ_N - φ_P)/|d_PN| - (∇φ_avg · e_PN) ] e_PN
-     *
-     * where:
-     *   ∇φ_avg = g_P ∇φ_P + g_N ∇φ_N (distance-weighted average)
-     *   e_PN   = d_PN / |d_PN| (unit vector P→N)
-     *   g_P, g_N are interpolation weights (distance-based)
-     *
-     * This scheme preserves second-order accuracy.
-     * 
+     * @brief Interpolate gradient at a single face
+     * @param faceIndex Index of the face to interpolate gradient for
      * @param grad_phi Cell-centered gradient field
      * @param phi Cell-centered scalar field
      * @param allCells Vector of all cells in the mesh
      * @param allFaces Vector of all faces in the mesh
      * @param boundaryConditions Boundary conditions manager
      * @param fieldName Name of the field for boundary condition lookup
-     * @return Vector field containing gradients at face centers
+     * @return Gradient vector at the specified face
      */
-    FaceVectorField interpolateGradientsToFaces
+    Vector FaceGradient
     (
-        const VectorField& grad_phi,
+        const size_t faceIndex,
+        const Vector& grad_phi_P,
+        const Vector& grad_phi_N,
         const ScalarField& phi,
         const std::vector<Cell>& allCells,
         const std::vector<Face>& allFaces,
@@ -94,6 +76,20 @@ public:
         const std::string& fieldName
     ) const;
 
+    /**
+     * @brief Linear interpolation of gradients at a face
+     * @param face Internal face for interpolation
+     * @param grad_phi Cell-centered gradient field
+     * @return Linearly interpolated gradient vector at the face
+     */
+    Vector averageFaceGradient
+    (
+        const Face& face,
+        const Vector& grad_phi_P,
+        const Vector& grad_phi_N
+    ) const;
+
+    
 private:
     /**
      * @brief Calculate boundary face gradient based on boundary condition type

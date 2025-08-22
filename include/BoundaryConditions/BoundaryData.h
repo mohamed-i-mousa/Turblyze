@@ -15,7 +15,6 @@ enum class BCType
     FIXED_GRADIENT,  ///< Fixed gradient (Neumann) boundary condition
     ZERO_GRADIENT,   ///< Zero gradient boundary condition
     NO_SLIP,         ///< No-slip wall boundary condition
-    SYMMETRY,        ///< Symmetry boundary condition
     UNDEFINED        ///< Undefined boundary condition type
 };
 
@@ -96,10 +95,6 @@ struct BoundaryData
      */
     void setZeroGradient();
     
-    /**
-     * @brief Set symmetry boundary condition
-     */
-    void setSymmetry();
     
     /**
      * @brief Set no-slip boundary condition (for velocity)

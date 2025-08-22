@@ -19,7 +19,7 @@
  * This class provides functionality to set up, store, and apply boundary
  * conditions for different fields on mesh patches. It supports various
  * boundary condition types including fixed values, gradients, and
- * special conditions like no-slip and symmetry.
+ * special conditions like no-slip.
  * 
  * Example usage hierarchy:
  * - Patch "inlet": U → fixed value, p → zero gradient
@@ -142,17 +142,6 @@ public:
         const std::string& fieldName
     );
     
-    /**
-     * @brief Set symmetry boundary condition
-     * @param patchName Name of the boundary patch
-     * @param fieldName Name of the field
-     * @return True if successfully set
-     */
-    bool setSymmetry
-    (
-        const std::string& patchName, 
-        const std::string& fieldName
-    );
 
     /**
      * @brief Get boundary condition for a field on a patch
@@ -209,14 +198,25 @@ public:
      */
     void printSummary() const;
 
+    /**
+     * @brief Get all boundary patches
+     * @return Const reference to vector of boundary patches
+     */
+    const std::vector<BoundaryPatch>& getPatches() const { return patches; }
+
+    /**
+     * @brief Get number of patches
+     * @return Number of boundary patches
+     */
+    size_t getNumPatches() const { return patches.size(); }
+
+private:
     /// Nested map: patch name → field name → boundary data
     std::map<std::string, std::map<std::string, BoundaryData>> 
         patchBoundaryData;
     
     /// Vector of all boundary patches
     std::vector<BoundaryPatch> patches;
-
-private:
     /// Cache for fast face-to-patch mapping
     mutable std::map<size_t, const BoundaryPatch*> faceToPatchCache;
     

@@ -63,8 +63,6 @@ struct Cell
     /**
      * @brief Calculate geometric properties of the cell
      * @param allFaces Vector containing all mesh faces
-     * @throws std::runtime_error if face properties not calculated
-     * @throws std::runtime_error if cell has zero or negative volume
      * 
      * Calculates cell volume using the divergence theorem:
      * V = (1/3) * Σ(face_centroid · face_area_vector)

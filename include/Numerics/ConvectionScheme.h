@@ -96,7 +96,7 @@ public:
     (
         const Face& face,
         const ScalarField& phi,
-        const FaceVectorField& grad_phi_f,
+        const Vector& grad_phi_f,
         Scalar massFlowRate,
         const BoundaryConditions* bcManager = nullptr,
         const std::string& fieldName = ""
@@ -115,7 +115,7 @@ public:
     (
         const Face& face,
         const ScalarField& phi,
-        const FaceVectorField& grad_phi_f,
+        const Vector& grad_phi_f,
         const BoundaryConditions* bcManager = nullptr,
         const std::string& fieldName = ""
     ) const;
@@ -148,7 +148,7 @@ public:
      * @brief Calculate the second-order correction term using gradients
      * @param face Face for interpolation
      * @param phi Cell-centered field values
-     * @param grad_phi Cell-centered gradients
+     * @param grad_phi Cell-centered gradient
      * @param massFlowRate Mass flow rate through face
      * @param bcManager Boundary conditions manager (optional)
      * @param fieldName Field name for boundary conditions (optional)
@@ -158,7 +158,8 @@ public:
     (
         const Face& face,
         const ScalarField& phi,
-        const VectorField& grad_phi,
+        const Vector& grad_phi_P,
+        const Vector& grad_phi_N,        
         Scalar massFlowRate,
         const BoundaryConditions* bcManager = nullptr,
         const std::string& fieldName = ""
@@ -178,7 +179,8 @@ public:
     (
         const Face& face,
         const ScalarField& phi,
-        const VectorField& grad_phi,
+        const Vector& grad_phi_P,
+        const Vector& grad_phi_N,        
         Scalar massFlowRate,
         const BoundaryConditions* bcManager = nullptr,
         const std::string& fieldName = ""
