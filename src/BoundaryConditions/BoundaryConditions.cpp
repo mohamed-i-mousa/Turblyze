@@ -104,16 +104,6 @@ bool BoundaryConditions::setNoSlip
     return setBC(patchName, fieldName, bc_config);
 }
 
-bool BoundaryConditions::setSymmetry
-(
-    const std::string& patchName,
-    const std::string& fieldName
-)
-{
-    BoundaryData bc_config;
-    bc_config.setSymmetry();
-    return setBC(patchName, fieldName, bc_config);
-}
 
 const BoundaryData* BoundaryConditions::getFieldBC
 (
@@ -132,6 +122,16 @@ const BoundaryData* BoundaryConditions::getFieldBC
         if (field_it != field_map.end())
         {
             return &(field_it->second);
+        }
+        
+        // If vector component (U_x, U_y, U_z) not found, try parent vector field "U"
+        if (fieldName == "U_x" || fieldName == "U_y" || fieldName == "U_z")
+        {
+            auto vector_field_it = field_map.find("U");
+            if (vector_field_it != field_map.end())
+            {
+                return &(vector_field_it->second);
+            }
         }
     }
 
@@ -194,11 +194,6 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
             return phi[face.ownerCell] + bc->getFixedScalarGradient() * d_n;
         }
 
-        case BCType::SYMMETRY:
-        {
-            // Symmetry: zero normal gradient for scalars
-            return phi[face.ownerCell];
-        }
         
         default:
             throw std::runtime_error
@@ -263,13 +258,6 @@ Vector BoundaryConditions::calculateBoundaryFaceVectorValue
             // Zero gradient: φ_f = φ_P
             return phi[face.ownerCell];
         }
-        case BCType::SYMMETRY: 
-        {
-            // Zero normal component at symmetry plane: U_f = U_P - (U_P·n) n
-            Vector U_P = phi[face.ownerCell];
-            Vector n = face.normal;
-            return U_P - dot(U_P, n) * n;
-        }
             
         case BCType::FIXED_GRADIENT: 
         {
@@ -297,7 +285,6 @@ std::string BoundaryConditions::bcTypeToString(BCType bctype) const {
         case BCType::FIXED_GRADIENT: return "FIXED_GRADIENT";
         case BCType::ZERO_GRADIENT: return "ZERO_GRADIENT";
         case BCType::NO_SLIP: return "NO_SLIP";
-        case BCType::SYMMETRY: return "SYMMETRY";
         default: 
             throw std::runtime_error
             (

@@ -51,16 +51,6 @@ void BoundaryData::setZeroGradient()
     gradientType = BCValueType::UNDEFINED;
 }
 
-void BoundaryData::setSymmetry() 
-{
-    type = BCType::SYMMETRY;
-    valueType = BCValueType::UNDEFINED;
-    gradientType = BCValueType::UNDEFINED;
-    scalarValue = S(0.0);
-    vectorValue = Vector(S(0.0), S(0.0), S(0.0));
-    scalarGradient = S(0.0);
-    vectorGradient = Vector(S(0.0), S(0.0), S(0.0));
-}
 
 void BoundaryData::setNoSlip() 
 {
