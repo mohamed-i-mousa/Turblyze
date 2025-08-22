@@ -18,19 +18,25 @@ This document explains the internal architecture and implementation details of t
 - Extending the codebase (recipes)
 - Debugging and tips
 
-### Architecture overview
+### Architecture overview (Current Structure)
 
-- `src/Mesh/`: geometry, fields, mesh I/O
-  - `Vector`, `Scalar`, `Face`, `Cell`, `CellData`, `FaceData`, `MeshReader`
-- `src/BoundaryConditions/`: patch metadata and physical BC configuration
-  - `BoundaryPatch`, `BoundaryData`, `BoundaryConditions`
-- `src/Numerics/`: discretization and algebraic system
-  - `GradientScheme`, `ConvectionScheme` (+ UDS/CD/SOU), `Matrix`, `LinearSolvers`, `SIMPLE`
-- `src/Models/`: turbulence
-  - `KOmegaSST`
-- `src/PostProcessing/`: output
-  - `VtkWriter`
-- `src/main.cpp`: an end-to-end example case (mesh path, BCs, schemes, solver controls, export)
+**Headers (`include/`):**
+- **`Core/`**: fundamental types and utilities
+  - `Scalar.h`, `Vector.h`, `linearInterpolation.h`, `massFlowRate.h`
+- **`Mesh/`**: geometry, fields, mesh I/O  
+  - `Face.h`, `Cell.h`, `CellData.h`, `FaceData.h`, `MeshReader.h`, `checkMesh.h`
+- **`BoundaryConditions/`**: patch metadata and physical BC configuration
+  - `BoundaryPatch.h`, `BoundaryData.h`, `BoundaryConditions.h`
+- **`Numerics/`**: discretization and algebraic system
+  - `GradientScheme.h`, `ConvectionScheme.h`, `Matrix.h`, `LinearSolvers.h`, `SIMPLE.h`
+- **`Models/`**: turbulence
+  - `KOmegaSST.h`
+- **`PostProcessing/`**: output
+  - `VtkWriter.h`
+
+**Sources (`src/`):**
+- Corresponding `.cpp` implementations for all headers
+- `main.cpp`: complete end-to-end example case (mesh path, BCs, schemes, solver controls, export)
 
 
 ## Core data structures
@@ -38,7 +44,7 @@ This document explains the internal architecture and implementation details of t
 ### Scalar precision
 - `Scalar` is aliased to `double` by default via `PROJECT_USE_DOUBLE_PRECISION` (set in `CMakeLists.txt`).
 - Switch to float by removing that definition. The program prints the mode via `SCALAR_MODE`.
-- Global tolerances in `src/Mesh/Scalar.h` (e.g., `DIVISION_TOLERANCE`, `EQUALITY_TOLERANCE`, `AREA_TOLERANCE`, `VOLUME_TOLERANCE`, `GRADIENT_TOLERANCE`).
+- Global tolerances in `include/Core/Scalar.h` (e.g., `DIVISION_TOLERANCE`, `EQUALITY_TOLERANCE`, `AREA_TOLERANCE`, `VOLUME_TOLERANCE`, `GRADIENT_TOLERANCE`).
 
 ### Vector
 - Simple 3D vector with arithmetic, `dot`, `cross`, `magnitude`, normalization, and stream IO.

@@ -1,150 +1,238 @@
-## 3D CFD Solver for Unstructure Grids
+# MyCFDCode - 3D Incompressible CFD Solver
 
-A 3D incompressible CFD solver using the SIMPLE algorithm with k-omega SST turbulence modeling. Reads Fluent `.msh` meshes, solves the steady-state flow, and exports results to VTK (`.vtp`) for ParaView.
+A comprehensive 3D incompressible CFD solver implementing the SIMPLE algorithm with k-omega SST turbulence modeling. The solver reads Fluent `.msh` meshes, solves steady-state incompressible flow, and exports results to VTK format for visualization in ParaView.
 
-### Highlights
-- **3D solver**: Solves U, V, W momentum with pressure coupling via SIMPLE
-- **Rhie–Chow**: Face-velocity interpolation to avoid pressure checkerboarding
-- **Schemes**: Upwind, second-order upwind, and central-difference convection; least-squares gradients; non-orthogonal diffusion treatment
-- **BCs**: Fixed value, fixed gradient, zero gradient, no-slip wall
-- **Turbulence (optional)**: k-omega SST with wall distance, μ_t, and derived quantities
-- **VTK output**: Exports cell fields mapped to faces for visualization in ParaView
+## Features
 
-## Requirements
+### Core Capabilities
+- **3D Incompressible Flow**: Solves momentum equations (Ux, Uy, Uz) with pressure coupling via SIMPLE algorithm
+- **Rhie-Chow Interpolation**: Face-velocity interpolation to prevent pressure checkerboarding on collocated grids
+- **Multiple Discretization Schemes**: Upwind (UDS), second-order upwind (SOU), and central-difference (CDS) convection schemes
+- **Gradient Reconstruction**: Least-squares cell-centered gradients with non-orthogonal diffusion treatment
+- **Boundary Conditions**: Fixed value, fixed gradient, zero gradient, and no-slip wall conditions
+- **Turbulence Modeling**: Optional k-omega SST model with wall distance calculation and wall functions
+- **Precision Control**: Configurable single (float) or double precision arithmetic
 
-- **C++**: C++17-compatible compiler
-- **CMake**: >= 3.10
-- **Dependencies**:
-  - Eigen 3 (headers)
-  - VTK (Core, DataModel, IOLegacy, IOXML)
+### Advanced Features
+- **Rhie-Chow Face Velocities**: Prevents pressure-velocity decoupling with under-relaxation effects
+- **Wall Distance Calculation**: Poisson equation-based wall distance for accurate turbulence modeling  
+- **VTK Export**: Comprehensive output including all flow variables and turbulence quantities
+- **Mass Conservation**: Built-in mass conservation checking and diagnostics
+- **Comprehensive Documentation**: Full Doxygen-style code documentation
 
-On Debian/Ubuntu:
+## Prerequisites
+
+### System Requirements
+- **C++17** compatible compiler (GCC 7+, Clang 5+, MSVC 2017+)
+- **CMake** 3.10 or later
+- **Linux/Unix** environment (tested on Ubuntu 18.04+)
+
+### Dependencies
+- **Eigen 3**: Linear algebra library (header-only)
+- **VTK 9**: Visualization toolkit (CommonCore, CommonDataModel, IOLegacy, IOXML components)
+
+#### Installation on Ubuntu/Debian:
 ```bash
 sudo apt update
-sudo apt install -y build-essential cmake libeigen3-dev libvtk9-dev
+sudo apt install build-essential cmake libeigen3-dev libvtk9-dev
 ```
 
-If CMake cannot find VTK automatically, set `VTK_DIR` to the CMake config folder:
+#### VTK Configuration Issues:
+If CMake cannot locate VTK automatically:
 ```bash
 cmake -DVTK_DIR=/usr/lib/cmake/vtk-9.1 ..
 ```
 
-## Build
+## Building the Solver
 
+### Standard Build Process
 ```bash
-mkdir build
-cd build
+mkdir build && cd build
 cmake ..
-make -j
+make -j$(nproc)
 ```
 
-The executable is `./MyCFDCode` (same as the project name in `CMakeLists.txt`).
-
-## Run
-
-Run from the `build/` directory so relative input/output paths resolve correctly:
+### Build Types
 ```bash
+# Debug build (default)
+cmake -DCMAKE_BUILD_TYPE=Debug ..
+
+# Optimized release build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make -j$(nproc)
+```
+
+The executable `MyCFDCode` will be generated in the `build/` directory.
+
+## Running Simulations
+
+### Basic Execution
+Run from the `build/` directory to ensure correct path resolution:
+```bash
+cd build
 ./MyCFDCode
 ```
 
-Default behavior (as defined in `src/main.cpp`):
-- Reads mesh: `../input_files/cylinder_coarse.msh`
-- Applies inlet/outlet/cylinder/symmetry boundary conditions
-- Uses Upwind convection, least-squares gradients
-- Solves with SIMPLE (under-relaxation U=0.7, p=0.3, tol=1e-6, 30 iters)
-- Exports VTK: `../output_files/cylinder_flow.vtp`
+### Current Default Configuration (src/main.cpp:103)
+- **Mesh**: `../inputFiles/sphere_24k.msh` (24k cell sphere mesh)
+- **Boundary Conditions**: 
+  - Inlet: Fixed velocity (-0.1 m/s in z-direction), zero gradient pressure
+  - Outlet: Fixed pressure (0 Pa), zero gradient velocity
+  - Sphere: No-slip velocity, zero gradient pressure
+  - Walls: No-slip velocity, zero gradient pressure
+- **Discretization**: Upwind convection scheme, least-squares gradients
+- **SIMPLE Parameters**: αU = 0.3, αp = 0.1, tolerance = 1e-6, max iterations = 10
+- **Turbulence**: Disabled by default (line 207)
+- **Output**: `../outputFiles/sphere_24k.vtp`
 
-You will see iteration logs, residuals (mass, velocity, pressure), statistics, and a runtime summary.
+### Flow Physics Setup
+- **Fluid Properties**: Air (ρ = 1.225 kg/m³, μ = 1.7894e-5 Pa·s)
+- **Reynolds Number**: Low-Re flow for numerical stability
+- **Flow Type**: External flow around sphere
 
-## Input mesh
+## Input/Output
 
-- Format: Fluent `.msh` (ANSYS Meshing export)
-- Dimensionality: 3D only (the reader throws on 2D meshes)
-- Boundary patches are read from section 45 and mapped to internal BC types
-- Example patches used by the stock case: `inlet`, `outlet`, `cylinder`, `symmetry1..4`
+### Mesh Requirements
+- **Format**: Fluent `.msh` files (ASCII format)
+- **Dimension**: 3D only (2D meshes are rejected)
+- **Cell Types**: Tetrahedra, hexahedra, prisms, pyramids
+- **Boundary Patches**: Named patches for boundary condition assignment
 
-## Configuring a case
+### Available Test Meshes
+Located in `inputFiles/`:
+- `cylinder.msh`, `cylinder_228k.msh`, `cylinder_57k.msh`, `cylinder_coarse.msh`
+- `sphere.msh`, `sphere_24k.msh`, `sphere_74k.msh`
 
-Edit `src/main.cpp` to change the mesh, boundary conditions, schemes, and solver controls. Example:
+### Output Visualization
+- **Format**: VTK PolyData (`.vtp`) for ParaView
+- **Fields Exported**:
+  - Flow variables: `pressure`, `velocityMagnitude`, `U_x`, `U_y`, `U_z`
+  - Turbulence (if enabled): `k`, `omega`, `mu_t`, `wallDistance`
+  - Derived quantities: `turbulentIntensity`, `turbulentViscosityRatio`, `yPlus`
+
+### ParaView Visualization
+1. Open the `.vtp` file in ParaView
+2. Apply the file and click the "eye" icon to make it visible
+3. Color by desired field (e.g., `velocityMagnitude`, `pressure`)
+4. Note: Fields are face-centered data (mesh faces become ParaView cells)
+
+## Configuration and Customization
+
+### Modifying Simulation Parameters
+Edit `src/main.cpp` to customize:
+
 ```cpp
-// Mesh
-std::string meshFilePath = "../input_files/cylinder_coarse.msh";
-readMshFile(meshFilePath, allNodes, allFaces, allCells, allBoundaryPatches);
+// Mesh selection (line 103)
+std::string meshFilePath = "../inputFiles/your_mesh.msh";
 
-// Boundary conditions
-BoundaryConditions bcManager;
-for (const auto& patch : allBoundaryPatches) bcManager.addPatch(patch);
-bcManager.setFixedValue("inlet", "U", Vector(0.0, 0.0, -0.1));
-bcManager.setZeroGradient("inlet", "p");
-bcManager.setFixedValue("outlet", "p", 0.0);
-bcManager.setZeroGradient("outlet", "U");
-bcManager.setNoSlip("cylinder", "U");
+// Physical properties (lines 148-149) 
+const Scalar rho = 1.225;      // Density [kg/m³]
+const Scalar mu = 1.7894e-5;   // Viscosity [Pa·s]
 
-// Schemes
-GradientScheme gradScheme;
-UpwindScheme UDS;               // or CentralDifferenceScheme, SecondOrderUpwindScheme
+// Boundary conditions (lines 161-180)
+bcManager.setFixedValue("inlet", U_field, Vector(1.0, 0.0, 0.0));  // 1 m/s in x-direction
 
-// SIMPLE setup
-SIMPLE simpleSolver(allFaces, allCells, bcManager, gradScheme, UDS);
-simpleSolver.setRelaxationFactors(0.7, 0.3);
-simpleSolver.setConvergenceTolerance(1e-6);
-simpleSolver.setMaxIterations(100);
-simpleSolver.enableTurbulenceModeling(true); // set false for laminar
-simpleSolver.solve();
+// SIMPLE parameters (lines 202-207)
+simpleSolver.setRelaxationFactors(0.7, 0.3);   // More aggressive relaxation
+simpleSolver.setMaxIterations(100);            // More iterations
+simpleSolver.enableTurbulenceModeling(true);   // Enable k-omega SST
+
+// Discretization scheme (line 196)
+SIMPLE simpleSolver(allFaces, allCells, bcManager, gradScheme, CDS);  // Central difference
 ```
 
-Notes:
-- Physical properties (ρ, μ) currently use defaults inside `SIMPLE` (air-like). Provide setters if you need to vary fluids globally.
-- Precision is double by default. See Precision section to change.
+### Precision Control
+Switch between single and double precision:
 
-## Outputs and visualization
-
-- File: `../output_files/cylinder_flow.vtp` (VTK PolyData)
-- Fields exported by default:
-  - **pressure** (cell → mapped to faces)
-  - **velocityMagnitude**, **U_x**, **U_y**, **U_z**
-  - With turbulence enabled: **k**, **omega**, **mu_t**, **wallDistance**, and derived: **turbulentIntensity**, **turbulentViscosityRatio**, **yPlus**
-
-Open the `.vtp` file in ParaView. Since PolyData stores faces as cells, cell-centered quantities are mapped to faces via owner cell. Color by any of the arrays listed above.
-
-## Convergence and diagnostics
-
-- Iteration log prints RMS-like residuals for mass, velocity, and pressure (based on p' RMS)
-- Mass conservation is summarized post-solve as average per-cell imbalance
-- If residuals grow very large, the solver warns and suggests actions (reduce relaxation, check BCs, improve initial guess)
-
-## Precision control
-
-By default, the build defines `PROJECT_USE_DOUBLE_PRECISION` (FP64). To switch to float (FP32):
-1) Remove the compile definition in `CMakeLists.txt`:
+**Double Precision (default)**:
 ```cmake
-# target_compile_definitions(MyCFDCode PUBLIC PROJECT_USE_DOUBLE_PRECISION)
+target_compile_definitions(MyCFDCode PUBLIC PROJECT_USE_DOUBLE_PRECISION)
 ```
-2) Reconfigure and rebuild. At runtime the program prints the current mode via `SCALAR_MODE`.
 
-## Project layout
+**Single Precision**:
+```cmake
+# Comment out or remove the above line
+```
 
-- `src/Mesh/`: mesh structures and Fluent `.msh` reader
-- `src/BoundaryConditions/`: patch metadata and boundary condition handling
-- `src/Numerics/`: gradient/convection schemes, matrix assembly, linear solvers, SIMPLE algorithm
-- `src/Models/`: k-omega SST turbulence model
-- `src/PostProcessing/`: VTK exporter (PolyData writer)
-- `input_files/`: put your `.msh` meshes here
-- `output_files/`: VTK results written here
+The solver prints precision mode at runtime via `SCALAR_MODE`.
+
+## Project Architecture
+
+### Header Organization (`include/`)
+- **`Core/`**: `Scalar.h`, `Vector.h`, utility functions (`linearInterpolation.h`, `massFlowRate.h`)
+- **`Mesh/`**: Geometric entities (`Face.h`, `Cell.h`), data containers (`CellData.h`, `FaceData.h`), I/O (`MeshReader.h`)
+- **`BoundaryConditions/`**: BC system (`BoundaryConditions.h`, `BoundaryData.h`, `BoundaryPatch.h`)
+- **`Numerics/`**: Schemes (`GradientScheme.h`, `ConvectionScheme.h`), matrix assembly (`Matrix.h`), solvers (`LinearSolvers.h`, `SIMPLE.h`)
+- **`Models/`**: Turbulence modeling (`KOmegaSST.h`)
+- **`PostProcessing/`**: Output (`VtkWriter.h`)
+
+### Source Organization (`src/`)
+Mirrors header organization with corresponding `.cpp` implementations.
+
+### Key Design Patterns
+1. **Field-based Architecture**: Type-safe field containers (`CellData<T>`, `FaceData<T>`)
+2. **Geometry-first Approach**: Mesh entities compute their own geometric properties  
+3. **Boundary Condition Abstraction**: Type-safe BC storage with field-agnostic evaluation
+4. **Matrix-based Assembly**: Centralized matrix construction for all transport equations
+
+## Solution Algorithm
+
+### SIMPLE Algorithm Flow (SIMPLE.cpp:solve())
+1. **Cache Refresh**: Update gradients and mass fluxes for current iteration
+2. **Momentum Solution**: Solve Ux, Uy, Uz with effective viscosity (μ + μt)
+3. **Rhie-Chow Interpolation**: Compute face velocities and mass fluxes
+4. **Pressure Correction**: Assemble and solve pressure correction equation
+5. **Velocity Correction**: Update velocity field using pressure correction
+6. **Field Updates**: Correct mass fluxes and pressure with under-relaxation
+7. **Turbulence**: Advance k-omega SST model (if enabled)
+8. **Convergence Check**: Monitor mass, velocity, and pressure residuals
+
+### Convergence Criteria
+- **Mass Imbalance**: RMS of mass conservation residuals
+- **Velocity Residual**: RMS change in velocity field
+- **Pressure Residual**: RMS of pressure correction field
 
 ## Troubleshooting
 
-- VTK not found: set `VTK_DIR` to the correct CMake config dir and re-run CMake
-- Eigen not found: install `libeigen3-dev` (or provide your Eigen include path)
-- 2D mesh error: the reader only supports 3D; export a 3D `.msh`
-- Missing input: run from the `build/` folder so `../input_files` resolves correctly
-- Empty/odd visuals: PolyData stores faces; ensure you are coloring by a face array in ParaView
+### Build Issues
+- **VTK not found**: Specify `VTK_DIR` path manually
+- **Eigen not found**: Install `libeigen3-dev` or set include path
+- **C++17 errors**: Ensure compiler supports C++17 standard
 
-## Roadmap
+### Runtime Issues  
+- **2D mesh error**: Only 3D meshes supported - check mesh export settings
+- **File not found**: Run from `build/` directory for correct relative paths
+- **Memory issues**: Large meshes may require significant RAM
 
-- Advanced no-slip boundary condition 
-- Parallel processing for large 3D meshes
-- Additional turbulence models (LES)
+### Visualization Issues
+- **Empty ParaView display**: Check that fields are applied and visible
+- **Incorrect values**: Remember that fields are face-centered in VTK output
+- **Missing fields**: Ensure turbulence is enabled if turbulence fields are expected
+
+### Convergence Issues
+- **Diverging residuals**: Reduce under-relaxation factors (try αU = 0.3, αp = 0.1)
+- **Slow convergence**: Check boundary conditions and mesh quality
+- **Large residuals**: Verify mesh units and physical property values
+
+## Development and Extension
+
+For developers wanting to extend the solver, see `docs/DEVELOPER_GUIDE.md` for:
+- Internal architecture details
+- Adding new transport equations
+- Implementing new boundary conditions
+- Creating custom discretization schemes
+- Debugging techniques
+
+## Citation and References
+
+This solver implements standard CFD methodologies:
+- **SIMPLE Algorithm**: Patankar, S.V. (1980). Numerical Heat Transfer and Fluid Flow
+- **Rhie-Chow Method**: Rhie, C.M. & Chow, W.L. (1983). AIAA Journal, 21(12), 1525-1532
+- **k-omega SST Model**: Menter, F.R. (1994). AIAA Journal, 32(8), 1598-1605
+
+## License and Support
+
+For issues, questions, or contributions, please refer to the project repository documentation.
 
 
 
