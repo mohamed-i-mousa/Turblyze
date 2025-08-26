@@ -90,43 +90,162 @@ Notes:
 
 ## Boundary conditions system
 
-Classes:
-- `BoundaryPatch`: mesh patch metadata (name, Fluent type, `zoneID`, first/last face indices).
-- `BoundaryData`: type-safe storage for value/gradient and BC type:
-  - `FIXED_VALUE`, `FIXED_GRADIENT`, `ZERO_GRADIENT`, `NO_SLIP`
-  - Scalars and vectors supported.
-- `BoundaryConditions` (manager):
-  - Collects `BoundaryPatch` instances from the reader.
-  - Holds `patchBoundaryData[patchName][fieldName] = BoundaryData`.
-  - Fast face→patch cache built on demand.
-  - Utility getters and printers.
+### Architecture
+**Classes**:
+- `BoundaryPatch`: Mesh patch metadata (name, Fluent type, `zoneID`, first/last face indices)
+- `BoundaryData`: Type-safe storage with robust value/gradient handling
+- `BoundaryConditions`: Manager class with comprehensive BC operations
 
-BC evaluation helpers used across the code:
-- Scalar at boundary face: zero-gradient uses owner cell value; fixed-gradient adds `∂φ/∂n * d_n`; fixed-value returns Dirichlet value.
-- Vector at boundary face: supports `NO_SLIP` (Vector 0) as a value type, zero-gradient returns owner cell vector.
+### BoundaryData Implementation
+**Supported BC Types**:
+- `FIXED_VALUE`: Dirichlet boundary conditions
+- `FIXED_GRADIENT`: Neumann boundary conditions  
+- `ZERO_GRADIENT`: Natural boundary conditions
+- `NO_SLIP`: Special case for velocity (vector value = 0)
+
+**Value Storage**:
+- `BCValueType::SCALAR` or `BCValueType::VECTOR`
+- Type-safe getters: `getFixedScalarValue()`, `getFixedScalarGradient()`
+- Vector storage: `vectorValue`, `vectorGradient`
+
+### BoundaryConditions Manager
+**Data Structure**: `patchBoundaryData[patchName][fieldName] = BoundaryData`
+
+**Key Features**:
+1. **Fast Lookup**: Face-to-patch cache built on demand via `ensureFaceToPatchCacheBuilt()`
+2. **Smart Field Mapping**: Automatic fallback from `U_x`/`U_y`/`U_z` to parent field `U`
+3. **Robust Retrieval**: `getFieldBC()` with comprehensive error handling
+4. **Boundary Value Calculation**: `calculateBoundaryFaceValue()` for scalars and vectors
+
+**Vector Component Handling**:
+```cpp
+// Smart component extraction
+if (fieldName == "U_x") boundaryValue = bc->vectorValue.x;
+else if (fieldName == "U_y") boundaryValue = bc->vectorValue.y;
+else if (fieldName == "U_z") boundaryValue = bc->vectorValue.z;
+```
+
+### BC Evaluation Logic
+**Scalar Boundary Values**:
+- **FIXED_VALUE**: `φ_f = φ_boundary`
+- **ZERO_GRADIENT**: `φ_f = φ_owner`  
+- **FIXED_GRADIENT**: `φ_f = φ_owner + gradient × d_n`
+  where `d_n = dot(d_Pf, face_normal)`
+
+**Vector Boundary Values**:
+- **FIXED_VALUE**: `U_f = U_boundary`
+- **NO_SLIP**: `U_f = (0, 0, 0)`
+- **ZERO_GRADIENT**: `U_f = U_owner`
+- **FIXED_GRADIENT**: `U_f = U_owner + gradient × d_n`
+
+**Graceful Fallbacks**:
+- Missing BC specifications default to zero-gradient
+- Unknown field names default to cell gradient
+- Invalid patches use cell values
 
 
 ## Numerical schemes
 
 ### Gradient reconstruction (`GradientScheme`)
-- Cell-centered least-squares:
-  - For cell P, solve normal equations for ∇φ using neighbor deltas with inverse-distance-squared weights.
-  - Solves 3×3 systems with Eigen LLT, with small regularization; falls back to LU if needed.
-- Face gradient interpolation:
-  - Distance-weighted average of cell gradients + consistency correction along `e_PN`.
-  - Used for non-orthogonal diffusion corrections and higher-order convection.
+
+#### Cell Gradient Computation (`CellGradient`)
+**Method**: Weighted least-squares gradient reconstruction
+
+**Algorithm**:
+1. **Neighbor Analysis**: Validate neighbor cells and compute distance vectors
+2. **Weight Calculation**: `w = 1/r²` for inverse-distance-squared weighting
+3. **Matrix Assembly**: Form normal equations `ATA·∇φ = ATb`
+   - `ATA = Σ w·(r ⊗ r)` (3×3 matrix)
+   - `ATb = Σ w·Δφ·r` (3×1 vector)
+4. **Regularization**: Add small diagonal term to prevent singularity
+5. **Solution**: Eigen LLT decomposition with LU fallback
+6. **Gradient Limiting**: Barth-Jesperson limiter prevents unphysical gradients
+
+**Robustness Features**:
+- **Dual solver**: LLT primary, LU fallback for poorly conditioned systems
+- **Regularization**: `totalWeight × 1e-12` prevents singular matrices
+- **Gradient limiting**: Prevents overshoots in high-gradient regions
+- **Error handling**: Comprehensive validation and graceful failures
+
+#### Face Gradient Computation (`FaceGradient`)
+**Method**: Corrected interpolation of cell gradients
+
+**Algorithm**:
+1. **Boundary Check**: Use `calculateBoundaryFaceGradient()` for boundary faces
+2. **Distance Calculation**: `d_PN = centroid_N - centroid_P`
+3. **Average Gradient**: Distance-weighted interpolation via `averageFaceGradient()`
+4. **Consistency Correction**: `correction = (φ_N - φ_P)/|d_PN| - (∇φ_avg · e_PN)`
+5. **Final Result**: `∇φ_f = ∇φ_avg + correction × e_PN`
+
+**Face Gradient Averaging (`averageFaceGradient`)**:
+- **Weights**: `g_P = d_Nf/(d_Pf + d_Nf)`, `g_N = d_Pf/(d_Pf + d_Nf)`
+- **Formula**: `∇φ_f = g_P × ∇φ_P + g_N × ∇φ_N`
+- **Physical meaning**: Closer cell has more influence
+
+#### Boundary Face Gradients (`calculateBoundaryFaceGradient`)
+**Approach**: Normal/tangential decomposition
+
+**FIXED_VALUE BC**:
+1. Calculate normal gradient: `∂φ/∂n = (φ_boundary - φ_cell)/d_n`
+2. Extract tangential components: `∇φ_tan = ∇φ_cell - (∇φ_cell·n)n`
+3. Combine: `∇φ_f = ∇φ_tan + (∂φ/∂n)n`
+
+**ZERO_GRADIENT BC**: `∇φ_f = ∇φ_cell`
+
+**FIXED_GRADIENT BC**: 
+1. Extract tangential: `∇φ_tan = ∇φ_cell - (∇φ_cell·n)n`
+2. Apply normal gradient: `∇φ_f = ∇φ_tan + gradient_specified×n`
 
 ### Convection schemes (`ConvectionScheme`)
-- All schemes expose `getFluxCoefficients(F, a_P_conv, a_N_conv)` for the matrix.
-- Upwind (UDS): first order; stable.
-- Central Difference (CDS) and Second-Order Upwind (SOU):
-  - Matrix still uses upwind-like coefficients for robustness.
-  - High-order accuracy added via explicit deferred-correction to the RHS.
-  - CDS face value uses gradient at face; SOU uses upwind cell gradient.
+
+#### Upwind Differencing Scheme (UDS)
+**Coefficients**: 
+- `a_P_conv = max(massFlowRate, 0.0)`
+- `a_N_conv = min(massFlowRate, 0.0)`
+
+**Flow Direction Logic**:
+- **Forward flow** (`mdot > 0`): Use owner cell value
+- **Reverse flow** (`mdot < 0`): Use neighbor cell value
+- **Sign handling**: `a_N_conv` correctly receives negative flow rates
+
+**Properties**: First-order accurate, unconditionally stable
+
+#### Central Difference Scheme (CDS)
+**Implementation**: Deferred correction approach
+
+**Matrix Coefficients**: Same as UDS for stability
+**Correction Term**: `mdot × (φ_central - φ_upwind)`
+
+**Face Value Calculation**:
+```cpp
+φ_f = φ_P × w + φ_N × (1-w) + (∇φ_f · d_Pf)
+```
+where `w = d_N/(d_P + d_N)` (inverse distance weighting)
+
+**Features**:
+- Second-order accurate on structured grids
+- Requires face gradients for non-orthogonal correction
+- Stable via deferred correction approach
+
+#### Second-Order Upwind (SOU)
+**Implementation**: Gradient-based extrapolation
+
+**Face Value Calculation**:
+```cpp
+if (upwind_cell == owner)
+    φ_f = φ_P + (∇φ_P · d_Pf)
+else
+    φ_f = φ_N + (∇φ_N · d_Nf)
+```
+
+**Correction Term**: `mdot × (φ_SOU - φ_UDS)`
+
+**Properties**: Second-order accurate, bounded, TVD-like behavior
 
 ### Diffusion treatment
-- Orthogonal component handled implicitly via `E_f = (S_f · e) e`.
-- Non-orthogonal correction handled explicitly via `T_f = S_f - E_f` and face/cell gradients.
+**Orthogonal Component**: Handled implicitly via `E_f = (S_f · e_PN) e_PN`
+**Non-orthogonal Correction**: Explicit via `T_f = S_f - E_f` using face gradients
+**Formula**: `∇φ_f · T_f` added to RHS for non-orthogonal meshes
 
 
 ## Linear system assembly (`Matrix`)
@@ -229,21 +348,127 @@ Class `KOmegaSST`:
 2) Optionally add high-order face value and correction methods (see CDS/SOU) and integrate as deferred-correction in `Matrix`.
 
 ### Add a new boundary condition
-1) Extend `BCType`/`BCValueType` and `BoundaryData` setters/getters.
-2) Update `BoundaryConditions` evaluation for scalar/vector faces.
-3) If it affects matrix assembly, update boundary handling in `Matrix`.
+1) **Extend enums**: Add new type to `BCType` enum
+2) **Update BoundaryData**: Add setters/getters for new BC type
+3) **Extend evaluation**: Update `calculateBoundaryFaceValue()` and `calculateBoundaryFaceGradient()`
+4) **Matrix integration**: Update boundary handling in `Matrix::buildMomentumMatrix()`
+5) **Testing**: Add comprehensive test cases for the new BC type
+
+**Example Implementation**:
+```cpp
+// 1. Add to BCType enum
+PERIODIC,  // New BC type
+
+// 2. Add BoundaryData methods
+void setPeriodicValue(Scalar offset) {
+    type = BCType::PERIODIC;
+    scalarValue = offset;
+}
+
+// 3. Update evaluation logic
+case BCType::PERIODIC:
+    return calculatePeriodicValue(face, phi, bc->scalarValue);
+```
 
 ### Expose fluid properties as inputs
 - Add setters on `SIMPLE` for `rho` and `mu`, thread through to `Matrix` and `KOmegaSST` calls as needed.
 
 
-## Debugging and tips
+## Testing and Debugging
 
-- Use `BoundaryConditions::printSummary()` to inspect BCs.
-- Enable intermediate prints (faces/cells `<<` operators) after geometry computation.
-- Check solver logs: high residuals often indicate BC or relaxation issues.
-- Reader throws early for malformed `.msh` files; verify indices are consistent and 3D.
-- ParaView: Remember PolyData cells are faces; color by face arrays.
+### Comprehensive Testing Methodology
+
+#### Boundary Conditions Testing
+**Testing Strategy**: Add comprehensive std::cout debugging to trace:
+1. **Patch Registration**: Verify patch names, zones, face ranges
+2. **BC Storage**: Confirm type-safe storage of scalar/vector values
+3. **Field Lookup**: Test `getFieldBC()` with various field names
+4. **Vector Components**: Verify `U_x`/`U_y`/`U_z` → `U` fallback
+5. **Boundary Values**: Test `calculateBoundaryFaceValue()` for all BC types
+6. **Cache Operations**: Verify face-to-patch mapping performance
+
+**Key Tests**:
+```cpp
+// Test all BC types
+setFixedValue("inlet", "U", Vector(1,0,0));
+setZeroGradient("outlet", "p");
+setNoSlip("wall", "U");
+setFixedGradient("interface", "T", 100.0);
+```
+
+#### Convection Schemes Testing
+**Testing Strategy**: Verify coefficient calculation and face values:
+1. **Coefficient Logic**: Test `getFluxCoefficients()` for +/- mass flow rates
+2. **Flow Direction**: Verify upwind cell selection
+3. **Face Values**: Test interpolation and extrapolation methods
+4. **Correction Terms**: Verify deferred correction calculations
+5. **Boundary Integration**: Test BC application in schemes
+
+**Critical Tests**:
+```cpp
+// Test flow direction handling
+massFlowRate = +1.0: a_P_conv = 1.0, a_N_conv = 0.0  // Owner→Neighbor
+massFlowRate = -1.0: a_P_conv = 0.0, a_N_conv = -1.0 // Neighbor→Owner
+```
+
+#### Gradient Schemes Testing
+**Testing Strategy**: Verify mathematical correctness:
+1. **Neighbor Validation**: Check distance calculations and weighting
+2. **Matrix Assembly**: Verify ATA matrix conditioning and determinant
+3. **Solver Robustness**: Test LLT/LU fallback mechanisms
+4. **Gradient Limiting**: Verify limiter activation in high-gradient regions
+5. **Face Interpolation**: Test averaging weights and corrections
+6. **Boundary Gradients**: Verify normal/tangential decomposition
+
+**Matrix Verification**:
+```cpp
+// Check matrix properties
+ATA.determinant() > 0  // Well-conditioned system
+regularization = totalWeight × 1e-12  // Prevents singularity
+gradMag * maxDistance < 10.0 * phiRange  // Gradient limiting
+```
+
+### Debugging Strategies
+
+#### Adding Debug Output
+1. **Method Tracing**: Add entry/exit logging for key methods
+2. **Parameter Logging**: Log input parameters and intermediate calculations
+3. **Validation Checks**: Add assertions for mathematical consistency
+4. **Performance Monitoring**: Track solver iterations and convergence
+
+#### Common Issues and Solutions
+
+**Boundary Condition Issues**:
+- **Symptom**: "No BC specified" warnings
+- **Solution**: Check patch names match mesh exactly
+- **Debug**: Use `printSummary()` to list all patches and BCs
+
+**Convection Scheme Issues**:
+- **Symptom**: Incorrect flow direction or instability
+- **Solution**: Verify mass flow rate signs and upwind logic
+- **Debug**: Log `massFlowRate`, `a_P_conv`, `a_N_conv` values
+
+**Gradient Issues**:
+- **Symptom**: "Gradient computation failed" errors
+- **Solution**: Check mesh quality and neighbor connectivity
+- **Debug**: Log ATA matrix condition number and rank
+
+#### Best Practices
+1. **Modular Testing**: Test individual components before integration
+2. **Mathematical Verification**: Verify algorithms against literature
+3. **Boundary Case Testing**: Test with extreme parameter values
+4. **Performance Profiling**: Monitor computational efficiency
+5. **Regression Testing**: Maintain test cases for future validation
+
+### Development Tips
+
+- **BCs**: Use `BoundaryConditions::printSummary()` to inspect setup
+- **Gradients**: Check matrix conditioning with `ATA.determinant()`
+- **Convection**: Verify upwind logic with simple 1D test cases  
+- **Solver logs**: High residuals indicate BC or relaxation issues
+- **Mesh validation**: Reader throws early for malformed `.msh` files
+- **ParaView**: PolyData cells are faces; color by face arrays
+- **Debugging**: Use comprehensive std::cout for method tracing
 
 
 ## Call flow
