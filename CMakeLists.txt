@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Debug)
+  set(CMAKE_BUILD_TYPE Release)
 endif()
 
 # Find VTK package with required components
@@ -36,6 +36,7 @@ add_executable(${PROJECT_NAME}
     src/Numerics/massFlowRate.cpp
     src/Numerics/LinearSolvers.cpp
     src/Numerics/SIMPLE.cpp
+    src/Numerics/Constraint.cpp
     src/Numerics/linearInterpolation.cpp
     src/Models/KOmegaSST.cpp
     src/PostProcessing/VtkWriter.cpp
