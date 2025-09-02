@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <map>
+
 #include "Scalar.h"
 #include "Vector.h"
 #include "Face.h"
@@ -15,7 +16,6 @@
  * @brief Calculate mass flow rate at each face
  * 
  * @param faces Vector of mesh faces
- * @param cells Vector of mesh cells  
  * @param U_field Velocity field at cell centers
  * @param bcManager Boundary conditions manager
  * @param faceToPatchMap Mapping from face ID to boundary patch
@@ -31,7 +31,6 @@
 FaceFluxField calculateMassFlowRate
 (
     const std::vector<Face>& faces,
-    const std::vector<Cell>& cells,
     const VectorField& U_field,
     const BoundaryConditions& bcManager,
     const std::map<size_t, const BoundaryPatch*>& faceToPatchMap

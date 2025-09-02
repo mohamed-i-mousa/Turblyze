@@ -1,9 +1,3 @@
-#ifndef VECTOR_H
-#define VECTOR_H
-
-#include <iostream>
-#include "Scalar.h"
-
 /**
  * @brief A 3D vector class for geometric operations
  * 
@@ -11,8 +5,17 @@
  * standard vector operations including arithmetic, normalization,
  * and geometric calculations.
  */
-struct Vector 
+
+#ifndef VECTOR_H
+#define VECTOR_H
+
+#include <iostream>
+#include "Scalar.h"
+
+
+class Vector 
 {
+public:
     /// X, Y, Z components of the vector
     Scalar x, y, z;
 

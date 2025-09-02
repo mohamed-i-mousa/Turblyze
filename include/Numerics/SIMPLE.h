@@ -14,6 +14,7 @@
 #include "Matrix.h"
 #include "LinearSolvers.h"
 #include "KOmegaSST.h"
+#include "Constraint.h"
 
 
 /**
@@ -24,7 +25,8 @@
  * velocity-pressure coupling through pressure correction and includes
  * support for turbulence modeling.
  */
-class SIMPLE {
+class SIMPLE 
+{
 public:
     /**
      * @brief Constructor for SIMPLE solver
@@ -57,44 +59,34 @@ public:
      * @brief Calculate mass fluxes using Rhie-Chow interpolation
      * 
      * Implements the Rhie-Chow interpolation method to prevent checkerboard
-     * pressure oscillations in collocated grids. The face velocity is computed as:
+     * pressure oscillations in collocated grids. 
      * 
-     * U_f = U_f_linearInterpolated + D_f * (∇p_face_linear - ∇p_face_accurate)
+     * The face velocity is computed as:
+     * 
+     * U_f = U_f_average + DUf * (∇p_face_average - ∇p_face_accurate)
      *       + (1 - alpha_U) * (U_f_prev - U_f_prev_linear)
      * 
-     * where D_f is the face diffusion coefficient calculated using the minimum
-     * correction approach for enhanced stability on skewed meshes.
-     * 
-     * @note The D_f field is populated during this function for use in the 
-     *       pressure correction equation, ensuring consistency between velocity
-     *       correction and pressure-velocity coupling.
+     * where D_f is the face diffusion coefficient calculated using the
+     * momentum equation diagonals.
      */
     void calculateRhieChowFlowRate();
 
     /**
-     * @brief Solve pressure correction equation using pre-calculated D_f coefficients
+     * @brief Solve pressure correction equation
      * 
      * Assembles and solves the pressure correction equation:
-     * ∇·(D_f ∇p') = -∇·(ρU*)
-     * 
-     * where D_f are the face-based diffusion coefficients computed during
-     * Rhie-Chow interpolation. This ensures consistent pressure-velocity coupling
-     * and maintains the same diffusion coefficients throughout the SIMPLE iteration.
-     * 
-     * @note Uses D_f field populated by calculateRhieChowMassFlux() for consistency
+     * ∇·(DUf ∇p') = -∇·(ρU*)
      */
     void solvePressureCorrection();
     
     /**
      * @brief Correct velocity field using pressure correction
      * 
-     * Applies velocity correction using component-wise diffusion coefficients:
-     * U_corrected = U* - D * ∇p'
+     * Applies velocity correction as:
+     * U_corrected = U* - DU * ∇p'
      * 
-     * where D = diag(Dx, Dy, Dz) are the cell-centered diffusion coefficients
-     * computed from momentum matrix diagonals: D = V/a_momentum
-     * 
-     * @note Uses Dx, Dy, Dz fields for proper component-wise correction
+     * where DU = diag(DUx, DUy, DUz) are the cell-centered diffusion 
+     * coefficients computed from momentum matrix diagonals: D = V/a_momentum
      */
     void correctVelocity();
     
@@ -107,6 +99,14 @@ public:
      * @brief Correct mass fluxes using updated velocity field
      */
     void correctFlowRate();
+    
+    /**
+     * @brief Solve turbulence equations if turbulence modeling is enabled
+     * 
+     * Solves the turbulent transport equations (k-omega SST) to update
+     * turbulent viscosity field. Only executes if turbulence is enabled.
+     */
+    void solveTurbulence();
     
     /**
      * @brief Check if solution has converged
@@ -127,22 +127,10 @@ public:
     const ScalarField& getPressure() const { return p; }
     
     /**
-     * @brief Get mass flux field
-     * @return Reference to mass flux field
+     * @brief Get Rhie-Chow face flow rate field
+     * @return Reference to Rhie-Chow flow rate field
      */
-    const FaceFluxField& getRhieChowFlowRate() const 
-    { 
-        return RhieChowFlowRate; 
-    }
-    
-    /**
-     * @brief Get diffusion coefficient field
-     * @return Reference to D_f field
-     */
-    const FaceFluxField& getDiffusionCoefficient() const 
-    { 
-        return D_f; 
-    }
+    const FaceFluxField& getRhieChowFlowRate() const { return RhieChowFlowRate; }
     
     /**
      * @brief Get x-component of velocity field
@@ -200,6 +188,12 @@ public:
     }
     
     /**
+     * @brief Get constraint system pointer
+     * @return Pointer to constraint system
+     */
+    Constraint* getConstraintSystem() { return constraintSystem.get(); }
+    
+    /**
      * @brief Get turbulent kinetic energy field
      * @return Pointer to k field (null if turbulence disabled)
      */
@@ -232,9 +226,9 @@ private:
     const ConvectionScheme& convectionScheme;
 
     /// Physical properties
-    Scalar rho;           ///< Fluid density
-    Scalar mu;            ///< Dynamic viscosity
-    Scalar nu;            ///< Kinematic viscosity
+    Scalar rho;             ///< Fluid density
+    Scalar mu;              ///< Dynamic viscosity
+    Scalar nu;              ///< Kinematic viscosity
 
     /// Algorithm parameters
     Scalar alpha_U;         ///< Under-relaxation factor for velocity
@@ -243,38 +237,39 @@ private:
     Scalar tolerance;       ///< Convergence tolerance
     bool enableTurbulence;  ///< Enable turbulence modeling
     
+    
     /// Turbulence model
     std::unique_ptr<KOmegaSST> turbulenceModel;
+    
+    /// Field constraint system
+    std::unique_ptr<Constraint> constraintSystem;
 
     /// Solution fields
-    VectorField U;        ///< Velocity field
-    ScalarField p;        ///< Pressure field
-    ScalarField pCorr;  ///< Pressure correction field
+    VectorField U;          ///< Velocity field
+    ScalarField p;          ///< Pressure field
+    ScalarField pCorr;      ///< Pressure correction field
     Scalar lastPressureCorrectionRMS = S(1e9); ///< Track p' RMS before reset
     
     /// Face-based fields for Rhie-Chow interpolation
     FaceFluxField RhieChowFlowRate;      ///< Mass flux through faces
-    FaceFluxField RhieChowMassFlux_prev; ///< Mass flux from previous iteration
-    FaceVectorField U_f;              ///< Face velocity field
-    FaceFluxField D_f;                ///< Diffusion coefficient field for pressure equation
+    FaceFluxField RhieChowFlowRate_prev; ///< Mass flux from previous iteration
 
     /// Previous-iteration fields (for under-relaxation effects at faces)
-    VectorField U_prev;          ///< Velocity from previous iteration
-    FaceVectorField U_f_prev; ///< Face velocity from previous iteration
+    VectorField U_prev;         ///< Velocity from previous iteration
+    ScalarField U_x_prev;       ///< x-component from previous iteration
+    ScalarField U_y_prev;       ///< y-component from previous iteration
+    ScalarField U_z_prev;       ///< z-component from previous iteration
+    FaceVectorField U_f_avg;                 ///< Face velocity field
+    FaceVectorField U_f_avg_prev;  ///< Face velocity from previous iteration
 
     /// Momentum equation coefficients per component (needed for Rhie-Chow)
-    ScalarField a_Ux;     ///< Diagonal coefficients of U_x momentum equation
-    ScalarField a_Uy;     ///< Diagonal coefficients of U_y momentum equation
-    ScalarField a_Uz;     ///< Diagonal coefficients of U_z momentum equation
-    ScalarField DU_x;     ///< Cell diffusion coefficients for x-momentum: V/a_Ux
-    ScalarField DU_y;     ///< Cell diffusion coefficients for y-momentum: V/a_Uy  
-    ScalarField DU_z;     ///< Cell diffusion coefficients for z-momentum: V/a_Uz
-    VectorField H_U;      ///< H/A terms for momentum equations
-    
+    ScalarField DU;       ///< Cell diffusion coefficients for momentum
+    FaceFluxField DUf;    ///< Face diffusion coefficients for momentum
+
     /// Gradient fields
     VectorField gradP;              ///< Pressure gradient
     VectorField gradPCorr;          ///< Pressure correction gradient
-    FaceVectorField gradPCorr_f;    ///< Pressure correction gradient at faces
+   
     /// Matrix constructor and solver objects
     std::unique_ptr<Matrix> matrixConstruct;
     
@@ -302,6 +297,7 @@ private:
      * @return Pressure residual value
      */
     Scalar calculatePressureResidual() const;
+    
 };
 
 #endif

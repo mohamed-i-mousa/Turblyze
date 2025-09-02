@@ -6,10 +6,12 @@
 
 
 // First-order Upwind Differencing Scheme (UDS)
-void UpwindScheme::getFluxCoefficients(
+void UpwindScheme::getFluxCoefficients
+(
     Scalar massFlowRate,
     Scalar& a_P_conv,
-    Scalar& a_N_conv) const
+    Scalar& a_N_conv
+) const
 {
     a_P_conv = std::max(massFlowRate, 0.0);
     a_N_conv = std::min(massFlowRate, 0.0);
@@ -17,22 +19,26 @@ void UpwindScheme::getFluxCoefficients(
 
 
 // Bounded Central Differencing Scheme (BCDS) with gradient reformulation
-void CentralDifferenceScheme::getFluxCoefficients(
+void CentralDifferenceScheme::getFluxCoefficients
+(
     Scalar massFlowRate,
     Scalar& a_P_conv,
-    Scalar& a_N_conv) const
+    Scalar& a_N_conv
+) const
 {
     a_P_conv = std::max(massFlowRate, 0.0);
     a_N_conv = std::min(massFlowRate, 0.0);
 }
 
-Scalar CentralDifferenceScheme::calculateCentralDifferenceCorrection(
+Scalar CentralDifferenceScheme::calculateCentralDifferenceCorrection
+(
     const Face& face,
     const ScalarField& phi,
-    const FaceVectorField& grad_phi_f,
+    const Vector& grad_phi_f,
     Scalar massFlowRate,
     const BoundaryConditions* bcManager,
-    const std::string& fieldName) const
+    const std::string& fieldName
+) const
 {
     if (face.isBoundary()) return 0.0;
 
@@ -48,15 +54,19 @@ Scalar CentralDifferenceScheme::calculateCentralDifferenceCorrection(
     return massFlowRate * (phi_face_central - phi_face_UDS);
 }
 
-Scalar CentralDifferenceScheme::calculateFaceValue(
+Scalar CentralDifferenceScheme::calculateFaceValue
+(
     const Face& face,
     const ScalarField& phi,
-    const FaceVectorField& grad_phi_f,
+    const Vector& grad_phi_f,
     const BoundaryConditions* bcManager,
-    const std::string& fieldName) const
+    const std::string& fieldName
+) const
 {
-    if (face.isBoundary()) {
-        if (bcManager && !fieldName.empty()) {
+    if (face.isBoundary()) 
+    {
+        if (bcManager && !fieldName.empty()) 
+        {
             return bcManager->calculateBoundaryFaceValue(face, phi, fieldName);
         }
         // Fallback to zero gradient if no BC info available
@@ -76,35 +86,46 @@ Scalar CentralDifferenceScheme::calculateFaceValue(
     
     // Central difference formula: φ_f = φ_P*w + φ_N*(1-w) + (∇φ_f · d_Pf)
     Scalar phi_f = 
-        phi[P] * w + phi[N] * (S(1.0) - w) + dot(grad_phi_f[face.id], d_Pf);
+        phi[P] * w + phi[N] * (S(1.0) - w) + dot(grad_phi_f, d_Pf);
     
-    return phi_f;  
+    return phi_f;
 }
 
 // Second-order Upwind Scheme with gradient-based formulation
-void SecondOrderUpwindScheme::getFluxCoefficients(
+void SecondOrderUpwindScheme::getFluxCoefficients
+(
     Scalar massFlowRate,
     Scalar& a_P_conv,
-    Scalar& a_N_conv) const
+    Scalar& a_N_conv
+) const
 {
     a_P_conv = std::max(massFlowRate, 0.0);
     a_N_conv = std::min(massFlowRate, 0.0);
 }
 
-Scalar SecondOrderUpwindScheme::calculateSecondOrderCorrection(
+Scalar SecondOrderUpwindScheme::calculateSecondOrderCorrection
+(
     const Face& face,
     const ScalarField& phi,
-    const VectorField& grad_phi,
+    const Vector& grad_phi_P,
+    const Vector& grad_phi_N,
     Scalar massFlowRate,
     const BoundaryConditions* bcManager,
-    const std::string& fieldName) const
+    const std::string& fieldName
+) const
 {
     if (face.isBoundary()) return 0.0;
 
-    Scalar phi_face_SOU = 
+    Scalar phi_face_SOU =
         calculateFaceValue
             (
-                face, phi, grad_phi, massFlowRate, bcManager, fieldName
+                face,
+                phi,
+                grad_phi_P,
+                grad_phi_N,
+                massFlowRate,
+                bcManager,
+                fieldName
             );
     
     size_t upwind_cell = 
@@ -118,15 +139,20 @@ Scalar SecondOrderUpwindScheme::calculateSecondOrderCorrection(
 Scalar SecondOrderUpwindScheme::calculateFaceValue(
     const Face& face,
     const ScalarField& phi,
-    const VectorField& grad_phi,
+    const Vector& grad_phi_P,
+    const Vector& grad_phi_N,
     Scalar massFlowRate,
     const BoundaryConditions* bcManager,
     const std::string& fieldName) const
 {
-    if (face.isBoundary()) {
-        if (bcManager && !fieldName.empty()) {
+    if (face.isBoundary()) 
+    {
+        if (bcManager && !fieldName.empty()) 
+        {
             return bcManager->calculateBoundaryFaceValue(face, phi, fieldName);
-        } else {
+        } 
+        else 
+        {
             // Fallback to zero gradient if no BC info available
             std::cerr << "No BC specified for boundary face " << face.id 
                       << ". Defaulting to zero-gradient." << std::endl;
@@ -138,9 +164,20 @@ Scalar SecondOrderUpwindScheme::calculateFaceValue(
     size_t upwind_cell = 
         (massFlowRate >= 0.0) ? face.ownerCell : face.neighbourCell.value();
     
-    // Second-order upwind formula: φ_f = φ_P + (∇φ_P · d_Pf)
+    Scalar phi_f;
+
     const Vector& d_Pf = face.d_Pf;
-    Scalar phi_f = phi[upwind_cell] + dot(grad_phi[upwind_cell], d_Pf);
+    const Vector& d_Nf = face.d_Nf.value();
+
+    if (upwind_cell == face.ownerCell)
+    {
+        phi_f = phi[upwind_cell] + dot(grad_phi_P, d_Pf);
+    }
+    else
+    {
+        phi_f = phi[upwind_cell] + dot(grad_phi_N, d_Nf);
+
+    }
     
     return phi_f;
 }

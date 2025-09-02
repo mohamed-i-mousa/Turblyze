@@ -41,33 +41,23 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
         Vector crossProd = cross(vecB, vecA);
         Scalar crossProdMag = crossProd.magnitude();
 
-        if (std::abs(crossProdMag) < AREA_TOLERANCE) 
-        {
-            throw std::runtime_error
-                (
-                    "Face " + std::to_string(id) + " is degenerate."
-                );
-        } 
-        else 
-        {
-            area = S(0.5) * crossProdMag;
-            normal = crossProd / crossProdMag;
+        area = S(0.5) * crossProdMag;
+        normal = crossProd / (crossProdMag + vSmallValue);
 
-            x2_integral = 
-                (p1.x*p1.x + p2.x*p2.x + p3.x*p3.x 
-               + p1.x*p2.x + p1.x*p3.x + p2.x*p3.x)
-               * area / S(6.0);
-            y2_integral = 
-                (p1.y*p1.y + p2.y*p2.y + p3.y*p3.y
-               + p1.y*p2.y + p1.y*p3.y + p2.y*p3.y)
-               * area / S(6.0);
-            z2_integral = 
-                (p1.z*p1.z + p2.z*p2.z + p3.z*p3.z
-               + p1.z*p2.z + p1.z*p3.z + p2.z*p3.z)
-               * area / S(6.0);
+        x2_integral = 
+            (p1.x*p1.x + p2.x*p2.x + p3.x*p3.x 
+            + p1.x*p2.x + p1.x*p3.x + p2.x*p3.x)
+            * area / S(6.0);
+        y2_integral = 
+            (p1.y*p1.y + p2.y*p2.y + p3.y*p3.y
+            + p1.y*p2.y + p1.y*p3.y + p2.y*p3.y)
+            * area / S(6.0);
+        z2_integral = 
+            (p1.z*p1.z + p2.z*p2.z + p3.z*p3.z
+            + p1.z*p2.z + p1.z*p3.z + p2.z*p3.z)
+            * area / S(6.0);
 
-            geometricPropertiesCalculated = true;
-        }
+        geometricPropertiesCalculated = true;
     }
     // CASE 2: Face is "Polygon" (nNodes > 3)
     else 
@@ -125,50 +115,18 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
             y2_integral += y2_part;
             z2_integral += z2_part;
 
-            if (triangleArea > AREA_TOLERANCE)
-            {
-                Vector triangleCentroid = (p1_tri + p2_tri + p3_tri) / S(3.0);
-                totalArea += triangleArea;
-                weightedCentroidSum += triangleCentroid * triangleArea;
-            } 
-            else 
-            {
-                throw std::runtime_error
-                    (
-                        "Warning: Polygonal Face " + std::to_string(id)
-                      + " has near-zero total area."
-                    );
-            }
+            Vector triangleCentroid = (p1_tri + p2_tri + p3_tri) / S(3.0);
+            totalArea += triangleArea;
+            weightedCentroidSum += triangleCentroid * triangleArea;
         }
 
         area = totalArea;
 
-        if (area < AREA_TOLERANCE)
-        {
-             throw std::runtime_error
-                (
-                    "Warning: Polygonal Face " + std::to_string(id)
-                  + " has near-zero total area. Setting area=0, "
-                  + "centroid/normal=(0,0,0)."
-                );
-        } 
-        else 
-        {
-             if (std::abs(area) > DIVISION_TOLERANCE)
-             {
-                 centroid = weightedCentroidSum / area;
-             } 
-             else 
-             {
-                 throw std::runtime_error
-                    (
-                        "Warning: Polygonal Face " + std::to_string(id)
-                      + " has near-zero total area."
-                    );
-             }
-             normal = normalSum.normalized();
-             geometricPropertiesCalculated = true;
-        }
+        centroid = weightedCentroidSum / (area + vSmallValue);
+
+        normal = normalSum.normalized();
+
+        geometricPropertiesCalculated = true;
     }
 }
 
@@ -225,18 +183,7 @@ void Face::calculateDistanceProperties(const CellContainer& allCells)
     d_Pf = centroid - allCells[ownerCell].centroid;
     d_Pf_mag = d_Pf.magnitude();
     
-    if (d_Pf_mag > DIVISION_TOLERANCE)
-    {
-        e_Pf = d_Pf / d_Pf_mag;
-    } 
-    else 
-    {
-        throw std::runtime_error
-            (
-                "Face " + std::to_string(id)
-              + ": distance from owner cell to face is nearly zero."
-            );
-    }
+    e_Pf = d_Pf / (d_Pf_mag + vSmallValue);
 
     // Calculate d_Nf only for internal faces
     if (!isBoundary())
@@ -245,21 +192,10 @@ void Face::calculateDistanceProperties(const CellContainer& allCells)
         
         Vector d_Nf_vec = centroid - allCells[N].centroid;
         Scalar d_Nf_magnitude = d_Nf_vec.magnitude();
-        
-        if (d_Nf_magnitude > DIVISION_TOLERANCE)
-        {
-            d_Nf = d_Nf_vec;
-            d_Nf_mag = d_Nf_magnitude;
-            e_Nf = d_Nf_vec / d_Nf_magnitude;
-        } 
-        else 
-        {
-            throw std::runtime_error
-                (
-                    "Face " + std::to_string(id)
-                  + ": distance from neighbor cell to face is nearly zero."
-                );
-        }
+
+        d_Nf = d_Nf_vec;
+        d_Nf_mag = d_Nf_magnitude;
+        e_Nf = d_Nf_vec / (d_Nf_magnitude + vSmallValue);
     }
     distancePropertiesCalculated = true;
 }

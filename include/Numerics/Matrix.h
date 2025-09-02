@@ -15,6 +15,7 @@
 #include "ConvectionScheme.h"
 #include "GradientScheme.h"
 
+// Forward declaration of classes
 class KOmegaSST;
 
 /**
@@ -39,16 +40,6 @@ public:
         const std::vector<Face>& faces,
         const std::vector<Cell>& cells,
         const BoundaryConditions& boundaryConds
-    );
-
-    /**
-     * @brief Deprecated - no longer using caches
-     */
-    void refreshIterationCaches
-    (
-        const PressureField& p,
-        const VelocityField& U,
-        const KOmegaSST* turbulenceModel
     );
 
     /**
@@ -79,7 +70,7 @@ public:
     void buildPressureCorrectionMatrix
     (
         const FaceFluxField& RhieChowFlowRate,
-        const FaceFluxField& D_f
+        const FaceFluxField& DUf
     );
 
     /**
@@ -104,20 +95,17 @@ public:
      * @brief Apply implicit under-relaxation to the linear system
      * @param alpha Relaxation factor (0 < alpha < 1)
      * @param phi_prev Previous iteration values
+     * Apply under-relaxation to the assembled linear system (Ax=b)
+     * Diagonal: a_c <- a_c / alpha
+     * RHS:      b   <- b + ((1 - alpha)/alpha) * a_c_original * phi_prev
      */
     void relax(Scalar alpha, const ScalarField& phi_prev);
-
-    /**
-     * @brief Set face fluxes for current iteration
-     * @param mDot Input face flow rate field
-     */
 
 private:
     /// References to mesh data and numerical schemes
     const std::vector<Face>& allFaces;
     const std::vector<Cell>& allCells;
     const BoundaryConditions& bcManager;
-
 
     /// Linear system matrix A and right-hand side vector b
     Eigen::SparseMatrix<Scalar> A_matrix;
@@ -131,20 +119,11 @@ private:
      * @brief Clear matrix and vector storage
      */
     void clear();
-    
+
     /**
-     * @brief Get gradient field for specified field type
-     * @param fieldName Field name to identify appropriate gradient
-     * @param phi Scalar field (for non-cached fields)
-     * @param[out] grad_phi_f Face gradient field
-     * @return Pointer to appropriate cell-centered gradient field
+     * @brief Reserve memory for triplet list based on mesh topology
      */
-    const VectorField* getGradientField
-    (
-        const std::string& fieldName,
-        const ScalarField& phi,
-        FaceVectorField& grad_phi_f
-    );
+    void reserveTripletList();
 };
 
 #endif

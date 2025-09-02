@@ -41,7 +41,7 @@ void Cell::calculateGeometricProperties(const std::vector<Face>& allFaces)
 
     volume /= S(3.0);
     
-    if (std::abs(volume) > DIVISION_TOLERANCE) 
+    if (std::abs(volume) > smallValue) 
     {
         centroid = centroidSum / (S(2.0) * volume);
     } 
@@ -60,15 +60,6 @@ void Cell::calculateGeometricProperties(const std::vector<Face>& allFaces)
             "Error: Cell " + std::to_string(id) 
           + " calculated negative volume (" + std::to_string(volume)
           + "). Check face normal conventions and mesh connectivity."
-        );
-    }
-    else if (std::abs(volume) < VOLUME_TOLERANCE) 
-    {
-        throw std::runtime_error
-        (
-            "Warning: Cell " + std::to_string(id) 
-          + " calculated volume is near-zero (" + std::to_string(volume)
-          + "). Check mesh quality or face properties."
         );
     }
     else

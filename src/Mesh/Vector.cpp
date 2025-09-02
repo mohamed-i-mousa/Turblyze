@@ -25,7 +25,7 @@ Vector Vector::operator*(Scalar scalar) const
 
 Vector Vector::operator/(Scalar scalar) const 
 {
-    if (std::abs(scalar) < DIVISION_TOLERANCE) 
+    if (std::abs(scalar) < smallValue) 
     {
         throw std::runtime_error
             (
@@ -65,7 +65,7 @@ Vector& Vector::operator*=(Scalar scalar)
 
 Vector& Vector::operator/=(Scalar scalar) 
 {
-    if (std::abs(scalar) < DIVISION_TOLERANCE) 
+    if (std::abs(scalar) < vSmallValue) 
     {
         throw std::runtime_error
             (
@@ -82,9 +82,9 @@ Vector& Vector::operator/=(Scalar scalar)
 
 bool Vector::operator==(const Vector& other) const 
 {
-    return (std::abs(x - other.x) < EQUALITY_TOLERANCE) 
-        && (std::abs(y - other.y) < EQUALITY_TOLERANCE)
-        && (std::abs(z - other.z) < EQUALITY_TOLERANCE);
+    return (std::abs(x - other.x) < equalityTolerance) 
+        && (std::abs(y - other.y) < equalityTolerance)
+        && (std::abs(z - other.z) < equalityTolerance);
 }
 
 bool Vector::operator!=(const Vector& other) const 
@@ -105,7 +105,7 @@ Scalar Vector::magnitude() const
 Vector& Vector::normalize()
 {
     Scalar mag = magnitude();
-    if (std::abs(mag) > DIVISION_TOLERANCE)
+    if (std::abs(mag) > smallValue)
     {
         x /= mag;
         y /= mag;

@@ -1,9 +1,3 @@
-#ifndef SCALAR_H
-#define SCALAR_H
-
-#include <string>
-#include <limits>
-
 /**
  * @file Scalar.h
  * @brief Floating-point precision configuration and tolerance definitions
@@ -12,6 +6,12 @@
  * along with numerical tolerances that adapt to the chosen precision.
  * Precision is controlled via CMake configuration.
  */
+
+#ifndef SCALAR_H
+#define SCALAR_H
+
+#include <string>
+#include <limits>
 
 /// Floating-point precision type (configured via CMakeLists.txt)
 #ifdef PROJECT_USE_DOUBLE_PRECISION
@@ -22,22 +22,19 @@
     constexpr std::string_view SCALAR_MODE = "float (FP32)";
 #endif
 
-/// Tolerance for division by zero checks
-inline const Scalar DIVISION_TOLERANCE = 
+
+inline const Scalar smallValue =
     std::numeric_limits<Scalar>::epsilon();
 
-/// Tolerance for floating-point equality comparisons  
-inline const Scalar EQUALITY_TOLERANCE = 
+inline const Scalar vSmallValue =
+    std::numeric_limits<Scalar>::min();
+
+inline const Scalar equalityTolerance = 
     std::numeric_limits<Scalar>::epsilon() * 100;
 
-/// Tolerance for face area calculations
-inline const Scalar AREA_TOLERANCE = 1e-12;
+inline const Scalar minArea = 1e-12;
 
-/// Tolerance for cell volume calculations
-inline const Scalar VOLUME_TOLERANCE = 1e-30;
-
-/// Tolerance for gradient calculations
-inline const Scalar GRADIENT_TOLERANCE = 1e-12;
+inline const Scalar minVolume = 1e-30;
 
 /**
  * @brief Type-safe scalar literal conversion function

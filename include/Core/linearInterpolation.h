@@ -5,6 +5,7 @@
 #include "Scalar.h"
 #include "Vector.h"
 #include "CellData.h"
+#include "BoundaryConditions.h"
 
 /**
  * @brief Compute linear interpolation weights for a face
@@ -29,6 +30,22 @@ Vector VectorLinearInterpolation
 (
     const Face& face,
     const VectorField& cellField
+);
+
+/**
+ * @brief Linear interpolation of vector field to face with boundary condition support
+ * @param face Face for interpolation
+ * @param cellField Cell-centered vector field
+ * @param bcManager Boundary condition manager
+ * @param fieldName Field name for boundary condition lookup
+ * @return Interpolated vector value at face with proper BC handling
+ */
+Vector VectorLinearInterpolation
+(
+    const Face& face,
+    const VectorField& cellField,
+    const BoundaryConditions& bcManager,
+    const std::string& fieldName
 );
 
 /**

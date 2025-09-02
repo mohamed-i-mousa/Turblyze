@@ -1,6 +1,7 @@
 #include "KOmegaSST.h"
 #include "Matrix.h"
 #include "ConvectionScheme.h"
+#include "GradientScheme.h"
 #include <cmath>
 #include <algorithm>
 #include <iostream>
@@ -10,7 +11,7 @@ KOmegaSST::KOmegaSST
     const std::vector<Face>& faces,
     const std::vector<Cell>& cells,
     const BoundaryConditions& bc,
-    const GradientScheme& gradScheme
+    const GradientScheme& gradientScheme
 )
     : k("k", cells.size(), 1e-6),
       omega("omega", cells.size(), 1.0),
@@ -22,7 +23,7 @@ KOmegaSST::KOmegaSST
       allFaces(faces),
       allCells(cells),
       bcManager(bc),
-      gradientScheme(gradScheme),
+      gradientScheme(gradientScheme),
       F1("F1", cells.size(), 0.0),
       F2("F2", cells.size(), 0.0),
       production_k("production_k", cells.size(), 0.0),
@@ -36,8 +37,12 @@ KOmegaSST::KOmegaSST
       rho(1.225)  // Default air density
 {
     // Initialize matrix constructor for equation solving
-    matrixConstruct = std::make_unique<Matrix>(
-        allFaces, allCells, bcManager, gradientScheme);
+    matrixConstruct = std::make_unique<Matrix>
+    (
+        allFaces,
+        allCells,
+        bcManager
+    );
     
     std::cout   << "k-omega SST turbulence model initialized with "
                 << allCells.size() << " cells." << std::endl;
@@ -111,20 +116,17 @@ void KOmegaSST::calculateWallDistance()
     VectorField zero_velocity("zero_velocity", allCells.size(), Vector(0.0, 0.0, 0.0));
     ScalarField phi_wall_source("phi_wall_source", allCells.size(), 0.0);
     ScalarField Gamma_phi_wall("Gamma_phi_wall", allCells.size(), 1.0);
-    CentralDifferenceScheme cds;
+    UpwindScheme upwds;
     
-    matrixConstruct->buildScalarTransportMatrix
+    matrixConstruct->buildMatrix
     (
-        "phi_wall",
         phi,
-        phi_old,
-        zero_velocity, // No convection
         phi_wall_source, // Source term (zero for wall distance)
-        Gamma_phi_wall,    // Unit diffusion coefficient per cell
-        TimeScheme::Steady,
-        0.0,    // No time derivative
-        1.0,    // Full implicit
-        cds
+        zero_velocity,   // No convection
+        Gamma_phi_wall,  // Unit diffusion coefficient per cell
+        upwds,
+        gradientScheme,
+        "phi_wall"
     );
     
     // Modify source term: b = -1 (Laplacian = -1)
@@ -148,7 +150,7 @@ void KOmegaSST::calculateWallDistance()
     // Build face-to-patch map
     std::map<size_t, const BoundaryPatch*> faceToPatch;
 
-    for (const auto& patch : bcManager.patches)
+    for (const auto& patch : bcManager.getPatches())
     {
         for (size_t i = patch.firstFaceIndex; i <= patch.lastFaceIndex; ++i)
         {
@@ -197,8 +199,12 @@ void KOmegaSST::calculateWallDistance()
         }
     }
     
-    // Calculate gradient of φ
-    VectorField grad_phi = gradientScheme.LeastSquares(phi, allCells);
+    // Compute gradients of phi field
+    VectorField grad_phi("grad_phi", allCells.size(), Vector(0.0, 0.0, 0.0));
+    for (size_t i = 0; i < allCells.size(); ++i)
+    {
+        grad_phi[i] = gradientScheme.CellGradient(i, phi, allCells);
+    }
     
     // Compute wall distance: d = √(|∇φ|² + 2φ) - |∇φ|
     for (size_t i = 0; i < allCells.size(); ++i)
@@ -222,16 +228,37 @@ void KOmegaSST::calculateWallDistance()
     std::cout << "  Wall distance calculation completed." << std::endl;
 }
 
-// New overload that takes separated gradient fields
+// Main solve method that calculates gradients internally
 void KOmegaSST::solve
 (
     const VectorField& U_field,
-    const VectorField& gradUx,
-    const VectorField& gradUy,
-    const VectorField& gradUz,
     Scalar nu_lam
 )
 {
+    // Extract velocity components
+    ScalarField Ux("Ux", allCells.size());
+    ScalarField Uy("Uy", allCells.size());
+    ScalarField Uz("Uz", allCells.size());
+    
+    for (size_t i = 0; i < allCells.size(); ++i)
+    {
+        Ux[i] = U_field[i].x;
+        Uy[i] = U_field[i].y;
+        Uz[i] = U_field[i].z;
+    }
+    
+    // Calculate velocity gradients
+    VectorField gradUx("gradUx", allCells.size(), Vector(0.0, 0.0, 0.0));
+    VectorField gradUy("gradUy", allCells.size(), Vector(0.0, 0.0, 0.0));
+    VectorField gradUz("gradUz", allCells.size(), Vector(0.0, 0.0, 0.0));
+    
+    for (size_t i = 0; i < allCells.size(); ++i)
+    {
+        gradUx[i] = gradientScheme.CellGradient(i, Ux, allCells);
+        gradUy[i] = gradientScheme.CellGradient(i, Uy, allCells);
+        gradUz[i] = gradientScheme.CellGradient(i, Uz, allCells);
+    }
+    
     std::vector<VectorField> gradUVec = { gradUx, gradUy, gradUz };
     solve(U_field, gradUVec, nu_lam);
 }
@@ -254,8 +281,11 @@ void KOmegaSST::solve
      */
     
     // Step 1: Calculate gradients of turbulence quantities
-    grad_k = gradientScheme.LeastSquares(k, allCells);
-    grad_omega = gradientScheme.LeastSquares(omega, allCells);
+    for (size_t i = 0; i < allCells.size(); ++i)
+    {
+        grad_k[i] = gradientScheme.CellGradient(i, k, allCells);
+        grad_omega[i] = gradientScheme.CellGradient(i, omega, allCells);
+    }
     
     // Step 2: Calculate blending functions
     calculateBlendingFunctions(gradU, nu_lam);
@@ -323,18 +353,15 @@ void KOmegaSST::solveOmegaEquation
     ScalarField omega_source("omega_source", allCells.size(), 0.0);
     CentralDifferenceScheme cds_omega;
     
-    matrixConstruct->buildScalarTransportMatrix
+    matrixConstruct->buildMatrix
     (
-        "omega",
         omega,
-        omega_old,
-        U_field,
         omega_source, // Source term (zero for omega)
+        U_field,
         GammaOmega,
-        enableTransient ? TimeScheme::Transient : TimeScheme::Steady,
-        enableTransient ? dt : 0.0,
-        enableTransient ? theta : 1.0,
-        cds_omega
+        cds_omega,
+        gradientScheme,
+        "omega"
     );
     
     auto& A_matrix = const_cast<Eigen::SparseMatrix<Scalar>&>
@@ -466,18 +493,15 @@ void KOmegaSST::solveKEquation
     ScalarField k_source("k_source", allCells.size(), 0.0);
     CentralDifferenceScheme cds_k;
     
-    matrixConstruct->buildScalarTransportMatrix
+    matrixConstruct->buildMatrix
     (
-        "k",
         k,
-        k_old,
-        U_field,
         k_source, // Source term (zero for k)
+        U_field,
         GammaK,
-        enableTransient ? TimeScheme::Transient : TimeScheme::Steady,
-        enableTransient ? dt : 0.0,
-        enableTransient ? theta : 1.0,
-        cds_k
+        cds_k,
+        gradientScheme,
+        "k"
     );
     
     auto& A_matrix = const_cast<Eigen::SparseMatrix<Scalar>&>

@@ -1,4 +1,12 @@
-#ifndef FACE_H
+/**
+ * @brief Represents a face in the computational mesh
+ * 
+ * A face is a boundary between cells or a boundary of the domain.
+ * It stores connectivity information, geometric properties, and
+ * distance vectors for finite volume calculations.
+ */
+
+ #ifndef FACE_H
 #define FACE_H
 
 #include <vector>
@@ -8,15 +16,9 @@
 #include "Scalar.h"
 #include "Vector.h"    
 
-/**
- * @brief Represents a face in the computational mesh
- * 
- * A face is a boundary between cells or a boundary of the domain.
- * It stores connectivity information, geometric properties, and
- * distance vectors for finite volume calculations.
- */
-struct Face 
+class Face 
 {
+public:
     /// Unique face identifier
     size_t id = 0;
     

@@ -1,3 +1,11 @@
+/**
+ * @brief Represents a computational cell in the mesh
+ * 
+ * A cell is a finite volume element bounded by faces. It stores
+ * connectivity information, geometric properties, and provides
+ * methods for calculating volume and centroid.
+ */
+
 #ifndef CELL_H
 #define CELL_H
 
@@ -7,15 +15,10 @@
 #include "Vector.h"
 #include "Face.h"
 
-/**
- * @brief Represents a computational cell in the mesh
- * 
- * A cell is a finite volume element bounded by faces. It stores
- * connectivity information, geometric properties, and provides
- * methods for calculating volume and centroid.
- */
-struct Cell
+
+class Cell
 {
+public:
     /// Unique cell identifier
     size_t id = 0;
     

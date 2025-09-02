@@ -14,6 +14,10 @@
  * assess mesh quality and identify potential numerical issues.
  * Uses scientific notation to properly display very small values.
  */
-void performMeshCheck(const std::vector<Face>& allFaces, const std::vector<Cell>& allCells);
+void checkMesh
+(
+    const std::vector<Face>& allFaces,
+    const std::vector<Cell>& allCells
+);
 
 #endif

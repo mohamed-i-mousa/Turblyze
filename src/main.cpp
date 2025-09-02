@@ -1,3 +1,22 @@
+/**
+ * @file main.cpp
+ * @brief Main entry point for the 3D incompressible CFD solver
+ * 
+ * This file contains the main function that orchestrates the entire CFD simulation
+ * process using the SIMPLE algorithm. It handles mesh reading, boundary condition
+ * setup, solver configuration, solution computation, and results export.
+ * 
+ * The solver implements:
+ * - 3D incompressible Navier-Stokes equations
+ * - SIMPLE algorithm for pressure-velocity coupling
+ * - k-omega SST turbulence modeling (optional)
+ * - Various discretization schemes (upwind, central difference, second-order upwind)
+ * - VTK output for visualization in ParaView
+ * 
+ * @author Mohamed Mousa
+ * @date 2025
+ */
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -26,11 +45,33 @@
 #include "Matrix.h"
 #include "LinearSolvers.h"
 #include "SIMPLE.h"
+#include "Constraint.h"
 
 // I/O
 #include "MeshReader.h"
 #include "VtkWriter.h"
+#include "checkMesh.h"
 
+
+/**
+ * @brief Main function - Entry point for the CFD simulation
+ * 
+ * This function orchestrates the complete CFD simulation workflow:
+ * 1. Mesh reading and geometric property calculation
+ * 2. Boundary condition setup for velocity and pressure fields  
+ * 3. SIMPLE solver initialization and configuration
+ * 4. Steady-state flow solution computation
+ * 5. Solution field extraction and statistics
+ * 6. Post-processing and VTK export for visualization
+ * 7. Solution validation and mass conservation checking
+ * 8. Performance timing and summary
+ * 
+ * The solver uses the SIMPLE algorithm to solve the coupled momentum
+ * and continuity equations on unstructured 3D meshes. Optional turbulence
+ * modeling is available via the k-omega SST model.
+ * 
+ * @return 0 on successful execution, 1 on error
+ */
 int main() 
 {
     // Start timing the total execution
@@ -51,12 +92,16 @@ int main()
 
         std::cout << "\n--- 1. Reading and Preparing Mesh ---" << std::endl;
 
+        /// @brief Container for all mesh nodes/vertices
         std::vector<Vector> allNodes;
+        /// @brief Container for all mesh faces (internal + boundary)
         std::vector<Face> allFaces;
+        /// @brief Container for all mesh cells/elements
         std::vector<Cell> allCells;
+        /// @brief Container for boundary patch definitions
         std::vector<BoundaryPatch> allBoundaryPatches;
 
-        std::string meshFilePath = "../inputFiles/cylinder.msh";
+        std::string meshFilePath = "../inputFiles/pipe_320k.msh";
 
         readMshFile
         (
@@ -74,9 +119,16 @@ int main()
         for (auto& face : allFaces)
         {
             face.calculateGeometricProperties(allNodes);
-            //std::cout << face << std::endl;   // For debugging
+            // std::cout << face << std::endl;   // For debugging
         }
         std::cout << "Geometric properties calculated for faces." << std::endl;
+
+        for (auto& cell : allCells)
+        {
+            cell.calculateGeometricProperties(allFaces);
+            // std::cout << cell << std::endl;   // For debugging
+        }
+        std::cout << "Geometric properties calculated for cells." << std::endl;
 
         for (auto& face : allFaces)
         {
@@ -84,12 +136,8 @@ int main()
         }
         std::cout << "Distance properties calculated for faces." << std::endl;
 
-        for (auto& cell : allCells)
-        {
-            cell.calculateGeometricProperties(allFaces);
-            //std::cout << cell << std::endl;   // For debugging
-        }
-        std::cout << "Geometric properties calculated for cells." << std::endl;
+        // Check mesh min/max area and volume 
+        checkMesh(allFaces, allCells);
 
         // ====================================================================
         // ------------------------- 2. PROBLEM SETUP -------------------------
@@ -103,34 +151,49 @@ int main()
 
         // --- Boundary Conditions ---
         BoundaryConditions bcManager;
-        for (const auto& patch : allBoundaryPatches) {
+        for (const auto& patch : allBoundaryPatches) 
+        {
             bcManager.addPatch(patch);
         }
 
         const std::string U_field = "U";
         const std::string p_field = "p";
         
-        // Inlet: Fixed velocity
-        bcManager.setFixedValue("inlet", U_field, Vector(0.0, 0.0, -0.1));
+        // Inlet: Fixed velocity (low Re for stability)
+        bcManager.setFixedValue("inlet", U_field, Vector(0.0, 0.0, -0.5));
         bcManager.setZeroGradient("inlet", p_field);
         
         // Outlet: Fixed pressure, zero gradient velocity
         bcManager.setFixedValue("outlet", p_field, 0.0);
         bcManager.setZeroGradient("outlet", U_field);
         
-        // Cylinder wall: no-slip condition for velocity, zero gradient for pressure
+        // Cylinder wall: no-slip for velocity, zero gradient for pressure
         bcManager.setNoSlip("cylinder", U_field);
         bcManager.setZeroGradient("cylinder", p_field);
+
+        // Sphere wall: no-slip for velocity, zero gradient for pressure
+        bcManager.setNoSlip("sphere", U_field);
+        bcManager.setZeroGradient("sphere", p_field);
         
-        // Symmetry walls: zero normal velocity and zero gradient for pressure
-        bcManager.setSymmetry("symmetry1", U_field);
-        bcManager.setSymmetry("symmetry2", U_field);
-        bcManager.setSymmetry("symmetry3", U_field);
-        bcManager.setSymmetry("symmetry4", U_field);
+        // Symmetry boundaries  
+        bcManager.setZeroGradient("symmetry1", U_field);
+        bcManager.setZeroGradient("symmetry2", U_field);
+        bcManager.setZeroGradient("symmetry3", U_field);
+        bcManager.setZeroGradient("symmetry4", U_field);
         bcManager.setZeroGradient("symmetry1", p_field);
         bcManager.setZeroGradient("symmetry2", p_field);
         bcManager.setZeroGradient("symmetry3", p_field);
         bcManager.setZeroGradient("symmetry4", p_field);
+        
+        // Walls: no-slip velocity and zero gradient for pressure
+        bcManager.setNoSlip("wall1", U_field);
+        bcManager.setNoSlip("wall2", U_field);
+        bcManager.setNoSlip("wall3", U_field);
+        bcManager.setNoSlip("wall4", U_field);
+        bcManager.setZeroGradient("wall1", p_field);
+        bcManager.setZeroGradient("wall2", p_field);
+        bcManager.setZeroGradient("wall3", p_field);
+        bcManager.setZeroGradient("wall4", p_field);
 
         bcManager.printSummary();
 
@@ -151,19 +214,28 @@ int main()
         
         // Configure SIMPLE parameters
 
-        // Under-relaxation: U = 0.7, p = 0.3
-        simpleSolver.setRelaxationFactors(0.7, 0.3);  
-        simpleSolver.setConvergenceTolerance(1e-6);   // Convergence tolerance
-        simpleSolver.setMaxIterations(100);            // Maximum iterations
+        // Under-relaxation: standard values
+        simpleSolver.setRelaxationFactors(0.7, 0.3);
+        simpleSolver.setConvergenceTolerance(1e-3);
+        simpleSolver.setMaxIterations(250);
         
         // Enable turbulence modeling
-        simpleSolver.enableTurbulenceModeling(true);
+        simpleSolver.enableTurbulenceModeling(false);
+        
+        // Configure field constraints: max velocity and pressyre range 
+        Constraint* constraintSystem = simpleSolver.getConstraintSystem();
+        if (constraintSystem)
+        {
+            constraintSystem->setVelocityConstraints(0.3);
+            constraintSystem->setPressureConstraints(-0.05, 0.05);
+            constraintSystem->enableConstraints(false, false);
+        }
 
         // ====================================================================
         // -------------------- 4. SOLVE STEADY-STATE FLOW --------------------
         // ====================================================================
 
-        std::cout   << "\n--- 4. Solving Steady-State Flow with SIMPLE ---" 
+        std::cout   << "\n--- 4. Solving Steady-State Flow with SIMPLE ---"
                     << std::endl;
 
         simpleSolver.solve();
@@ -171,6 +243,7 @@ int main()
         // ====================================================================
         // -------------------- 5. EXTRACT SOLUTION FIELDS --------------------
         // ====================================================================
+
         std::cout << "\n--- 5. Extracting Solution Fields ---" << std::endl;
         
         const VectorField& velocity = simpleSolver.getVelocity();
@@ -191,32 +264,8 @@ int main()
         ScalarField U_y = simpleSolver.getVelocityY();
         ScalarField U_z = simpleSolver.getVelocityZ();
         
-        std::cout   << "Solution extracted:" 
+        std::cout   << "Solution extracted:"
                     << std::endl;
-
-        std::cout   << "  Velocity field size: " << velocity.size() 
-                    << std::endl;
-
-        std::cout   << "  Pressure field size: " << pressure.size()
-                    << std::endl;
-        
-        if (k_field && omega_field && mu_t_field)
-        {
-            std::cout   << "  Turbulence fields available:"
-                        << std::endl;
-
-            std::cout   << "    k field size: "
-                        << k_field->size() << std::endl;
-
-            std::cout   << "    omega field size: "
-                        << omega_field->size() << std::endl;
-
-            std::cout   << "    mu_t field size: "
-                        << mu_t_field->size() << std::endl;
-
-            std::cout   << "    Wall distance field size: "
-                        << wallDist_field->size() << std::endl;
-        }
 
         // ====================================================================
         // -------------------- 6. POST-PROCESSING ----------------------------
@@ -247,23 +296,24 @@ int main()
         }
         avgVelocity /= velocity.size();
         
-        std::cout   << "Flow Statistics:" 
+        std::cout   << "Flow Statistics:"
                     << std::endl;
 
-        std::cout   << "  Max velocity magnitude: " 
+        std::cout   << "  Max velocity magnitude: "
                     << maxVelocity << " m/s" << std::endl;
 
-        std::cout   << "  Average velocity magnitude: " 
+        std::cout   << "  Average velocity magnitude: "
                     << avgVelocity << " m/s" << std::endl;
 
-        std::cout   << "  Pressure range: [" << minPressure << ", " 
+        std::cout   << "  Pressure range: [" << minPressure << ", "
                     << maxPressure << "] Pa" << std::endl;
         
         // 3D velocity component statistics
         Scalar maxUx = 0.0, maxUy = 0.0, maxUz = 0.0;
         Scalar avgUx = 0.0, avgUy = 0.0, avgUz = 0.0;
         
-        for (size_t i = 0; i < velocity.size(); ++i) {
+        for (size_t i = 0; i < velocity.size(); ++i)
+        {
             maxUx = std::max(maxUx, std::abs(U_x[i]));
             maxUy = std::max(maxUy, std::abs(U_y[i]));
             maxUz = std::max(maxUz, std::abs(U_z[i]));
@@ -277,17 +327,17 @@ int main()
         
         std::cout   << "3D Velocity Component Statistics:" << std::endl;
         
-        std::cout   << "  Max U_x: " << maxUx << " m/s, Avg U_x: " 
+        std::cout   << "  Max U_x: " << maxUx << " m/s, Avg U_x: "
                     << avgUx << " m/s" << std::endl;
 
-        std::cout   << "  Max U_y: " << maxUy << " m/s, Avg U_y: " 
+        std::cout   << "  Max U_y: " << maxUy << " m/s, Avg U_y: "
                     << avgUy << " m/s" << std::endl;
 
-        std::cout   << "  Max U_z: " << maxUz << " m/s, Avg U_z: " 
+        std::cout   << "  Max U_z: " << maxUz << " m/s, Avg U_z: "
                     << avgUz << " m/s" << std::endl;
         
         // Turbulence statistics
-        if (k_field && omega_field && mu_t_field) 
+        if (k_field && omega_field && mu_t_field)
         {
             Scalar maxK = 0.0, avgK = 0.0;
             Scalar maxOmega = 0.0, avgOmega = 0.0;
@@ -311,22 +361,22 @@ int main()
             
             std::cout   << "Turbulence Statistics:" << std::endl;
 
-            std::cout   << "  Max turbulent kinetic energy: " 
+            std::cout   << "  Max turbulent kinetic energy: "
                         << maxK << " m²/s²" << std::endl;
 
             std::cout   << "  Average turbulent kinetic energy: "
                         << avgK << " m²/s²" << std::endl;
 
-            std::cout   << "  Max specific dissipation rate: " 
+            std::cout   << "  Max specific dissipation rate: "
                         << maxOmega << " 1/s" << std::endl;
 
-            std::cout   << "  Average specific dissipation rate: " 
+            std::cout   << "  Average specific dissipation rate: "
                         << avgOmega << " 1/s" << std::endl;
 
-            std::cout   << "  Max turbulent viscosity: " 
+            std::cout   << "  Max turbulent viscosity: "
                         << maxMuT << " Pa·s" << std::endl;
 
-            std::cout   << "  Average turbulent viscosity: " 
+            std::cout   << "  Average turbulent viscosity: "
                         << avgMuT << " Pa·s" << std::endl;
 
             std::cout   << "  Turbulent viscosity ratio (μₜ/μ): "
@@ -339,7 +389,8 @@ int main()
 
         std::cout << "\n--- 7. Exporting Results to VTK ---" << std::endl;
         // Create output filename for steady-state solution
-        std::string vtkOutputFilename = "../outputFiles/cylinder_flow_fine.vtp";
+        std::string vtkOutputFilename = 
+            "../outputFiles/pipe_320k.vtp";
 
         // Prepare scalar fields for export
         std::map<std::string, const ScalarField*> scalarFieldsToVtk;
@@ -350,7 +401,8 @@ int main()
         scalarFieldsToVtk["U_z"] = &U_z;
         
         // Add turbulence fields if available
-        if (k_field && omega_field && mu_t_field && wallDist_field) {
+        if (k_field && omega_field && mu_t_field && wallDist_field) 
+        {
             scalarFieldsToVtk["k"] = k_field;
             scalarFieldsToVtk["omega"] = omega_field;
             scalarFieldsToVtk["mu_t"] = mu_t_field;
@@ -395,7 +447,10 @@ int main()
             }
             
             scalarFieldsToVtk["turbulentIntensity"] = &turbulentIntensity;
-            scalarFieldsToVtk["turbulentViscosityRatio"] = &turbulentViscosityRatio;
+
+            scalarFieldsToVtk["turbulentViscosityRatio"] = 
+                &turbulentViscosityRatio;
+
             scalarFieldsToVtk["yPlus"] = &yPlus;
             
             std::cout   << "  Turbulence fields included in VTK export"
@@ -416,6 +471,7 @@ int main()
         // ====================================================================
         // ------------------- 8. VALIDATION AND DIAGNOSTICS ------------------
         // ====================================================================
+        
         std::cout << "\n--- 8. Solution Validation ---" << std::endl;
         
         // Check mass conservation
@@ -426,8 +482,11 @@ int main()
             for (size_t j = 0; j < allCells[i].faceIndices.size(); ++j)
             {
                 size_t faceIdx = allCells[i].faceIndices[j];
+
                 int sign = allCells[i].faceSigns[j];
-                cellImbalance += sign * simpleSolver.getRhieChowMassFlux()[faceIdx];
+
+                cellImbalance += 
+                    sign * simpleSolver.getRhieChowFlowRate()[faceIdx];
             }
             totalMassImbalance += std::abs(cellImbalance);
         }
@@ -449,10 +508,9 @@ int main()
         }
         else
         {
-            std::cout   << "  Mass conservation violated - check solution" 
+            std::cout   << "  Mass conservation violated - check solution"
                         << std::endl;
         }
-
     }
     catch (const std::exception& e)
     {

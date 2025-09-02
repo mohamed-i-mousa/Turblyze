@@ -3,7 +3,6 @@
 FaceFluxField calculateMassFlowRate
 (
     const std::vector<Face>& faces,
-    const std::vector<Cell>& cells,
     const VectorField& U_field,
     const BoundaryConditions& bcManager,
     const std::map<size_t, const BoundaryPatch*>& /* faceToPatchMap */
@@ -11,11 +10,11 @@ FaceFluxField calculateMassFlowRate
 {
     FaceFluxField mdot("massFlowRate", faces.size(), 0.0);
     
-    for (size_t faceId = 0; faceId < faces.size(); ++faceId)
+    for (size_t faceIdx = 0; faceIdx < faces.size(); ++faceIdx)
     {
-        const Face& face = faces[faceId];
+        const Face& face = faces[faceIdx];
         
-        size_t P = face.ownerCell;
+        size_t ownerIdx = face.ownerCell;
         Vector S_f = face.normal * face.area;
         
         if (face.isBoundary())
@@ -24,23 +23,24 @@ FaceFluxField calculateMassFlowRate
             Vector U_face = 
                 bcManager.calculateBoundaryFaceVectorValue(face, U_field, "U");
                 
-            mdot[faceId] = dot(U_face, S_f);
+            mdot[faceIdx] = dot(U_face, S_f);
         }
         else
         {
-            // Internal face: distance-weighted interpolation
-            size_t N = face.neighbourCell.value();
+            size_t neighborIdx = face.neighbourCell.value();
             
-            // Calculate distances from face centroid to cell centroids
-            Scalar d_P = (face.centroid - cells[P].centroid).magnitude();
-            Scalar d_N = (face.centroid - cells[N].centroid).magnitude();
+            // Distances from face centroid to cell centroids
+            Scalar d_P = face.d_Pf_mag;
+            Scalar d_N = face.d_Nf_mag.value();
             Scalar denom = d_P + d_N;
-            Scalar w = d_P / denom;
+
+            // Weight for owner cell (note: inverted compared to distance)
+            Scalar w_P = d_N / (denom + vSmallValue);
             
-            // Interpolated velocity: U_field[P] * (1 - w) + U_field[N] * w
-            Vector U_f = U_field[P] * (1.0 - w) + U_field[N] * w;
+            // Interpolated velocity
+            Vector U_f = w_P * U_field[ownerIdx] + (1.0 - w_P) * U_field[neighborIdx];
             
-            mdot[faceId] = dot(U_f, S_f);
+            mdot[faceIdx] = dot(U_f, S_f);
         }
     }
     

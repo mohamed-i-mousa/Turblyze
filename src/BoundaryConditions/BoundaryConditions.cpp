@@ -193,7 +193,6 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
             Scalar d_n = dot(face.d_Pf, face.normal);
             return phi[face.ownerCell] + bc->getFixedScalarGradient() * d_n;
         }
-
         
         default:
             throw std::runtime_error
@@ -233,7 +232,7 @@ Vector BoundaryConditions::calculateBoundaryFaceVectorValue
     if (!bc) {
         // Default to copy owner for vectors if not specified
         std::cerr   << "No BC specified for face " << face.id << " in patch "
-                    << patch->patchName << ". Defaulting to copy owner." 
+                    << patch->patchName << ". Defaulting to zero-gradient." 
                     << std::endl;
 
         return phi[face.ownerCell];
