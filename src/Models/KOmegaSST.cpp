@@ -143,16 +143,16 @@ void KOmegaSST::calculateWallDistance()
     // Set source term to -1 for all cells
     for (size_t i = 0; i < allCells.size(); ++i)
     {
-        b_vector(i) = -allCells[i].volume;  // -1 * cell_volume
+        b_vector(i) = -allCells[i].volume();  // -1 * cell_volume
     }
     
     // Apply boundary condition: φ = 0 at walls only; Neumann elsewhere
     // Build face-to-patch map
     std::map<size_t, const BoundaryPatch*> faceToPatch;
 
-    for (const auto& patch : bcManager.getPatches())
+    for (const auto& patch : bcManager.patches())
     {
-        for (size_t i = patch.firstFaceIndex; i <= patch.lastFaceIndex; ++i)
+        for (size_t i = patch.firstFaceIndex(); i <= patch.lastFaceIndex(); ++i)
         {
             faceToPatch[i] = &patch;
         }
@@ -162,11 +162,11 @@ void KOmegaSST::calculateWallDistance()
     {
         if (!face.isBoundary()) continue;
 
-        size_t P = face.ownerCell;
+        size_t P = face.ownerCell();
 
-        const BoundaryPatch* patch = faceToPatch.at(face.id);
+        const BoundaryPatch* patch = faceToPatch.at(face.id());
 
-        if (patch->type == BoundaryConditionType::WALL)
+        if (patch->type() == BoundaryConditionType::WALL)
         {
             A_matrix.coeffRef(P, P) += 1e12;  // Dirichlet pin
             b_vector(P) = 0.0;               // φ = 0 at wall
@@ -242,9 +242,9 @@ void KOmegaSST::solve
     
     for (size_t i = 0; i < allCells.size(); ++i)
     {
-        Ux[i] = U_field[i].x;
-        Uy[i] = U_field[i].y;
-        Uz[i] = U_field[i].z;
+        Ux[i] = U_field[i].x();
+        Uy[i] = U_field[i].y();
+        Uz[i] = U_field[i].z();
     }
     
     // Calculate velocity gradients
@@ -377,7 +377,7 @@ void KOmegaSST::solveOmegaEquation
     // Add omega-specific source terms and modify diffusion
     for (size_t i = 0; i < allCells.size(); ++i) 
     {
-        Scalar cellVolume = allCells[i].volume;
+        Scalar cellVolume = allCells[i].volume();
         
         // Blended constants
         const Scalar blended_gamma = 
@@ -517,7 +517,7 @@ void KOmegaSST::solveKEquation
     // Add k-specific source terms
     for (size_t i = 0; i < allCells.size(); ++i)
     {
-        Scalar cellVolume = allCells[i].volume;
+        Scalar cellVolume = allCells[i].volume();
         
         // Production term (limited to prevent unrealistic values)
         const Scalar P_k_limited = limitProduction(production_k[i], i);
@@ -582,12 +582,12 @@ void KOmegaSST::calculateTurbulentViscosity
         if (gradU.size() >= 3) 
         {  // Ensure we have all velocity gradients
             // S = √(2SᵢⱼSᵢⱼ) where Sᵢⱼ is the strain rate tensor
-            Scalar S11 = gradU[0][i].x;                                    // ∂u/∂x
-            Scalar S22 = gradU[1][i].y;                                    // ∂v/∂y  
-            Scalar S33 = gradU[2][i].z;                                    // ∂w/∂z
-            Scalar S12 = 0.5 * (gradU[0][i].y + gradU[1][i].x);          // 0.5(∂u/∂y + ∂v/∂x)
-            Scalar S13 = 0.5 * (gradU[0][i].z + gradU[2][i].x);          // 0.5(∂u/∂z + ∂w/∂x)
-            Scalar S23 = 0.5 * (gradU[1][i].z + gradU[2][i].y);          // 0.5(∂v/∂z + ∂w/∂y)
+            Scalar S11 = gradU[0][i].x();                                    // ∂u/∂x
+            Scalar S22 = gradU[1][i].y();                                    // ∂v/∂y  
+            Scalar S33 = gradU[2][i].z();                                    // ∂w/∂z
+            Scalar S12 = 0.5 * (gradU[0][i].y() + gradU[1][i].x());          // 0.5(∂u/∂y + ∂v/∂x)
+            Scalar S13 = 0.5 * (gradU[0][i].z() + gradU[2][i].x());          // 0.5(∂u/∂z + ∂w/∂x)
+            Scalar S23 = 0.5 * (gradU[1][i].z() + gradU[2][i].y());          // 0.5(∂v/∂z + ∂w/∂y)
             
             S = std::sqrt(
                 2.0 * (S11*S11 + S22*S22 + S33*S33 
@@ -597,9 +597,9 @@ void KOmegaSST::calculateTurbulentViscosity
         else
         {
             // Simplified 2D case
-            Scalar S11 = gradU[0][i].x;
-            Scalar S22 = gradU[1][i].y;
-            Scalar S12 = 0.5 * (gradU[0][i].y + gradU[1][i].x);
+            Scalar S11 = gradU[0][i].x();
+            Scalar S22 = gradU[1][i].y();
+            Scalar S12 = 0.5 * (gradU[0][i].y() + gradU[1][i].x());
             
             S = std::sqrt(2.0 * (S11*S11 + S22*S22 + 2.0*S12*S12));
         }
@@ -774,12 +774,12 @@ void KOmegaSST::calculateProductionTerms
         if (gradU.size() >= 3)
         {
             // Full 3D strain rate tensor
-            Scalar S11 = gradU[0][i].x;                                    // ∂u/∂x
-            Scalar S22 = gradU[1][i].y;                                    // ∂v/∂y  
-            Scalar S33 = gradU[2][i].z;                                    // ∂w/∂z
-            Scalar S12 = 0.5 * (gradU[0][i].y + gradU[1][i].x);          // 0.5(∂u/∂y + ∂v/∂x)
-            Scalar S13 = 0.5 * (gradU[0][i].z + gradU[2][i].x);          // 0.5(∂u/∂z + ∂w/∂x)
-            Scalar S23 = 0.5 * (gradU[1][i].z + gradU[2][i].y);          // 0.5(∂v/∂z + ∂w/∂y)
+            Scalar S11 = gradU[0][i].x();                                    // ∂u/∂x
+            Scalar S22 = gradU[1][i].y();                                    // ∂v/∂y  
+            Scalar S33 = gradU[2][i].z();                                    // ∂w/∂z
+            Scalar S12 = 0.5 * (gradU[0][i].y() + gradU[1][i].x());          // 0.5(∂u/∂y + ∂v/∂x)
+            Scalar S13 = 0.5 * (gradU[0][i].z() + gradU[2][i].x());          // 0.5(∂u/∂z + ∂w/∂x)
+            Scalar S23 = 0.5 * (gradU[1][i].z() + gradU[2][i].y());          // 0.5(∂v/∂z + ∂w/∂y)
             
             S = std::sqrt
                 (
@@ -790,9 +790,9 @@ void KOmegaSST::calculateProductionTerms
         else
         {
             // Simplified 2D case
-            Scalar S11 = gradU[0][i].x;
-            Scalar S22 = gradU[1][i].y;
-            Scalar S12 = 0.5 * (gradU[0][i].y + gradU[1][i].x);
+            Scalar S11 = gradU[0][i].x();
+            Scalar S22 = gradU[1][i].y();
+            Scalar S12 = 0.5 * (gradU[0][i].y() + gradU[1][i].x());
             
             S = std::sqrt(2.0 * (S11*S11 + S22*S22 + 2.0*S12*S12));
         }

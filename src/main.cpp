@@ -1,21 +1,20 @@
-/**
+/******************************************************************************
  * @file main.cpp
  * @brief Main entry point for the 3D incompressible CFD solver
  * 
- * This file contains the main function that orchestrates the entire CFD simulation
- * process using the SIMPLE algorithm. It handles mesh reading, boundary condition
- * setup, solver configuration, solution computation, and results export.
+ * This file contains the main function that orchestrates the entire CFD
+ * simulation process using the SIMPLE algorithm. It handles mesh reading, 
+ * boundary condition setup, solver configuration, solution computation, 
+ * and results export.
  * 
  * The solver implements:
  * - 3D incompressible Navier-Stokes equations
  * - SIMPLE algorithm for pressure-velocity coupling
- * - k-omega SST turbulence modeling (optional)
- * - Various discretization schemes (upwind, central difference, second-order upwind)
- * - VTK output for visualization in ParaView
+ * - k-omega SST turbulence modeling
  * 
  * @author Mohamed Mousa
  * @date 2025
- */
+ *****************************************************************************/
 
 #include <iostream>
 #include <vector>
@@ -56,7 +55,7 @@
 /**
  * @brief Main function - Entry point for the CFD simulation
  * 
- * This function orchestrates the complete CFD simulation workflow:
+ * This function coordinates the complete CFD simulation workflow:
  * 1. Mesh reading and geometric property calculation
  * 2. Boundary condition setup for velocity and pressure fields  
  * 3. SIMPLE solver initialization and configuration
@@ -66,9 +65,9 @@
  * 7. Solution validation and mass conservation checking
  * 8. Performance timing and summary
  * 
- * The solver uses the SIMPLE algorithm to solve the coupled momentum
- * and continuity equations on unstructured 3D meshes. Optional turbulence
- * modeling is available via the k-omega SST model.
+ * The solver uses the SIMPLE algorithm to solve the momentum
+ * and pressure- correction equations on unstructured 3D meshes. 
+ * Optional turbulence modeling is available via the k-omega SST model.
  * 
  * @return 0 on successful execution, 1 on error
  */
@@ -86,9 +85,9 @@ int main()
 
     try 
     {
-        // ====================================================================
-        // -------------------------- 1. MESH SETUP ---------------------------
-        // ====================================================================
+        /**********************************************************************
+         * -------------------------- 1. MESH SETUP ---------------------------
+         *********************************************************************/
 
         std::cout << "\n--- 1. Reading and Preparing Mesh ---" << std::endl;
 
@@ -101,7 +100,7 @@ int main()
         /// @brief Container for boundary patch definitions
         std::vector<BoundaryPatch> allBoundaryPatches;
 
-        std::string meshFilePath = "../inputFiles/pipe_320k.msh";
+        std::string meshFilePath = "../inputFiles/pipe_304.msh";
 
         readMshFile
         (
@@ -139,9 +138,9 @@ int main()
         // Check mesh min/max area and volume 
         checkMesh(allFaces, allCells);
 
-        // ====================================================================
-        // ------------------------- 2. PROBLEM SETUP -------------------------
-        // ====================================================================
+        /**********************************************************************
+         * ------------------------ 2. PROBLEM SETUP --------------------------
+         *********************************************************************/
 
         std::cout << "\n--- 2. Setting up CFD Problem ---" << std::endl;
 
@@ -203,9 +202,9 @@ int main()
         UpwindScheme UDS;
         GradientScheme gradScheme;
 
-        // ====================================================================
-        // ---------------------- 3. SIMPLE SOLVER SETUP ----------------------
-        // ====================================================================
+        /**********************************************************************
+         * --------------------- 3. SIMPLE SOLVER SETUP -----------------------
+         *********************************************************************/
 
         std::cout << "\n--- 3. Initializing SIMPLE Solver ---" << std::endl;
         
@@ -231,19 +230,19 @@ int main()
             constraintSystem->enableConstraints(false, false);
         }
 
-        // ====================================================================
-        // -------------------- 4. SOLVE STEADY-STATE FLOW --------------------
-        // ====================================================================
-
+        /**********************************************************************
+         * ------------------- 4. SOLVE STEADY-STATE FLOW ---------------------
+         *********************************************************************/
+        
         std::cout   << "\n--- 4. Solving Steady-State Flow with SIMPLE ---"
                     << std::endl;
 
         simpleSolver.solve();
 
-        // ====================================================================
-        // -------------------- 5. EXTRACT SOLUTION FIELDS --------------------
-        // ====================================================================
-
+        /**********************************************************************
+         * ------------------- 5. EXTRACT SOLUTION FIELDS ---------------------
+         *********************************************************************/
+        
         std::cout << "\n--- 5. Extracting Solution Fields ---" << std::endl;
         
         const VectorField& velocity = simpleSolver.getVelocity();
@@ -267,9 +266,9 @@ int main()
         std::cout   << "Solution extracted:"
                     << std::endl;
 
-        // ====================================================================
-        // -------------------- 6. POST-PROCESSING ----------------------------
-        // ====================================================================
+        /**********************************************************************
+         * ----------------------- 6. POST-PROCESSING -------------------------
+         *********************************************************************/
 
         std::cout << "\n--- 6. Post-Processing Results ---" << std::endl;
         
@@ -383,14 +382,14 @@ int main()
                         << avgMuT / mu << std::endl;
         }
 
-        // ====================================================================
-        // -------------------- 7. EXPORT RESULTS -----------------------------
-        // ====================================================================
+        /**********************************************************************
+         * ------------------------ 7. EXPORT RESULTS -------------------------
+         *********************************************************************/
 
         std::cout << "\n--- 7. Exporting Results to VTK ---" << std::endl;
         // Create output filename for steady-state solution
         std::string vtkOutputFilename = 
-            "../outputFiles/pipe_320k.vtp";
+            "../outputFiles/pipe_304.vtp";
 
         // Prepare scalar fields for export
         std::map<std::string, const ScalarField*> scalarFieldsToVtk;
@@ -468,9 +467,9 @@ int main()
         std::cout   << "Flow solution written to " 
                     << vtkOutputFilename << std::endl;
 
-        // ====================================================================
-        // ------------------- 8. VALIDATION AND DIAGNOSTICS ------------------
-        // ====================================================================
+        /**********************************************************************
+         * ------------------- 8. VALIDATION AND DIAGNOSTICS ------------------
+         *********************************************************************/
         
         std::cout << "\n--- 8. Solution Validation ---" << std::endl;
         
@@ -479,11 +478,11 @@ int main()
         for (size_t i = 0; i < allCells.size(); ++i)
         {
             Scalar cellImbalance = 0.0;
-            for (size_t j = 0; j < allCells[i].faceIndices.size(); ++j)
+            for (size_t j = 0; j < allCells[i].faceIndices().size(); ++j)
             {
-                size_t faceIdx = allCells[i].faceIndices[j];
+                size_t faceIdx = allCells[i].faceIndices()[j];
 
-                int sign = allCells[i].faceSigns[j];
+                int sign = allCells[i].faceSigns()[j];
 
                 cellImbalance += 
                     sign * simpleSolver.getRhieChowFlowRate()[faceIdx];

@@ -45,7 +45,7 @@ BoundaryConditionType mapFluentBCToEnum(const std::string& fluentType)
     return BoundaryConditionType::UNDEFINED;
 }
 
-size_t BoundaryPatch::getNumberOfBoundaryFaces() const 
+size_t BoundaryPatch::numberOfBoundaryFaces() const 
 {
-    return lastFaceIndex - firstFaceIndex + 1;
+    return lastFaceIdx_ - firstFaceIdx_ + 1;
 }

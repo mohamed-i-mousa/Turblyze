@@ -1,4 +1,4 @@
-/**
+/******************************************************************************
  * @file Constraint.h
  * @brief Field constraint system for CFD solution stability
  * 
@@ -9,7 +9,7 @@
  * 
  * @author Mohamed Mousa
  * @date 2025
- */
+ *****************************************************************************/
 
 #ifndef CONSTRAINT_H
 #define CONSTRAINT_H

@@ -1,3 +1,9 @@
+
+/******************************************************************************
+ * @file MeshReader.h
+ * @brief Fluent mesh file reader for ANSYS mesh files
+ *****************************************************************************/
+
 #ifndef MESHREADER_H
 #define MESHREADER_H
 
@@ -7,11 +13,6 @@
 #include "Face.h"
 #include "Cell.h"
 #include "BoundaryPatch.h"
-
-/**
- * @file MeshReader.h
- * @brief Fluent mesh file reader for ANSYS mesh files
- */
 
 /**
  * @brief Read Fluent mesh file exported from ANSYS Meshing

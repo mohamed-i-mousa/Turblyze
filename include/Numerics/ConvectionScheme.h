@@ -1,3 +1,27 @@
+/******************************************************************************
+ * @file ConvectionScheme.h
+ * @brief Convection discretization schemes for finite volume method
+ * 
+ * This header defines various convection schemes for discretizing the 
+ * convective term in transport equations. The schemes include first-order 
+ * upwind (UDS), central difference (CDS), and second-order upwind (SOU) with
+ * deferred correction implementation. All schemes are designed for 
+ * unstructured meshes with automatic upwind direction detection based on 
+ * mass flow rate.
+ * 
+ * @class ConvectionScheme (abstract base)
+ * @class UpwindScheme (UDS - first order, unconditionally stable)
+ * @class CentralDifferenceScheme (CDS - second order, requires stabilization)
+ * @class SecondOrderUpwindScheme (SOU - second order, gradient-based)
+ * 
+ * Key features:
+ * - Automatic flow direction detection via mass flow rate sign
+ * - Deferred correction approach for higher-order schemes
+ * - Gradient-based face value reconstruction
+ * - Boundary condition integration for all schemes
+ * - Matrix coefficient calculation for implicit discretization
+ *****************************************************************************/
+
 #ifndef CONVECTIONSCHEME_H
 #define CONVECTIONSCHEME_H
 

@@ -48,11 +48,6 @@ const T& CellData<T>::operator[](size_t cellIndex) const
     return internalField[cellIndex];
 }
 
-template<typename T>
-size_t CellData<T>::size() const
-{
-    return internalField.size();
-}
 
 template<typename T>
 void CellData<T>::setAll(const T& value) 

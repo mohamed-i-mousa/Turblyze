@@ -114,7 +114,7 @@ Notes:
 **Key Features**:
 1. **Fast Lookup**: Face-to-patch cache built on demand via `ensureFaceToPatchCacheBuilt()`
 2. **Smart Field Mapping**: Automatic fallback from `U_x`/`U_y`/`U_z` to parent field `U`
-3. **Robust Retrieval**: `getFieldBC()` with comprehensive error handling
+3. **Robust Retrieval**: `fieldBC()` with comprehensive error handling
 4. **Boundary Value Calculation**: `calculateBoundaryFaceValue()` for scalars and vectors
 
 **Vector Component Handling**:
@@ -382,7 +382,7 @@ case BCType::PERIODIC:
 **Testing Strategy**: Add comprehensive std::cout debugging to trace:
 1. **Patch Registration**: Verify patch names, zones, face ranges
 2. **BC Storage**: Confirm type-safe storage of scalar/vector values
-3. **Field Lookup**: Test `getFieldBC()` with various field names
+3. **Field Lookup**: Test `fieldBC()` with various field names
 4. **Vector Components**: Verify `U_x`/`U_y`/`U_z` → `U` fallback
 5. **Boundary Values**: Test `calculateBoundaryFaceValue()` for all BC types
 6. **Cache Operations**: Verify face-to-patch mapping performance

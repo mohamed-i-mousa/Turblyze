@@ -48,11 +48,6 @@ const T& FaceData<T>::operator[](size_t faceIndex) const
     return allFacesValues[faceIndex];
 }
 
-template<typename T>
-size_t FaceData<T>::size() const
-{
-    return allFacesValues.size();
-}
 
 template<typename T>
 void FaceData<T>::setAll(const T& value)

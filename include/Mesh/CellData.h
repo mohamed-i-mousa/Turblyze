@@ -1,3 +1,29 @@
+/******************************************************************************
+ * @file CellData.h
+ * @brief Template container for cell-centered field data storage
+ * 
+ * This header defines a generic template class for storing field variables
+ * at cell centers in finite volume meshes. The container provides type-safe
+ * storage with bounds checking, field initialization, and arithmetic 
+ * operations for scalar, vector, and other field types. It serves as the 
+ * foundation for all field variables in the CFD solver including velocity, 
+ * pressure, and scalar transport quantities.
+ * 
+ * @class CellData<T>
+ * 
+ * The CellData template provides:
+ * - Type-safe field storage with automatic memory management
+ * - Bounds-checked array access with informative error messages  
+ * - Field initialization with uniform or custom values
+ * - Assignment operations and data manipulation methods
+ * - Integration with solver boundary condition system
+ * - Stream output support for debugging and diagnostics
+ * 
+ * Common instantiations:
+ * - ScalarField = CellData<Scalar> for pressure, temperature fields
+ * - VectorField = CellData<Vector> for velocity, momentum fields
+ *****************************************************************************/
+
 #ifndef CELLDATA_H
 #define CELLDATA_H
 
@@ -21,6 +47,7 @@ template<typename T>
 class CellData 
 {
 public:
+
     /// Field name identifier
     std::string name;
     
@@ -71,7 +98,7 @@ public:
      * @brief Get number of cells in the field
      * @return Number of cells
      */
-    size_t size() const;
+    inline size_t size() const { return internalField.size(); }
     
     /**
      * @brief Set all field values to a given value

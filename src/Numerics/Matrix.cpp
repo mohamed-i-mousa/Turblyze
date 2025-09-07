@@ -3,7 +3,7 @@
 #include <iostream>
 #include <algorithm>
 #include "CellData.h"
-#include "massFlowRate.h"
+#include "flowRate.h"
 #include "linearInterpolation.h"
 
 Matrix::Matrix
@@ -15,9 +15,9 @@ Matrix::Matrix
     allCells(cells),
     bcManager(boundaryConds)
 {
-    for (const auto& patch : bcManager.getPatches())
+    for (const auto& patch : bcManager.patches())
     {
-        for (size_t i = patch.firstFaceIndex; i <= patch.lastFaceIndex; ++i)
+        for (size_t i = patch.firstFaceIndex(); i <= patch.lastFaceIndex(); ++i)
         {
             faceToPatchMap[i] = &patch;
         }
@@ -57,7 +57,7 @@ void Matrix::buildMatrix
     reserveTripletList();
 
     FaceFluxField mDotFace = 
-        calculateMassFlowRate
+        calculateFlowRate
         (
             allFaces,
             U_field,
@@ -75,40 +75,40 @@ void Matrix::buildMatrix
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = allFaces[faceIdx];
-        const size_t ownerIdx = face.ownerCell;
+        const size_t ownerIdx = face.ownerCell();
         
-        Vector S_f = face.normal * face.area;
+        Vector S_f = face.normal() * face.area();
             
         if (face.isBoundary())
         {
-            auto patchIt = faceToPatchMap.find(face.id);
+            auto patchIt = faceToPatchMap.find(face.id());
             if (patchIt == faceToPatchMap.end()) 
             {
-                std::cerr << "ERROR: Boundary face " << face.id 
+                std::cerr << "ERROR: Boundary face " << face.id() 
                           << " not found in patch map! Owner cell " << ownerIdx
                           << " will have zero diagonal." << std::endl;
                 continue;
             }
             
             const BoundaryData* bc = 
-                bcManager.getFieldBC
+                bcManager.fieldBC
                 (
-                    patchIt->second->patchName,
+                    patchIt->second->patchName(),
                     fieldName
                 );
                   
             if (!bc) 
             {
                 std::cerr << "ERROR: No boundary condition found for patch"
-                          << " " << patchIt->second->patchName 
-                          << " field " << fieldName << " face " << face.id
+                          << " " << patchIt->second->patchName() 
+                          << " field " << fieldName << " face " << face.id()
                           << " owner cell " << ownerIdx << std::endl;
                 continue;
             }
 
             // Get geometric properties from owner perspective
-            const Vector e_Pf = face.e_Pf;
-            const Scalar d_Pf_mag = face.d_Pf_mag;
+            const Vector e_Pf = face.e_Pf();
+            const Scalar d_Pf_mag = face.d_Pf_mag();
 
             Vector E_f = dot(S_f, e_Pf) * e_Pf;  //E_f = orthogonal component
 
@@ -117,26 +117,26 @@ void Matrix::buildMatrix
             Scalar a_diff = 
                 Gamma_f * E_f.magnitude() / (d_Pf_mag + vSmallValue);
 
-            if (bc->type == BCType::FIXED_VALUE)
+            if (bc->type() == BCType::FIXED_VALUE)
             {
                 Scalar phi_b = 0.0;
                 
                 // For momentum equations, extract component from vector BC
                 if (fieldName == "U_x")
                 {
-                    phi_b = bc->vectorValue.x;
+                    phi_b = bc->vectorValue().x();
                 }
                 else if (fieldName == "U_y")
                 {
-                    phi_b = bc->vectorValue.y;
+                    phi_b = bc->vectorValue().y();
                 }
                 else if (fieldName == "U_z")
                 {
-                    phi_b = bc->vectorValue.z;
+                    phi_b = bc->vectorValue().z();
                 }
                 else  // For scalar fields (pressure, temperature, k, omega, etc.)
                 {
-                    phi_b = bc->scalarValue;
+                    phi_b = bc->scalarValue();
                 }
                 
                 // Calculate mass flux based on boundary velocity
@@ -156,7 +156,7 @@ void Matrix::buildMatrix
 
                 b_vector(ownerIdx) -= nonOrthogonalFlux;
             }
-            else if (bc->type == BCType::ZERO_GRADIENT)
+            else if (bc->type() == BCType::ZERO_GRADIENT)
             {
                 // Zero normal gradient -> no diffusive flux, only convection
                 // Use cell center velocity for mass flux calculation
@@ -164,7 +164,7 @@ void Matrix::buildMatrix
                 
                 tripletList.emplace_back(ownerIdx, ownerIdx, a_conv);
             }
-            else if (bc->type == BCType::NO_SLIP)
+            else if (bc->type() == BCType::NO_SLIP)
             {   // Simple Dirichlet BC: U = (0, 0, 0) at the wall
                
                 tripletList.emplace_back(ownerIdx, ownerIdx, a_diff);
@@ -184,7 +184,7 @@ void Matrix::buildMatrix
                 // Undefined or unhandled BC type - default to zero gradient
                 std::cerr << "Warning: Undefined boundary condition type for field " 
                           << fieldName << " on patch " 
-                          << faceToPatchMap.at(face.id)->patchName 
+                          << faceToPatchMap.at(face.id())->patchName() 
                           << ". Applying zero gradient." << std::endl;
                 
                 // Calculate convective contribution for zero gradient
@@ -196,16 +196,16 @@ void Matrix::buildMatrix
         }
         else // Internal face
         {
-            const size_t neighborIdx = face.neighbourCell.value();
+            const size_t neighborIdx = face.neighborCell().value();
 
-            Vector d_PN = allCells[neighborIdx].centroid - allCells[ownerIdx].centroid;
+            Vector d_PN = allCells[neighborIdx].centroid() - allCells[ownerIdx].centroid();
             Scalar d_PN_magnitude = d_PN.magnitude();
             Vector e_PN = d_PN / (d_PN_magnitude + vSmallValue);
             Vector E_f = dot(S_f, e_PN) * e_PN;
 
             // Harmonic interpolation for diffusion coefficient
-            Scalar d_Pf = face.d_Pf_mag;
-            Scalar d_Nf = face.d_Nf_mag.value();
+            Scalar d_Pf = face.d_Pf_mag();
+            Scalar d_Nf = face.d_Nf_mag().value();
             Scalar Gamma_f = d_PN_magnitude / ((d_Pf/(Gamma[ownerIdx] + vSmallValue)) + (d_Nf/(Gamma[neighborIdx] + vSmallValue)));
             Scalar a_diff = Gamma_f * E_f.magnitude() / (d_PN_magnitude + vSmallValue);
 
@@ -217,7 +217,7 @@ void Matrix::buildMatrix
             Vector grad_phi_f = 
                 gradScheme.FaceGradient
                 (
-                    face.id,
+                    face.id(),
                     grad_phi_P,
                     grad_phi_N,
                     phi,
@@ -307,10 +307,10 @@ void Matrix::buildPressureCorrectionMatrix(
         
         // Mass imbalance contribution for this cell: -∑(sign_f * ṁ_f)
         Scalar massImbalance = 0.0;
-        for (size_t i = 0; i < cell.faceIndices.size(); ++i)
+        for (size_t i = 0; i < cell.faceIndices().size(); ++i)
         {
-            const size_t faceIdx = cell.faceIndices[i];
-            const int sign = cell.faceSigns[i];
+            const size_t faceIdx = cell.faceIndices()[i];
+            const int sign = cell.faceSigns()[i];
             massImbalance += sign * RhieChowFlowRate[faceIdx];
         }
         
@@ -322,15 +322,15 @@ void Matrix::buildPressureCorrectionMatrix(
     for (size_t faceIdx = 0; faceIdx < allFaces.size(); ++faceIdx)
     {
         const Face& face = allFaces[faceIdx];
-        const size_t ownerIdx = face.ownerCell;
+        const size_t ownerIdx = face.ownerCell();
 
         if (face.isBoundary())
         {
-            const std::string patchName = faceToPatchMap.at(face.id)->patchName;
-            const BoundaryData* bc = bcManager.getFieldBC(patchName, "p");
+            const std::string patchName = faceToPatchMap.at(face.id())->patchName();
+            const BoundaryData* bc = bcManager.fieldBC(patchName, "p");
 
             // Fixed-value pressure BC: pressure correction = 0
-            if (bc && bc->type == BCType::FIXED_VALUE)
+            if (bc && bc->type() == BCType::FIXED_VALUE)
             {
                 // Apply pCorr = 0 at fixed pressure boundaries
                 tripletList.emplace_back(ownerIdx, ownerIdx, DUf[faceIdx]);
@@ -338,7 +338,7 @@ void Matrix::buildPressureCorrectionMatrix(
         }
         else // Internal face
         {
-            const size_t neighborIdx = face.neighbourCell.value();
+            const size_t neighborIdx = face.neighborCell().value();
             
             // Diagonal contributions
             tripletList.emplace_back(ownerIdx, ownerIdx, DUf[faceIdx]);

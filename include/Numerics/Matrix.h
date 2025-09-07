@@ -1,3 +1,28 @@
+/******************************************************************************
+ * @file Matrix.h
+ * @brief Matrix assembly for finite volume discretization
+ * 
+ * This class handles the assembly of sparse linear systems (Ax=b) for various
+ * transport equations in computational fluid dynamics including momentum,
+ * pressure correction, and scalar transport. It manages gradient computation,
+ * face-level interpolation, convection and diffusion discretization, and
+ * boundary condition application.
+ * 
+ * @class Matrix
+ * 
+ * The Matrix class provides unified assembly for:
+ * - Momentum equations with convection-diffusion operators
+ * - Pressure correction equations for SIMPLE algorithm
+ * - Scalar transport equations with source terms
+ * - Implicit under-relaxation for solution stability
+ * 
+ * Key features:
+ * - Eigen sparse matrix backend for efficient storage and solution
+ * - Deferred correction for higher-order convection schemes
+ * - Non-orthogonal mesh corrections via face gradients
+ * - Seamless boundary condition integration during assembly
+ *****************************************************************************/
+
 #ifndef MATRIXCONSTRUCTOR_H
 #define MATRIXCONSTRUCTOR_H
 
@@ -29,6 +54,7 @@ class KOmegaSST;
 class Matrix
 {
 public:
+
     /**
      * @brief Constructor for matrix assembly
      * @param faces Reference to face data
@@ -102,6 +128,7 @@ public:
     void relax(Scalar alpha, const ScalarField& phi_prev);
 
 private:
+
     /// References to mesh data and numerical schemes
     const std::vector<Face>& allFaces;
     const std::vector<Cell>& allCells;
@@ -110,8 +137,10 @@ private:
     /// Linear system matrix A and right-hand side vector b
     Eigen::SparseMatrix<Scalar> A_matrix;
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> b_vector;
+
     /// Storage for matrix assembly
     std::vector<Eigen::Triplet<Scalar>> tripletList;
+    
     /// Mapping from face indices to boundary patches
     std::map<size_t, const BoundaryPatch*> faceToPatchMap;
 

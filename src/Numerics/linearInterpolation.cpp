@@ -19,8 +19,8 @@ void computeLinearWeights
         return;
     }
 
-    const Scalar d_P = face.d_Pf_mag;
-    const Scalar d_N = face.d_Nf_mag.value();
+    const Scalar d_P = face.d_Pf_mag();
+    const Scalar d_N = face.d_Nf_mag().value();
     const Scalar total = d_P + d_N;
 
     w_P = d_N / (total + vSmallValue);
@@ -36,13 +36,13 @@ Vector VectorLinearInterpolation
 {
     if (face.isBoundary())
     {
-        return cellField[face.ownerCell];
+        return cellField[face.ownerCell()];
     }
 
     Scalar w_P = 0.0, w_N = 0.0;
     computeLinearWeights(face, w_P, w_N);
-    const size_t P = face.ownerCell;
-    const size_t N = face.neighbourCell.value();
+    const size_t P = face.ownerCell();
+    const size_t N = face.neighborCell().value();
     return w_P * cellField[P] + w_N * cellField[N];
 }
 
@@ -61,8 +61,8 @@ Vector VectorLinearInterpolation
 
     Scalar w_P = 0.0, w_N = 0.0;
     computeLinearWeights(face, w_P, w_N);
-    const size_t P = face.ownerCell;
-    const size_t N = face.neighbourCell.value();
+    const size_t P = face.ownerCell();
+    const size_t N = face.neighborCell().value();
     return w_P * cellField[P] + w_N * cellField[N];
 }
 
@@ -74,12 +74,12 @@ Scalar linearInterpolation
 {
     if (face.isBoundary())
     {
-        return cellField[face.ownerCell];
+        return cellField[face.ownerCell()];
     }
 
     Scalar w_P = 0.0, w_N = 0.0;
     computeLinearWeights(face, w_P, w_N);
-    const size_t P = face.ownerCell;
-    const size_t N = face.neighbourCell.value();
+    const size_t P = face.ownerCell();
+    const size_t N = face.neighborCell().value();
     return w_P * cellField[P] + w_N * cellField[N];
 }

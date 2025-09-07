@@ -31,58 +31,58 @@ void checkMesh
     }
     
     // Face area statistics
-    Scalar minFaceArea = allFaces[0].area;
-    Scalar maxFaceArea = allFaces[0].area;
-    size_t minFaceId = allFaces[0].id;
-    size_t maxFaceId = allFaces[0].id;
+    Scalar minFaceArea = allFaces[0].area();
+    Scalar maxFaceArea = allFaces[0].area();
+    size_t minFaceId = allFaces[0].id();
+    size_t maxFaceId = allFaces[0].id();
     
     std::vector<size_t> smallAreaFaces;
     
     for (const auto& face : allFaces)
     {
-        if (face.area < minFaceArea)
+        if (face.area() < minFaceArea)
         {
-            minFaceArea = face.area;
-            minFaceId = face.id;
+            minFaceArea = face.area();
+            minFaceId = face.id();
         }
-        if (face.area > maxFaceArea)
+        if (face.area() > maxFaceArea)
         {
-            maxFaceArea = face.area;
-            maxFaceId = face.id;
+            maxFaceArea = face.area();
+            maxFaceId = face.id();
         }
         
         // Check for faces with area smaller than 1e-12
-        if (face.area < minArea)
+        if (face.area() < minArea)
         {
-            smallAreaFaces.push_back(face.id);
+            smallAreaFaces.push_back(face.id());
         }
     }
     
     // Cell volume statistics  
-    Scalar minCellVolume = allCells[0].volume;
-    Scalar maxCellVolume = allCells[0].volume;
-    size_t minCellId = allCells[0].id;
-    size_t maxCellId = allCells[0].id;
+    Scalar minCellVolume = allCells[0].volume();
+    Scalar maxCellVolume = allCells[0].volume();
+    size_t minCellId = allCells[0].id();
+    size_t maxCellId = allCells[0].id();
     
     std::vector<size_t> smallVolumeCells;
     
     for (const auto& cell : allCells)
     {
-        if (cell.volume < minCellVolume)
+        if (cell.volume() < minCellVolume)
         {
-            minCellVolume = cell.volume;
-            minCellId = cell.id;
+            minCellVolume = cell.volume();
+            minCellId = cell.id();
         }
-        if (cell.volume > maxCellVolume)
+        if (cell.volume() > maxCellVolume)
         {
-            maxCellVolume = cell.volume;
-            maxCellId = cell.id;
+            maxCellVolume = cell.volume();
+            maxCellId = cell.id();
         }
         
         // Check for cells with volume smaller than 1e-30
-        if (cell.volume < minVolume)
+        if (cell.volume() < minVolume)
         {
-            smallVolumeCells.push_back(cell.id);
+            smallVolumeCells.push_back(cell.id());
         }
     }
     

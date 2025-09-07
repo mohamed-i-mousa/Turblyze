@@ -1,3 +1,26 @@
+/******************************************************************************
+ * @file checkMesh.h
+ * @brief Mesh quality assessment and diagnostic utilities
+ * 
+ * This header provides mesh quality checking functions that analyze geometric
+ * properties and report statistics to help identify potential numerical 
+ * issues.
+ * 
+ * The diagnostics include face area distribution, cell volume analysis, and
+ * connectivity validation to ensure mesh suitability for CFD calculations.
+ * 
+ * Key mesh quality metrics:
+ * - Minimum and maximum face areas with statistics
+ * - Cell volume distribution and extrema detection
+ * - Geometric property validation for numerical stability
+ * - Scientific notation output for proper display of small values
+ * 
+ * The mesh checker helps identify:
+ * - Degenerate faces or cells that could cause solver instability
+ * - Extreme aspect ratios that might require special treatment
+ * - Volume conservation issues and geometric inconsistencies
+ *****************************************************************************/
+
 #ifndef CHECKMESH_H
 #define CHECKMESH_H
 

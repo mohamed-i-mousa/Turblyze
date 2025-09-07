@@ -1,10 +1,33 @@
-/**
- * @brief A 3D vector class for geometric operations
+/******************************************************************************
+ * @file Vector.h
+ * @brief 3D vector class for geometric and mathematical operations in CFD
  * 
- * Represents a 3D vector with x, y, z components and provides
- * standard vector operations including arithmetic, normalization,
- * and geometric calculations.
- */
+ * This header defines a comprehensive 3D vector class that serves as the
+ * foundation for all vector-based calculations in the CFD solver. The Vector
+ * class provides essential mathematical operations for spatial computations,
+ * geometric transformations, and vector algebra required in finite volume
+ * discretization and mesh operations.
+ * 
+ * @class Vector
+ * 
+ * The Vector class provides:
+ * - Component-wise access and manipulation (x, y, z coordinates)
+ * - Full arithmetic operations (addition, subtraction, scalar multiplication)
+ * - Vector algebra operations (dot product, cross product, normalization)
+ * - Geometric calculations (distance, squared distance, magnitude)
+ * - Comparison operators for sorting and equality testing
+ * - Stream I/O operators for debugging and file output
+ * 
+ * Key mathematical features:
+ * - Dot product for projection and angle calculations
+ * - Cross product for area vectors and normal computation
+ * - Magnitude and normalization for unit vector operations
+ * - Distance functions for geometric proximity calculations
+ * - Component-wise arithmetic with proper operator overloading
+ * 
+ * The class integrates seamlessly with mesh geometry calculations,
+ * face normal computations, and field interpolation operations.
+ *****************************************************************************/
 
 #ifndef VECTOR_H
 #define VECTOR_H
@@ -12,16 +35,11 @@
 #include <iostream>
 #include "Scalar.h"
 
-
 class Vector 
 {
 public:
-    /// X, Y, Z components of the vector
-    Scalar x, y, z;
 
-    /**
-     * @brief Default constructor - creates zero vector (0,0,0)
-     */
+    /// Default constructor 
     Vector();
     
     /**
@@ -31,6 +49,46 @@ public:
      * @param z_val Z component
      */
     Vector(Scalar x_val, Scalar y_val, Scalar z_val);
+
+// Setter methods
+
+    /** 
+     * @brief Set X component 
+     * @param x_val New X component value 
+     */
+    void setX(Scalar x_val) { x_ = x_val; }
+    
+    /** 
+     * @brief Set Y component 
+     * @param y_val New Y component value 
+     */
+    void setY(Scalar y_val) { y_ = y_val; }
+    
+    /** 
+     * @brief Set Z component 
+     * @param z_val New Z component value 
+     */
+    void setZ(Scalar z_val) { z_ = z_val; }
+
+// Accessor methods
+
+    /** 
+     * @brief Get X component 
+     * @return X component value 
+     */
+    Scalar x() const { return x_; }
+    
+    /** 
+     * @brief Get Y component 
+     * @return Y component value 
+     */
+    Scalar y() const { return y_; }
+    
+    /** 
+     * @brief Get Z component 
+     * @return Z component value 
+     */
+    Scalar z() const { return z_; }
 
     /**
      * @brief Vector addition operator
@@ -107,7 +165,6 @@ public:
     /**
      * @brief Calculates squared magnitude of vector
      * @return Squared magnitude (x² + y² + z²)
-     * @note More efficient than magnitude() for comparisons
      */
     Scalar magnitudeSquared() const;
     
@@ -130,7 +187,14 @@ public:
      * @throws std::runtime_error if vector has zero magnitude
      */
     Vector normalized() const;
+
+private:
+
+    /// X, Y, Z components of the vector 
+    Scalar x_, y_, z_;
 };
+
+// Non-member methods 
 
 /**
  * @brief Scalar multiplication operator (scalar * vector)
@@ -177,7 +241,6 @@ Scalar distance(const Vector& p1, const Vector& p2);
  * @param p1 First vector
  * @param p2 Second vector
  * @return Squared distance between vectors
- * @note More efficient than distance() for comparisons
  */
 Scalar distanceSquared(const Vector& p1, const Vector& p2);
 

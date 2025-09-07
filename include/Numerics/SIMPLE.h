@@ -1,3 +1,30 @@
+/******************************************************************************
+ * @file SIMPLE.h
+ * @brief SIMPLE algorithm for incompressible Navier-Stokes equations
+ * 
+ * This class implements the Semi-Implicit Method for Pressure-Linked 
+ * Equations (SIMPLE) for solving incompressible flow on unstructured finite
+ * volume meshes. The algorithm handles velocity-pressure coupling through 
+ * pressure correction and includes support for k-omega SST turbulence 
+ * modeling with wall functions.
+ * 
+ * @class SIMPLE
+ * 
+ * The SIMPLE class provides a complete CFD solver featuring:
+ * - Pressure-velocity coupling via SIMPLE algorithm
+ * - Rhie-Chow interpolation for collocated grid arrangement  
+ * - Momentum equations with implicit under-relaxation
+ * - Pressure correction with mass conservation enforcement
+ * - k-omega SST turbulence model with wall distance calculation
+ * - Field constraints for numerical stability
+ * 
+ * Key algorithmic features:
+ * - Segregated solution of momentum and pressure equations
+ * - Face velocity reconstruction preventing checkerboard oscillations
+ * - Deferred correction for higher-order convection schemes
+ * - Adaptive convergence monitoring and residual tracking
+ *****************************************************************************/
+
 #ifndef SIMPLE_H
 #define SIMPLE_H
 
@@ -218,6 +245,7 @@ public:
     const ScalarField* getWallDistance() const;
 
 private:
+
     /// Mesh references
     const std::vector<Face>& allFaces;
     const std::vector<Cell>& allCells;
@@ -244,33 +272,56 @@ private:
     /// Field constraint system
     std::unique_ptr<Constraint> constraintSystem;
 
-    /// Solution fields
-    VectorField U;          ///< Velocity field
-    ScalarField p;          ///< Pressure field
-    ScalarField pCorr;      ///< Pressure correction field
-    Scalar lastPressureCorrectionRMS = S(1e9); ///< Track p' RMS before reset
+    /// Velocity field
+    VectorField U;
     
-    /// Face-based fields for Rhie-Chow interpolation
-    FaceFluxField RhieChowFlowRate;      ///< Mass flux through faces
-    FaceFluxField RhieChowFlowRate_prev; ///< Mass flux from previous iteration
+    /// Pressure field
+    ScalarField p;
+    
+    /// Pressure correction field
+    ScalarField pCorr;
+    
+    /// Track pressure correction RMS before reset
+    Scalar lastPressureCorrectionRMS = S(1e9);
 
-    /// Previous-iteration fields (for under-relaxation effects at faces)
-    VectorField U_prev;         ///< Velocity from previous iteration
-    ScalarField U_x_prev;       ///< x-component from previous iteration
-    ScalarField U_y_prev;       ///< y-component from previous iteration
-    ScalarField U_z_prev;       ///< z-component from previous iteration
-    FaceVectorField U_f_avg;                 ///< Face velocity field
-    FaceVectorField U_f_avg_prev;  ///< Face velocity from previous iteration
+    /// Velocity from previous iteration
+    VectorField U_prev;
+    
+    /// X-component from previous iteration
+    ScalarField U_x_prev;
+    
+    /// Y-component from previous iteration
+    ScalarField U_y_prev;
+    
+    /// Z-component from previous iteration
+    ScalarField U_z_prev;
 
-    /// Momentum equation coefficients per component (needed for Rhie-Chow)
-    ScalarField DU;       ///< Cell diffusion coefficients for momentum
-    FaceFluxField DUf;    ///< Face diffusion coefficients for momentum
+    /// Face velocity field (current iteration)
+    FaceVectorField U_f_avg;
+    
+    /// Face velocity from previous iteration
+    FaceVectorField U_f_avg_prev;
+    
+    /// Mass flux through faces (Rhie-Chow)
+    FaceFluxField RhieChowFlowRate;
+    
+    /// Mass flux from previous iteration
+    FaceFluxField RhieChowFlowRate_prev;
 
-    /// Gradient fields
-    VectorField gradP;              ///< Pressure gradient
-    VectorField gradPCorr;          ///< Pressure correction gradient
-   
-    /// Matrix constructor and solver objects
+    /// Cell diffusion coefficients for momentum
+    ScalarField DU;
+    
+    /// Face diffusion coefficients for momentum
+    FaceFluxField DUf;
+
+    // Gradient fields
+    /// Pressure gradient field
+    VectorField gradP;
+    
+    /// Pressure correction gradient field
+    VectorField gradPCorr;
+
+    /// Matrix constructor and solver object
     std::unique_ptr<Matrix> matrixConstruct;
     
     /**

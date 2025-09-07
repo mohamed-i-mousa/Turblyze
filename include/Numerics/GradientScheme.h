@@ -1,3 +1,31 @@
+/******************************************************************************
+ * @file GradientScheme.h
+ * @brief Gradient computation schemes for finite volume discretization
+ * 
+ * This class provides robust gradient reconstruction methods for scalar and
+ * vector fields on unstructured finite volume meshes. The implementation
+ * uses weighted least-squares approach with inverse distance squared 
+ * weighting and includes gradient limiting for stability. Both cell-centered
+ * and face-centered gradients are computed with proper boundary condition 
+ * handling.
+ * 
+ * @class GradientScheme
+ * 
+ * The GradientScheme class offers:
+ * - Weighted least-squares gradient reconstruction
+ * - Automatic regularization for singular matrices  
+ * - Barth-Jesperson gradient limiting for boundedness
+ * - Face gradient interpolation with orthogonal corrections
+ * - Seamless boundary condition integration
+ * - Support for both scalar and vector fields
+ * 
+ * Key numerical features:
+ * - Robust matrix solver with LLT/LU fallback mechanisms
+ * - Distance-weighted interpolation for face gradients
+ * - Normal/tangential gradient decomposition at boundaries
+ * - Consistent treatment of non-orthogonal mesh corrections
+ *****************************************************************************/
+
 #ifndef GRADIENTSCHEME_H
 #define GRADIENTSCHEME_H
 

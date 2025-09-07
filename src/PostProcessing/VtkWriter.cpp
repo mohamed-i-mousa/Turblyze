@@ -45,7 +45,7 @@ void writeVtkFile
     // Add all nodes to the points
     for (size_t i = 0; i < allNodes.size(); ++i) 
     {
-        points->SetPoint(i, allNodes[i].x, allNodes[i].y, allNodes[i].z);
+        points->SetPoint(i, allNodes[i].x(), allNodes[i].y(), allNodes[i].z());
     }
     
     // Set the points to the polyData
@@ -66,19 +66,19 @@ void writeVtkFile
         vtkSmartPointer<vtkPolygon> polygon = 
             vtkSmartPointer<vtkPolygon>::New();
 
-        polygon->GetPointIds()->SetNumberOfIds(face.nodeIndices.size());
+        polygon->GetPointIds()->SetNumberOfIds(face.nodeIndices().size());
         
         // Set the node indices for this polygon
-        for (size_t i = 0; i < face.nodeIndices.size(); ++i)
+        for (size_t i = 0; i < face.nodeIndices().size(); ++i)
         {
-            polygon->GetPointIds()->SetId(i, face.nodeIndices[i]);
+            polygon->GetPointIds()->SetId(i, face.nodeIndices()[i]);
         }
         
         // Add the polygon to the cell array
         polygons->InsertNextCell(polygon);
         
         // Store the owner cell index for this face
-        faceOwnerCells.push_back(face.ownerCell);
+        faceOwnerCells.push_back(face.ownerCell());
     }
     
     // Set the polygons to the polyData

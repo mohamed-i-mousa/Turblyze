@@ -1,6 +1,6 @@
-#include "massFlowRate.h"
+#include "flowRate.h"
 
-FaceFluxField calculateMassFlowRate
+FaceFluxField calculateFlowRate
 (
     const std::vector<Face>& faces,
     const VectorField& U_field,
@@ -14,8 +14,8 @@ FaceFluxField calculateMassFlowRate
     {
         const Face& face = faces[faceIdx];
         
-        size_t ownerIdx = face.ownerCell;
-        Vector S_f = face.normal * face.area;
+        size_t ownerIdx = face.ownerCell();
+        Vector S_f = face.normal() * face.area();
         
         if (face.isBoundary())
         {
@@ -27,11 +27,11 @@ FaceFluxField calculateMassFlowRate
         }
         else
         {
-            size_t neighborIdx = face.neighbourCell.value();
+            size_t neighborIdx = face.neighborCell().value();
             
             // Distances from face centroid to cell centroids
-            Scalar d_P = face.d_Pf_mag;
-            Scalar d_N = face.d_Nf_mag.value();
+            Scalar d_P = face.d_Pf_mag();
+            Scalar d_N = face.d_Nf_mag().value();
             Scalar denom = d_P + d_N;
 
             // Weight for owner cell (note: inverted compared to distance)

@@ -1,3 +1,28 @@
+/******************************************************************************
+ * @file FaceData.h
+ * @brief Template container for face-centered field data storage
+ * 
+ * This header defines a generic template class for storing field variables
+ * at face centers in finite volume meshes. The container manages face-based
+ * data including mass fluxes, face velocities, and face-centered gradients
+ * with type safety and bounds checking. It handles the specialized storage
+ * requirements for face-based quantities in collocated finite volume schemes.
+ * 
+ * @class FaceData<T>
+ * 
+ * The FaceData template provides:
+ * - Type-safe storage for face-centered field variables
+ * - Bounds-checked access with clear error reporting
+ * - Face-specific initialization and assignment operations  
+ * - Integration with Rhie-Chow interpolation procedures
+ * - Support for mass flux conservation and face velocity storage
+ * - Debugging output capabilities for face field analysis
+ * 
+ * Common instantiations:
+ * - FaceFluxField = FaceData<Scalar> for mass fluxes, flow rates
+ * - FaceVectorField = FaceData<Vector> for face velocities, face gradients
+ *****************************************************************************/
+
 #ifndef FACEDATA_H
 #define FACEDATA_H
 
@@ -21,6 +46,7 @@ template<typename T>
 class FaceData 
 {
 public:
+
     /// Field name identifier
     std::string name;
     
@@ -71,7 +97,7 @@ public:
      * @brief Get number of faces in the field
      * @return Number of faces
      */
-    size_t size() const;
+    inline size_t size() const { return allFacesValues.size(); }
     
     /**
      * @brief Set all field values to a given value

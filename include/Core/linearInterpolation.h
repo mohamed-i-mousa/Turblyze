@@ -1,3 +1,12 @@
+/******************************************************************************
+ * @file linearInterpolation.h
+ * @brief Linear interpolation functions for face value reconstruction
+ *
+ * Provides distance-weighted linear interpolation from cell centers to face
+ * centers for scalar and vector fields. Uses φ_f = φ_P × w + φ_N × (1-w)
+ * with geometric weighting and boundary condition integration.
+ *****************************************************************************/
+
 #ifndef LINEAR_INTERPOLATION_H
 #define LINEAR_INTERPOLATION_H
 
@@ -33,7 +42,7 @@ Vector VectorLinearInterpolation
 );
 
 /**
- * @brief Linear interpolation of vector field to face with boundary condition support
+ * @brief Linear interpolation of vector field to face with BC support 
  * @param face Face for interpolation
  * @param cellField Cell-centered vector field
  * @param bcManager Boundary condition manager

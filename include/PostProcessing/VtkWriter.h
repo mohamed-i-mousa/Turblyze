@@ -1,4 +1,4 @@
-/**
+/******************************************************************************
  * @file VtkWriter.h
  * @brief VTK (Visualization Toolkit) File Writer for CFD Results
  * 
@@ -16,7 +16,7 @@
  * @see ParaView: https://www.paraview.org/
  * @see VTK Documentation: https://vtk.org/documentation/
  * @see VTK File Formats: https://vtk.org/Wiki/VTK_XML_Formats
- */
+ *****************************************************************************/
 
 #ifndef VTKWRITER_H
 #define VTKWRITER_H

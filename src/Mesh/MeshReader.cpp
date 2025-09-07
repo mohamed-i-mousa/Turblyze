@@ -143,56 +143,64 @@ void readMshFile
 
             if (token == "(0") 
             {
-                std::string first_idx_str, last_idx_str, zero_str_or_type;
-                ifs >> first_idx_str;
-                ifs >> last_idx_str;
-                ifs >> zero_str_or_type;
+                std::string firstIdxStr, lastIdxStr, zeroStrOrType;
+                ifs >> firstIdxStr;
+                ifs >> lastIdxStr;
+                ifs >> zeroStrOrType;
 
-                size_t last_idx = hexToDec(last_idx_str);
+                size_t lastIdx = hexToDec(lastIdxStr);
 
-                allNodes.resize(last_idx);
+                allNodes.resize(lastIdx);
             }
             else 
             {
-                std::string zone_id_str, start_id_str, end_id_str;
-                std::string type_str, dimension_str;
+                std::string zoneIdxStr, startIdxStr, endIdxStr;
+                std::string typeStr, dimensionStr;
 
                 // Remove leading '('
                 token.erase(0, 1);
-                zone_id_str = token;
+                zoneIdxStr = token;
 
-                ifs >> start_id_str;
-                ifs >> end_id_str;
-                ifs >> type_str;
-                ifs >> dimension_str;
+                ifs >> startIdxStr;
+                ifs >> endIdxStr;
+                ifs >> typeStr;
+                ifs >> dimensionStr;
 
-                dimension_str.pop_back();
-                dimension_str.pop_back();
+                dimensionStr.pop_back();
+                dimensionStr.pop_back();
 
-                size_t start_id = hexToDec(start_id_str);
-                size_t end_id = hexToDec(end_id_str);
-                size_t dimension = hexToDec(dimension_str);
+                size_t startIdx = hexToDec(startIdxStr);
+                size_t endIdx = hexToDec(endIdxStr);
+                size_t dimension = hexToDec(dimensionStr);
 
-                size_t node_global_idx = start_id - 1;
+                size_t nodeGlobalIdx = startIdx - 1;
 
-                for (size_t i = start_id; i <= end_id; ++i) 
+                for (size_t i = startIdx; i <= endIdx; ++i) 
                 {
-                    if (node_global_idx < end_id) 
+                    if (nodeGlobalIdx < endIdx) 
                     {
-                        ifs >> allNodes[node_global_idx].x;
-                        ifs >> allNodes[node_global_idx].y;
+                        Scalar xVal, yVal, zVal = 0.0;
+
+                        ifs >> xVal;
+                        ifs >> yVal;
+
                         if (dimension == 3) 
                         {
-                            ifs >> allNodes[node_global_idx].z;
+                            ifs >> zVal;
                         }
-                        node_global_idx++;
+
+                        allNodes[nodeGlobalIdx].setX(xVal);
+                        allNodes[nodeGlobalIdx].setY(yVal);
+                        allNodes[nodeGlobalIdx].setZ(zVal);
+                        
+                        nodeGlobalIdx++;
                     } 
                     else 
                     {
                         throw std::runtime_error
                             (
                                 "Error: Node index " 
-                              + std::to_string(node_global_idx)
+                              + std::to_string(nodeGlobalIdx)
                               + " exceeds allocated node vector size "
                               + std::to_string(allNodes.size())
                             );            
@@ -207,14 +215,14 @@ void readMshFile
             
             if (token == "(0")
             {
-                std::string first_idx_str, last_idx_str, zero_str_or_type;
-                ifs >> first_idx_str;
-                ifs >> last_idx_str;
-                ifs >> zero_str_or_type;
+                std::string firstIdxStr, lastIdxStr, zeroStrOrType;
+                ifs >> firstIdxStr;
+                ifs >> lastIdxStr;
+                ifs >> zeroStrOrType;
 
-                size_t last_idx = hexToDec(last_idx_str);
+                size_t lastIdx = hexToDec(lastIdxStr);
 
-                allCells.resize(last_idx);
+                allCells.resize(lastIdx);
                 numCells = allCells.size();
             }
         }
@@ -225,67 +233,67 @@ void readMshFile
 
             if (token == "(0")
             {
-                std::string first_idx_str, last_idx_str, zero_str_or_type;
-                ifs >> first_idx_str;
-                ifs >> last_idx_str;
-                ifs >> zero_str_or_type;
+                std::string firstIdxStr, lastIdxStr, zeroStrOrType;
+                ifs >> firstIdxStr;
+                ifs >> lastIdxStr;
+                ifs >> zeroStrOrType;
 
-                size_t last_idx = hexToDec(last_idx_str);
+                size_t lastIdx = hexToDec(lastIdxStr);
 
-                allFaces.resize(last_idx);
+                allFaces.resize(lastIdx);
             }
             else 
             {
-                std::string zone_id_str, start_id_str, end_id_str;
-                std::string type_str, elementType_str;
+                std::string zoneIdxStr, startIdxStr, endIdxStr;
+                std::string typeStr, elementTypeStr;
 
                 // Remove leading '('
                 token.erase(0, 1);
-                zone_id_str = token;
+                zoneIdxStr = token;
 
-                ifs >> start_id_str;
-                ifs >> end_id_str;
-                ifs >> type_str;
-                ifs >> elementType_str;
+                ifs >> startIdxStr;
+                ifs >> endIdxStr;
+                ifs >> typeStr;
+                ifs >> elementTypeStr;
 
-                elementType_str.pop_back();
-                elementType_str.pop_back();
+                elementTypeStr.pop_back();
+                elementTypeStr.pop_back();
                 
                 // Check if this is a mixed element section (node count included)
-                bool hasMixedElements = (elementType_str == "0");
+                bool hasMixedElements = (elementTypeStr == "0");
 
-                size_t zone_id = hexToDec(zone_id_str);
-                size_t start_id = hexToDec(start_id_str);
-                size_t end_id = hexToDec(end_id_str);
+                size_t zoneIdx = hexToDec(zoneIdxStr);
+                size_t startIdx = hexToDec(startIdxStr);
+                size_t endIdx = hexToDec(endIdxStr);
                 
-                allBoundaryPatches.emplace_back(zone_id, start_id-1, end_id-1);
+                allBoundaryPatches.emplace_back(zoneIdx, startIdx-1, endIdx-1);
 
                 std::string line;
                 std::getline(ifs, line); 
 
-                for (size_t face_i = start_id; face_i <= end_id; ++face_i)
+                for (size_t faceIdx = startIdx; faceIdx <= endIdx; ++faceIdx)
                 {
-                    if ((face_i - 1) >= allFaces.size())
+                    if ((faceIdx - 1) >= allFaces.size())
                     {
                         throw std::runtime_error
                             (
                                 "Error: Face index " 
-                              + std::to_string((face_i - 1))
+                              + std::to_string((faceIdx - 1))
                               + " is out of bounds for allFaces vector of "
                               + std::to_string(allFaces.size()) + "."
                             );
                     }
 
-                    Face &currentFace = allFaces[(face_i - 1)];
-                    currentFace.id = face_i - 1;
-                    currentFace.nodeIndices.clear();
+                    Face &currentFace = allFaces[(faceIdx - 1)];
+                    currentFace.setId(faceIdx - 1);
+                    currentFace.clearNodeIndices();
 
                     if (!std::getline(ifs, line))
                     {
                         throw std::runtime_error
                             (
                                 "Error: Could not read face data line for id: "
-                              + std::to_string(face_i)
+                              + std::to_string(faceIdx)
                               + ". End of file reached unexpectedly."
                             );
                     }
@@ -295,51 +303,51 @@ void readMshFile
                         throw std::runtime_error
                             (
                                 "Error: Empty line: face id: " 
-                              + std::to_string(face_i)
+                              + std::to_string(faceIdx)
                             );
                     }
                     
-                    std::stringstream line_stream(line);
-                    std::string item_hex;
-                    std::vector<std::string> hex_items;
+                    std::stringstream lineStream(line);
+                    std::string itemHex;
+                    std::vector<std::string> hexItems;
 
                     // Put hex items in a vector 
-                    while (line_stream >> item_hex)
+                    while (lineStream >> itemHex)
                     {
-                        hex_items.push_back(item_hex);
+                        hexItems.push_back(itemHex);
                     }
                     
                     // If mixed elements, discard the first item (node count)
                     if (hasMixedElements)
                     {
-                        hex_items.erase(hex_items.begin());
+                        hexItems.erase(hexItems.begin());
                     }
 
                     // The last two ids are for owner and neighbor cells.
-                    std::string neighbour_hex = hex_items.back();
-                    hex_items.pop_back();
-                    std::string owner_hex = hex_items.back();
-                    hex_items.pop_back();
+                    std::string neighborHex = hexItems.back();
+                    hexItems.pop_back();
+                    std::string ownerHex = hexItems.back();
+                    hexItems.pop_back();
 
                     // The remaining items are node indices
-                    for (const std::string &node_idx_hex : hex_items)
+                    for (const std::string &nodeIdxHex : hexItems)
                     {
-                        currentFace.nodeIndices.push_back
+                        currentFace.addNodeIndex
                         (
-                            hexToDec(node_idx_hex) - 1
+                            hexToDec(nodeIdxHex) - 1
                         );
                     }
 
-                    currentFace.ownerCell = hexToDec(owner_hex) - 1;
+                    currentFace.setOwnerCell(hexToDec(ownerHex) - 1);
 
-                    if (neighbour_hex != "0")
+                    if (neighborHex != "0")
                     {
-                        currentFace.neighbourCell = 
-                            hexToDec(neighbour_hex) - 1;
+                        currentFace.setNeighborCell(
+                            hexToDec(neighborHex) - 1);
                     }
                     else 
                     {
-                        currentFace.neighbourCell = std::nullopt;
+                        currentFace.setNeighborCell(std::nullopt);
                     }
                 } 
             }
@@ -351,7 +359,7 @@ void readMshFile
 
             // Remove leading '('
             token.erase(0, 1); 
-            size_t zoneID = strToDec(token);
+            size_t zoneIdx = strToDec(token);
 
             std::string typeString;
             ifs >> typeString;
@@ -365,13 +373,13 @@ void readMshFile
 
             for (size_t i = 0; i < allBoundaryPatches.size(); i++)
             {
-                if (zoneID == allBoundaryPatches[i].zoneID)
+                if (zoneIdx == allBoundaryPatches[i].zoneID())
                 {
-                    allBoundaryPatches[i].patchName = nameString;
-                    allBoundaryPatches[i].fluentType = typeString;
+                    allBoundaryPatches[i].setPatchName(nameString);
+                    allBoundaryPatches[i].setFluentType(typeString);
                     BoundaryConditionType mappedType =
                         mapFluentBCToEnum(typeString);
-                    allBoundaryPatches[i].type = mappedType;
+                    allBoundaryPatches[i].setType(mappedType);
                 }
             }
         }
@@ -381,51 +389,51 @@ void readMshFile
 
     for (size_t i = 0; i < allCells.size(); ++i) 
     {
-        allCells[i].id = i;
-        allCells[i].faceIndices.clear();
-        allCells[i].neighbourCellIndices.clear();
+        allCells[i].setId(i);
+        allCells[i].clearFaceIndices();
+        allCells[i].clearNeighborCellIndices();
     }
 
     std::vector<std::vector<size_t>> tempCellNeighbors(numCells);
 
-    for (size_t face_idx = 0; face_idx < allFaces.size(); ++face_idx)
+    for (size_t faceIdx = 0; faceIdx < allFaces.size(); ++faceIdx)
     {
-        const Face &currentFace = allFaces[face_idx];
+        const Face &currentFace = allFaces[faceIdx];
 
-        if (currentFace.ownerCell < allCells.size()) 
+        if (currentFace.ownerCell() < allCells.size()) 
         {
-            allCells[currentFace.ownerCell].faceIndices.push_back(face_idx);
-            allCells[currentFace.ownerCell].faceSigns.push_back(1);
+            allCells[currentFace.ownerCell()].addFaceIndex(faceIdx);
+            allCells[currentFace.ownerCell()].addFaceSign(1);
 
-            // If this face has a valid neighbourCell, then that neighbourCell
+            // If this face has a valid neighborCell, then that neighborCell
             if 
             (
-                currentFace.neighbourCell.has_value() 
-             && currentFace.neighbourCell.value() < allCells.size()
+                currentFace.neighborCell().has_value() 
+             && currentFace.neighborCell().value() < allCells.size()
             ) 
             {
-                tempCellNeighbors[currentFace.ownerCell].push_back
+                tempCellNeighbors[currentFace.ownerCell()].push_back
                 (
-                    currentFace.neighbourCell.value()
+                    currentFace.neighborCell().value()
                 );
             }
         }
 
-        // --- Process Neighbour Cell ---
+        // --- Process Neighbor Cell ---
         if 
         (
-            currentFace.neighbourCell.has_value() 
-         && currentFace.neighbourCell.value() < allCells.size()
+            currentFace.neighborCell().has_value() 
+         && currentFace.neighborCell().value() < allCells.size()
         ) 
         {
-            size_t neighborIdx = currentFace.neighbourCell.value();
-            allCells[neighborIdx].faceIndices.push_back(face_idx);
-            allCells[neighborIdx].faceSigns.push_back(-1);
+            size_t neighborIdx = currentFace.neighborCell().value();
+            allCells[neighborIdx].addFaceIndex(faceIdx);
+            allCells[neighborIdx].addFaceSign(-1);
 
-            if (currentFace.ownerCell < allCells.size())
+            if (currentFace.ownerCell() < allCells.size())
             {
                 tempCellNeighbors[neighborIdx].push_back(
-                    currentFace.ownerCell);
+                    currentFace.ownerCell());
             }
         }
     }
@@ -448,13 +456,13 @@ void readMshFile
                 neighbors.end()
             );
             
-            allCells[i].neighbourCellIndices = neighbors;
+            allCells[i].setNeighborCellIndices(neighbors);
         } 
         else 
         {
             if (i < allCells.size())
             {
-                allCells[i].neighbourCellIndices.clear();
+                allCells[i].clearNeighborCellIndices();
             }
             std::cerr << "Warning: Cell with index " << i
                       << " could not have its neighbors finalized due to "
@@ -468,14 +476,14 @@ void readMshFile
 
     for (size_t i = 0; i < allFaces.size(); ++i) 
     {
-        if (allFaces[i].nodeIndices.size() < 3) 
+        if (allFaces[i].nodeIndices().size() < 3) 
         {
             throw std::runtime_error
             (
                 "Error: Face " 
               + std::to_string(i) 
               + " has only " 
-              + std::to_string(allFaces[i].nodeIndices.size()) 
+              + std::to_string(allFaces[i].nodeIndices().size()) 
               + " nodes, minimum required is 3."
             );
         }

@@ -1,3 +1,18 @@
+/******************************************************************************
+ * @file BoundaryConditions.h
+ * @brief Manages boundary conditions for the CFD solver
+ * 
+ * This class provides functionality to set up, store, and apply boundary
+ * conditions for different fields on mesh patches. It supports various
+ * boundary condition types including fixed values, gradients, and
+ * special conditions like no-slip.
+ * 
+ * @example: usage hierarchy:
+ * - Patch "inlet": U → fixed value, p → zero gradient
+ * - Patch "outlet": U → zero gradient, p → fixed value  
+ * - Patch "wall": U → no-slip, p → zero gradient
+ *****************************************************************************/
+
 #ifndef BOUNDARYCONDITIONS_H
 #define BOUNDARYCONDITIONS_H
 
@@ -13,40 +28,20 @@
 #include "BoundaryData.h"
 #include "CellData.h"
 
-/**
- * @brief Manages boundary conditions for the CFD solver
- * 
- * This class provides functionality to set up, store, and apply boundary
- * conditions for different fields on mesh patches. It supports various
- * boundary condition types including fixed values, gradients, and
- * special conditions like no-slip.
- * 
- * Example usage hierarchy:
- * - Patch "inlet": U → fixed value, p → zero gradient
- * - Patch "outlet": U → zero gradient, p → fixed value  
- * - Patch "wall": U → no-slip, p → zero gradient
- */
 class BoundaryConditions 
 {
 public:
-    /**
-     * @brief Default constructor
-     */
+
+    /// Default constructor 
     BoundaryConditions() = default;
+
+// Setter methods
 
     /**
      * @brief Add a boundary patch from mesh reader
      * @param patch Boundary patch to add
      */
     void addPatch(const BoundaryPatch& patch);
-
-    /**
-     * @brief Get boundary patch by name
-     * @param name Name of the patch to retrieve
-     * @return Pointer to patch, or nullptr if not found
-     * @throws std::runtime_error if patch not found
-     */
-    const BoundaryPatch* getPatch(const std::string& name) const;
 
     /**
      * @brief Set generic boundary condition
@@ -143,18 +138,43 @@ public:
     );
     
 
+// Accessor methods
+
+    // Patch management
+    /**
+     * @brief Get boundary patch by name
+     * @param name Name of the patch to retrieve
+     * @return Pointer to patch, or nullptr if not found
+     * @throws std::runtime_error if patch not found
+     */
+    const BoundaryPatch* patch(const std::string& name) const;
+
+    /** 
+     * @brief Get all boundary patches 
+     * @return Const reference to vector of boundary patches 
+     */
+    const std::vector<BoundaryPatch>& patches() const { return patches_; }
+
+    /** 
+     * @brief Get number of patches 
+     * @return Number of boundary patches 
+     */
+    size_t numPatches() const { return patches_.size(); }
+
+    // Boundary condition retrieval
     /**
      * @brief Get boundary condition for a field on a patch
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field
      * @return Pointer to boundary data, or nullptr if not found
      */
-    const BoundaryData* getFieldBC
+    const BoundaryData* fieldBC
     (
         const std::string& patchName, 
         const std::string& fieldName
     ) const;
 
+    // Boundary value calculation
     /**
      * @brief Calculate boundary face value for scalar field
      * @param face Boundary face
@@ -185,6 +205,7 @@ public:
         const std::string& fieldName
     ) const;
 
+    // Utility methods
     /**
      * @brief Convert boundary condition type to string
      * @param bctype Boundary condition type enumeration
@@ -198,31 +219,24 @@ public:
      */
     void printSummary() const;
 
-    /**
-     * @brief Get all boundary patches
-     * @return Const reference to vector of boundary patches
-     */
-    const std::vector<BoundaryPatch>& getPatches() const { return patches; }
-
-    /**
-     * @brief Get number of patches
-     * @return Number of boundary patches
-     */
-    size_t getNumPatches() const { return patches.size(); }
-
 private:
+
+// Private members 
+
     /// Nested map: patch name → field name → boundary data
     std::map<std::string, std::map<std::string, BoundaryData>> 
-        patchBoundaryData;
+        patchBoundaryData_;
     
     /// Vector of all boundary patches
-    std::vector<BoundaryPatch> patches;
+    std::vector<BoundaryPatch> patches_;
     /// Cache for fast face-to-patch mapping
-    mutable std::map<size_t, const BoundaryPatch*> faceToPatchCache;
+    mutable std::map<size_t, const BoundaryPatch*> faceToPatchCache_;
     
     /// Flag indicating if cache has been built
-    mutable bool cacheBuilt = false;
+    mutable bool cacheBuilt_ = false;
     
+// Private methods 
+
     /**
      * @brief Ensure face-to-patch cache is built for efficient lookup
      */

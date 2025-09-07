@@ -27,12 +27,12 @@ Vector GradientScheme::CellGradient
     Scalar totalWeight = S(0.0);
     Scalar maxDistance = 0.0;
 
-    for (size_t neighbourId : cell.neighbourCellIndices) 
+    for (size_t neighborId : cell.neighborCellIndices()) 
     {
-        if (neighbourId >= allCells.size()) continue; 
+        if (neighborId >= allCells.size()) continue; 
         
-        const Cell& neighbour = allCells[neighbourId];
-        Vector r = neighbour.centroid - cell.centroid;
+        const Cell& neighbor = allCells[neighborId];
+        Vector r = neighbor.centroid() - cell.centroid();
         
         Scalar r_mag_sq = r.magnitudeSquared();
         
@@ -41,10 +41,10 @@ Vector GradientScheme::CellGradient
         Scalar w = S(1.0) / (r_mag_sq + vSmallValue);
         totalWeight += w;
 
-        r_vector << r.x, r.y, r.z;
+        r_vector << r.x(), r.y(), r.z();
         ATA.noalias() += w * (r_vector * r_vector.transpose());
         
-        Scalar delta_phi = phi[neighbourId] - phi[cellIndex];
+        Scalar delta_phi = phi[neighborId] - phi[cellIndex];
         ATb.noalias() += w * delta_phi * r_vector;
     }
 
@@ -62,10 +62,10 @@ Vector GradientScheme::CellGradient
         // Check solution validity
         Scalar gradMag = g.norm();
         Scalar phiRange = 0.0;
-        for (size_t neighbourId : cell.neighbourCellIndices) {
-            if (neighbourId < allCells.size()) {
+        for (size_t neighborId : cell.neighborCellIndices()) {
+            if (neighborId < allCells.size()) {
                 phiRange = std::max(phiRange, 
-                    std::abs(phi[neighbourId] - phi[cellIndex]));
+                    std::abs(phi[neighborId] - phi[cellIndex]));
             }
         }
         
@@ -109,7 +109,7 @@ Vector GradientScheme::FaceGradient
 ) const
 {
     const Face& face = allFaces[faceIndex];
-    size_t P = face.ownerCell;
+    size_t P = face.ownerCell();
     
     if (face.isBoundary())
     {
@@ -121,9 +121,9 @@ Vector GradientScheme::FaceGradient
     }
     else
     {
-        size_t N = face.neighbourCell.value();
+        size_t N = face.neighborCell().value();
         
-        Vector d_PN = allCells[N].centroid - allCells[P].centroid;
+        Vector d_PN = allCells[N].centroid() - allCells[P].centroid();
 
         Scalar d_PN_mag = d_PN.magnitude();
         
@@ -154,8 +154,8 @@ Vector GradientScheme::averageFaceGradient
         );
     }
 
-    Scalar d_Pf = face.d_Pf_mag;
-    Scalar d_Nf = face.d_Nf_mag.value();
+    Scalar d_Pf = face.d_Pf_mag();
+    Scalar d_Nf = face.d_Nf_mag().value();
     Scalar total_dist = d_Pf + d_Nf;
 
     Scalar g_P = d_Nf / (total_dist + vSmallValue);
@@ -175,9 +175,9 @@ Vector GradientScheme::calculateBoundaryFaceGradient
 {
     // Find the boundary patch for this face
     const BoundaryPatch* patch = nullptr;
-    for (const auto& p : boundaryConditions.getPatches())
+    for (const auto& p : boundaryConditions.patches())
     {
-        if (face.id >= p.firstFaceIndex && face.id <= p.lastFaceIndex)
+        if (face.id() >= p.firstFaceIndex() && face.id() <= p.lastFaceIndex())
         {
             patch = &p;
             break;
@@ -189,35 +189,35 @@ Vector GradientScheme::calculateBoundaryFaceGradient
 
     // Get the boundary condition for this field 
     const BoundaryData* bc = 
-        boundaryConditions.getFieldBC(patch->patchName, fieldName);
+        boundaryConditions.fieldBC(patch->patchName(), fieldName);
     
     // If no BC specified, use cell gradient
     if (!bc) return cellGradient;
     
-    switch (bc->type) {
+    switch (bc->type()) {
         case BCType::FIXED_VALUE: {
             // For fixed value BC, calculate normal gradient from boundary-cell
             // difference and keep tangential components from cell gradient
             
             Scalar boundaryValue = S(0.0);
-            if (bc->valueType == BCValueType::SCALAR) 
+            if (bc->valueType() == BCValueType::SCALAR) 
             {
-                boundaryValue = bc->getFixedScalarValue();
+                boundaryValue = bc->fixedScalarValue();
             } 
-            else if (bc->valueType == BCValueType::VECTOR) 
+            else if (bc->valueType() == BCValueType::VECTOR) 
             {
                 // Determine component from scalar field name
                 if (phi.name == "Ux" || phi.name == "U_x")
                 {
-                    boundaryValue = bc->vectorValue.x;
+                    boundaryValue = bc->vectorValue().x();
                 }
                 else if (phi.name == "Uy" || phi.name == "U_y")
                 {
-                    boundaryValue = bc->vectorValue.y;
+                    boundaryValue = bc->vectorValue().y();
                 }
                 else if (phi.name == "Uz" || phi.name == "U_z") 
                 {
-                    boundaryValue = bc->vectorValue.z;
+                    boundaryValue = bc->vectorValue().z();
                 }
                 else 
                 {
@@ -231,19 +231,19 @@ Vector GradientScheme::calculateBoundaryFaceGradient
                 return cellGradient;
             }
 
-            Scalar cellValue = phi[face.ownerCell];
+            Scalar cellValue = phi[face.ownerCell()];
             
             // Calculate normal distance from cell center to face
-            Scalar d_n = dot(face.d_Pf, face.normal);
+            Scalar d_n = dot(face.d_Pf(), face.normal());
             
             // Calculate normal gradient: ∂φ/∂n = (φ_boundary - φ_cell) / d_n
             Scalar normalGradient = (boundaryValue - cellValue) / (d_n + vSmallValue);
             
             // Project cell gradient onto tangential directions
             Vector tangentialGradient = 
-                cellGradient - dot(cellGradient, face.normal) * face.normal;
+                cellGradient - dot(cellGradient, face.normal()) * face.normal();
             
-            return tangentialGradient + normalGradient * face.normal;
+            return tangentialGradient + normalGradient * face.normal();
         }
         
         case BCType::ZERO_GRADIENT:
@@ -254,14 +254,14 @@ Vector GradientScheme::calculateBoundaryFaceGradient
         case BCType::FIXED_GRADIENT:
         {
             // For fixed gradient BC, apply the specified gradient value
-            Scalar specifiedGradient = bc->getFixedScalarGradient();
+            Scalar specifiedGradient = bc->fixedScalarGradient();
             
             // Project cell gradient onto tangential directions and combine
             // with specified normal gradient
             Vector tangentialGradient = 
-                cellGradient - dot(cellGradient, face.normal) * face.normal;
+                cellGradient - dot(cellGradient, face.normal()) * face.normal();
             
-            return tangentialGradient + specifiedGradient * face.normal;
+            return tangentialGradient + specifiedGradient * face.normal();
         }
 
         default:
