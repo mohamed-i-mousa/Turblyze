@@ -121,7 +121,7 @@ void Matrix::buildMatrix
             const Vector e_Pf = face.e_Pf();
             const Scalar d_Pf_mag = face.d_Pf_mag();
 
-            Vector E_f = (dot(S_f, S_f))/(dot(S_f, e_Pf)) * e_Pf;
+            Vector E_f = (dot(S_f, S_f)/dot(S_f, e_Pf)) * e_Pf;
 
             Scalar Gamma_f = Gamma[ownerIdx];
 
@@ -216,7 +216,7 @@ void Matrix::buildMatrix
 
             Scalar d_PN_magnitude = d_PN.magnitude();
             Vector e_PN = d_PN / (d_PN_magnitude + vSmallValue);
-            Vector E_f = dot(S_f, e_PN) * e_PN;
+            Vector E_f = (dot(S_f, S_f)/dot(S_f, e_PN)) * e_PN;
 
             // Harmonic interpolation for diffusion coefficient
             Scalar d_Pf = face.d_Pf_mag();
