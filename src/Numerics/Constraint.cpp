@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file Constraint.cpp
+ * @brief Implementation of constraint handling for CFD fields
+ *****************************************************************************/
+
 #include "Constraint.h"
 #include <iostream>
 #include <cmath>

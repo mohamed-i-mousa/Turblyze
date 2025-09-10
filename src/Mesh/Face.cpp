@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file Face.cpp
+ * @brief Implementation of face geometric properties and operations
+ *****************************************************************************/
+
 #include "Face.h"
 #include "Cell.h"
 

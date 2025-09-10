@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file ConvectionScheme.cpp
+ * @brief Implementation of convection discretization schemes
+ *****************************************************************************/
+
 #include <algorithm>
 #include <cmath>
 

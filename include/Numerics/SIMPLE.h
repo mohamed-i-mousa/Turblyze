@@ -347,8 +347,7 @@ private:
      * @brief Calculate pressure residual
      * @return Pressure residual value
      */
-    Scalar calculatePressureResidual() const;
-    
+    Scalar calculatePressureResidual() const;    
 };
 
 #endif

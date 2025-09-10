@@ -140,7 +140,6 @@ public:
 
 // Accessor methods
 
-    // Patch management
     /**
      * @brief Get boundary patch by name
      * @param name Name of the patch to retrieve
@@ -161,7 +160,6 @@ public:
      */
     size_t numPatches() const { return patches_.size(); }
 
-    // Boundary condition retrieval
     /**
      * @brief Get boundary condition for a field on a patch
      * @param patchName Name of the boundary patch
@@ -174,7 +172,6 @@ public:
         const std::string& fieldName
     ) const;
 
-    // Boundary value calculation
     /**
      * @brief Calculate boundary face value for scalar field
      * @param face Boundary face
@@ -205,7 +202,6 @@ public:
         const std::string& fieldName
     ) const;
 
-    // Utility methods
     /**
      * @brief Convert boundary condition type to string
      * @param bctype Boundary condition type enumeration
@@ -224,11 +220,12 @@ private:
 // Private members 
 
     /// Nested map: patch name → field name → boundary data
-    std::map<std::string, std::map<std::string, BoundaryData>> 
-        patchBoundaryData_;
+    std::map<std::string, std::map<std::string, BoundaryData>>
+    patchBoundaryData_;
     
     /// Vector of all boundary patches
     std::vector<BoundaryPatch> patches_;
+
     /// Cache for fast face-to-patch mapping
     mutable std::map<size_t, const BoundaryPatch*> faceToPatchCache_;
     

@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file KOmegaSST.cpp
+ * @brief Implementation of k-omega SST turbulence model
+ *****************************************************************************/
+
 #include "KOmegaSST.h"
 #include "Matrix.h"
 #include "ConvectionScheme.h"

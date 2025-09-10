@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file CellData.cpp
+ * @brief Implementation of cell-centered data containers
+ *****************************************************************************/
+
 #include "CellData.h"
 #include <stdexcept>
 #include <iostream>

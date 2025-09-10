@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file GradientScheme.cpp
+ * @brief Implementation of gradient reconstruction schemes
+ *****************************************************************************/
+
 #include "GradientScheme.h"
 
 #include <stdexcept>

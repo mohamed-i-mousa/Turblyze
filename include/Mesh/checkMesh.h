@@ -12,13 +12,7 @@
  * Key mesh quality metrics:
  * - Minimum and maximum face areas with statistics
  * - Cell volume distribution and extrema detection
- * - Geometric property validation for numerical stability
- * - Scientific notation output for proper display of small values
  * 
- * The mesh checker helps identify:
- * - Degenerate faces or cells that could cause solver instability
- * - Extreme aspect ratios that might require special treatment
- * - Volume conservation issues and geometric inconsistencies
  *****************************************************************************/
 
 #ifndef CHECKMESH_H
@@ -33,9 +27,8 @@
  * @param allFaces Vector containing all mesh faces
  * @param allCells Vector containing all mesh cells
  * 
- * Reports minimum and maximum face areas and cell volumes to help
- * assess mesh quality and identify potential numerical issues.
- * Uses scientific notation to properly display very small values.
+ * Reports mesh quality statistics including:
+ * - Face areas and cell volumes (min/max with scientific notation)
  */
 void checkMesh
 (

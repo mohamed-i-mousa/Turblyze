@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file BoundaryPatch.cpp
+ * @brief Implementation of boundary patch management
+ *****************************************************************************/
+
 #include "BoundaryPatch.h"
 #include <iostream>
 

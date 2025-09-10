@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file BoundaryData.cpp
+ * @brief Implementation of boundary condition data storage and retrieval
+ *****************************************************************************/
+
 #include "BoundaryData.h"
 #include <stdexcept>
 

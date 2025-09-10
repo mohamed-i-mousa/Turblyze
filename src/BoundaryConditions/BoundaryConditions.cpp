@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file BoundaryConditions.cpp
+ * @brief Implementation of boundary conditions management system
+ *****************************************************************************/
+
 #include "BoundaryConditions.h"
 
 #include <stdexcept>

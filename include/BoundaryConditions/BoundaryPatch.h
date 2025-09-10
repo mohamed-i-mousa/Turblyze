@@ -119,13 +119,22 @@ public:
      */
     BoundaryConditionType type() const { return type_; }
     
-    /** @brief Get zone identifier @return Zone ID from mesh file */
+    /** 
+     * @brief Get zone identifier 
+     * @return Zone ID from mesh file 
+     */
     size_t zoneID() const { return zoneID_; }
     
-    /** @brief Get first face index @return Index of first face in patch */
+    /** 
+     * @brief Get first face index 
+     * @return Index of first face in patch 
+     */
     size_t firstFaceIndex() const { return firstFaceIdx_; }
     
-    /** @brief Get last face index @return Index of last face in patch */
+    /** 
+     * @brief Get last face index 
+     * @return Index of last face in patch
+     */
     size_t lastFaceIndex() const { return lastFaceIdx_; }
     
 private:

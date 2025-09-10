@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file Matrix.cpp
+ * @brief Matrix assembly and linear system construction for CFD equations
+ *****************************************************************************/
+
 #include "Matrix.h"
 #include "KOmegaSST.h"
 #include <iostream>
@@ -17,7 +22,12 @@ Matrix::Matrix
 {
     for (const auto& patch : bcManager.patches())
     {
-        for (size_t i = patch.firstFaceIndex(); i <= patch.lastFaceIndex(); ++i)
+        for 
+        (
+            size_t i = patch.firstFaceIndex();
+            i <= patch.lastFaceIndex();
+            ++i
+        )
         {
             faceToPatchMap[i] = &patch;
         }
@@ -85,8 +95,9 @@ void Matrix::buildMatrix
             if (patchIt == faceToPatchMap.end()) 
             {
                 std::cerr << "ERROR: Boundary face " << face.id() 
-                          << " not found in patch map! Owner cell " << ownerIdx
-                          << " will have zero diagonal." << std::endl;
+                          << " not found in patch map! Owner cell " 
+                          << ownerIdx << " will have zero diagonal." 
+                          << std::endl;
                 continue;
             }
             
@@ -110,7 +121,7 @@ void Matrix::buildMatrix
             const Vector e_Pf = face.e_Pf();
             const Scalar d_Pf_mag = face.d_Pf_mag();
 
-            Vector E_f = dot(S_f, e_Pf) * e_Pf;  //E_f = orthogonal component
+            Vector E_f = (dot(S_f, S_f))/(dot(S_f, e_Pf)) * e_Pf;
 
             Scalar Gamma_f = Gamma[ownerIdx];
 
@@ -134,7 +145,7 @@ void Matrix::buildMatrix
                 {
                     phi_b = bc->vectorValue().z();
                 }
-                else  // For scalar fields (pressure, temperature, k, omega, etc.)
+                else  // For scalar fields (pressure, k, omega, etc.)
                 {
                     phi_b = bc->scalarValue();
                 }
@@ -182,10 +193,11 @@ void Matrix::buildMatrix
             else
             {
                 // Undefined or unhandled BC type - default to zero gradient
-                std::cerr << "Warning: Undefined boundary condition type for field " 
-                          << fieldName << " on patch " 
-                          << faceToPatchMap.at(face.id())->patchName() 
-                          << ". Applying zero gradient." << std::endl;
+                std::cerr   << "Warning: Undefined boundary " 
+                            << "condition type for field " 
+                            << fieldName << " on patch " 
+                            << faceToPatchMap.at(face.id())->patchName() 
+                            << ". Applying zero gradient." << std::endl;
                 
                 // Calculate convective contribution for zero gradient
                 Scalar mDot_face = mDotFace[faceIdx];
@@ -198,7 +210,10 @@ void Matrix::buildMatrix
         {
             const size_t neighborIdx = face.neighborCell().value();
 
-            Vector d_PN = allCells[neighborIdx].centroid() - allCells[ownerIdx].centroid();
+            Vector d_PN = 
+                allCells[neighborIdx].centroid() 
+              - allCells[ownerIdx].centroid();
+
             Scalar d_PN_magnitude = d_PN.magnitude();
             Vector e_PN = d_PN / (d_PN_magnitude + vSmallValue);
             Vector E_f = dot(S_f, e_PN) * e_PN;
@@ -206,13 +221,21 @@ void Matrix::buildMatrix
             // Harmonic interpolation for diffusion coefficient
             Scalar d_Pf = face.d_Pf_mag();
             Scalar d_Nf = face.d_Nf_mag().value();
-            Scalar Gamma_f = d_PN_magnitude / ((d_Pf/(Gamma[ownerIdx] + vSmallValue)) + (d_Nf/(Gamma[neighborIdx] + vSmallValue)));
-            Scalar a_diff = Gamma_f * E_f.magnitude() / (d_PN_magnitude + vSmallValue);
+            Scalar Gamma_f = 
+                d_PN_magnitude / ((d_Pf/(Gamma[ownerIdx] + vSmallValue)) 
+             + (d_Nf/(Gamma[neighborIdx] + vSmallValue)));
+            
+            Scalar a_diff = 
+                Gamma_f * E_f.magnitude() / (d_PN_magnitude + vSmallValue);
 
             // Non-orthogonal correction
             Vector T_f = S_f - E_f;
-            Vector grad_phi_P = gradScheme.CellGradient(ownerIdx, phi, allCells);
-            Vector grad_phi_N = gradScheme.CellGradient(neighborIdx, phi, allCells);
+
+            Vector grad_phi_P = 
+                gradScheme.CellGradient(ownerIdx, phi, allCells);
+                
+            Vector grad_phi_N = 
+                gradScheme.CellGradient(neighborIdx, phi, allCells);
 
             Vector grad_phi_f = 
                 gradScheme.FaceGradient
@@ -248,8 +271,7 @@ void Matrix::buildMatrix
             tripletList.emplace_back(neighborIdx, neighborIdx, a_diff + a_P_conv_N);
             tripletList.emplace_back(neighborIdx, ownerIdx, -a_diff + a_N_conv_N);
             
-            // Source term contribution: FluxV_f = -μ_f (∇V)_f · T_f + ṁ_f (u_f_highRes - u_f_upwind)
-            Scalar FluxV_f = -nonOrthogonalFlux;  // Non-orthogonal correction: -μ_f (∇V)_f · T_f
+            Scalar FluxV_f = -nonOrthogonalFlux;
             
             // High-order correction: ṁ_f (u_f_highRes - u_f_upwind)
             if 
@@ -291,7 +313,8 @@ void Matrix::buildMatrix
     A_matrix.setFromTriplets(tripletList.begin(), tripletList.end());
 }
 
-void Matrix::buildPressureCorrectionMatrix(
+void Matrix::buildPressureCorrectionMatrix
+(
     const FaceFluxField& RhieChowFlowRate,
     const FaceFluxField& DUf
 )
@@ -300,7 +323,7 @@ void Matrix::buildPressureCorrectionMatrix(
 
     reserveTripletList();
 
-    // Build mass imbalance RHS by iterating over cells and their faces (respecting face signs)
+    // Build mass imbalance RHS
     for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx) 
     {
         const Cell& cell = allCells[cellIdx];
@@ -326,7 +349,9 @@ void Matrix::buildPressureCorrectionMatrix(
 
         if (face.isBoundary())
         {
-            const std::string patchName = faceToPatchMap.at(face.id())->patchName();
+            const std::string patchName = 
+                faceToPatchMap.at(face.id())->patchName();
+
             const BoundaryData* bc = bcManager.fieldBC(patchName, "p");
 
             // Fixed-value pressure BC: pressure correction = 0
@@ -384,7 +409,8 @@ void Matrix::relax(Scalar alpha, const ScalarField& phi_prev)
     // Scale diagonal
     for (int i = 0; i < n; ++i)
     {
-        A_matrix.coeffRef(i, i) = original_diag[static_cast<size_t>(i)] / alpha;
+        A_matrix.coeffRef(i, i) = 
+            original_diag[static_cast<size_t>(i)] / alpha;
     }
 
     // Update RHS
@@ -392,7 +418,9 @@ void Matrix::relax(Scalar alpha, const ScalarField& phi_prev)
 
     for (int i = 0; i < n; ++i)
     {
-        b_vector(i) += factor * original_diag[static_cast<size_t>(i)] * phi_prev[static_cast<size_t>(i)];
+        b_vector(i) += 
+            factor * original_diag[static_cast<size_t>(i)] 
+          * phi_prev[static_cast<size_t>(i)];
     }
 }
 

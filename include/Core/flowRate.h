@@ -30,11 +30,12 @@
  * @param faceToPatchMap Mapping from face ID to boundary patch
  * @return FaceFluxField volumetric flow rate at each face
  * 
- * For internal faces: mdot = dot([U_field[P] * (1-w) + U_field[N] * w], Sf)
+ * For internal faces: mDot = Dot([U_field[P] * (1-w) + U_field[N] * w], Sf)
  * where w is the distance-weighted interpolation factor.
  * For boundary faces, uses boundary condition handling from bcManager.
  * 
  * @note Incompressible equations are divided by the density.
+ *       Then, mDot is the volumetric flow rate.
  */
 FaceFluxField calculateFlowRate
 (

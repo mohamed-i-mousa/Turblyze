@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file Cell.cpp
+ * @brief Implementation of cell geometric properties and operations
+ *****************************************************************************/
+
 #include "Cell.h"
 
 #include <stdexcept>

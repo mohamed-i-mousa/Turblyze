@@ -1,4 +1,9 @@
 
+/******************************************************************************
+ * @file SIMPLE.cpp
+ * @brief Implementation of the SIMPLE algorithm for pressure-velocity coupling
+ *****************************************************************************/
+
 #include <cmath>
 #include <iostream>
 #include <algorithm>
@@ -406,7 +411,11 @@ void SIMPLE::solveMomentumEquations()
             std::string patchName = "";
             for (const auto& patch : bcManager.patches())
             {
-                if (face.id() >= patch.firstFaceIndex() && face.id() <= patch.lastFaceIndex())
+                if 
+                (
+                    face.id() >= patch.firstFaceIndex() 
+                 && face.id() <= patch.lastFaceIndex()
+                )
                 {
                     patchName = patch.patchName();
                     break;
@@ -460,8 +469,11 @@ void SIMPLE::calculateRhieChowFlowRate()
         const size_t N = face.neighborCell().value();
 
         // Linear-interpolated values with proper boundary condition handling
-        const Vector U_f_linear = VectorLinearInterpolation(face, U, bcManager, "U");
-        const Vector gradP_f_avg = VectorLinearInterpolation(face, gradP);
+        const Vector U_f_linear = 
+            VectorLinearInterpolation(face, U, bcManager, "U");
+
+        const Vector gradP_f_avg = 
+            VectorLinearInterpolation(face, gradP);
                 
         const Vector S_f = face.normal() * face.area();
         
@@ -562,11 +574,13 @@ void SIMPLE::correctVelocity()
         const Face& face = allFaces[faceIdx];
         if (face.isBoundary()) 
         {
-            U_f_avg[faceIdx] = bcManager.calculateBoundaryFaceVectorValue(face, U, "U");
+            U_f_avg[faceIdx] = 
+                bcManager.calculateBoundaryFaceVectorValue(face, U, "U");
         }
         else
         {
-            U_f_avg[faceIdx] = VectorLinearInterpolation(face, U, bcManager, "U");
+            U_f_avg[faceIdx] = 
+                VectorLinearInterpolation(face, U, bcManager, "U");
         }
     }
 }
@@ -593,7 +607,9 @@ void SIMPLE::correctPressure()
     // Apply pressure bounds constraints if enabled
     if (constraintSystem)
     {
-        int pressureConstraints = constraintSystem->applyPressureConstraints();
+        int pressureConstraints = 
+            constraintSystem->applyPressureConstraints();
+
         if (pressureConstraints > 0)
         {
             std::cout   << "  Applied pressure constraints to " 
@@ -634,15 +650,21 @@ void SIMPLE::correctFlowRate()
             
             if (bc && bc->type() == BCType::FIXED_VALUE)
             {
-                // Skip fixed pressure boundaries - pressure correction doesn't apply
+                // Skip fixed pressure boundaries
                 continue;
             }
             
             // Apply pressure correction for non-fixed pressure boundaries
-            Vector grad_pCorr = gradientScheme.CellGradient(face.ownerCell(), pCorr, allCells);
+            Vector grad_pCorr = 
+                gradientScheme.CellGradient(face.ownerCell(), pCorr, allCells);
+            
             Scalar normal_grad = dot(grad_pCorr, face.normal());
-            flowRateCorrection = alpha_p * DU[face.ownerCell()] * normal_grad * face.area();
+
+            flowRateCorrection = 
+                alpha_p * DU[face.ownerCell()] * normal_grad * face.area();
+            
             RhieChowFlowRate[faceIdx] -= flowRateCorrection;
+
             continue;
         }
 
@@ -651,11 +673,16 @@ void SIMPLE::correctFlowRate()
         size_t neighborIdx = face.neighborCell().value();
         
         // Face gradient: (pCorr_N - pCorr_P) / |d_PN|
-        Vector d_PN = allCells[neighborIdx].centroid() - allCells[ownerIdx].centroid();
+        Vector d_PN = 
+            allCells[neighborIdx].centroid() - allCells[ownerIdx].centroid();
+
         Scalar d_PN_mag = d_PN.magnitude();
-        Scalar gradpCorr_f = (pCorr[neighborIdx] - pCorr[ownerIdx]) / (d_PN_mag + vSmallValue);
+
+        Scalar gradpCorr_f = 
+            (pCorr[neighborIdx] - pCorr[ownerIdx]) / (d_PN_mag + vSmallValue);
             
-        flowRateCorrection = alpha_p * DUf[faceIdx] * gradpCorr_f * face.area();
+        flowRateCorrection = 
+            alpha_p * DUf[faceIdx] * gradpCorr_f * face.area();
 
         RhieChowFlowRate[faceIdx] -= flowRateCorrection;
     }
@@ -691,10 +718,15 @@ bool SIMPLE::checkConvergence()
                 << std::fixed << std::endl;
     
     // Additional convergence monitoring
-    if (massImbalance > 1e3 || velocityResidual > 1e3 || pressureResidual > 1e3)
+    if 
+    (
+        massImbalance > 1e3 
+     || velocityResidual > 1e3 
+     || pressureResidual > 1e3
+    )
     {
-        std::cout   << "  WARNING: Residuals are very large - "
-                    << "solution may be diverging!" << std::endl;
+        std::cout   << "  WARNING: Residuals are very large -"
+                    << " solution may be diverging!" << std::endl;
 
         std::cout   << "  Consider: " << std::endl;
 
@@ -792,11 +824,13 @@ void SIMPLE::enableTurbulenceModeling(bool enable)
 
     if (enable) 
     {
-        std::cout << "k-omega SST turbulence modeling enabled." << std::endl;
+        std::cout   << "k-omega SST turbulence modeling enabled." 
+                    << std::endl;
     } 
     else 
     {
-        std::cout << "Laminar flow (turbulence modeling disabled)." << std::endl;
+        std::cout   << "Laminar flow (turbulence modeling disabled)." 
+                    << std::endl;
     }
 }
 

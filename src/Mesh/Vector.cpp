@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file Vector.cpp
+ * @brief Implementation of 3D vector operations and utilities
+ *****************************************************************************/
+
 #include "Vector.h"
 #include <stdexcept>
 #include <iostream>

@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file LinearSolvers.cpp
+ * @brief Linear solver implementations for sparse matrix systems
+ *****************************************************************************/
+
 #include "LinearSolvers.h"
 
 namespace LinearSolvers {

@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file linearInterpolation.cpp
+ * @brief Implementation of linear interpolation functions for CFD fields
+ *****************************************************************************/
+
 #include "linearInterpolation.h"
 
 #include <iostream>

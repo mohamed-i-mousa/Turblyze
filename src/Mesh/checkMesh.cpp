@@ -1,13 +1,10 @@
-/**
+/******************************************************************************
  * @file checkMesh.cpp
  * @brief Mesh quality assessment utilities
  * 
  * This file contains functions for checking mesh quality by analyzing
  * geometric properties such as face areas and cell volumes.
- * 
- * @author Mohamed Mousa
- * @date 2025
- */
+ *****************************************************************************/
 
 #include "checkMesh.h"
 #include "Scalar.h"
@@ -58,7 +55,7 @@ void checkMesh
         }
     }
     
-    // Cell volume statistics  
+    /// Cell volume statistics  
     Scalar minCellVolume = allCells[0].volume();
     Scalar maxCellVolume = allCells[0].volume();
     size_t minCellId = allCells[0].id();

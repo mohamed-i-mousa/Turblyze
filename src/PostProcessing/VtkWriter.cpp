@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file VtkWriter.cpp
+ * @brief Implementation of VTK output writer for CFD results
+ *****************************************************************************/
+
 #include "VtkWriter.h"
 
 // VTK includes

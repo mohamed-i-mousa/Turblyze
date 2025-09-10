@@ -42,7 +42,7 @@ Vector VectorLinearInterpolation
 );
 
 /**
- * @brief Linear interpolation of vector field to face with BC support 
+ * @brief Linear interpolation of vector field to face with BC support
  * @param face Face for interpolation
  * @param cellField Cell-centered vector field
  * @param bcManager Boundary condition manager

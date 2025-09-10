@@ -18,13 +18,6 @@
  * - Comparison operators for sorting and equality testing
  * - Stream I/O operators for debugging and file output
  * 
- * Key mathematical features:
- * - Dot product for projection and angle calculations
- * - Cross product for area vectors and normal computation
- * - Magnitude and normalization for unit vector operations
- * - Distance functions for geometric proximity calculations
- * - Component-wise arithmetic with proper operator overloading
- * 
  * The class integrates seamlessly with mesh geometry calculations,
  * face normal computations, and field interpolation operations.
  *****************************************************************************/

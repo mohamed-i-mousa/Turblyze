@@ -1,3 +1,8 @@
+/******************************************************************************
+ * @file FaceData.cpp
+ * @brief Implementation of face-centered data containers
+ *****************************************************************************/
+
 #include "FaceData.h"
 #include <stdexcept>
 #include <iostream>

@@ -100,7 +100,7 @@ int main()
         /// @brief Container for boundary patch definitions
         std::vector<BoundaryPatch> allBoundaryPatches;
 
-        std::string meshFilePath = "../inputFiles/pipe_304.msh";
+        std::string meshFilePath = "../inputFiles/sphere_24k.msh";
 
         readMshFile
         (
@@ -208,7 +208,7 @@ int main()
 
         std::cout << "\n--- 3. Initializing SIMPLE Solver ---" << std::endl;
         
-        SIMPLE simpleSolver(allFaces, allCells, bcManager, gradScheme, UDS);
+        SIMPLE simpleSolver(allFaces, allCells, bcManager, gradScheme, CDS);
         simpleSolver.setPhysicalProperties(rho, mu);
         
         // Configure SIMPLE parameters
@@ -216,7 +216,7 @@ int main()
         // Under-relaxation: standard values
         simpleSolver.setRelaxationFactors(0.7, 0.3);
         simpleSolver.setConvergenceTolerance(1e-3);
-        simpleSolver.setMaxIterations(250);
+        simpleSolver.setMaxIterations(1);
         
         // Enable turbulence modeling
         simpleSolver.enableTurbulenceModeling(false);
@@ -389,7 +389,7 @@ int main()
         std::cout << "\n--- 7. Exporting Results to VTK ---" << std::endl;
         // Create output filename for steady-state solution
         std::string vtkOutputFilename = 
-            "../outputFiles/pipe_304.vtp";
+            "../outputFiles/sphere.vtp";
 
         // Prepare scalar fields for export
         std::map<std::string, const ScalarField*> scalarFieldsToVtk;
