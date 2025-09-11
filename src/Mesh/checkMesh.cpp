@@ -76,23 +76,26 @@ static Scalar calculateFaceSkewness
  */
 static Scalar calculateBoundarySkewness
 (
-    const Vector& cellCc,
-    const Vector& faceCtr,
+    const Vector& ownerCellCentroid,
+    const Vector& faceCentroid,
     const Vector& faceNormal
 )
 {
-    // Project cell center onto face plane
-    Scalar projDist = dot(faceCtr - cellCc, faceNormal);
-    Vector faceIntersection = cellCc + projDist * faceNormal;
+    // Cell-to-face vector (similar to internal face Cpf)
+    Vector d_Pf = faceCentroid - ownerCellCentroid;
     
-    // Calculate skewness based on offset
-    Scalar cellToFaceDist = distance(cellCc, faceCtr);
-    if (cellToFaceDist < vSmallValue)
+    // Skewness vector: tangential component (deviation from normal line)
+    Vector skewnessVector = d_Pf - dot(faceNormal, d_Pf) * faceNormal;
+    
+    // Normalization distance 
+    Scalar normalizationDistance = d_Pf.magnitude();
+    if (normalizationDistance < vSmallValue)
     {
         return S(0.0);
     }
     
-    return distance(faceCtr, faceIntersection) / cellToFaceDist;
+    // Return normalized skewness magnitude
+    return skewnessVector.magnitude() / normalizationDistance;
 }
 
 /**
