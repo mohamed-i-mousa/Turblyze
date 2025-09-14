@@ -74,9 +74,7 @@ SIMPLE::SIMPLE
 
     // Matrix constructor
     matrixConstruct(nullptr)
-{
-    initialize(Vector(0.0, 0.0, -0.5), 0.0);
-}
+{}
 
 void SIMPLE::initialize(const Vector& initialVelocity, Scalar initialPressure)
 {

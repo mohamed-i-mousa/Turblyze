@@ -100,7 +100,7 @@ int main()
         /// @brief Container for boundary patch definitions
         std::vector<BoundaryPatch> allBoundaryPatches;
 
-        std::string meshFilePath = "../inputFiles/sphere_24k.msh";
+        std::string meshFilePath = "../inputFiles/pipe_320k.msh";
 
         readMshFile
         (
@@ -159,7 +159,7 @@ int main()
         const std::string p_field = "p";
         
         // Inlet: Fixed velocity (low Re for stability)
-        bcManager.setFixedValue("inlet", U_field, Vector(0.0, 0.0, -0.5));
+        bcManager.setFixedValue("inlet", U_field, (0.0, 0.0, -0.1));
         bcManager.setZeroGradient("inlet", p_field);
         
         // Outlet: Fixed pressure, zero gradient velocity
@@ -189,12 +189,78 @@ int main()
         bcManager.setNoSlip("wall2", U_field);
         bcManager.setNoSlip("wall3", U_field);
         bcManager.setNoSlip("wall4", U_field);
+        bcManager.setNoSlip("wall5", U_field);
+        bcManager.setNoSlip("wall6", U_field);
         bcManager.setZeroGradient("wall1", p_field);
         bcManager.setZeroGradient("wall2", p_field);
         bcManager.setZeroGradient("wall3", p_field);
         bcManager.setZeroGradient("wall4", p_field);
+        bcManager.setZeroGradient("wall5", p_field);
+        bcManager.setZeroGradient("wall6", p_field);
+
+        // Turbulence boundary conditions helper functions
+        auto calculateInletTurbulenceValues = [](Scalar U_inlet, Scalar mu, Scalar rho) -> std::pair<Scalar, Scalar> {
+            // Turbulence intensity I = 8% (higher for more significant turbulence)
+            const Scalar I = 0.08;
+
+            // Turbulent kinetic energy: k = 1.5 * (I * U)²
+            const Scalar k_inlet = 1.5 * (I * U_inlet) * (I * U_inlet);
+
+            // Turbulent length scale: L = 0.07 * D_h (hydraulic diameter)
+            // For pipe: D_h = 0.05 m (estimate based on mesh)
+            const Scalar D_h = 0.05;
+            const Scalar L = 0.07 * D_h;
+
+            // Specific dissipation rate: ω = sqrt(k) / (C_μ^0.25 * L)
+            const Scalar C_mu = 0.09;
+            const Scalar omega_inlet = std::sqrt(k_inlet) / (std::pow(C_mu, 0.25) * L);
+
+            return {k_inlet, omega_inlet};
+        };
+
+        // Calculate turbulence inlet values
+        const Scalar U_inlet_mag = 0.1;  // Inlet velocity magnitude
+        auto [k_inlet, omega_inlet] = calculateInletTurbulenceValues(U_inlet_mag, mu, rho);
+
+        std::cout << "Turbulence inlet conditions:" << std::endl;
+        std::cout << "  k_inlet = " << k_inlet << " m²/s²" << std::endl;
+        std::cout << "  omega_inlet = " << omega_inlet << " 1/s" << std::endl;
+
+        // Turbulence boundary conditions
+        // Inlet: fixed values for k and omega, zero gradient for phi_wall
+        bcManager.setFixedValue("inlet", "k", k_inlet);
+        bcManager.setFixedValue("inlet", "omega", omega_inlet);
+        bcManager.setZeroGradient("inlet", "phi_wall");
+
+        // Outlet: zero gradient for all turbulence fields
+        bcManager.setZeroGradient("outlet", "k");
+        bcManager.setZeroGradient("outlet", "omega");
+        bcManager.setZeroGradient("outlet", "phi_wall");
+
+        // Walls: k=0, omega wall function (handled by turbulence model), phi_wall=0
+        bcManager.setFixedValue("wall1", "k", 0.0);
+        bcManager.setFixedValue("wall2", "k", 0.0);
+        bcManager.setFixedValue("wall3", "k", 0.0);
+        bcManager.setFixedValue("wall4", "k", 0.0);
+
+        // For omega at walls, use zero gradient (wall function applied by turbulence model)
+        bcManager.setZeroGradient("wall1", "omega");
+        bcManager.setZeroGradient("wall2", "omega");
+        bcManager.setZeroGradient("wall3", "omega");
+        bcManager.setZeroGradient("wall4", "omega");
+
+        // phi_wall = 0 at walls (zero distance)
+        bcManager.setFixedValue("wall1", "phi_wall", 0.0);
+        bcManager.setFixedValue("wall2", "phi_wall", 0.0);
+        bcManager.setFixedValue("wall3", "phi_wall", 0.0);
+        bcManager.setFixedValue("wall4", "phi_wall", 0.0);
 
         bcManager.printSummary();
+
+        // Inital fields 
+        Vector initialVelocity(0.0, 0.0, -0.1);
+        Scalar initialPressure = 0.0;
+
 
         // --- Discretization Scheme Selection ---
         CentralDifferenceScheme CDS;
@@ -208,18 +274,22 @@ int main()
 
         std::cout << "\n--- 3. Initializing SIMPLE Solver ---" << std::endl;
         
-        SIMPLE simpleSolver(allFaces, allCells, bcManager, gradScheme, CDS);
+        SIMPLE simpleSolver(allFaces, allCells, bcManager, gradScheme, UDS);
+
+        // Enable turbulence modeling
+        simpleSolver.enableTurbulenceModeling(true);
+
+        // Initialize velocity and pressure fields
+        simpleSolver.initialize(initialVelocity, initialPressure);
+
         simpleSolver.setPhysicalProperties(rho, mu);
-        
+
         // Configure SIMPLE parameters
 
-        // Under-relaxation: standard values
-        simpleSolver.setRelaxationFactors(0.7, 0.3);
-        simpleSolver.setConvergenceTolerance(1e-3);
-        simpleSolver.setMaxIterations(1);
-        
-        // Enable turbulence modeling
-        simpleSolver.enableTurbulenceModeling(false);
+        // Under-relaxation: Optimized for stable turbulence convergence
+        simpleSolver.setRelaxationFactors(0.3, 0.1);   // Standard relaxation factors
+        simpleSolver.setConvergenceTolerance(1e-6);    // Tight tolerance for accuracy
+        simpleSolver.setMaxIterations(1);             // Sufficient iterations for convergence
         
         // Configure field constraints: max velocity and pressyre range 
         Constraint* constraintSystem = simpleSolver.getConstraintSystem();
@@ -257,7 +327,7 @@ int main()
         const ScalarField* mu_t_field = simpleSolver.getTurbulentViscosity();
 
         const ScalarField* wallDist_field = simpleSolver.getWallDistance();
-        
+
         // Extract 3D velocity components
         ScalarField U_x = simpleSolver.getVelocityX();
         ScalarField U_y = simpleSolver.getVelocityY();
@@ -389,7 +459,7 @@ int main()
         std::cout << "\n--- 7. Exporting Results to VTK ---" << std::endl;
         // Create output filename for steady-state solution
         std::string vtkOutputFilename = 
-            "../outputFiles/sphere.vtp";
+            "../outputFiles/pipe_320k.vtp";
 
         // Prepare scalar fields for export
         std::map<std::string, const ScalarField*> scalarFieldsToVtk;

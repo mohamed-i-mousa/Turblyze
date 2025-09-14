@@ -78,6 +78,13 @@ public:
     void solve();
     
     /**
+     * @brief Initialize solution fields
+     * @param initialVelocity Initial velocity field
+     * @param initialPressure Initial pressure field
+     */
+    void initialize(const Vector& initialVelocity, Scalar initialPressure);
+    
+    /**
      * @brief Solve momentum equations for velocity components
      */
     void solveMomentumEquations();
@@ -323,13 +330,6 @@ private:
 
     /// Matrix constructor and solver object
     std::unique_ptr<Matrix> matrixConstruct;
-    
-    /**
-     * @brief Initialize solution fields
-     * @param initialVelocity Initial velocity field
-     * @param initialPressure Initial pressure field
-     */
-    void initialize(const Vector& initialVelocity, Scalar initialPressure);
     
     /**
      * @brief Calculate mass imbalance across domain

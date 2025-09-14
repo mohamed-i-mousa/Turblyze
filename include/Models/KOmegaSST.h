@@ -19,10 +19,6 @@
  * - Production limiting for numerical stability
  * - Support for both steady-state and transient simulations
  * 
- * @author Mohamed Mousa
- * @date 2025
- * @version 1.0
- * 
  * @see Menter, F.R. (1994). "Two-equation eddy-viscosity turbulence models 
  *       for engineering applications." AIAA Journal, 32(8), 1598-1605.
  */
@@ -58,30 +54,6 @@ class Matrix;
  * - Separated flows
  * - Wall-bounded flows
  * - Aerospace applications
- * 
- * The model equations are:
- * 
- * @f[
- * \frac{\partial (\rho k)}{\partial t} + \nabla \cdot (\rho \mathbf{U} k) = 
- * \nabla \cdot \left[(\mu + \sigma_k \mu_t) \nabla k \right] + P_k - \beta^* \rho \omega k
- * @f]
- * 
- * @f[
- * \frac{\partial (\rho \omega)}{\partial t} + \nabla \cdot (\rho \mathbf{U} \omega) = 
- * \nabla \cdot \left[(\mu + \sigma_\omega \mu_t) \nabla \omega \right] + 
- * \frac{\gamma}{\nu_t} P_k - \beta \rho \omega^2 + 2(1-F_1) \rho \sigma_{\omega,2} 
- * \frac{1}{\omega} \nabla k \cdot \nabla \omega
- * @f]
- * 
- * where:
- * - @f$k@f$ is the turbulent kinetic energy
- * - @f$\omega@f$ is the specific dissipation rate
- * - @f$\mu_t@f$ is the turbulent viscosity
- * - @f$P_k@f$ is the production of turbulent kinetic energy
- * - @f$F_1@f$ is the blending function
- * 
- * @tparam Scalar Floating-point type for calculations (float, double)
- * @tparam Vector 3D vector type for spatial operations
  */
 class KOmegaSST 
 {
@@ -105,11 +77,7 @@ public:
         const GradientScheme& gradScheme
     );
     
-    /**
-     * @brief Destructor
-     * 
-     * @details Cleans up allocated memory and resources.
-     */
+    /// Destructor
     ~KOmegaSST();
 
     /**
@@ -148,25 +116,9 @@ public:
     );
 
     /**
-     * @brief Legacy solve method for backward compatibility
-     * 
-     * @param U_field Current velocity field
-     * @param gradU Vector of velocity gradient fields [gradUx, gradUy, gradUz]
-     * @param nu_lam Laminar kinematic viscosity
-     * 
-     * @deprecated Use the individual gradient component version for better performance
-     */
-    void solve
-    (
-        const VectorField& U_field,
-        const std::vector<VectorField>& gradU,
-        Scalar nu_lam
-    );
-
-    /**
      * @brief Calculate wall distance field using Poisson equation
      * 
-     * @details Solves the Poisson equation ∇²y = 1 with boundary conditions
+     * Solves the Poisson equation ∇²y = 1 with boundary conditions
      * y = 0 at walls to compute the distance to the nearest wall for each cell.
      * This is used for wall function calculations and y+ determination.
      */
