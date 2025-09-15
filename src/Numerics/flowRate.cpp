@@ -3,7 +3,7 @@
  * @brief Implementation of flow rate calculation functions
  *****************************************************************************/
 
-#include "flowRate.h"
+#include "flowRate.hpp"
 
 FaceFluxField calculateFlowRate
 (

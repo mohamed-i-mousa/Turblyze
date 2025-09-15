@@ -25,10 +25,10 @@
 #include <vector>
 #include <map>
 
-#include "Scalar.h" 
-#include "Vector.h"
-#include "Face.h"
-#include "CellData.h"
+#include "Scalar.hpp" 
+#include "Vector.hpp"
+#include "Face.hpp"
+#include "CellData.hpp"
 
 namespace VtkWriter {
 

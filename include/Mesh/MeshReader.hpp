@@ -9,10 +9,10 @@
 
 #include <string>
 #include <vector>
-#include "Scalar.h"
-#include "Face.h"
-#include "Cell.h"
-#include "BoundaryPatch.h"
+#include "Scalar.hpp"
+#include "Face.hpp"
+#include "Cell.hpp"
+#include "BoundaryPatch.hpp"
 
 /**
  * @brief Read Fluent mesh file exported from ANSYS Meshing

@@ -3,13 +3,13 @@
  * @brief Matrix assembly and linear system construction for CFD equations
  *****************************************************************************/
 
-#include "Matrix.h"
-#include "KOmegaSST.h"
+#include "Matrix.hpp"
+#include "KOmegaSST.hpp"
 #include <iostream>
 #include <algorithm>
-#include "CellData.h"
-#include "flowRate.h"
-#include "linearInterpolation.h"
+#include "CellData.hpp"
+#include "flowRate.hpp"
+#include "linearInterpolation.hpp"
 
 Matrix::Matrix
 (

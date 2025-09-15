@@ -3,7 +3,7 @@
  * @brief Implementation of VTK output writer for CFD results
  *****************************************************************************/
 
-#include "VtkWriter.h"
+#include "VtkWriter.hpp"
 
 // VTK includes
 #include <vtkPolyData.h>

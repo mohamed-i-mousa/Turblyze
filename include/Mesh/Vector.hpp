@@ -26,7 +26,7 @@
 #define VECTOR_H
 
 #include <iostream>
-#include "Scalar.h"
+#include "Scalar.hpp"
 
 class Vector 
 {

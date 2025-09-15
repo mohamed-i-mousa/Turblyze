@@ -16,8 +16,8 @@
 #include <string>
 #include <optional>
 
-#include "Scalar.h"
-#include "Vector.h"    
+#include "Scalar.hpp"
+#include "Vector.hpp"    
 
 class Face 
 {

@@ -14,9 +14,9 @@
 #ifndef CONSTRAINT_H
 #define CONSTRAINT_H
 
-#include "Scalar.h"
-#include "Vector.h"
-#include "CellData.h"
+#include "Scalar.hpp"
+#include "Vector.hpp"
+#include "CellData.hpp"
 
 /**
  * @class Constraint

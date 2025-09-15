@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <charconv>
 
-#include "MeshReader.h"
+#include "MeshReader.hpp"
 
 /// Fluent file section identifiers
 const std::string MSH_COMMENT = "(0";

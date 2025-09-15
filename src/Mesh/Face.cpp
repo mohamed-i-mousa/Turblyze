@@ -3,8 +3,8 @@
  * @brief Implementation of face geometric properties and operations
  *****************************************************************************/
 
-#include "Face.h"
-#include "Cell.h"
+#include "Face.hpp"
+#include "Cell.hpp"
 
 #include <stdexcept>
 #include <cmath>

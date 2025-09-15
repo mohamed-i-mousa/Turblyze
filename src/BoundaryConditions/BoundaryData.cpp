@@ -3,7 +3,7 @@
  * @brief Implementation of boundary condition data storage and retrieval
  *****************************************************************************/
 
-#include "BoundaryData.h"
+#include "BoundaryData.hpp"
 #include <stdexcept>
 
 void BoundaryData::setFixedValue(Scalar s_val) 

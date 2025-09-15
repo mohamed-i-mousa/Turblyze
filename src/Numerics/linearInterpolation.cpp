@@ -3,7 +3,7 @@
  * @brief Implementation of linear interpolation functions for CFD fields
  *****************************************************************************/
 
-#include "linearInterpolation.h"
+#include "linearInterpolation.hpp"
 
 #include <iostream>
 #include <cmath>

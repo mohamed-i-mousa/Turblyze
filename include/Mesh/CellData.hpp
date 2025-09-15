@@ -32,8 +32,8 @@
 #include <stdexcept>
 #include <iostream>
 
-#include "Scalar.h"
-#include "Vector.h"
+#include "Scalar.hpp"
+#include "Vector.hpp"
 
 /**
  * @brief Template class for storing cell-centered field data

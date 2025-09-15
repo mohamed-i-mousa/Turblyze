@@ -6,8 +6,8 @@
  * geometric properties such as face areas and cell volumes.
  *****************************************************************************/
 
-#include "checkMesh.h"
-#include "Scalar.h"
+#include "checkMesh.hpp"
+#include "Scalar.hpp"
 #include <iostream>
 #include <iomanip>
 #include <algorithm>

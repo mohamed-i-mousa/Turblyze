@@ -6,8 +6,8 @@
 #include <algorithm>
 #include <cmath>
 
-#include "ConvectionScheme.h"
-#include "GradientScheme.h"
+#include "ConvectionScheme.hpp"
+#include "GradientScheme.hpp"
 
 
 // First-order Upwind Differencing Scheme (UDS)

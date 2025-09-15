@@ -32,14 +32,14 @@
 #include <vector>
 #include <string>
 
-#include "Scalar.h"
-#include "Vector.h"
-#include "Face.h"
-#include "Cell.h"
-#include "BoundaryConditions.h"
-#include "CellData.h"
-#include "FaceData.h"
-#include "linearInterpolation.h"
+#include "Scalar.hpp"
+#include "Vector.hpp"
+#include "Face.hpp"
+#include "Cell.hpp"
+#include "BoundaryConditions.hpp"
+#include "CellData.hpp"
+#include "FaceData.hpp"
+#include "linearInterpolation.hpp"
 
 /**
  * @file GradientScheme.h

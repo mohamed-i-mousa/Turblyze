@@ -25,14 +25,14 @@
 #ifndef CONVECTIONSCHEME_H
 #define CONVECTIONSCHEME_H
 
-#include "Scalar.h"
-#include "Vector.h"
-#include "Face.h"
-#include "Cell.h"
-#include "CellData.h"
-#include "FaceData.h"
-#include "BoundaryConditions.h"
-#include "BoundaryData.h"
+#include "Scalar.hpp"
+#include "Vector.hpp"
+#include "Face.hpp"
+#include "Cell.hpp"
+#include "CellData.hpp"
+#include "FaceData.hpp"
+#include "BoundaryConditions.hpp"
+#include "BoundaryData.hpp"
 
 
 /**

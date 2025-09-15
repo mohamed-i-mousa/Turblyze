@@ -3,7 +3,7 @@
  * @brief Implementation of face-centered data containers
  *****************************************************************************/
 
-#include "FaceData.h"
+#include "FaceData.hpp"
 #include <stdexcept>
 #include <iostream>
 #include <algorithm>

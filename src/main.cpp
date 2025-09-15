@@ -26,30 +26,30 @@
 #include <chrono>
 
 // Core data structures
-#include "Scalar.h"
-#include "Vector.h"
-#include "Face.h"
-#include "Cell.h"
-#include "CellData.h"
-#include "FaceData.h"
+#include "Scalar.hpp"
+#include "Vector.hpp"
+#include "Face.hpp"
+#include "Cell.hpp"
+#include "CellData.hpp"
+#include "FaceData.hpp"
 
 // Boundary conditions
-#include "BoundaryPatch.h"
-#include "BoundaryData.h"
-#include "BoundaryConditions.h"
+#include "BoundaryPatch.hpp"
+#include "BoundaryData.hpp"
+#include "BoundaryConditions.hpp"
 
 // Numerics and Solver
-#include "GradientScheme.h"
-#include "ConvectionScheme.h"
-#include "Matrix.h"
-#include "LinearSolvers.h"
-#include "SIMPLE.h"
-#include "Constraint.h"
+#include "GradientScheme.hpp"
+#include "ConvectionScheme.hpp"
+#include "Matrix.hpp"
+#include "LinearSolvers.hpp"
+#include "SIMPLE.hpp"
+#include "Constraint.hpp"
 
 // I/O
-#include "MeshReader.h"
-#include "VtkWriter.h"
-#include "checkMesh.h"
+#include "MeshReader.hpp"
+#include "VtkWriter.hpp"
+#include "checkMesh.hpp"
 
 
 /**
@@ -159,7 +159,7 @@ int main()
         const std::string p_field = "p";
         
         // Inlet: Fixed velocity (low Re for stability)
-        bcManager.setFixedValue("inlet", U_field, (0.0, 0.0, -0.1));
+        bcManager.setFixedValue("inlet", U_field, Vector(0.0, 0.0, -0.1));
         bcManager.setZeroGradient("inlet", p_field);
         
         // Outlet: Fixed pressure, zero gradient velocity
@@ -199,7 +199,7 @@ int main()
         bcManager.setZeroGradient("wall6", p_field);
 
         // Turbulence boundary conditions helper functions
-        auto calculateInletTurbulenceValues = [](Scalar U_inlet, Scalar mu, Scalar rho) -> std::pair<Scalar, Scalar> {
+        auto calculateInletTurbulenceValues = [](Scalar U_inlet) -> std::pair<Scalar, Scalar> {
             // Turbulence intensity I = 8% (higher for more significant turbulence)
             const Scalar I = 0.08;
 
@@ -220,7 +220,7 @@ int main()
 
         // Calculate turbulence inlet values
         const Scalar U_inlet_mag = 0.1;  // Inlet velocity magnitude
-        auto [k_inlet, omega_inlet] = calculateInletTurbulenceValues(U_inlet_mag, mu, rho);
+        auto [k_inlet, omega_inlet] = calculateInletTurbulenceValues(U_inlet_mag);
 
         std::cout << "Turbulence inlet conditions:" << std::endl;
         std::cout << "  k_inlet = " << k_inlet << " m²/s²" << std::endl;

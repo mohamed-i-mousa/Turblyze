@@ -19,8 +19,8 @@
 #define CHECKMESH_H
 
 #include <vector>
-#include "Face.h"
-#include "Cell.h"
+#include "Face.hpp"
+#include "Cell.hpp"
 
 /**
  * @brief Performs mesh quality checks and reports statistics

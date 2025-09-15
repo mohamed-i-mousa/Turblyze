@@ -3,7 +3,7 @@
  * @brief Implementation of boundary patch management
  *****************************************************************************/
 
-#include "BoundaryPatch.h"
+#include "BoundaryPatch.hpp"
 #include <iostream>
 
 BoundaryConditionType mapFluentBCToEnum(const std::string& fluentType) 

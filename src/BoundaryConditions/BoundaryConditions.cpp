@@ -3,7 +3,7 @@
  * @brief Implementation of boundary conditions management system
  *****************************************************************************/
 
-#include "BoundaryConditions.h"
+#include "BoundaryConditions.hpp"
 
 #include <stdexcept>
 #include <iostream>

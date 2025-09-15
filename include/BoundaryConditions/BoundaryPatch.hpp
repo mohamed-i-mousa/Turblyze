@@ -23,7 +23,7 @@
 #include <map>
 #include <stdexcept>
 
-#include "Face.h"
+#include "Face.hpp"
 
 /**
  * @enum BoundaryConditionType

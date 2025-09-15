@@ -32,7 +32,7 @@
 #include <vector>
 #include <iostream>
 #include <cmath>
-#include "Scalar.h"
+#include "Scalar.hpp"
 
 /**
  * @brief Namespace containing linear system solvers

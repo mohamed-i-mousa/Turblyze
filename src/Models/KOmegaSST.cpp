@@ -3,14 +3,14 @@
  * @brief Implementation of k-omega SST turbulence model
  *****************************************************************************/
 
-#include "KOmegaSST.h"
-#include "Matrix.h"
-#include "ConvectionScheme.h"
-#include "GradientScheme.h"
 #include <cmath>
 #include <algorithm>
 #include <iostream>
 #include <set>
+
+#include "KOmegaSST.hpp"
+#include "Matrix.hpp"
+#include "ConvectionScheme.hpp"
 
 KOmegaSST::KOmegaSST
 (

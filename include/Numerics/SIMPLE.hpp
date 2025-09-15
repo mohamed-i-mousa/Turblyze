@@ -31,17 +31,17 @@
 #include <vector>
 #include <memory>
 
-#include "Face.h"
-#include "Cell.h"
-#include "BoundaryConditions.h"
-#include "CellData.h"
-#include "FaceData.h"
-#include "GradientScheme.h"
-#include "ConvectionScheme.h"
-#include "Matrix.h"
-#include "LinearSolvers.h"
-#include "KOmegaSST.h"
-#include "Constraint.h"
+#include "Face.hpp"
+#include "Cell.hpp"
+#include "BoundaryConditions.hpp"
+#include "CellData.hpp"
+#include "FaceData.hpp"
+#include "GradientScheme.hpp"
+#include "ConvectionScheme.hpp"
+#include "Matrix.hpp"
+#include "LinearSolvers.hpp"
+#include "KOmegaSST.hpp"
+#include "Constraint.hpp"
 
 
 /**

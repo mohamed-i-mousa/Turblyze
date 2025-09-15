@@ -29,15 +29,15 @@
 #include <vector>
 #include <memory>
 
-#include "Scalar.h"
-#include "Vector.h"
-#include "Cell.h"
-#include "Face.h"
-#include "CellData.h"
-#include "FaceData.h"
-#include "BoundaryConditions.h"
-#include "GradientScheme.h"
-#include "LinearSolvers.h"
+#include "Scalar.hpp"
+#include "Vector.hpp"
+#include "Cell.hpp"
+#include "Face.hpp"
+#include "CellData.hpp"
+#include "FaceData.hpp"
+#include "BoundaryConditions.hpp"
+#include "GradientScheme.hpp"
+#include "LinearSolvers.hpp"
 
 // Forward declaration
 class Matrix;

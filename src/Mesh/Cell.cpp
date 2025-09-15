@@ -3,7 +3,7 @@
  * @brief Implementation of cell geometric properties and operations
  *****************************************************************************/
 
-#include "Cell.h"
+#include "Cell.hpp"
 
 #include <stdexcept>
 #include <cmath>

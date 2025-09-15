@@ -20,13 +20,13 @@
 #include <string>
 #include <map>
 
-#include "Scalar.h"
-#include "Vector.h"
-#include "Face.h"
-#include "Cell.h"
-#include "BoundaryPatch.h"
-#include "BoundaryData.h"
-#include "CellData.h"
+#include "Scalar.hpp"
+#include "Vector.hpp"
+#include "Face.hpp"
+#include "Cell.hpp"
+#include "BoundaryPatch.hpp"
+#include "BoundaryData.hpp"
+#include "CellData.hpp"
 
 class BoundaryConditions 
 {

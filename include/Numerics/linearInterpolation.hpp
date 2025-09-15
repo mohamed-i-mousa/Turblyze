@@ -10,11 +10,11 @@
 #ifndef LINEAR_INTERPOLATION_H
 #define LINEAR_INTERPOLATION_H
 
-#include "Face.h"
-#include "Scalar.h"
-#include "Vector.h"
-#include "CellData.h"
-#include "BoundaryConditions.h"
+#include "Face.hpp"
+#include "Scalar.hpp"
+#include "Vector.hpp"
+#include "CellData.hpp"
+#include "BoundaryConditions.hpp"
 
 /**
  * @brief Compute linear interpolation weights for a face

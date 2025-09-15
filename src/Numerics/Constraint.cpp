@@ -3,7 +3,7 @@
  * @brief Implementation of constraint handling for CFD fields
  *****************************************************************************/
 
-#include "Constraint.h"
+#include "Constraint.hpp"
 #include <iostream>
 #include <cmath>
 #include <algorithm>

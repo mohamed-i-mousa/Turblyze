@@ -10,10 +10,10 @@
 #include <limits>
 #include <map>
 
-#include "linearInterpolation.h"
-#include "SIMPLE.h"
-#include "Scalar.h"
-#include "flowRate.h"
+#include "linearInterpolation.hpp"
+#include "SIMPLE.hpp"
+#include "Scalar.hpp"
+#include "flowRate.hpp"
 
 SIMPLE::SIMPLE
 (

@@ -20,8 +20,8 @@
 
 #include <string>
 
-#include "Scalar.h"
-#include "Vector.h"
+#include "Scalar.hpp"
+#include "Vector.hpp"
 
 /**
  * @enum BCType 

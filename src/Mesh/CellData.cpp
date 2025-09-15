@@ -3,7 +3,7 @@
  * @brief Implementation of cell-centered data containers
  *****************************************************************************/
 
-#include "CellData.h"
+#include "CellData.hpp"
 #include <stdexcept>
 #include <iostream>
 #include <algorithm>

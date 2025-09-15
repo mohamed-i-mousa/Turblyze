@@ -33,12 +33,12 @@
 #include <eigen3/Eigen/SparseCore>
 #include <eigen3/Eigen/Dense>
 
-#include "Cell.h"
-#include "Face.h"
-#include "BoundaryConditions.h"
-#include "CellData.h"
-#include "ConvectionScheme.h"
-#include "GradientScheme.h"
+#include "Cell.hpp"
+#include "Face.hpp"
+#include "BoundaryConditions.hpp"
+#include "CellData.hpp"
+#include "ConvectionScheme.hpp"
+#include "GradientScheme.hpp"
 
 // Forward declaration of classes
 class KOmegaSST;

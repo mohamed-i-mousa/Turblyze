@@ -3,7 +3,7 @@
  * @brief Implementation of gradient reconstruction schemes
  *****************************************************************************/
 
-#include "GradientScheme.h"
+#include "GradientScheme.hpp"
 
 #include <stdexcept>
 #include <iostream>

@@ -14,9 +14,9 @@
 
 #include <vector>
 
-#include "Scalar.h"
-#include "Vector.h"
-#include "Face.h"
+#include "Scalar.hpp"
+#include "Vector.hpp"
+#include "Face.hpp"
 
 
 class Cell
