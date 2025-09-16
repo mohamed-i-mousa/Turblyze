@@ -23,7 +23,7 @@ This document explains the internal architecture and implementation details of t
 **Headers (`include/`):**
 - **`Core/`**: fundamental types and utilities
   - `Scalar.h`, `Vector.h`, `linearInterpolation.h`, `massFlowRate.h`
-- **`Mesh/`**: geometry, fields, mesh I/O  
+- **`Mesh/`**: geometry, fields, mesh I/O
   - `Face.h`, `Cell.h`, `CellData.h`, `FaceData.h`, `MeshReader.h`, `checkMesh.h`
 - **`BoundaryConditions/`**: patch metadata and physical BC configuration
   - `BoundaryPatch.h`, `BoundaryData.h`, `BoundaryConditions.h`
@@ -33,10 +33,12 @@ This document explains the internal architecture and implementation details of t
   - `KOmegaSST.h`
 - **`PostProcessing/`**: output
   - `VtkWriter.h`
+- **`Config/`**: configuration system
+  - `DictionaryReader.hpp`: OpenFOAM-style dictionary parser
 
 **Sources (`src/`):**
 - Corresponding `.cpp` implementations for all headers
-- `main.cpp`: complete end-to-end example case (mesh path, BCs, schemes, solver controls, export)
+- `main.cpp`: complete end-to-end example case that loads configuration from dictionary file
 
 
 ## Core data structures
@@ -469,6 +471,60 @@ gradMag * maxDistance < 10.0 * phiRange  // Gradient limiting
 - **Mesh validation**: Reader throws early for malformed `.msh` files
 - **ParaView**: PolyData cells are faces; color by face arrays
 - **Debugging**: Use comprehensive std::cout for method tracing
+
+
+## Configuration System
+
+The solver uses `DictionaryReader` for runtime configuration instead of hard-coded parameters.
+
+### DictionaryReader Implementation
+- **Location**: `include/Config/DictionaryReader.hpp` and `src/Config/DictionaryReader.cpp`
+- **Parser**: OpenFOAM-style dictionary format with nested sections
+- **Features**:
+  - Type-safe template-based lookups: `lookup<Scalar>("keyword")`
+  - Optional parameters with defaults: `lookupOrDefault<bool>("key", false)`
+  - Nested dictionaries: `subDict("sectionName")`
+  - Vectors: `(x y z)` format automatically converted to `Vector`
+  - Comments: Single-line `//` and multi-line `/* */`
+
+### Configuration File Structure
+The default `inputSettings` file is organized into logical sections:
+
+```cpp
+mesh { file path; checkQuality bool; }
+physicalProperties { rho scalar; mu scalar; }
+initialConditions { U vector; p scalar; }
+boundaryConditions { U { patch { type value; } } p { ... } }
+numericalSchemes { convection scheme; gradient scheme; }
+SIMPLE { nIterations int; convergenceTolerance scalar; relaxationFactors { U scalar; p scalar; } }
+turbulence { model string; enabled bool; }
+output { format string; filename string; }
+```
+
+### Adding New Configuration Parameters
+1. Add entry to appropriate section in `inputSettings`
+2. Read in `main.cpp` using `config.lookup<Type>("parameter")`
+3. Apply to solver/model as needed
+
+Example:
+```cpp
+// In inputSettings
+SIMPLE
+{
+    newParameter    0.5;    // New parameter
+}
+
+// In main.cpp
+auto simpleDict = config.subDict("SIMPLE");
+Scalar newParam = simpleDict.lookup<Scalar>("newParameter");
+simpleSolver.setNewParameter(newParam);
+```
+
+### Error Handling
+- **File not found**: Throws `std::runtime_error` with clear message
+- **Parse errors**: Reports file name and line number
+- **Type conversion**: Fails gracefully with conversion error messages
+- **Missing parameters**: `lookup()` throws, `lookupOrDefault()` uses fallback
 
 
 ## Call flow

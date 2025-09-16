@@ -72,25 +72,29 @@ The executable `MyCFDCode` will be generated in the `build/` directory.
 Run from the `build/` directory to ensure correct path resolution:
 ```bash
 cd build
-./MyCFDCode
+./MyCFDCode                    # Uses default inputSettings file
+./MyCFDCode custom_config      # Uses custom configuration file
 ```
 
-### Current Default Configuration (src/main.cpp:103)
-- **Mesh**: `../inputFiles/sphere_24k.msh` (24k cell sphere mesh)
-- **Boundary Conditions**: 
-  - Inlet: Fixed velocity (-0.1 m/s in z-direction), zero gradient pressure
+### Configuration File System
+The solver uses a dictionary-based configuration system (default file: `inputSettings`) instead of hard-coded parameters. This allows runtime configuration without recompilation.
+
+### Default Configuration Settings
+The default `inputSettings` file contains:
+- **Mesh**: `../inputFiles/pipe_320k.msh` (320k cell pipe mesh)
+- **Boundary Conditions**:
+  - Inlet: Fixed velocity (0, 0, -0.1) m/s, zero gradient pressure
   - Outlet: Fixed pressure (0 Pa), zero gradient velocity
-  - Sphere: No-slip velocity, zero gradient pressure
   - Walls: No-slip velocity, zero gradient pressure
 - **Discretization**: Upwind convection scheme, least-squares gradients
-- **SIMPLE Parameters**: αU = 0.3, αp = 0.1, tolerance = 1e-6, max iterations = 10
-- **Turbulence**: Disabled by default (line 207)
-- **Output**: `../outputFiles/sphere_24k.vtp`
+- **SIMPLE Parameters**: αU = 0.3, αp = 0.1, tolerance = 1e-6, max iterations = 1
+- **Turbulence**: Enabled by default with k-omega SST model
+- **Output**: `../outputFiles/pipe_320k.vtp`
 
 ### Flow Physics Setup
 - **Fluid Properties**: Air (ρ = 1.225 kg/m³, μ = 1.7894e-5 Pa·s)
 - **Reynolds Number**: Low-Re flow for numerical stability
-- **Flow Type**: External flow around sphere
+- **Flow Type**: Internal pipe flow with cylindrical obstacles
 
 ## Input/Output
 
@@ -120,28 +124,62 @@ Located in `inputFiles/`:
 
 ## Configuration and Customization
 
-### Modifying Simulation Parameters
-Edit `src/main.cpp` to customize:
+### Configuration File Format
+The solver uses OpenFOAM-style dictionary files for configuration. The default `inputSettings` file contains all simulation parameters organized in sections:
 
 ```cpp
-// Mesh selection (line 103)
-std::string meshFilePath = "../inputFiles/your_mesh.msh";
+// Example configuration entries
+mesh
+{
+    file            ../inputFiles/your_mesh.msh;
+    checkQuality    true;
+}
 
-// Physical properties (lines 148-149) 
-const Scalar rho = 1.225;      // Density [kg/m³]
-const Scalar mu = 1.7894e-5;   // Viscosity [Pa·s]
+physicalProperties
+{
+    rho             1.225;      // Density [kg/m³]
+    mu              1.7894e-5;  // Viscosity [Pa·s]
+}
 
-// Boundary conditions (lines 161-180)
-bcManager.setFixedValue("inlet", U_field, Vector(1.0, 0.0, 0.0));  // 1 m/s in x-direction
+SIMPLE
+{
+    nIterations             100;    // Max iterations
+    convergenceTolerance    1e-6;   // Tolerance
+    relaxationFactors
+    {
+        U                   0.7;    // Velocity relaxation
+        p                   0.3;    // Pressure relaxation
+    }
+}
 
-// SIMPLE parameters (lines 202-207)
-simpleSolver.setRelaxationFactors(0.7, 0.3);   // More aggressive relaxation
-simpleSolver.setMaxIterations(100);            // More iterations
-simpleSolver.enableTurbulenceModeling(true);   // Enable k-omega SST
-
-// Discretization scheme (line 196)
-SIMPLE simpleSolver(allFaces, allCells, bcManager, gradScheme, CDS);  // Central difference
+numericalSchemes
+{
+    convection      CentralDifference;  // or Upwind, SecondOrderUpwind
+    gradient        leastSquares;
+}
 ```
+
+### Creating Custom Configurations
+1. Copy the default `inputSettings` file:
+   ```bash
+   cp inputSettings my_case
+   ```
+2. Edit parameters in `my_case`
+3. Run with custom configuration:
+   ```bash
+   ./MyCFDCode my_case
+   ```
+
+### Key Configuration Sections
+- **mesh**: Mesh file path and quality checking options
+- **physicalProperties**: Fluid density and viscosity
+- **initialConditions**: Initial velocity and pressure fields
+- **boundaryConditions**: Boundary condition setup for all patches
+- **numericalSchemes**: Convection and gradient discretization schemes
+- **SIMPLE**: Algorithm parameters and relaxation factors
+- **turbulence**: Turbulence model settings (k-omega SST)
+- **output**: VTK export configuration
+- **constraints**: Optional velocity/pressure limiting (disabled by default)
 
 ### Precision Control
 Switch between single and double precision:
