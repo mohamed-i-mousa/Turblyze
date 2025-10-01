@@ -33,12 +33,12 @@ This document explains the internal architecture and implementation details of t
   - `KOmegaSST.h`
 - **`PostProcessing/`**: output
   - `VtkWriter.h`
-- **`Settings/`**: configuration system
+- **`Setup/`**: setup system
   - `DictionaryReader.hpp`: OpenFOAM-style dictionary parser
 
 **Sources (`src/`):**
 - Corresponding `.cpp` implementations for all headers
-- `main.cpp`: complete end-to-end example case that loads configuration from dictionary file
+- `main.cpp`: complete end-to-end example case that loads setup from dictionary file
 
 
 ## Core data structures
@@ -473,12 +473,12 @@ gradMag * maxDistance < 10.0 * phiRange  // Gradient limiting
 - **Debugging**: Use comprehensive std::cout for method tracing
 
 
-## Configuration System
+## Setup System
 
-The solver uses `DictionaryReader` for runtime configuration instead of hard-coded parameters.
+The solver uses `DictionaryReader` for runtime setup instead of hard-coded parameters.
 
 ### DictionaryReader Implementation
-- **Location**: `include/Config/DictionaryReader.hpp` and `src/Config/DictionaryReader.cpp`
+- **Location**: `include/Setup/DictionaryReader.hpp` and `src/Setup/DictionaryReader.cpp`
 - **Parser**: OpenFOAM-style dictionary format with nested sections
 - **Features**:
   - Type-safe template-based lookups: `lookup<Scalar>("keyword")`
@@ -487,8 +487,8 @@ The solver uses `DictionaryReader` for runtime configuration instead of hard-cod
   - Vectors: `(x y z)` format automatically converted to `Vector`
   - Comments: Single-line `//` and multi-line `/* */`
 
-### Configuration File Structure
-The default `inputSettings` file is organized into logical sections:
+### Setup File Structure
+The default `defaultSetup` file is organized into logical sections:
 
 ```cpp
 mesh { file path; checkQuality bool; }
@@ -501,21 +501,21 @@ turbulence { model string; enabled bool; }
 output { format string; filename string; }
 ```
 
-### Adding New Configuration Parameters
-1. Add entry to appropriate section in `inputSettings`
-2. Read in `main.cpp` using `config.lookup<Type>("parameter")`
+### Adding New Setup Parameters
+1. Add entry to appropriate section in `defaultSetup`
+2. Read in `main.cpp` using `setup.lookup<Type>("parameter")`
 3. Apply to solver/model as needed
 
 Example:
 ```cpp
-// In inputSettings
+// In defaultSetup
 SIMPLE
 {
     newParameter    0.5;    // New parameter
 }
 
 // In main.cpp
-auto simpleDict = config.subDict("SIMPLE");
+auto simpleDict = setup.section("SIMPLE");
 Scalar newParam = simpleDict.lookup<Scalar>("newParameter");
 simpleSolver.setNewParameter(newParam);
 ```

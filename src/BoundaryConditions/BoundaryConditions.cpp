@@ -30,25 +30,25 @@ BoundaryConditions::patch(const std::string& name) const
 
 bool BoundaryConditions::setBC
 (
-    const std::string& patchName, 
-    const std::string& fieldName, 
-    BoundaryData bc_config
+    const std::string& patchName,
+    const std::string& fieldName,
+    BoundaryData bc_setup
 )
 {
-    patchBoundaryData_[patchName][fieldName] = bc_config;
+    patchBoundaryData_[patchName][fieldName] = bc_setup;
     return true;
 }
 
 bool BoundaryConditions::setFixedValue
 (
-    const std::string& patchName, 
-    const std::string& fieldName, 
+    const std::string& patchName,
+    const std::string& fieldName,
     Scalar value
 )
 {
-    BoundaryData bc_config;
-    bc_config.setFixedValue(value);
-    return setBC(patchName, fieldName, bc_config);
+    BoundaryData bc_setup;
+    bc_setup.setFixedValue(value);
+    return setBC(patchName, fieldName, bc_setup);
 }
 
 bool BoundaryConditions::setFixedValue
@@ -58,9 +58,9 @@ bool BoundaryConditions::setFixedValue
     const Vector& value
 )
 {
-    BoundaryData bc_config;
-    bc_config.setFixedValue(value);
-    return setBC(patchName, fieldName, bc_config);
+    BoundaryData bc_setup;
+    bc_setup.setFixedValue(value);
+    return setBC(patchName, fieldName, bc_setup);
 }
 
 bool BoundaryConditions::setFixedGradient
@@ -70,9 +70,9 @@ bool BoundaryConditions::setFixedGradient
     Scalar gradient
 )
 {
-    BoundaryData bc_config;
-    bc_config.setFixedGradient(gradient);
-    return setBC(patchName, fieldName, bc_config);
+    BoundaryData bc_setup;
+    bc_setup.setFixedGradient(gradient);
+    return setBC(patchName, fieldName, bc_setup);
 }
 
 bool BoundaryConditions::setFixedGradient
@@ -82,9 +82,9 @@ bool BoundaryConditions::setFixedGradient
     const Vector& gradient
 )
 {
-    BoundaryData bc_config;
-    bc_config.setFixedGradient(gradient);
-    return setBC(patchName, fieldName, bc_config);
+    BoundaryData bc_setup;
+    bc_setup.setFixedGradient(gradient);
+    return setBC(patchName, fieldName, bc_setup);
 }
 
 bool BoundaryConditions::setZeroGradient
@@ -93,9 +93,9 @@ bool BoundaryConditions::setZeroGradient
     const std::string& fieldName
 )
 {
-    BoundaryData bc_config;
-    bc_config.setZeroGradient();
-    return setBC(patchName, fieldName, bc_config);
+    BoundaryData bc_setup;
+    bc_setup.setZeroGradient();
+    return setBC(patchName, fieldName, bc_setup);
 }
 
 bool BoundaryConditions::setNoSlip
@@ -104,9 +104,9 @@ bool BoundaryConditions::setNoSlip
     const std::string& fieldName
 )
 {
-    BoundaryData bc_config;
-    bc_config.setNoSlip();
-    return setBC(patchName, fieldName, bc_config);
+    BoundaryData bc_setup;
+    bc_setup.setNoSlip();
+    return setBC(patchName, fieldName, bc_setup);
 }
 
 

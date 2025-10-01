@@ -1,17 +1,17 @@
 /******************************************************************************
  * @file DictionaryReader.hpp
- * @brief OpenFOAM-style dictionary parser for configuration files
+ * @brief OpenFOAM-style dictionary parser for setup files
  *
  * This class provides a parser for OpenFOAM-style dictionary files, supporting
  * hierarchical key-value pairs, nested dictionaries, vectors, and comments.
- * It enables runtime configuration without recompilation.
+ * It enables runtime setup without recompilation.
  *
  * @author Mohamed Mousa
  * @date 2025
  *****************************************************************************/
 
-#ifndef DICTIONARY_READER_HPP
-#define DICTIONARY_READER_HPP
+#ifndef SETUP_READER_HPP
+#define SETUP_READER_HPP
 
 #include <string>
 #include <map>
@@ -26,29 +26,29 @@
 #include "Vector.hpp"
 
 /**
- * @brief Parser for OpenFOAM-style dictionary configuration files
+ * @brief Parser for OpenFOAM-style dictionary setup files
  *
  * Supports:
  * - Key-value pairs: keyword value;
- * - Nested dictionaries: subDict { ... }
+ * - Nested sections: section { ... }
  * - Vectors: (x y z)
  * - Lists: (item1 item2 item3)
  * - Comments: single-line (//) and multi-line
  * - Type-safe lookups with template methods
  */
-class DictionaryReader
+class SetupReader
 {
 public:
     /**
      * @brief Construct dictionary reader from file
      * @param filename Path to dictionary file
      */
-    explicit DictionaryReader(const std::string& filename);
+    explicit SetupReader(const std::string& filename);
 
     /**
-     * @brief Construct empty dictionary (for sub-dictionaries)
+     * @brief Construct empty dictionary (for sections)
      */
-    DictionaryReader() = default;
+    SetupReader() = default;
 
     /**
      * @brief Look up a required value
@@ -71,12 +71,12 @@ public:
     T lookupOrDefault(const std::string& keyword, const T& defaultValue) const;
 
     /**
-     * @brief Access a sub-dictionary
-     * @param name Name of sub-dictionary
-     * @return Sub-dictionary object
-     * @throws std::runtime_error if sub-dictionary not found
+     * @brief Access a section
+     * @param name Name of section
+     * @return Section object
+     * @throws std::runtime_error if section not found
      */
-    DictionaryReader subDict(const std::string& name) const;
+    SetupReader section(const std::string& name) const;
 
     /**
      * @brief Check if keyword exists
@@ -86,11 +86,11 @@ public:
     bool found(const std::string& keyword) const;
 
     /**
-     * @brief Check if sub-dictionary exists
-     * @param name Name of sub-dictionary
-     * @return true if sub-dictionary exists
+     * @brief Check if section exists
+     * @param name Name of section
+     * @return true if section exists
      */
-    bool foundSubDict(const std::string& name) const;
+    bool hasSection(const std::string& name) const;
 
     /**
      * @brief Get all keywords in this dictionary
@@ -99,10 +99,10 @@ public:
     std::vector<std::string> keywords() const;
 
     /**
-     * @brief Get all sub-dictionary names
-     * @return Vector of sub-dictionary names
+     * @brief Get all section names
+     * @return Vector of section names
      */
-    std::vector<std::string> subDictNames() const;
+    std::vector<std::string> sectionNames() const;
 
     /**
      * @brief Print dictionary contents (for debugging)
@@ -123,7 +123,7 @@ private:
      * @param dict Dictionary to populate
      * @param terminator Character that ends this dictionary
      */
-    void parseDict(std::istream& is, DictionaryReader& dict, char terminator = '\0');
+    void parseDict(std::istream& is, SetupReader& dict, char terminator = '\0');
 
     /**
      * @brief Skip comments and whitespace
@@ -158,8 +158,8 @@ private:
     // Storage for key-value pairs
     std::map<std::string, std::string> entries_;
 
-    // Storage for sub-dictionaries
-    std::map<std::string, DictionaryReader> subDicts_;
+    // Storage for sections
+    std::map<std::string, SetupReader> sections_;
 
     // Current file being parsed (for error messages)
     mutable std::string currentFile_;
@@ -169,7 +169,7 @@ private:
 // Template specializations for common types
 
 template<>
-inline Scalar DictionaryReader::convertTo<Scalar>(const std::string& value) const
+inline Scalar SetupReader::convertTo<Scalar>(const std::string& value) const
 {
     try {
         return std::stod(value);
@@ -179,7 +179,7 @@ inline Scalar DictionaryReader::convertTo<Scalar>(const std::string& value) cons
 }
 
 template<>
-inline int DictionaryReader::convertTo<int>(const std::string& value) const
+inline int SetupReader::convertTo<int>(const std::string& value) const
 {
     try {
         return std::stoi(value);
@@ -189,7 +189,7 @@ inline int DictionaryReader::convertTo<int>(const std::string& value) const
 }
 
 template<>
-inline bool DictionaryReader::convertTo<bool>(const std::string& value) const
+inline bool SetupReader::convertTo<bool>(const std::string& value) const
 {
     std::string lower = value;
     std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
@@ -204,13 +204,13 @@ inline bool DictionaryReader::convertTo<bool>(const std::string& value) const
 }
 
 template<>
-inline std::string DictionaryReader::convertTo<std::string>(const std::string& value) const
+inline std::string SetupReader::convertTo<std::string>(const std::string& value) const
 {
     return value;
 }
 
 template<>
-inline Vector DictionaryReader::convertTo<Vector>(const std::string& value) const
+inline Vector SetupReader::convertTo<Vector>(const std::string& value) const
 {
     // Expecting format: (x y z)
     std::string trimmed = value;
@@ -232,7 +232,7 @@ inline Vector DictionaryReader::convertTo<Vector>(const std::string& value) cons
 // Template method implementations
 
 template<typename T>
-T DictionaryReader::lookup(const std::string& keyword) const
+T SetupReader::lookup(const std::string& keyword) const
 {
     auto it = entries_.find(keyword);
     if (it == entries_.end()) {
@@ -242,7 +242,7 @@ T DictionaryReader::lookup(const std::string& keyword) const
 }
 
 template<typename T>
-T DictionaryReader::lookupOrDefault(const std::string& keyword, const T& defaultValue) const
+T SetupReader::lookupOrDefault(const std::string& keyword, const T& defaultValue) const
 {
     auto it = entries_.find(keyword);
     if (it == entries_.end()) {

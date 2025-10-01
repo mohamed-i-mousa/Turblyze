@@ -844,7 +844,7 @@ void KOmegaSST::applyTurbulenceBoundaryConditions
      * Apply appropriate boundary conditions for turbulence quantities:
      *
      * This method iterates through actual boundary faces and applies
-     * the boundary conditions specified in the configuration file.
+     * the boundary conditions specified in the setup file.
      *
      * Supported BC types:
      * - fixedValue: Set owner cell value to specified BC value
@@ -952,7 +952,7 @@ void KOmegaSST::applyTurbulenceBoundaryConditions
     }
 
     // Wall treatment for k: k = 0 at wall face, but NOT at the owner cell!
-    // The fixedValue BC from configuration file already handles this correctly.
+    // The fixedValue BC from setup file already handles this correctly.
     // DO NOT override owner cell values here - that destroys the solution!
 }
 

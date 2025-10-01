@@ -40,7 +40,7 @@ add_executable(${PROJECT_NAME}
     src/Numerics/linearInterpolation.cpp
     src/Models/KOmegaSST.cpp
     src/PostProcessing/VtkWriter.cpp
-    src/Settings/DictionaryReader.cpp
+    src/Setup/SetupReader.cpp
 )
 
 # --- Tell CMake about your include directories ---
@@ -51,7 +51,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     include/Numerics/
     include/Models/
     include/PostProcessing/
-    include/Settings/
+    include/Setup/
 )
 
 # Set output directory for executable

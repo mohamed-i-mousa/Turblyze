@@ -72,15 +72,15 @@ The executable `MyCFDCode` will be generated in the `build/` directory.
 Run from the `build/` directory to ensure correct path resolution:
 ```bash
 cd build
-./MyCFDCode                    # Uses default inputSettings file
-./MyCFDCode custom_config      # Uses custom configuration file
+./MyCFDCode                    # Uses default defaultSetup file
+./MyCFDCode customSetup        # Uses custom setup file
 ```
 
-### Configuration File System
-The solver uses a dictionary-based configuration system (default file: `inputSettings`) instead of hard-coded parameters. This allows runtime configuration without recompilation.
+### Setup File System
+The solver uses a dictionary-based setup system (default file: `defaultSetup`) instead of hard-coded parameters. This allows runtime setup without recompilation.
 
-### Default Configuration Settings
-The default `inputSettings` file contains:
+### Default Setup
+The default `defaultSetup` file contains:
 - **Mesh**: `../inputFiles/pipe_320k.msh` (320k cell pipe mesh)
 - **Boundary Conditions**:
   - Inlet: Fixed velocity (0, 0, -0.1) m/s, zero gradient pressure
@@ -122,13 +122,13 @@ Located in `inputFiles/`:
 3. Color by desired field (e.g., `velocityMagnitude`, `pressure`)
 4. Note: Fields are face-centered data (mesh faces become ParaView cells)
 
-## Configuration and Customization
+## Setup and Customization
 
-### Configuration File Format
-The solver uses OpenFOAM-style dictionary files for configuration. The default `inputSettings` file contains all simulation parameters organized in sections:
+### Setup File Format
+The solver uses OpenFOAM-style dictionary files for setup. The default `defaultSetup` file contains all simulation parameters organized in sections:
 
 ```cpp
-// Example configuration entries
+// Example setup entries
 mesh
 {
     file            ../inputFiles/your_mesh.msh;
@@ -159,26 +159,26 @@ numericalSchemes
 }
 ```
 
-### Creating Custom Configurations
-1. Copy the default `inputSettings` file:
+### Creating Custom Setups
+1. Copy the default `defaultSetup` file:
    ```bash
-   cp inputSettings my_case
+   cp defaultSetup mySetup
    ```
-2. Edit parameters in `my_case`
-3. Run with custom configuration:
+2. Edit parameters in `mySetup`
+3. Run with custom setup:
    ```bash
-   ./MyCFDCode my_case
+   ./MyCFDCode mySetup
    ```
 
-### Key Configuration Sections
+### Key Setup Sections
 - **mesh**: Mesh file path and quality checking options
 - **physicalProperties**: Fluid density and viscosity
 - **initialConditions**: Initial velocity and pressure fields
 - **boundaryConditions**: Boundary condition setup for all patches
 - **numericalSchemes**: Convection and gradient discretization schemes
 - **SIMPLE**: Algorithm parameters and relaxation factors
-- **turbulence**: Turbulence model settings (k-omega SST)
-- **output**: VTK export configuration
+- **turbulence**: Turbulence model parameters (k-omega SST)
+- **output**: VTK export setup
 - **constraints**: Optional velocity/pressure limiting (disabled by default)
 
 ### Precision Control

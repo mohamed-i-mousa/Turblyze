@@ -181,7 +181,7 @@ numericalSchemes
 // =============================================================================
 SIMPLE
 {
-    nIterations             100;        // Maximum iterations
+    nIterations             10;         // Maximum iterations
     convergenceTolerance    1e-6;       // Convergence criterion
 
     relaxationFactors

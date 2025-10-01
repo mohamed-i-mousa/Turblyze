@@ -1,22 +1,19 @@
 /******************************************************************************
  * @file DictionaryReader.cpp
  * @brief Implementation of OpenFOAM-style dictionary parser
- *
- * @author Mohamed Mousa
- * @date 2025
  *****************************************************************************/
 
-#include "DictionaryReader.hpp"
+#include "SetupReader.hpp"
 #include <cctype>
 #include <iomanip>
 
-DictionaryReader::DictionaryReader(const std::string& filename)
+SetupReader::SetupReader(const std::string& filename)
 {
     currentFile_ = filename;
     parseFile(filename);
 }
 
-void DictionaryReader::parseFile(const std::string& filename)
+void SetupReader::parseFile(const std::string& filename)
 {
     std::ifstream file(filename);
     if (!file.is_open()) {
@@ -27,7 +24,7 @@ void DictionaryReader::parseFile(const std::string& filename)
     parseDict(file, *this, '\0');
 }
 
-void DictionaryReader::parseDict(std::istream& is, DictionaryReader& dict, char terminator)
+void SetupReader::parseDict(std::istream& is, SetupReader& dict, char terminator)
 {
     std::string token;
 
@@ -46,14 +43,14 @@ void DictionaryReader::parseDict(std::istream& is, DictionaryReader& dict, char 
             return;
         }
 
-        // Read next token to determine if it's a sub-dictionary or key-value pair
+        // Read next token to determine if it's a section or key-value pair
         std::string next = readToken(is);
 
         if (next == "{") {
-            // It's a sub-dictionary
-            DictionaryReader subDict;
-            parseDict(is, subDict, '}');
-            dict.subDicts_[token] = subDict;
+            // It's a section
+            SetupReader section;
+            parseDict(is, section, '}');
+            dict.sections_[token] = section;
         } else {
             // It's a key-value pair
             std::string value = parseValue(is, next);
@@ -68,7 +65,7 @@ void DictionaryReader::parseDict(std::istream& is, DictionaryReader& dict, char 
     }
 }
 
-void DictionaryReader::skipCommentsAndWhitespace(std::istream& is) const
+void SetupReader::skipCommentsAndWhitespace(std::istream& is) const
 {
     char c;
     while (is.get(c)) {
@@ -112,7 +109,7 @@ void DictionaryReader::skipCommentsAndWhitespace(std::istream& is) const
     }
 }
 
-std::string DictionaryReader::readToken(std::istream& is) const
+std::string SetupReader::readToken(std::istream& is) const
 {
     skipCommentsAndWhitespace(is);
 
@@ -142,7 +139,7 @@ std::string DictionaryReader::readToken(std::istream& is) const
     return token;
 }
 
-std::string DictionaryReader::parseValue(std::istream& is, const std::string& firstToken) const
+std::string SetupReader::parseValue(std::istream& is, const std::string& firstToken) const
 {
     std::string value = firstToken;
 
@@ -186,26 +183,26 @@ std::string DictionaryReader::parseValue(std::istream& is, const std::string& fi
     return value;
 }
 
-DictionaryReader DictionaryReader::subDict(const std::string& name) const
+SetupReader SetupReader::section(const std::string& name) const
 {
-    auto it = subDicts_.find(name);
-    if (it == subDicts_.end()) {
-        throw std::runtime_error("Sub-dictionary '" + name + "' not found");
+    auto it = sections_.find(name);
+    if (it == sections_.end()) {
+        throw std::runtime_error("Section '" + name + "' not found");
     }
     return it->second;
 }
 
-bool DictionaryReader::found(const std::string& keyword) const
+bool SetupReader::found(const std::string& keyword) const
 {
     return entries_.find(keyword) != entries_.end();
 }
 
-bool DictionaryReader::foundSubDict(const std::string& name) const
+bool SetupReader::hasSection(const std::string& name) const
 {
-    return subDicts_.find(name) != subDicts_.end();
+    return sections_.find(name) != sections_.end();
 }
 
-std::vector<std::string> DictionaryReader::keywords() const
+std::vector<std::string> SetupReader::keywords() const
 {
     std::vector<std::string> keys;
     for (const auto& entry : entries_) {
@@ -214,16 +211,16 @@ std::vector<std::string> DictionaryReader::keywords() const
     return keys;
 }
 
-std::vector<std::string> DictionaryReader::subDictNames() const
+std::vector<std::string> SetupReader::sectionNames() const
 {
     std::vector<std::string> names;
-    for (const auto& subDict : subDicts_) {
-        names.push_back(subDict.first);
+    for (const auto& section : sections_) {
+        names.push_back(section.first);
     }
     return names;
 }
 
-void DictionaryReader::print(int indent) const
+void SetupReader::print(int indent) const
 {
     std::string indentStr(indent * 4, ' ');
 
@@ -232,10 +229,10 @@ void DictionaryReader::print(int indent) const
         std::cout << indentStr << key << ": " << value << std::endl;
     }
 
-    // Print sub-dictionaries
-    for (const auto& [name, subDict] : subDicts_) {
+    // Print sections
+    for (const auto& [name, section] : sections_) {
         std::cout << indentStr << name << " {" << std::endl;
-        subDict.print(indent + 1);
+        section.print(indent + 1);
         std::cout << indentStr << "}" << std::endl;
     }
 }

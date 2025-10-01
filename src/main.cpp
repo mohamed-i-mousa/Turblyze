@@ -1,9 +1,16 @@
 /******************************************************************************
  * @file main.cpp
- * @brief Main entry point for the 3D incompressible CFD solver with config file support
- *
- * This version uses DictionaryReader to load configuration from a dictionary file
- * instead of hard-coding parameters.
+ * @brief Main entry point for the 3D incompressible CFD solver
+ * 
+ * This file contains the main function that orchestrates the entire CFD
+ * simulation process using the SIMPLE algorithm. It handles mesh reading, 
+ * boundary condition setup, solver setup, solution computation, 
+ * and results export.
+ * 
+ * The solver implements:
+ * - 3D incompressible Navier-Stokes equations
+ * - SIMPLE algorithm for pressure-velocity coupling
+ * - k-omega SST turbulence modeling
  *
  * @author Mohamed Mousa
  * @date 2025
@@ -44,71 +51,82 @@
 #include "VtkWriter.hpp"
 #include "checkMesh.hpp"
 
-// Configuration
-#include "DictionaryReader.hpp"
+// Setup
+#include "SetupReader.hpp"
 
 int main(int argc, char* argv[])
 {
     // Start timing the total execution
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    std::cout << "--- Welcome to the CFD Solver with SIMPLE Algorithm ---" << std::endl;
-    std::cout << "Running with precision: " << SCALAR_MODE << std::endl;
-    std::cout << std::fixed << std::setprecision(6);
+    std::cout   << "--- Welcome to the CFD Solver with SIMPLE Algorithm ---"
+                << std::endl;
+
+    std::cout   << "Running with precision: " << SCALAR_MODE
+                << std::endl;
+
+    std::cout   << std::fixed << std::setprecision(6);
 
     try
     {
         /**********************************************************************
-         * -------------------- 0. LOAD CONFIGURATION ------------------------
+         * ----------------------- 0. LOAD SETUP -----------------------------
          *********************************************************************/
 
-        std::string configFile = "inputSettings";  // Default configuration file
-        if (argc > 1) {
-            configFile = argv[1];
-            std::cout << "Using configuration file: " << configFile << std::endl;
-        } else {
-            std::cout << "Using default configuration: " << configFile << std::endl;
+        std::string setupFile = "../defaultSetup";
+
+        if (argc > 1)
+        {
+            setupFile = argv[1];
+
+            std::cout   << "Using setup file: " << setupFile
+                        << std::endl;
+        }
+        else
+        {
+            std::cout   << "Using default setup: " << setupFile
+                        << std::endl;
         }
 
-        DictionaryReader config(configFile);
+        SetupReader setup(setupFile);
 
-        // Extract mesh configuration
-        auto meshDict = config.subDict("mesh");
-        std::string meshFilePath = meshDict.lookup<std::string>("file");
-        bool checkQuality = meshDict.lookupOrDefault<bool>("checkQuality", true);
+        // Extract mesh setup
+        auto mesh = setup.section("mesh");
+        std::string meshFilePath = mesh.lookup<std::string>("file");
+        bool checkQuality = mesh.lookupOrDefault<bool>("checkQuality", true);
 
         // Extract physical properties
-        auto physProps = config.subDict("physicalProperties");
+        auto physProps = setup.section("physicalProperties");
         const Scalar rho = physProps.lookup<Scalar>("rho");
         const Scalar mu = physProps.lookup<Scalar>("mu");
 
         // Extract initial conditions
-        auto initConds = config.subDict("initialConditions");
+        auto initConds = setup.section("initialConditions");
         Vector initialVelocity = initConds.lookup<Vector>("U");
         Scalar initialPressure = initConds.lookup<Scalar>("p");
 
         // Extract numerical schemes
-        auto schemes = config.subDict("numericalSchemes");
+        auto schemes = setup.section("numericalSchemes");
         std::string convectionScheme = schemes.lookup<std::string>("convection");
 
-        // Extract SIMPLE settings
-        auto simpleDict = config.subDict("SIMPLE");
+        // Extract SIMPLE parameters
+        auto simpleDict = setup.section("SIMPLE");
         int maxIterations = simpleDict.lookup<int>("nIterations");
         Scalar convergenceTolerance = simpleDict.lookup<Scalar>("convergenceTolerance");
 
-        auto relaxFactors = simpleDict.subDict("relaxationFactors");
+        auto relaxFactors = simpleDict.section("relaxationFactors");
         Scalar alphaU = relaxFactors.lookup<Scalar>("U");
         Scalar alphaP = relaxFactors.lookup<Scalar>("p");
         Scalar alphaK = relaxFactors.lookupOrDefault<Scalar>("k", 0.5);
         Scalar alphaOmega = relaxFactors.lookupOrDefault<Scalar>("omega", 0.5);
 
-        // Extract turbulence settings
-        auto turbDict = config.subDict("turbulence");
+        // Extract turbulence parameters
+        auto turbDict = setup.section("turbulence");
         bool turbulenceEnabled = turbDict.lookup<bool>("enabled");
         std::string turbulenceModel = turbDict.lookup<std::string>("model");
 
-        // Extract output configuration
-        auto outputDict = config.subDict("output");
+        // Extract output setup
+        auto outputDict = setup.section("output");
         std::string vtkOutputFilename = outputDict.lookup<std::string>("filename");
 
         // Extract constraints (optional)
@@ -118,15 +136,15 @@ int main(int argc, char* argv[])
         Scalar minPressure = -0.05;
         Scalar maxPressure = 0.05;
 
-        if (config.foundSubDict("constraints")) {
-            auto constraintsDict = config.subDict("constraints");
-            if (constraintsDict.foundSubDict("velocity")) {
-                auto velConstraint = constraintsDict.subDict("velocity");
+        if (setup.hasSection("constraints")) {
+            auto constraintsDict = setup.section("constraints");
+            if (constraintsDict.hasSection("velocity")) {
+                auto velConstraint = constraintsDict.section("velocity");
                 velocityConstraintEnabled = velConstraint.lookup<bool>("enabled");
                 maxVelocity = velConstraint.lookup<Scalar>("maxVelocity");
             }
-            if (constraintsDict.foundSubDict("pressure")) {
-                auto presConstraint = constraintsDict.subDict("pressure");
+            if (constraintsDict.hasSection("pressure")) {
+                auto presConstraint = constraintsDict.section("pressure");
                 pressureConstraintEnabled = presConstraint.lookup<bool>("enabled");
                 minPressure = presConstraint.lookup<Scalar>("minPressure");
                 maxPressure = presConstraint.lookup<Scalar>("maxPressure");
@@ -144,7 +162,8 @@ int main(int argc, char* argv[])
         std::vector<Cell> allCells;
         std::vector<BoundaryPatch> allBoundaryPatches;
 
-        readMshFile(
+        readMshFile
+        (
             meshFilePath,
             allNodes,
             allFaces,
@@ -187,15 +206,15 @@ int main(int argc, char* argv[])
             bcManager.addPatch(patch);
         }
 
-        // Load boundary conditions from configuration
-        auto bcDict = config.subDict("boundaryConditions");
+        // Load boundary conditions from setup
+        auto bcDict = setup.section("boundaryConditions");
 
         // Process velocity boundary conditions
-        if (bcDict.foundSubDict("U")) {
-            auto velocityBCs = bcDict.subDict("U");
+        if (bcDict.hasSection("U")) {
+            auto velocityBCs = bcDict.section("U");
 
-            for (const auto& patchName : velocityBCs.subDictNames()) {
-                auto patchBC = velocityBCs.subDict(patchName);
+            for (const auto& patchName : velocityBCs.sectionNames()) {
+                auto patchBC = velocityBCs.section(patchName);
                 std::string bcType = patchBC.lookup<std::string>("type");
 
                 if (bcType == "fixedValue") {
@@ -210,11 +229,11 @@ int main(int argc, char* argv[])
         }
 
         // Process pressure boundary conditions
-        if (bcDict.foundSubDict("p")) {
-            auto pressureBCs = bcDict.subDict("p");
+        if (bcDict.hasSection("p")) {
+            auto pressureBCs = bcDict.section("p");
 
-            for (const auto& patchName : pressureBCs.subDictNames()) {
-                auto patchBC = pressureBCs.subDict(patchName);
+            for (const auto& patchName : pressureBCs.sectionNames()) {
+                auto patchBC = pressureBCs.section(patchName);
                 std::string bcType = patchBC.lookup<std::string>("type");
 
                 if (bcType == "fixedValue") {
@@ -227,11 +246,11 @@ int main(int argc, char* argv[])
         }
 
         // Process wall distance field boundary conditions (for turbulence)
-        if (bcDict.foundSubDict("phi_wall")) {
-            auto phiWallBCs = bcDict.subDict("phi_wall");
+        if (bcDict.hasSection("phi_wall")) {
+            auto phiWallBCs = bcDict.section("phi_wall");
 
-            for (const auto& patchName : phiWallBCs.subDictNames()) {
-                auto patchBC = phiWallBCs.subDict(patchName);
+            for (const auto& patchName : phiWallBCs.sectionNames()) {
+                auto patchBC = phiWallBCs.section(patchName);
                 std::string bcType = patchBC.lookup<std::string>("type");
 
                 if (bcType == "fixedValue") {
@@ -242,11 +261,11 @@ int main(int argc, char* argv[])
         }
 
         // Process turbulent kinetic energy boundary conditions
-        if (bcDict.foundSubDict("k")) {
-            auto kBCs = bcDict.subDict("k");
+        if (bcDict.hasSection("k")) {
+            auto kBCs = bcDict.section("k");
 
-            for (const auto& patchName : kBCs.subDictNames()) {
-                auto patchBC = kBCs.subDict(patchName);
+            for (const auto& patchName : kBCs.sectionNames()) {
+                auto patchBC = kBCs.section(patchName);
                 std::string bcType = patchBC.lookup<std::string>("type");
 
                 if (bcType == "fixedValue") {
@@ -259,11 +278,11 @@ int main(int argc, char* argv[])
         }
 
         // Process specific dissipation rate boundary conditions
-        if (bcDict.foundSubDict("omega")) {
-            auto omegaBCs = bcDict.subDict("omega");
+        if (bcDict.hasSection("omega")) {
+            auto omegaBCs = bcDict.section("omega");
 
-            for (const auto& patchName : omegaBCs.subDictNames()) {
-                auto patchBC = omegaBCs.subDict(patchName);
+            for (const auto& patchName : omegaBCs.sectionNames()) {
+                auto patchBC = omegaBCs.section(patchName);
                 std::string bcType = patchBC.lookup<std::string>("type");
 
                 if (bcType == "fixedValue") {
@@ -283,7 +302,7 @@ int main(int argc, char* argv[])
 
         std::cout << "\n--- 3. Initializing SIMPLE Solver ---" << std::endl;
 
-        // Select convection scheme based on configuration
+        // Select convection scheme based on setup
         ConvectionScheme* selectedScheme = nullptr;
         std::unique_ptr<UpwindScheme> uds;
         std::unique_ptr<CentralDifferenceScheme> cds;
@@ -309,7 +328,7 @@ int main(int argc, char* argv[])
 
         SIMPLE simpleSolver(allFaces, allCells, bcManager, gradScheme, *selectedScheme);
 
-        // Configure turbulence modeling BEFORE initialization
+        // Setup turbulence modeling BEFORE initialization
         // (turbulence model is created inside initialize() if enabled)
         simpleSolver.enableTurbulenceModeling(turbulenceEnabled);
         if (turbulenceEnabled) {
@@ -321,7 +340,7 @@ int main(int argc, char* argv[])
         simpleSolver.initialize(initialVelocity, initialPressure);
         simpleSolver.setPhysicalProperties(rho, mu);
 
-        // Configure SIMPLE parameters
+        // Setup SIMPLE parameters
         simpleSolver.setRelaxationFactors(alphaU, alphaP, alphaK, alphaOmega);
         simpleSolver.setConvergenceTolerance(convergenceTolerance);
         simpleSolver.setMaxIterations(maxIterations);
@@ -336,7 +355,7 @@ int main(int argc, char* argv[])
             std::cout << "  omega relaxation: " << alphaOmega << std::endl;
         }
 
-        // Configure field constraints
+        // Setup field constraints
         Constraint* constraintSystem = simpleSolver.getConstraintSystem();
         if (constraintSystem) {
             if (velocityConstraintEnabled) {
@@ -457,7 +476,7 @@ int main(int argc, char* argv[])
 
         std::cout << "\n--- Simulation Complete ---" << std::endl;
         std::cout << "Total execution time: " << duration.count() << " seconds" << std::endl;
-        std::cout << "Configuration file used: " << configFile << std::endl;
+        std::cout << "Setup file used: " << setupFile << std::endl;
     }
     catch (const std::exception& e) {
         std::cerr << "\nError: " << e.what() << std::endl;

@@ -1,12 +1,12 @@
-# Configuration Reference Guide
+# Setup File Reference Guide
 
-This document provides a comprehensive reference for configuring the MyCFDCode solver using dictionary files.
+This document provides a comprehensive reference for setting up the MyCFDCode solver using dictionary files.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Dictionary File Syntax](#dictionary-file-syntax)
-- [Configuration Sections](#configuration-sections)
+- [Setup Sections](#setup-sections)
 - [Complete Parameter Reference](#complete-parameter-reference)
 - [Examples](#examples)
 - [Common Use Cases](#common-use-cases)
@@ -14,11 +14,11 @@ This document provides a comprehensive reference for configuring the MyCFDCode s
 
 ## Overview
 
-The MyCFDCode solver uses OpenFOAM-style dictionary files for configuration. This allows runtime parameter changes without recompilation. The default configuration file is `inputSettings`, but you can specify any file:
+The MyCFDCode solver uses OpenFOAM-style dictionary files for setup. This allows runtime parameter changes without recompilation. The default setup file is `defaultSetup`, but you can specify any file:
 
 ```bash
-./MyCFDCode                    # Uses default inputSettings
-./MyCFDCode custom_config      # Uses custom configuration
+./MyCFDCode                    # Uses default defaultSetup
+./MyCFDCode customSetup        # Uses custom setup
 ```
 
 ## Dictionary File Syntax
@@ -53,7 +53,7 @@ section
    multi-line comment */
 ```
 
-## Configuration Sections
+## Setup Sections
 
 ### 1. mesh
 Controls mesh reading and quality checking.
@@ -89,7 +89,7 @@ initialConditions
 ```
 
 ### 4. boundaryConditions
-Configures boundary conditions for all fields.
+Sets up boundary conditions for all fields.
 
 ```cpp
 boundaryConditions
@@ -219,7 +219,7 @@ linearSolvers
 ```
 
 ### 8. turbulence
-Turbulence model configuration.
+Turbulence model setup.
 
 ```cpp
 turbulence
@@ -267,7 +267,7 @@ constraints
 ```
 
 ### 10. output
-Output configuration.
+Output setup.
 
 ```cpp
 output
@@ -302,7 +302,7 @@ runControl
 ## Complete Parameter Reference
 
 ### Required Parameters
-These parameters must be present in every configuration file:
+These parameters must be present in every setup file:
 
 | Section | Parameter | Type | Description |
 |---------|-----------|------|-------------|
@@ -351,9 +351,9 @@ turbulence { model kOmegaSST; enabled false; }
 output { format VTK; filename ../outputFiles/pipe.vtp; }
 ```
 
-### Example 2: Turbulent Flow Configuration
+### Example 2: Turbulent Flow Setup
 ```cpp
-// Copy inputSettings to new file: cp inputSettings turbulent_flow
+// Copy defaultSetup to new file: cp defaultSetup turbulentSetup
 // Then modify these sections:
 physicalProperties { rho 998.2; mu 1.003e-3; }  // Water properties
 initialConditions { U (0 0 -2.0); p 0; }        // Higher velocity
@@ -447,11 +447,11 @@ linearSolvers
 ### Best Practices
 
 1. **Start conservative**: Use low relaxation factors and simple schemes initially
-2. **Validate incrementally**: Test with coarse mesh and simple settings first
-3. **Copy working configurations**: Use example files as starting points
+2. **Validate incrementally**: Test with coarse mesh and simple setup first
+3. **Copy working setups**: Use example files as starting points
 4. **Check boundary conditions**: Ensure all mesh patches have appropriate BCs
 5. **Monitor convergence**: Enable output monitoring to track solution progress
-6. **Use appropriate precision**: Match solver settings to physics requirements
+6. **Use appropriate precision**: Match solver setup to physics requirements
 
 ### Validation
 

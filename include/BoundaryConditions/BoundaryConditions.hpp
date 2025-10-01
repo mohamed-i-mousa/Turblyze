@@ -47,14 +47,14 @@ public:
      * @brief Set generic boundary condition
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field (U, p, k, omega, etc.)
-     * @param bc_config Boundary condition configuration
+     * @param bc_setup Boundary condition setup
      * @return True if successfully set
      */
     bool setBC
     (
-        const std::string& patchName, 
-        const std::string& fieldName, 
-        BoundaryData bc_config
+        const std::string& patchName,
+        const std::string& fieldName,
+        BoundaryData bc_setup
     );
 
     /**
