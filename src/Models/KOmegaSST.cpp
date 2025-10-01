@@ -21,7 +21,7 @@ KOmegaSST::KOmegaSST
 )
     : k("k", cells.size(), 1e-6),
       omega("omega", cells.size(), 1.0),
-      mu_t("mu_t", cells.size(), 0.0),
+      nu_t("nu_t", cells.size(), 0.0),
       wallDistance("wallDistance", cells.size(), 1.0),
       wallShearStress("wallShearStress", cells.size(), 0.0),
       grad_k("grad_k", cells.size(), Vector(0.0, 0.0, 0.0)),
@@ -90,8 +90,8 @@ void KOmegaSST::initialize
             1e-4
         );
         
-        // Initialize turbulent kinematic viscosity: νₜ = k / ω  
-        mu_t[i] = k[i] / omega[i];  // This is actually nu_t (kinematic)
+        // Initialize turbulent kinematic viscosity: νₜ = k / ω
+        nu_t[i] = k[i] / omega[i];
     }
     
     // Step 3: Apply turbulence boundary conditions
@@ -226,7 +226,9 @@ void KOmegaSST::calculateWallDistance()
 void KOmegaSST::solve
 (
     const VectorField& U_field,
-    Scalar nu_lam
+    Scalar nu_lam,
+    Scalar alpha_k,
+    Scalar alpha_omega
 )
 {
     // Extract velocity components
@@ -275,11 +277,11 @@ void KOmegaSST::solve
     // Calculate cross-diffusion term for SST
     calculateCrossDiffusion();
 
-    // Solve k equation
-    solveKEquation(U_field, gradU, nu_lam);
+    // Solve k equation with under-relaxation
+    solveKEquation(U_field, gradU, nu_lam, alpha_k);
 
-    // Solve omega equation
-    solveOmegaEquation(U_field, gradU, nu_lam);
+    // Solve omega equation with under-relaxation
+    solveOmegaEquation(U_field, gradU, nu_lam, alpha_omega);
 
     // Apply near-wall treatment for omega
     applyNearWallTreatmentOmega(nu_lam);
@@ -298,20 +300,21 @@ void KOmegaSST::solveOmegaEquation
 (
     const VectorField& U_field,
     const std::vector<VectorField>&,
-    Scalar nu_lam
+    Scalar nu_lam,
+    Scalar alpha_omega
 )
-{   
+{
     /**
      * Omega transport equation (kinematic formulation):
      * ∂ω/∂t + ∇·(Uω) = γ·S² - β·ω² + ∇·[(ν + σ_ω·νₜ)∇ω] + D_ω
-     * 
+     *
      * Where:
      * - γ·S² = production term (kinematic)
      * - D_ω = cross-diffusion term (only for SST model)
      * - γ, β, σ_ω are blended constants
      */
-    
-    std::cout << "  Solving omega transport equation..." << std::endl;
+
+    std::cout << "  Solving omega transport equation (relaxation = " << alpha_omega << ")..." << std::endl;
 
     // omega_old is already stored as a member variable
 
@@ -325,7 +328,7 @@ void KOmegaSST::solveOmegaEquation
             F1[i] * constants.sigma_omega1
           + (S(1.0) - F1[i]) * constants.sigma_omega2;
 
-        GammaOmega[i] = nu_lam + sigma_omega * mu_t[i];  // All kinematic
+        GammaOmega[i] = nu_lam + sigma_omega * nu_t[i];
     }
 
     // Construct transport matrix for omega with variable diffusion
@@ -342,7 +345,7 @@ void KOmegaSST::solveOmegaEquation
         gradientScheme,
         "omega"
     );
-    
+
     auto& A_matrix = const_cast<Eigen::SparseMatrix<Scalar>&>
     (
         matrixConstruct->getMatrixA()
@@ -352,7 +355,7 @@ void KOmegaSST::solveOmegaEquation
     (
         matrixConstruct->getVectorB()
     );
-    
+
     // Add omega-specific source terms and modify diffusion
     for (size_t i = 0; i < allCells.size(); ++i)
     {
@@ -385,6 +388,15 @@ void KOmegaSST::solveOmegaEquation
         // For simplicity, we approximate this effect
     }
 
+    // Apply implicit under-relaxation (Patankar's method)
+    // Modify matrix: A' = A/α, b' = b + (1-α)/α * A_diag * φ_old
+    for (size_t i = 0; i < allCells.size(); ++i)
+    {
+        Scalar A_diag = A_matrix.coeff(i, i);
+        A_matrix.coeffRef(i, i) = A_diag / alpha_omega;
+        b_vector(i) += (S(1.0) - alpha_omega) / alpha_omega * A_diag * omega_old[i];
+    }
+
     // Solve omega equation
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> omega_solution(allCells.size());
     for (size_t i = 0; i < allCells.size(); ++i)
@@ -409,7 +421,7 @@ void KOmegaSST::solveOmegaEquation
             omega[i] = std::max(omega_solution(i), 1e-6);  // Ensure positive omega
         }
     }
-    
+
     // Apply boundary conditions
     applyTurbulenceBoundaryConditions("omega", omega, U_field, nu_lam);
 }
@@ -441,20 +453,21 @@ void KOmegaSST::solveKEquation
 (
     const VectorField& U_field,
     const std::vector<VectorField>&,
-    Scalar nu_lam
+    Scalar nu_lam,
+    Scalar alpha_k
 )
 {
     /**
      * k transport equation (kinematic formulation):
      * ∂k/∂t + ∇·(Uk) = P_k - β*·kω + ∇·[(ν + σ_k·νₜ)∇k]
-     * 
+     *
      * Where:
      * - P_k = limited production term (kinematic)
-     * - β* = 0.09 (destruction coefficient) 
+     * - β* = 0.09 (destruction coefficient)
      * - σ_k = blended diffusion coefficient
      */
-    
-    std::cout << "  Solving k transport equation..." << std::endl;
+
+    std::cout << "  Solving k transport equation (relaxation = " << alpha_k << ")..." << std::endl;
 
     // k_old is already stored as a member variable
 
@@ -467,7 +480,7 @@ void KOmegaSST::solveKEquation
             F1[i] * constants.sigma_k1
           + (S(1.0) - F1[i]) * constants.sigma_k2;
 
-        GammaK[i] = nu_lam + sigma_k * mu_t[i];  // All kinematic
+        GammaK[i] = nu_lam + sigma_k * nu_t[i];
     }
     ScalarField k_source("k_source", allCells.size(), 0.0);
     CentralDifferenceScheme cds_k;
@@ -482,7 +495,7 @@ void KOmegaSST::solveKEquation
         gradientScheme,
         "k"
     );
-    
+
     auto& A_matrix = const_cast<Eigen::SparseMatrix<Scalar>&>
     (
         matrixConstruct->getMatrixA()
@@ -492,7 +505,7 @@ void KOmegaSST::solveKEquation
     (
         matrixConstruct->getVectorB()
     );
-    
+
     // Add k-specific source terms
     for (size_t i = 0; i < allCells.size(); ++i)
     {
@@ -505,6 +518,15 @@ void KOmegaSST::solveKEquation
         // Destruction term: -β*·kω (kinematic formulation)
         const Scalar destruction = constants.beta_star * omega[i];
         A_matrix.coeffRef(i, i) += destruction * cellVolume;
+    }
+
+    // Apply implicit under-relaxation (Patankar's method)
+    // Modify matrix: A' = A/α, b' = b + (1-α)/α * A_diag * φ_old
+    for (size_t i = 0; i < allCells.size(); ++i)
+    {
+        Scalar A_diag = A_matrix.coeff(i, i);
+        A_matrix.coeffRef(i, i) = A_diag / alpha_k;
+        b_vector(i) += (S(1.0) - alpha_k) / alpha_k * A_diag * k_old[i];
     }
 
     // Solve k equation
@@ -530,7 +552,7 @@ void KOmegaSST::solveKEquation
             k[i] = std::max(k_solution(i), 1e-8);  // Ensure positive k
         }
     }
-    
+
     // Apply boundary conditions
     applyTurbulenceBoundaryConditions("k", k, U_field, nu_lam);
 }
@@ -585,11 +607,11 @@ void KOmegaSST::calculateTurbulentViscosity
         
         // SST turbulent viscosity formula: νₜ = a₁ * k / max(a₁ * ω, S * F₂)
         Scalar denominator = std::max(constants.a1 * omega[i], S * F2[i]);
-        mu_t[i] = constants.a1 * k[i] / (denominator + 1e-20);  // This is actually nu_t (kinematic)
+        nu_t[i] = constants.a1 * k[i] / (denominator + 1e-20);
         
         // Limit turbulent viscosity to reasonable values
-        mu_t[i] = std::min(mu_t[i], 1000.0 * nu_lam);  // Max 1000 times laminar kinematic viscosity
-        mu_t[i] = std::max(mu_t[i], 0.0);              // Ensure non-negative
+        nu_t[i] = std::min(nu_t[i], 1000.0 * nu_lam);  // Max 1000 times laminar kinematic viscosity
+        nu_t[i] = std::max(nu_t[i], 0.0);              // Ensure non-negative
     }
 }
 
@@ -614,12 +636,12 @@ void KOmegaSST::applyWallCorrections()
         Scalar f_mu = 1.0 - std::exp(-y / delta);
         
         // Apply damping to turbulent viscosity
-        mu_t[i] *= f_mu;
+        nu_t[i] *= f_mu;
         
         // Ensure μₜ = 0 at walls (y → 0)
         if (y < 1e-6) 
         {
-            mu_t[i] = 0.0;
+            nu_t[i] = 0.0;
         }
     }
 }
@@ -671,7 +693,7 @@ ScalarField KOmegaSST::getEffectiveViscosity(Scalar nu_lam) const
     
     for (size_t i = 0; i < allCells.size(); ++i) 
     {
-        nu_eff[i] = nu_lam + mu_t[i];  // mu_t is actually nu_t (kinematic)
+        nu_eff[i] = nu_lam + nu_t[i];
     }
     
     return nu_eff;
@@ -703,21 +725,21 @@ void KOmegaSST::calculateBlendingFunctions
         y = std::max(y, 1e-12);
         omega[i] = std::max(omega[i], 1e-12);
         
-        // Arguments for blending functions
+        // Arguments for blending functions (kinematic formulation - no rho!)
         Scalar arg1_1 = sqrt_k / (constants.beta_star * omega[i] * y);
-        Scalar arg1_2 = 500.0 * rho * nu_lam / (omega[i] * y * y);
-        
+        Scalar arg1_2 = 500.0 * nu_lam / (omega[i] * y * y);  // Fixed: removed rho
+
         // Calculate CDkw for arg1_3 (cross-diffusion for blending function)
         Scalar dot_product = dot(grad_k[i], grad_omega[i]);
 
-        Scalar CDkw = 
+        Scalar CDkw =
             std::max
             (
                 2.0 * constants.sigma_omega2 / omega[i] * dot_product,
                 1e-10
             );
 
-        Scalar arg1_3 = 
+        Scalar arg1_3 =
             4.0 * constants.sigma_omega2 * k[i] / (CDkw * y * y);
         
         Scalar arg1 = std::min(std::max(arg1_1, arg1_2), arg1_3);
@@ -777,7 +799,7 @@ void KOmegaSST::calculateProductionTerms
         }
         
         // Production of k: P_k = νₜ * S² (kinematic formulation)
-        production_k[i] = mu_t[i] * S * S;  // mu_t is actually nu_t
+        production_k[i] = nu_t[i] * S * S;
         
         // Production of omega: P_ω = (γ/νₜ) * P_k = γ * S²
         Scalar gamma = 
@@ -820,37 +842,118 @@ void KOmegaSST::applyTurbulenceBoundaryConditions
 {
     /**
      * Apply appropriate boundary conditions for turbulence quantities:
-     * 
-     * At walls:
-     * - k = 0 (no turbulent kinetic energy at wall)
-     * - ω = ω_wall (computed from viscous sublayer)
-     * 
-     * At inlets:
-     * - k and ω based on turbulence intensity and length scale
-     * 
-     * At outlets:
-     * - Zero gradient conditions
+     *
+     * This method iterates through actual boundary faces and applies
+     * the boundary conditions specified in the configuration file.
+     *
+     * Supported BC types:
+     * - fixedValue: Set owner cell value to specified BC value
+     * - zeroGradient: Owner cell value unchanged (gradient = 0)
+     * - Wall treatment: Special handling for k and omega at walls
      */
-    
-    // This is a simplified implementation
-    // In practice, you would iterate through boundary faces and apply specific conditions
-    for (size_t i = 0; i < allCells.size(); ++i)
+
+    // Build face-to-patch map for efficient BC lookup
+    std::map<size_t, const BoundaryPatch*> faceToPatch;
+    for (const auto& patch : bcManager.patches())
     {
-        if (wallDistance[i] < 1e-6)   // At wall
+        for (size_t faceIdx = patch.firstFaceIndex(); faceIdx <= patch.lastFaceIndex(); ++faceIdx)
         {
-            if (fieldName == "k")
+            faceToPatch[faceIdx] = &patch;
+        }
+    }
+
+    // Iterate through all boundary faces and apply BCs
+    for (const auto& face : allFaces)
+    {
+        if (!face.isBoundary()) continue;
+
+        size_t ownerCell = face.ownerCell();
+        const BoundaryPatch* patch = faceToPatch.at(face.id());
+
+        // Query boundary condition from bcManager
+        const BoundaryData* bc = bcManager.fieldBC(patch->patchName(), fieldName);
+
+        if (bc == nullptr)
+        {
+            // No BC specified for this field on this patch - use zero gradient as default
+            continue;
+        }
+
+        // Apply boundary condition based on type
+        switch (bc->type())
+        {
+            case BCType::FIXED_VALUE:
             {
-                field[i] = 0.0;  // k = 0 at wall
-            } 
-            else if (fieldName == "omega") 
+                // Set owner cell to fixed boundary value
+                field[ownerCell] = bc->scalarValue();
+                break;
+            }
+
+            case BCType::ZERO_GRADIENT:
             {
-                // ω_wall = 6μ/(ρβ₁y²) for viscous sublayer
-                Scalar y = std::max(wallDistance[i], 1e-8);
-                field[i] = 6.0 * nu_lam / (constants.beta_1 * y * y);
-                field[i] = std::min(field[i], 1e6);  // Limit maximum value
+                // Zero gradient: owner cell value remains unchanged
+                // (interior solution determines the value)
+                break;
+            }
+
+            case BCType::FIXED_GRADIENT:
+            {
+                // Fixed gradient: adjust owner cell based on gradient
+                Scalar grad_n = bc->scalarValue();  // Normal gradient
+                Scalar dist = face.d_Pf_mag();      // Distance from cell to face
+
+                // Face value with gradient: φ_face = φ_cell + grad_n * dist
+                // Rearranging: φ_cell = φ_face - grad_n * dist
+                // For now, apply gradient correction
+                field[ownerCell] -= grad_n * dist;
+                break;
+            }
+
+            case BCType::NO_SLIP:
+            {
+                // NO_SLIP is for velocity only, ignore for turbulence
+                break;
+            }
+
+            default:
+            {
+                // Unknown BC type - use zero gradient
+                break;
             }
         }
     }
+
+    // Additional wall treatment for omega (viscous sublayer formula)
+    // This overrides the BC values for cells very close to walls
+    if (fieldName == "omega")
+    {
+        for (const auto& face : allFaces)
+        {
+            if (!face.isBoundary()) continue;
+
+            const BoundaryPatch* patch = faceToPatch.at(face.id());
+
+            // Only apply viscous sublayer formula at wall patches
+            if (patch->type() == BoundaryConditionType::WALL)
+            {
+                size_t ownerCell = face.ownerCell();
+                Scalar y = wallDistance[ownerCell];
+
+                // For viscous sublayer (very close to wall), use analytical formula
+                // ω_wall = 6ν/(β₁y²)
+                if (y < 1e-5)  // Very close to wall
+                {
+                    y = std::max(y, 1e-10);  // Prevent division by zero
+                    field[ownerCell] = 6.0 * nu_lam / (constants.beta_1 * y * y);
+                    field[ownerCell] = std::min(field[ownerCell], 1e7);  // Limit maximum
+                }
+            }
+        }
+    }
+
+    // Wall treatment for k: k = 0 at wall face, but NOT at the owner cell!
+    // The fixedValue BC from configuration file already handles this correctly.
+    // DO NOT override owner cell values here - that destroys the solution!
 }
 
 Scalar KOmegaSST::calculateYPlus

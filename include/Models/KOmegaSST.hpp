@@ -94,25 +94,29 @@ public:
 
     /**
      * @brief Solve turbulence equations for current iteration
-     * 
+     *
      * @param U_field Current velocity field
      * @param nu_lam Laminar kinematic viscosity
-     * 
+     * @param alpha_k Under-relaxation factor for k equation (default: 0.5)
+     * @param alpha_omega Under-relaxation factor for omega equation (default: 0.5)
+     *
      * @details This is the main solve method that:
      * 1. Calculates velocity gradients per cell internally
      * 2. Calculates blending functions F1 and F2
      * 3. Computes production and cross-diffusion terms
-     * 4. Solves the k-equation
-     * 5. Solves the omega-equation
+     * 4. Solves the k-equation with under-relaxation
+     * 5. Solves the omega-equation with under-relaxation
      * 6. Updates turbulent viscosity
      * 7. Applies wall corrections
-     * 
+     *
      * @note Velocity gradients are computed internally for efficiency
      */
     void solve
     (
         const VectorField& U_field,
-        Scalar nu_lam
+        Scalar nu_lam,
+        Scalar alpha_k = 0.5,
+        Scalar alpha_omega = 0.5
     );
 
     /**
@@ -126,11 +130,12 @@ public:
 
     /**
      * @brief Solve the omega transport equation
-     * 
+     *
      * @param U_field Current velocity field
      * @param gradU Vector of velocity gradient fields
      * @param nu_lam Laminar kinematic viscosity
-     * 
+     * @param alpha_omega Under-relaxation factor for omega equation
+     *
      * @details Assembles and solves the linear system for the omega equation
      * using the finite volume method with appropriate boundary conditions.
      */
@@ -138,7 +143,8 @@ public:
     (
         const VectorField& U_field,
         const std::vector<VectorField>& gradU,
-        Scalar nu_lam
+        Scalar nu_lam,
+        Scalar alpha_omega
     );
 
     /**
@@ -153,11 +159,12 @@ public:
 
     /**
      * @brief Solve the k transport equation
-     * 
+     *
      * @param U_field Current velocity field
      * @param gradU Vector of velocity gradient fields
      * @param nu_lam Laminar kinematic viscosity
-     * 
+     * @param alpha_k Under-relaxation factor for k equation
+     *
      * @details Assembles and solves the linear system for the k equation
      * using the finite volume method with appropriate boundary conditions.
      */
@@ -165,7 +172,8 @@ public:
     (
         const VectorField& U_field,
         const std::vector<VectorField>& gradU,
-        Scalar nu_lam
+        Scalar nu_lam,
+        Scalar alpha_k
     );
 
     /**
@@ -224,10 +232,10 @@ public:
     const ScalarField& getOmega() const { return omega; }
     
     /**
-     * @brief Get turbulent viscosity field
-     * @return Const reference to μₜ field
+     * @brief Get turbulent kinematic viscosity field
+     * @return Const reference to νₜ field
      */
-    const ScalarField& getTurbulentViscosity() const { return mu_t; }
+    const ScalarField& getTurbulentViscosity() const { return nu_t; }
     
     /**
      * @brief Get wall distance field
@@ -297,7 +305,7 @@ private:
     
     ScalarField k;                  ///< Turbulent kinetic energy [m²/s²]
     ScalarField omega;              ///< Specific dissipation rate [1/s]
-    ScalarField mu_t;               ///< Turbulent viscosity [kg/(m·s)]
+    ScalarField nu_t;               ///< Turbulent kinematic viscosity [m²/s]
     ScalarField wallDistance;       ///< Distance to nearest wall [m]
     ScalarField wallShearStress;    ///< Wall shear stress magnitude [Pa]
     

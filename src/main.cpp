@@ -99,6 +99,8 @@ int main(int argc, char* argv[])
         auto relaxFactors = simpleDict.subDict("relaxationFactors");
         Scalar alphaU = relaxFactors.lookup<Scalar>("U");
         Scalar alphaP = relaxFactors.lookup<Scalar>("p");
+        Scalar alphaK = relaxFactors.lookupOrDefault<Scalar>("k", 0.5);
+        Scalar alphaOmega = relaxFactors.lookupOrDefault<Scalar>("omega", 0.5);
 
         // Extract turbulence settings
         auto turbDict = config.subDict("turbulence");
@@ -239,6 +241,40 @@ int main(int argc, char* argv[])
             }
         }
 
+        // Process turbulent kinetic energy boundary conditions
+        if (bcDict.foundSubDict("k")) {
+            auto kBCs = bcDict.subDict("k");
+
+            for (const auto& patchName : kBCs.subDictNames()) {
+                auto patchBC = kBCs.subDict(patchName);
+                std::string bcType = patchBC.lookup<std::string>("type");
+
+                if (bcType == "fixedValue") {
+                    Scalar value = patchBC.lookup<Scalar>("value");
+                    bcManager.setFixedValue(patchName, "k", value);
+                } else if (bcType == "zeroGradient") {
+                    bcManager.setZeroGradient(patchName, "k");
+                }
+            }
+        }
+
+        // Process specific dissipation rate boundary conditions
+        if (bcDict.foundSubDict("omega")) {
+            auto omegaBCs = bcDict.subDict("omega");
+
+            for (const auto& patchName : omegaBCs.subDictNames()) {
+                auto patchBC = omegaBCs.subDict(patchName);
+                std::string bcType = patchBC.lookup<std::string>("type");
+
+                if (bcType == "fixedValue") {
+                    Scalar value = patchBC.lookup<Scalar>("value");
+                    bcManager.setFixedValue(patchName, "omega", value);
+                } else if (bcType == "zeroGradient") {
+                    bcManager.setZeroGradient(patchName, "omega");
+                }
+            }
+        }
+
         bcManager.printSummary();
 
         /**********************************************************************
@@ -273,18 +309,20 @@ int main(int argc, char* argv[])
 
         SIMPLE simpleSolver(allFaces, allCells, bcManager, gradScheme, *selectedScheme);
 
-        // Configure turbulence modeling
+        // Configure turbulence modeling BEFORE initialization
+        // (turbulence model is created inside initialize() if enabled)
         simpleSolver.enableTurbulenceModeling(turbulenceEnabled);
         if (turbulenceEnabled) {
             std::cout << "Turbulence modeling enabled: " << turbulenceModel << std::endl;
         }
 
         // Initialize velocity and pressure fields
+        // (this creates the turbulence model object if turbulence is enabled)
         simpleSolver.initialize(initialVelocity, initialPressure);
         simpleSolver.setPhysicalProperties(rho, mu);
 
         // Configure SIMPLE parameters
-        simpleSolver.setRelaxationFactors(alphaU, alphaP);
+        simpleSolver.setRelaxationFactors(alphaU, alphaP, alphaK, alphaOmega);
         simpleSolver.setConvergenceTolerance(convergenceTolerance);
         simpleSolver.setMaxIterations(maxIterations);
 
@@ -293,6 +331,10 @@ int main(int argc, char* argv[])
         std::cout << "  Convergence tolerance: " << convergenceTolerance << std::endl;
         std::cout << "  Velocity relaxation: " << alphaU << std::endl;
         std::cout << "  Pressure relaxation: " << alphaP << std::endl;
+        if (turbulenceEnabled) {
+            std::cout << "  k relaxation: " << alphaK << std::endl;
+            std::cout << "  omega relaxation: " << alphaOmega << std::endl;
+        }
 
         // Configure field constraints
         Constraint* constraintSystem = simpleSolver.getConstraintSystem();
@@ -328,7 +370,7 @@ int main(int argc, char* argv[])
         // Extract turbulence fields if available
         const ScalarField* k_field = simpleSolver.getTurbulentKineticEnergy();
         const ScalarField* omega_field = simpleSolver.getSpecificDissipationRate();
-        const ScalarField* mu_t_field = simpleSolver.getTurbulentViscosity();
+        const ScalarField* nu_t_field = simpleSolver.getTurbulentViscosity();
         const ScalarField* wallDist_field = simpleSolver.getWallDistance();
 
         // Extract 3D velocity components
@@ -385,10 +427,10 @@ int main(int argc, char* argv[])
         scalarFieldsToVtk["U_z"] = &U_z;
 
         // Add turbulence fields if available
-        if (turbulenceEnabled && k_field && omega_field && mu_t_field && wallDist_field) {
+        if (turbulenceEnabled && k_field && omega_field && nu_t_field && wallDist_field) {
             scalarFieldsToVtk["k"] = k_field;
             scalarFieldsToVtk["omega"] = omega_field;
-            scalarFieldsToVtk["mu_t"] = mu_t_field;
+            scalarFieldsToVtk["nu_t"] = nu_t_field;
             scalarFieldsToVtk["wallDistance"] = wallDist_field;
         }
 

@@ -188,8 +188,10 @@ public:
      * @brief Set under-relaxation factors
      * @param alpha_U Velocity under-relaxation factor
      * @param alpha_p Pressure under-relaxation factor
+     * @param alpha_k Turbulent kinetic energy under-relaxation factor (default: 0.5)
+     * @param alpha_omega Specific dissipation rate under-relaxation factor (default: 0.5)
      */
-    void setRelaxationFactors(Scalar alpha_U, Scalar alpha_p);
+    void setRelaxationFactors(Scalar alpha_U, Scalar alpha_p, Scalar alpha_k = 0.5, Scalar alpha_omega = 0.5);
     
     /**
      * @brief Set convergence tolerance
@@ -268,6 +270,8 @@ private:
     /// Algorithm parameters
     Scalar alpha_U;         ///< Under-relaxation factor for velocity
     Scalar alpha_p;         ///< Under-relaxation factor for pressure
+    Scalar alpha_k;         ///< Under-relaxation factor for turbulent kinetic energy
+    Scalar alpha_omega;     ///< Under-relaxation factor for specific dissipation rate
     int maxIterations;      ///< Maximum number of iterations
     Scalar tolerance;       ///< Convergence tolerance
     bool enableTurbulence;  ///< Enable turbulence modeling

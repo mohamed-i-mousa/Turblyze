@@ -33,7 +33,7 @@ This document explains the internal architecture and implementation details of t
   - `KOmegaSST.h`
 - **`PostProcessing/`**: output
   - `VtkWriter.h`
-- **`Config/`**: configuration system
+- **`Settings/`**: configuration system
   - `DictionaryReader.hpp`: OpenFOAM-style dictionary parser
 
 **Sources (`src/`):**

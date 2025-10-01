@@ -23,6 +23,8 @@ initialConditions
 {
     U               (0 0 -0.1);     // Initial velocity [m/s]
     p               0;              // Initial pressure [Pa]
+    k               3.75e-5;        // Initial turbulent kinetic energy [m^2/s^2]
+    omega           1.6;            // Initial specific dissipation rate [1/s]
 }
 
 // =============================================================================
@@ -103,6 +105,66 @@ boundaryConditions
         wall3           { type fixedValue; value 0; }
         wall4           { type fixedValue; value 0; }
     }
+
+    k   // Turbulent kinetic energy [m^2/s^2]
+    {
+        inlet
+        {
+            type        fixedValue;
+            value       3.75e-5;        // Based on 5% turbulence intensity: 3/2*(0.05*0.1)^2
+        }
+
+        outlet
+        {
+            type        zeroGradient;
+        }
+
+        // Walls - k = 0 at wall (no turbulent energy)
+        cylinder        { type fixedValue; value 0; }
+        sphere          { type fixedValue; value 0; }
+        wall1           { type fixedValue; value 0; }
+        wall2           { type fixedValue; value 0; }
+        wall3           { type fixedValue; value 0; }
+        wall4           { type fixedValue; value 0; }
+        wall5           { type fixedValue; value 0; }
+        wall6           { type fixedValue; value 0; }
+
+        // Symmetry planes
+        symmetry1       { type zeroGradient; }
+        symmetry2       { type zeroGradient; }
+        symmetry3       { type zeroGradient; }
+        symmetry4       { type zeroGradient; }
+    }
+
+    omega   // Specific dissipation rate [1/s]
+    {
+        inlet
+        {
+            type        fixedValue;
+            value       1.6;            // Based on turbulence length scale L = 0.07*D_h
+        }
+
+        outlet
+        {
+            type        zeroGradient;
+        }
+
+        // Walls - high omega for wall functions
+        cylinder        { type fixedValue; value 1000; }
+        sphere          { type fixedValue; value 1000; }
+        wall1           { type fixedValue; value 1000; }
+        wall2           { type fixedValue; value 1000; }
+        wall3           { type fixedValue; value 1000; }
+        wall4           { type fixedValue; value 1000; }
+        wall5           { type fixedValue; value 1000; }
+        wall6           { type fixedValue; value 1000; }
+
+        // Symmetry planes
+        symmetry1       { type zeroGradient; }
+        symmetry2       { type zeroGradient; }
+        symmetry3       { type zeroGradient; }
+        symmetry4       { type zeroGradient; }
+    }
 }
 
 // =============================================================================
@@ -119,7 +181,7 @@ numericalSchemes
 // =============================================================================
 SIMPLE
 {
-    nIterations             1;          // Maximum iterations
+    nIterations             100;        // Maximum iterations
     convergenceTolerance    1e-6;       // Convergence criterion
 
     relaxationFactors
@@ -231,7 +293,7 @@ output
     format          VTK;           // Output format
     filename        ../outputFiles/pipe_320k.vtp;
     writeInterval   1;             // Write every N iterations
-    fields          (U p k omega mu_t wallDistance velocityMagnitude);
+    fields          (U p k omega nu_t wallDistance velocityMagnitude);
 
     monitoring
     {

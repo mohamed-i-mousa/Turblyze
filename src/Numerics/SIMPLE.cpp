@@ -36,6 +36,8 @@ SIMPLE::SIMPLE
     // Algorithm parameters
     alpha_U(0.7),
     alpha_p(0.3),
+    alpha_k(0.5),
+    alpha_omega(0.5),
     maxIterations(500),
     tolerance(1e-3),
     enableTurbulence(false),
@@ -691,8 +693,8 @@ void SIMPLE::solveTurbulence()
     if (enableTurbulence && turbulenceModel)
     {
         std::cout << "  Solving turbulence equations..." << std::endl;
-        
-        turbulenceModel->solve(U, nu);
+
+        turbulenceModel->solve(U, nu, alpha_k, alpha_omega);
     }
 }
 
@@ -800,10 +802,12 @@ Scalar SIMPLE::calculatePressureResidual() const
 }
 
 // Setter methods
-void SIMPLE::setRelaxationFactors(Scalar alpha_U_new, Scalar alpha_p_new)
+void SIMPLE::setRelaxationFactors(Scalar alpha_U_new, Scalar alpha_p_new, Scalar alpha_k_new, Scalar alpha_omega_new)
 {
     alpha_U = alpha_U_new;
     alpha_p = alpha_p_new;
+    alpha_k = alpha_k_new;
+    alpha_omega = alpha_omega_new;
 }
 
 void SIMPLE::setConvergenceTolerance(Scalar tol) 

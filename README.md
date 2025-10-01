@@ -113,7 +113,7 @@ Located in `inputFiles/`:
 - **Format**: VTK PolyData (`.vtp`) for ParaView
 - **Fields Exported**:
   - Flow variables: `pressure`, `velocityMagnitude`, `U_x`, `U_y`, `U_z`
-  - Turbulence (if enabled): `k`, `omega`, `mu_t`, `wallDistance`
+  - Turbulence (if enabled): `k`, `omega`, `nu_t`, `wallDistance`
   - Derived quantities: `turbulentIntensity`, `turbulentViscosityRatio`, `yPlus`
 
 ### ParaView Visualization

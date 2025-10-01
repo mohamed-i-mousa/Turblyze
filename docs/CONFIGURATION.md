@@ -275,7 +275,7 @@ output
     format          VTK;            // Output format (currently only VTK)
     filename        ../outputFiles/result.vtp;    // Output file path
     writeInterval   1;              // Write every N iterations
-    fields          (U p k omega mu_t wallDistance velocityMagnitude);  // Fields to export
+    fields          (U p k omega nu_t wallDistance velocityMagnitude);  // Fields to export
 
     monitoring                      // Optional convergence monitoring
     {
