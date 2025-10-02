@@ -457,28 +457,52 @@ int main(int argc, char* argv[])
         std::map<std::string, const VectorField*> vectorFieldsToVtk;
         vectorFieldsToVtk["velocity"] = &velocity;
 
-        // Write VTK file
-        VtkWriter::writeVtkFile(
-            vtkOutputFilename,
+        // Export VTK UnstructuredGrid file (VTU) - the primary output format
+        std::string vtuFilename = vtkOutputFilename;
+        size_t pos = vtuFilename.rfind(".vtp");
+        if (pos != std::string::npos)
+        {
+            vtuFilename.replace(pos, 4, ".vtu");
+        }
+        else
+        {
+            // Check if already has .vtu extension
+            if (vtuFilename.find(".vtu") == std::string::npos)
+            {
+                vtuFilename += ".vtu";
+            }
+        }
+
+        std::cout   << "\nExporting results to VTK UnstructuredGrid..."
+                    << std::endl;
+        VtkWriter::writeVtkUnstructuredGrid(
+            vtuFilename,
             allNodes,
+            allCells,
             allFaces,
-            scalarFieldsToVtk
+            scalarFieldsToVtk,
+            vectorFieldsToVtk
         );
 
-        std::cout << "Results exported to: " << vtkOutputFilename << std::endl;
+        std::cout << "\n=== CFD Results Exported Successfully ===" << std::endl;
+        std::cout << "File: " << vtuFilename << std::endl;
 
         /**********************************************************************
          * -------------------------- 8. FINALIZE ------------------------------
          *********************************************************************/
 
         auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
+
+        auto duration = 
+            std::chrono::duration_cast<std::chrono::seconds>
+            (end_time - start_time);
 
         std::cout << "\n--- Simulation Complete ---" << std::endl;
         std::cout << "Total execution time: " << duration.count() << " seconds" << std::endl;
         std::cout << "Setup file used: " << setupFile << std::endl;
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e) 
+    {
         std::cerr << "\nError: " << e.what() << std::endl;
         return 1;
     }

@@ -181,13 +181,13 @@ numericalSchemes
 // =============================================================================
 SIMPLE
 {
-    nIterations             10;         // Maximum iterations
+    nIterations             1;         // Maximum iterations
     convergenceTolerance    1e-6;       // Convergence criterion
 
     relaxationFactors
     {
-        U                   0.3;        // Velocity under-relaxation
-        p                   0.1;        // Pressure under-relaxation
+        U                   0.7;        // Velocity under-relaxation
+        p                   0.3;        // Pressure under-relaxation
         k                   0.5;        // TKE under-relaxation
         omega               0.5;        // Omega under-relaxation
     }
@@ -213,13 +213,14 @@ linearSolvers
         maxIter         500;            // Maximum iterations
     }
 
-    p   // Pressure equation
+    p   // Pressure correction equation
     {
-        solver          BiCGSTAB;
-        preconditioner  ILUT;
-        tolerance       1e-6;
-        relTol          0.05;
+        solver          PCG;            // Preconditioned Conjugate Gradient (symmetric)
+        preconditioner  IncompleteCholesky;
+        tolerance       1e-6;           // Absolute tolerance
+        relTol          0.05;           // Relative tolerance (OpenFOAM default)
         maxIter         1000;
+        initialShift    1e-2;           // Preconditioner conditioning factor
     }
 
     k   // Turbulent kinetic energy
