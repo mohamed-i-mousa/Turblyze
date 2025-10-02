@@ -357,10 +357,8 @@ void Matrix::buildPressureCorrectionMatrix
             // Fixed-value pressure BC: pressure correction = 0
             if (bc && bc->type() == BCType::FIXED_VALUE)
             {
-                // Strongly enforce pCorr = 0 at fixed pressure boundaries
-                // This prevents the fixed pressure from changing (OpenFOAM-consistent)
-                tripletList.emplace_back(ownerIdx, ownerIdx, S(1.0));
-                b_vector[ownerIdx] = S(0.0);
+                // Apply pCorr = 0 at fixed pressure boundaries
+                tripletList.emplace_back(ownerIdx, ownerIdx, DUf[faceIdx]);
             }
         }
         else // Internal face

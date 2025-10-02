@@ -331,7 +331,8 @@ void writeVtkFile
 }
 
 // Helper function to order hexahedron nodes according to VTK convention
-// Uses geometry-based approach to build correct topology
+// VTK Hexahedron: nodes 0-3 form bottom quad, nodes 4-7 form top quad
+// Uses face topology for robust ordering without axis-alignment assumptions
 std::vector<vtkIdType> orderHexahedronNodes
 (
     const std::vector<std::vector<size_t>>& faceNodeLists,
@@ -341,104 +342,172 @@ std::vector<vtkIdType> orderHexahedronNodes
 {
     std::vector<vtkIdType> orderedNodes;
 
-    if (uniqueNodes.size() != 8)
+    if (uniqueNodes.size() != 8 || faceNodeLists.size() != 6)
     {
         return orderedNodes; // Invalid hex
     }
 
-    // Convert to vector for indexing
-    std::vector<size_t> nodeList(uniqueNodes.begin(), uniqueNodes.end());
+    // All faces should be quads
+    for (const auto& faceNodes : faceNodeLists)
+    {
+        if (faceNodes.size() != 4)
+        {
+            return orderedNodes; // Not a standard hex
+        }
+    }
 
     // Compute cell centroid
     Vector centroid(0.0, 0.0, 0.0);
-    for (size_t nodeId : nodeList)
+    for (size_t nodeId : uniqueNodes)
     {
         centroid = centroid + allNodes[nodeId];
     }
     centroid = centroid / 8.0;
 
-    // Find the node with minimum z-coordinate (start of bottom face)
-    size_t bottomStartIdx = 0;
-    Scalar minZ = allNodes[nodeList[0]].z();
-    for (size_t i = 1; i < 8; ++i)
+    // Find two opposite faces (bottom and top)
+    // Opposite faces share no common nodes
+    std::vector<size_t> bottomFace, topFace;
+    size_t bottomFaceIdx = 0, topFaceIdx = 0;
+
+    for (size_t i = 0; i < faceNodeLists.size(); ++i)
     {
-        if (allNodes[nodeList[i]].z() < minZ)
+        for (size_t j = i + 1; j < faceNodeLists.size(); ++j)
         {
-            minZ = allNodes[nodeList[i]].z();
-            bottomStartIdx = i;
+            const auto& face1 = faceNodeLists[i];
+            const auto& face2 = faceNodeLists[j];
+
+            // Check if faces share no nodes (opposite faces)
+            bool shareNode = false;
+            for (size_t n1 : face1)
+            {
+                for (size_t n2 : face2)
+                {
+                    if (n1 == n2)
+                    {
+                        shareNode = true;
+                        break;
+                    }
+                }
+                if (shareNode) break;
+            }
+
+            if (!shareNode)
+            {
+                bottomFace = face1;
+                topFace = face2;
+                bottomFaceIdx = i;
+                topFaceIdx = j;
+                break;
+            }
+        }
+        if (!bottomFace.empty()) break;
+    }
+
+    if (bottomFace.empty() || topFace.empty())
+    {
+        return orderedNodes; // Failed to find opposite faces
+    }
+
+    // Determine face orientation using face normals
+    auto computeQuadNormal = [&allNodes](const std::vector<size_t>& quadNodes) -> Vector
+    {
+        Vector v0 = allNodes[quadNodes[0]];
+        Vector v1 = allNodes[quadNodes[1]];
+        Vector v2 = allNodes[quadNodes[2]];
+        Vector edge1 = v1 - v0;
+        Vector edge2 = v2 - v0;
+        return cross(edge1, edge2);
+    };
+
+    auto computeFaceCentroid = [&allNodes](const std::vector<size_t>& faceNodes)
+    {
+        Vector fc(0.0, 0.0, 0.0);
+        for (size_t nid : faceNodes)
+        {
+            fc = fc + allNodes[nid];
+        }
+        return fc / static_cast<Scalar>(faceNodes.size());
+    };
+
+    Vector bottomNormal = computeQuadNormal(bottomFace);
+    Vector topNormal = computeQuadNormal(topFace);
+    Vector bottomCentroid = computeFaceCentroid(bottomFace);
+    Vector topCentroid = computeFaceCentroid(topFace);
+
+    Vector bottomToCenter = centroid - bottomCentroid;
+    Vector topToCenter = centroid - topCentroid;
+
+    // Orient so bottom face is the one with normal pointing inward
+    if (dot(bottomNormal, bottomToCenter) < dot(topNormal, topToCenter))
+    {
+        std::swap(bottomFace, topFace);
+    }
+
+    // Order bottom face nodes consistently
+    std::vector<size_t> orderedBottomNodes = bottomFace;
+
+    // Check winding and reverse if needed
+    Vector testNormal = computeQuadNormal(orderedBottomNodes);
+    Vector outwardDir = computeFaceCentroid(orderedBottomNodes) - centroid;
+    if (dot(testNormal, outwardDir) < 0)
+    {
+        std::reverse(orderedBottomNodes.begin(), orderedBottomNodes.end());
+    }
+
+    // Build edge connectivity from side faces to match top to bottom
+    // Each side face connects an edge of bottom to an edge of top
+    std::map<size_t, std::set<size_t>> nodeConnections;
+
+    for (size_t i = 0; i < faceNodeLists.size(); ++i)
+    {
+        if (i == bottomFaceIdx || i == topFaceIdx) continue; // Skip top/bottom
+
+        const auto& sideFace = faceNodeLists[i];
+        std::vector<size_t> sideBottomNodes, sideTopNodes;
+
+        for (size_t nid : sideFace)
+        {
+            bool inBottom = std::find(bottomFace.begin(), bottomFace.end(), nid) != bottomFace.end();
+            bool inTop = std::find(topFace.begin(), topFace.end(), nid) != topFace.end();
+
+            if (inBottom) sideBottomNodes.push_back(nid);
+            if (inTop) sideTopNodes.push_back(nid);
+        }
+
+        // Record connections
+        for (size_t bn : sideBottomNodes)
+        {
+            for (size_t tn : sideTopNodes)
+            {
+                nodeConnections[bn].insert(tn);
+            }
         }
     }
 
-    // Separate nodes into bottom and top based on z-coordinate relative to centroid
-    std::vector<size_t> bottomNodes, topNodes;
-    for (size_t nodeId : nodeList)
-    {
-        if (allNodes[nodeId].z() < centroid.z())
-        {
-            bottomNodes.push_back(nodeId);
-        }
-        else
-        {
-            topNodes.push_back(nodeId);
-        }
-    }
-
-    // Check if we got 4-4 split
-    if (bottomNodes.size() != 4 || topNodes.size() != 4)
-    {
-        return orderedNodes; // Not a standard hex aligned with z-axis
-    }
-
-    // Order bottom nodes by angle around centroid (counter-clockwise when viewed from below)
-    Vector bottomCentroid(0.0, 0.0, 0.0);
-    for (size_t nodeId : bottomNodes)
-    {
-        bottomCentroid = bottomCentroid + allNodes[nodeId];
-    }
-    bottomCentroid = bottomCentroid / 4.0;
-
-    // Sort bottom nodes by angle
-    std::sort(bottomNodes.begin(), bottomNodes.end(),
-        [&allNodes, &bottomCentroid](size_t a, size_t b)
-        {
-            Vector va = allNodes[a] - bottomCentroid;
-            Vector vb = allNodes[b] - bottomCentroid;
-            Scalar angleA = std::atan2(va.y(), va.x());
-            Scalar angleB = std::atan2(vb.y(), vb.x());
-            return angleA < angleB;
-        });
-
-    // Order top nodes by matching them to bottom nodes (directly above)
+    // Match top nodes to bottom nodes
     std::vector<size_t> orderedTopNodes(4);
     for (size_t i = 0; i < 4; ++i)
     {
-        size_t bottomNode = bottomNodes[i];
-        Vector bottomPos = allNodes[bottomNode];
+        size_t bottomNode = orderedBottomNodes[i];
 
-        // Find closest top node in XY plane
-        Scalar minDist = 1e30;
-        size_t bestTopNode = topNodes[0];
-
-        for (size_t topNode : topNodes)
+        if (nodeConnections.find(bottomNode) != nodeConnections.end())
         {
-            Vector topPos = allNodes[topNode];
-            Scalar dx = topPos.x() - bottomPos.x();
-            Scalar dy = topPos.y() - bottomPos.y();
-            Scalar distXY = std::sqrt(dx*dx + dy*dy);
+            const auto& connectedNodes = nodeConnections[bottomNode];
 
-            if (distXY < minDist)
+            for (size_t candidate : connectedNodes)
             {
-                minDist = distXY;
-                bestTopNode = topNode;
+                if (std::find(topFace.begin(), topFace.end(), candidate) != topFace.end())
+                {
+                    orderedTopNodes[i] = candidate;
+                    break;
+                }
             }
         }
-
-        orderedTopNodes[i] = bestTopNode;
     }
 
-    // Build final ordered node list for VTK hex
+    // Build final VTK hex ordering
     orderedNodes.reserve(8);
-    for (size_t nodeId : bottomNodes)
+    for (size_t nodeId : orderedBottomNodes)
     {
         orderedNodes.push_back(static_cast<vtkIdType>(nodeId));
     }
@@ -452,6 +521,7 @@ std::vector<vtkIdType> orderHexahedronNodes
 
 // Helper function to order wedge (prism) nodes according to VTK convention
 // VTK Wedge: nodes 0,1,2 form bottom triangle, nodes 3,4,5 form top triangle
+// Uses actual face topology to determine correct node ordering
 std::vector<vtkIdType> orderWedgeNodes
 (
     const std::vector<std::vector<size_t>>& faceNodeLists,
@@ -461,82 +531,185 @@ std::vector<vtkIdType> orderWedgeNodes
 {
     std::vector<vtkIdType> orderedNodes;
 
-    if (uniqueNodes.size() != 6)
+    if (uniqueNodes.size() != 6 || faceNodeLists.size() != 5)
     {
         return orderedNodes;
     }
 
-    std::vector<size_t> nodeList(uniqueNodes.begin(), uniqueNodes.end());
+    // Identify triangular faces (3 nodes) and quadrilateral faces (4 nodes)
+    std::vector<std::vector<size_t>> triangularFaces;
+    std::vector<std::vector<size_t>> quadFaces;
 
-    // Compute centroid
+    for (const auto& faceNodes : faceNodeLists)
+    {
+        if (faceNodes.size() == 3)
+        {
+            triangularFaces.push_back(faceNodes);
+        }
+        else if (faceNodes.size() == 4)
+        {
+            quadFaces.push_back(faceNodes);
+        }
+    }
+
+    // Prism must have exactly 2 triangular faces and 3 quad faces
+    if (triangularFaces.size() != 2 || quadFaces.size() != 3)
+    {
+        return orderedNodes;
+    }
+
+    // Determine which triangular face is "bottom" and which is "top"
+    // Use centroid as reference - doesn't assume Z-alignment
     Vector centroid(0.0, 0.0, 0.0);
-    for (size_t nodeId : nodeList)
+    for (size_t nodeId : uniqueNodes)
     {
         centroid = centroid + allNodes[nodeId];
     }
     centroid = centroid / 6.0;
 
-    // Separate into bottom (z < centroid.z) and top (z > centroid.z)
-    std::vector<size_t> bottomNodes, topNodes;
-    for (size_t nodeId : nodeList)
+    // Compute face centroids and normals for triangular faces
+    auto computeFaceCentroid = [&allNodes](const std::vector<size_t>& faceNodes)
     {
-        if (allNodes[nodeId].z() < centroid.z())
+        Vector fc(0.0, 0.0, 0.0);
+        for (size_t nid : faceNodes)
         {
-            bottomNodes.push_back(nodeId);
+            fc = fc + allNodes[nid];
+        }
+        return fc / static_cast<Scalar>(faceNodes.size());
+    };
+
+    auto computeTriangleNormal = [&allNodes](const std::vector<size_t>& triNodes) -> Vector
+    {
+        Vector v0 = allNodes[triNodes[0]];
+        Vector v1 = allNodes[triNodes[1]];
+        Vector v2 = allNodes[triNodes[2]];
+        Vector edge1 = v1 - v0;
+        Vector edge2 = v2 - v0;
+        return cross(edge1, edge2); // Not normalized
+    };
+
+    Vector tri0Centroid = computeFaceCentroid(triangularFaces[0]);
+    Vector tri1Centroid = computeFaceCentroid(triangularFaces[1]);
+
+    Vector tri0Normal = computeTriangleNormal(triangularFaces[0]);
+    Vector tri1Normal = computeTriangleNormal(triangularFaces[1]);
+
+    // Check which triangle is more "inward" pointing relative to centroid
+    Vector tri0ToCenter = centroid - tri0Centroid;
+    Vector tri1ToCenter = centroid - tri1Centroid;
+
+    Scalar dot0 = dot(tri0Normal, tri0ToCenter);
+    Scalar dot1 = dot(tri1Normal, tri1ToCenter);
+
+    // The face whose normal points toward the centroid is the "bottom"
+    std::vector<size_t> bottomTri, topTri;
+    if (dot0 > dot1)
+    {
+        bottomTri = triangularFaces[0];
+        topTri = triangularFaces[1];
+    }
+    else
+    {
+        bottomTri = triangularFaces[1];
+        topTri = triangularFaces[0];
+    }
+
+    // Build edge connectivity from quad faces to establish correspondence
+    // In a prism, each quad face has 4 nodes forming a cycle
+    // Two nodes are from bottom triangle (forming an edge), two from top triangle (forming an edge)
+    // The edges are connected by the quad face
+    std::map<size_t, size_t> bottomToTopMap;
+
+    for (const auto& quadNodes : quadFaces)
+    {
+        if (quadNodes.size() != 4) continue;
+
+        // Classify nodes as bottom or top
+        std::vector<size_t> quadBottomNodes, quadTopNodes;
+
+        for (size_t nid : quadNodes)
+        {
+            bool inBottom = std::find(bottomTri.begin(), bottomTri.end(), nid) != bottomTri.end();
+            if (inBottom)
+            {
+                quadBottomNodes.push_back(nid);
+            }
+            else
+            {
+                quadTopNodes.push_back(nid);
+            }
+        }
+
+        if (quadBottomNodes.size() != 2 || quadTopNodes.size() != 2) continue;
+
+        // Find which nodes in the quad are adjacent (form edges)
+        // In the quad [n0, n1, n2, n3], edges are: n0-n1, n1-n2, n2-n3, n3-n0
+
+        // Check all 4 edges of the quad to find which bottom and top nodes are connected
+        for (size_t i = 0; i < 4; ++i)
+        {
+            size_t n0 = quadNodes[i];
+            size_t n1 = quadNodes[(i + 1) % 4];
+
+            bool n0_bottom = std::find(bottomTri.begin(), bottomTri.end(), n0) != bottomTri.end();
+            bool n1_bottom = std::find(bottomTri.begin(), bottomTri.end(), n1) != bottomTri.end();
+
+            // If this edge connects a bottom node to a top node, record the connection
+            if (n0_bottom && !n1_bottom)
+            {
+                bottomToTopMap[n0] = n1;
+            }
+            else if (!n0_bottom && n1_bottom)
+            {
+                bottomToTopMap[n1] = n0;
+            }
+        }
+    }
+
+    // Order bottom triangle nodes consistently (counter-clockwise when viewed from outside)
+    std::vector<size_t> orderedBottomNodes = bottomTri;
+
+    // Ensure proper winding by checking normal direction
+    Vector testNormal = computeTriangleNormal(orderedBottomNodes);
+    Vector outwardDir = computeFaceCentroid(orderedBottomNodes) - centroid;
+    if (dot(testNormal, outwardDir) < 0)
+    {
+        // Reverse winding to make it outward-pointing
+        std::reverse(orderedBottomNodes.begin(), orderedBottomNodes.end());
+    }
+
+    // Match top nodes to bottom nodes using the mapping we built
+    std::vector<size_t> orderedTopNodes(3);
+
+    for (size_t i = 0; i < 3; ++i)
+    {
+        size_t bottomNode = orderedBottomNodes[i];
+
+        // Look up the corresponding top node
+        if (bottomToTopMap.find(bottomNode) != bottomToTopMap.end())
+        {
+            orderedTopNodes[i] = bottomToTopMap[bottomNode];
         }
         else
         {
-            topNodes.push_back(nodeId);
+            // Failed to find mapping - return empty to trigger fallback
+            return std::vector<vtkIdType>();
         }
     }
 
-    if (bottomNodes.size() != 3 || topNodes.size() != 3)
+    // Verify all top nodes were mapped and are valid
+    std::set<size_t> mappedTopNodes(orderedTopNodes.begin(), orderedTopNodes.end());
+    std::set<size_t> expectedTopNodes(topTri.begin(), topTri.end());
+
+    if (mappedTopNodes != expectedTopNodes)
     {
-        return orderedNodes;
+        // Mapping is incomplete or incorrect - return empty to trigger fallback
+        return std::vector<vtkIdType>();
     }
 
-    // Order bottom nodes by angle
-    Vector bottomCentroid(0.0, 0.0, 0.0);
-    for (size_t nodeId : bottomNodes)
-    {
-        bottomCentroid = bottomCentroid + allNodes[nodeId];
-    }
-    bottomCentroid = bottomCentroid / 3.0;
-
-    std::sort(bottomNodes.begin(), bottomNodes.end(),
-        [&allNodes, &bottomCentroid](size_t a, size_t b)
-        {
-            Vector va = allNodes[a] - bottomCentroid;
-            Vector vb = allNodes[b] - bottomCentroid;
-            return std::atan2(va.y(), va.x()) < std::atan2(vb.y(), vb.x());
-        });
-
-    // Match top nodes to bottom nodes
-    std::vector<size_t> orderedTopNodes(3);
-    for (size_t i = 0; i < 3; ++i)
-    {
-        Vector bottomPos = allNodes[bottomNodes[i]];
-        Scalar minDist = 1e30;
-        size_t bestTopNode = topNodes[0];
-
-        for (size_t topNode : topNodes)
-        {
-            Vector topPos = allNodes[topNode];
-            Scalar dx = topPos.x() - bottomPos.x();
-            Scalar dy = topPos.y() - bottomPos.y();
-            Scalar distXY = std::sqrt(dx*dx + dy*dy);
-
-            if (distXY < minDist)
-            {
-                minDist = distXY;
-                bestTopNode = topNode;
-            }
-        }
-        orderedTopNodes[i] = bestTopNode;
-    }
-
+    // Build final VTK wedge ordering
     orderedNodes.reserve(6);
-    for (size_t nodeId : bottomNodes)
+    for (size_t nodeId : orderedBottomNodes)
     {
         orderedNodes.push_back(static_cast<vtkIdType>(nodeId));
     }
@@ -650,6 +823,10 @@ void writeVtkUnstructuredGrid
     // Add cells to unstructured grid with proper topology preservation
     // Build a node connectivity graph to determine proper VTK node ordering
 
+    // Cell type statistics for diagnostics
+    size_t numTets = 0, numHexes = 0, numWedges = 0, numPyramids = 0, numConvex = 0;
+    size_t numWedgeOrderingFailures = 0;
+
     for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
     {
         const Cell& cell = allCells[cellIdx];
@@ -678,6 +855,7 @@ void writeVtkUnstructuredGrid
         {
             // Tetrahedron - VTK ordering: any vertex, then 3 neighbors forming base
             cellType = VTK_TETRA;
+            numTets++;
             orderedNodes.reserve(4);
             for (size_t nodeId : uniqueNodeSet)
             {
@@ -688,23 +866,38 @@ void writeVtkUnstructuredGrid
         {
             // Hexahedron - need to find proper ordering
             cellType = VTK_HEXAHEDRON;
+            numHexes++;
             orderedNodes = orderHexahedronNodes(faceNodeLists, uniqueNodeSet, allNodes);
         }
         else if (numNodes == 6 && numFaces == 5)
         {
             // Wedge (prism)
             cellType = VTK_WEDGE;
+            numWedges++;
             orderedNodes = orderWedgeNodes(faceNodeLists, uniqueNodeSet, allNodes);
+
+            if (orderedNodes.empty())
+            {
+                numWedgeOrderingFailures++;
+                // Fallback to convex point set
+                cellType = VTK_CONVEX_POINT_SET;
+                for (size_t nodeId : uniqueNodeSet)
+                {
+                    orderedNodes.push_back(static_cast<vtkIdType>(nodeId));
+                }
+            }
         }
         else if (numNodes == 5 && numFaces == 5)
         {
             // Pyramid
             cellType = VTK_PYRAMID;
+            numPyramids++;
             orderedNodes = orderPyramidNodes(faceNodeLists, uniqueNodeSet, allNodes);
         }
         else
         {
             // Use convex point set for unknown topology
+            numConvex++;
             orderedNodes.reserve(numNodes);
             for (size_t nodeId : uniqueNodeSet)
             {
@@ -804,6 +997,25 @@ void writeVtkUnstructuredGrid
     std::cout   << "  - Number of points: " << allNodes.size() << std::endl;
 
     std::cout   << "  - Number of cells: " << allCells.size() << std::endl;
+
+    std::cout   << "  - Cell types:" << std::endl;
+    if (numTets > 0)
+        std::cout << "    - Tetrahedra: " << numTets << std::endl;
+    if (numHexes > 0)
+        std::cout << "    - Hexahedra: " << numHexes << std::endl;
+    if (numWedges > 0)
+        std::cout << "    - Wedges (prisms): " << numWedges << std::endl;
+    if (numPyramids > 0)
+        std::cout << "    - Pyramids: " << numPyramids << std::endl;
+    if (numConvex > 0)
+        std::cout << "    - Convex point sets: " << numConvex << std::endl;
+
+    if (numWedgeOrderingFailures > 0)
+    {
+        std::cout   << "  - WARNING: " << numWedgeOrderingFailures
+                    << " wedge cells failed proper ordering (using convex fallback)"
+                    << std::endl;
+    }
 
     std::cout   << "  - Number of scalar fields: " << scalarCellFields.size()
                 << std::endl;
