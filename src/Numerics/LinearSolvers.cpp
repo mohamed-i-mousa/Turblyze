@@ -176,13 +176,14 @@ bool PCG
     const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B,
     Scalar tolerance,
     int maxIterations,
-    const std::string& fieldName
+    const std::string& fieldName,
+    Scalar relTol
 )
 {
-    // Resize and initialize vector x     
-    if (x.size() != B.size()) 
+    // Resize and initialize vector x
+    if (x.size() != B.size())
     {
-        x.resize(B.size()); 
+        x.resize(B.size());
         x.setZero();
     }
 
@@ -190,11 +191,11 @@ bool PCG
 
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> r(systemSize);
     Scalar initialResidual, finalResidual;
-    
+
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> initialResidualVector = B - A * x;
     Scalar initialResidualSum = S(0.0);
 
-    for (size_t i = 0; i < systemSize; ++i) 
+    for (size_t i = 0; i < systemSize; ++i)
     {
         initialResidualSum += std::abs(initialResidualVector(i));
     }
@@ -212,8 +213,8 @@ bool PCG
     pcg.setTolerance(tolerance);
 
     // Configure Incomplete Cholesky preconditioner parameters
-    // Lower initial fill-in factor for symmetric matrices
-    pcg.preconditioner().setInitialShift(S(1e-3));
+    // Increased initial shift for better conditioning of pressure matrices
+    pcg.preconditioner().setInitialShift(S(1e-2));
 
     pcg.compute(A);
     if (pcg.info() != Eigen::Success) 
@@ -305,25 +306,37 @@ bool PCG
 
     std::cout   << "  Avg Final Abs Residual:                "
                 << std::scientific << finalResidual << std::endl;
-    
-    if (initialResidual > S(1e-12)) 
+
+    Scalar residualRatio = S(0.0);
+    if (initialResidual > S(1e-12))
     { // Avoid division by zero for ratio
-        Scalar residualRatio = finalResidual / initialResidual;
+        residualRatio = finalResidual / initialResidual;
         std::cout   << "  Residual Reduction (Avg Abs Ratio):    "
                     << std::scientific << residualRatio << std::endl;
     }
-    
-    std::cout   << "  Final Residual L2 Norm:                " 
+
+    std::cout   << "  Final Residual L2 Norm:                "
                 << std::scientific << exactResidualNormL2 << std::endl;
 
-    if 
+    if
     (
-        !std::isfinite(static_cast<double>(finalResidual)) 
-     || !std::isfinite(static_cast<double>(exactResidualNormL2))) 
+        !std::isfinite(static_cast<double>(finalResidual))
+     || !std::isfinite(static_cast<double>(exactResidualNormL2)))
     {
         std::cerr << "  Divergence detected for field '" << fieldName
                   << "': residual norms are not finite." << std::endl;
         return false;
+    }
+
+    // Check relative tolerance convergence
+    // Converge if residual reduces by relTol factor OR absolute tolerance met
+    bool relativeConvergence = (residualRatio < relTol && initialResidual > S(1e-12));
+
+    if (relativeConvergence && !converged)
+    {
+        std::cout   << "  Relative Tolerance Met (ratio < " << relTol
+                    << ") - accepting solution" << std::endl;
+        converged = true;
     }
 
     std::cout << "----------------------------------------" << std::endl;
@@ -331,4 +344,4 @@ bool PCG
     return converged;
 }
 
-} 
+}

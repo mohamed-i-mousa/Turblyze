@@ -65,9 +65,10 @@ bool BiCGSTAB
  * @param x Solution vector (input: initial guess, output: solution)
  * @param A Symmetric coefficient matrix
  * @param B Right-hand side vector
- * @param tolerance Convergence tolerance
+ * @param tolerance Absolute convergence tolerance
  * @param maxIterations Maximum number of iterations
  * @param fieldName Name of the field being solved (for logging)
+ * @param relTol Relative tolerance (convergence if residual reduces by this factor)
  * @return true if converged, false otherwise
  */
 bool PCG
@@ -77,7 +78,8 @@ bool PCG
     const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B,
     Scalar tolerance,
     int maxIterations,
-    const std::string& fieldName
+    const std::string& fieldName,
+    Scalar relTol = S(0.05)
 );
 
 }

@@ -527,9 +527,10 @@ void SIMPLE::solvePressureCorrection()
         pCorr_solution,
         A_matrix,
         b_vector,
-        1e-8,
+        1e-6,      // Absolute tolerance (relaxed from 1e-8)
         1000,
-        "pCorr"
+        "pCorr",
+        0.05       // Relative tolerance (OpenFOAM default)
     );
 
     if (solved)
