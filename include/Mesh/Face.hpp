@@ -1,16 +1,24 @@
 /******************************************************************************
- * @file Face.h 
+ * @file Face.hpp
  * @brief Represents a face in the computational mesh
+ * 
+ * This header defines the Face class , which is a fundamental in the finite
+ * volume discretization. 
+ * A face represents a planer surface defined by a sequence of nodes (vertices)
+ * and serves as the boundary between two control volumes (cells) or between a
+ * cell and the domain boundary. 
  * 
  * @class Face
  * 
- * A face is a boundary between cells or a boundary of the domain.
- * It stores connectivity information, geometric properties, and
- * distance vectors for finite volume calculations.
+ * The face class provides:
+ * - Connectivity (nodes, owner cell, neighbor cell)
+ * - Face properties (centroid, area, normal vector)
+ * - Destance vectors for interpolations and gradient calculations (d_Pf, d_Nf)
+ * - Boundary handling (internal and boundary faces)
  *****************************************************************************/
 
-#ifndef FACE_H
-#define FACE_H
+#ifndef FACE_HPP
+#define FACE_HPP
 
 #include <vector>
 #include <string>
@@ -18,6 +26,7 @@
 
 #include "Scalar.hpp"
 #include "Vector.hpp"    
+
 
 class Face 
 {
@@ -28,34 +37,34 @@ public:
 
     /**
      * @brief Constructor for internal faces
-     * @param faceId Unique face identifier
+     * @param faceIdx Unique face identifier
      * @param nodes Indices of face nodes
      * @param owner Index of owner cell
      * @param neighbor Index of neighbor cell
      */
     Face
     (
-        size_t faceId, 
+        size_t faceIdx, 
         const std::vector<size_t>& nodes, 
         size_t owner,
         size_t neighbor
-    ) : id_(faceId), 
+    ) : idx_(faceIdx), 
         nodeIndices_(nodes), 
         ownerCell_(owner), 
         neighborCell_(neighbor) {}
     
     /**
      * @brief Constructor for boundary faces
-     * @param faceId Unique face identifier
+     * @param faceIdx Unique face identifier
      * @param nodes Indices of face nodes
      * @param owner Index of owner cell
      */
     Face
     (
-        size_t faceId, 
+        size_t faceIdx, 
         const std::vector<size_t>& nodes, 
         size_t owner
-    ) : id_(faceId), 
+    ) : idx_(faceIdx),
         nodeIndices_(nodes), 
         ownerCell_(owner),
         neighborCell_(std::nullopt) {}
@@ -64,9 +73,9 @@ public:
     
     /** 
      * @brief Set face identifier
-     * @param faceId Unique face ID
+     * @param faceIdx Unique face ID
      */
-    void setId(size_t faceId) { id_ = faceId; }
+    void setIdx(size_t faceIdx) { idx_ = faceIdx; }
     
     /** 
      * @brief Set owner cell index
@@ -102,7 +111,7 @@ public:
      * @brief Get face identifier 
      * @return Unique face ID 
      */
-    size_t id() const { return id_; }
+    size_t idx() const { return idx_; }
     
     /** 
      * @brief Get node connectivity 
@@ -134,18 +143,31 @@ public:
      */
     const Vector& normal() const { return normal_; }
     
-    /** 
-     * @brief Get face area 
-     * @return Face area magnitude 
+    /**
+     * @brief Get face area (projected area) for flux calculations
+     * @return Face area magnitude - projected area for non-planar faces
      */
-    Scalar area() const { return area_; }
-    
-    /** 
-     * @brief Get second moment integrals for centroid calculation 
+    Scalar projectedArea() const { return projectedArea_; }
+
+    /**
+     * @brief Get face contact area (actual wetted surface area)
+     * @return Contact area - sum of sub-triangle areas for non-planar faces
+     * @note Used for wall shear stress, heat transfer, and friction drag
+     */
+    Scalar contactArea() const { return contactArea_; }
+
+    /**
+     * @brief Get second moment integrals for centroid calculation
      */
     Scalar x2_integral() const { return x2_integral_; }
     Scalar y2_integral() const { return y2_integral_; }
     Scalar z2_integral() const { return z2_integral_; }
+
+    /**
+     * @brief Get volume contribution integral for cell volume calculation
+     * @return The integral ∫∫_face (r · n) dS
+     */
+    Scalar volumeContribution() const { return volumeContribution_; }
 
     /** 
      * @brief Get owner cell distance vector 
@@ -209,16 +231,14 @@ public:
      * 
      * Calculates face area, centroid, normal vector, and second moment
      * integrals. For triangles, uses direct cross product. For polygons,
-     * decomposes into triangles and uses weighted averaging.
+     * decomposes into triangles.
      * Sets geometricPropertiesCalculated flag to true upon success.
      */
     void calculateGeometricProperties(const std::vector<Vector>& allNodes);
 
     /**
      * @brief Calculate distance properties of the face
-     * @tparam CellContainer Container type holding cells
      * @param allCells Container of all mesh cells
-     * @throws std::runtime_error if distances are near zero
      * 
      * Calculates distance vectors, magnitudes, and unit vectors
      * from cell centers to face center. For boundary faces,
@@ -236,9 +256,17 @@ public:
         return !neighborCell_.has_value();
     }
 
+    /**
+     * @brief Flip the face normal direction
+     */
+    void flipNormal()
+    {
+        normal_ = normal_ * S(-1.0);
+    }
+
 private:
     /// Unique face identifier
-    size_t id_ = 0;
+    size_t idx_ = 0;
     
     /// Indices of nodes that define this face
     std::vector<size_t> nodeIndices_;
@@ -249,19 +277,25 @@ private:
     /// Index of neighbor cell (nullopt for boundary faces)
     std::optional<size_t> neighborCell_;
 
-    /// Second moment integrals for centroid calculation
+    /// Second moment integrals for centroid calculation (weighted by normal)
     Scalar x2_integral_ = 0.0;
     Scalar y2_integral_ = 0.0;
     Scalar z2_integral_ = 0.0;
+
+    /// Volume contribution integral: ∫∫_face (r · n) dS
+    Scalar volumeContribution_ = 0.0;
 
     /// Face geometric center
     Vector centroid_;
     
     /// Face normal vector (unit vector)
     Vector normal_;
-    
-    /// Face area
-    Scalar area_ = 0.0;
+
+    /// Face area (projected area for flux calculations)
+    Scalar projectedArea_ = 0.0;
+
+    /// Contact area
+    Scalar contactArea_ = 0.0;
 
     /// Distance vector from owner cell center to face center
     Vector d_Pf_;
@@ -291,6 +325,12 @@ private:
     friend std::ostream& operator<<(std::ostream& os, const Face& f);
 };
 
+/**
+ * @brief Stream output operator for Face
+ * @param os Output stream
+ * @param f Face to output
+ * @return Reference to output stream
+ */
 std::ostream& operator<<(std::ostream& os, const Face& f);
 
-#endif
+#endif // FACE_HPP

@@ -18,51 +18,59 @@ void Cell::calculateGeometricProperties(const std::vector<Face>& allFaces)
     Vector centroidSum(0.0, 0.0, 0.0);
 
     for (size_t i = 0; i < faceIndices_.size(); ++i)
-    { 
+    {
         size_t faceIndex = faceIndices_[i];
         const Face& face = allFaces[faceIndex];
 
-        if(!face.geometricPropertiesCalculated()) 
+        if(!face.geometricPropertiesCalculated())
         {
             throw std::runtime_error
                 (
-                    "Error in Cell " + std::to_string(id_) + " calculation:"
+                    "Error in Cell " + std::to_string(idx_) + " calculation:"
                   + " Geometric properties for bounding Face "
-                  + std::to_string(face.id()) + " were not calculated."
+                  + std::to_string(face.idx()) + " were not calculated."
                 );
         }
-        
-        Vector adjustedNormal = faceSigns_[i] * face.normal();
 
-        Scalar cf_dot_Sf = 
-            faceSigns_[i] * face.area() * dot(face.centroid(), face.normal());
+        Scalar faceSign = S(faceSigns_[i]);
 
-        centroidSum.setX(centroidSum.x() + adjustedNormal.x() * face.x2_integral());
-        centroidSum.setY(centroidSum.y() + adjustedNormal.y() * face.y2_integral());
-        centroidSum.setZ(centroidSum.z() + adjustedNormal.z() * face.z2_integral());
+        volume_ += faceSign * face.volumeContribution();
 
-        volume_ += cf_dot_Sf;
-    }
-
-    volume_ /= S(3.0);
-    
-    if (std::abs(volume_) > smallValue) 
-    {
-        centroid_ = centroidSum / (S(2.0) * volume_);
-    } 
-    else 
-    {
-        throw std::runtime_error
+        centroidSum.setX
         (
-            "Cell " + std::to_string(id_) + " has zero volume"
+            centroidSum.x() + faceSign * face.x2_integral()
+        );
+
+        centroidSum.setY
+        (
+            centroidSum.y() + faceSign * face.y2_integral()
+        );
+
+        centroidSum.setZ
+        (
+            centroidSum.z() + faceSign * face.z2_integral()
         );
     }
 
-    if (volume_ < S(0.0)) 
+    volume_ /= S(3.0);
+
+    if (std::abs(volume_) > smallValue)
+    {
+        centroid_ = centroidSum / (S(2.0) * volume_);
+    }
+    else
     {
         throw std::runtime_error
         (
-            "Error: Cell " + std::to_string(id_) 
+            "Cell " + std::to_string(idx_) + " has zero volume"
+        );
+    }
+
+    if (volume_ < S(0.0))
+    {
+        throw std::runtime_error
+        (
+            "Error: Cell " + std::to_string(idx_)
           + " calculated negative volume (" + std::to_string(volume_)
           + "). Check face normal conventions and mesh connectivity."
         );
@@ -75,18 +83,20 @@ void Cell::calculateGeometricProperties(const std::vector<Face>& allFaces)
 
 std::ostream& operator<<(std::ostream& os, const Cell& c)
 {
-    os  << "Cell(ID: " << c.id_ << ", Faces: [";
+    os  << "Cell(ID: " << c.idx_ << ", Faces: [";
     
     for (size_t i = 0; i < c.faceIndices_.size(); ++i) 
     {
-        os  << c.faceIndices_[i] << (i == c.faceIndices_.size() - 1 ? "" : ", ");
+        os  << c.faceIndices_[i] 
+            << (i == c.faceIndices_.size() - 1 ? "" : ", ");
     }
 
     os  << "], Neighbors: [";
     
     for (size_t i = 0; i < c.neighborCellIndices_.size(); ++i)
     {
-        os << c.neighborCellIndices_[i] << (i == c.neighborCellIndices_.size() - 1 ? "" : ", ");
+        os  << c.neighborCellIndices_[i] 
+            << (i == c.neighborCellIndices_.size() - 1 ? "" : ", ");
     }
     
     os  << "]";

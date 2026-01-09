@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file Scalar.h
+ * @file Scalar.hpp
  * @brief Floating-point precision configuration and tolerance definitions
  * 
  * This file defines the Scalar type used throughout the CFD solver,
@@ -7,8 +7,8 @@
  * Precision is controlled via CMake configuration.
  *****************************************************************************/
 
-#ifndef SCALAR_H
-#define SCALAR_H
+#ifndef SCALAR_HPP
+#define SCALAR_HPP
 
 #include <string>
 #include <limits>
@@ -47,9 +47,9 @@ inline const Scalar minVolume = 1e-30;
  * when converting numeric literals to the configured Scalar type.
  */
 template<typename T>
-inline constexpr Scalar S(T val)
+inline constexpr Scalar S(T value)
 {    
-    return static_cast<Scalar>(val);
+    return static_cast<Scalar>(value);
 }
 
-#endif
+#endif // SCALAR_HPP

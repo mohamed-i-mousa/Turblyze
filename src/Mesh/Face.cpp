@@ -11,19 +11,19 @@
 #include <iostream>
 #include <iomanip>
 
-void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes) 
+void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
 {
-    geometricPropertiesCalculated_ = false;         
+    geometricPropertiesCalculated_ = false;
     const size_t nNodes = nodeIndices_.size();
 
-    for (size_t i = 0; i < nNodes; ++i) 
+    for (size_t i = 0; i < nNodes; ++i)
     {
-        if (nodeIndices_[i] >= allNodes.size()) 
+        if (nodeIndices_[i] >= allNodes.size())
         {
             throw std::out_of_range
                 (
                     "Error calculating properties for Face "
-                  + std::to_string(id_) + ": Node index "
+                  + std::to_string(idx_) + ": Node index "
                   + std::to_string(nodeIndices_[i]) + " out of range ("
                   + "Node list size: " + std::to_string(allNodes.size())
                   + ")."
@@ -32,7 +32,7 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
     }
 
     // CASE 1: Face is "Triangle" (nNodes == 3)
-    if (nNodes == 3) 
+    if (nNodes == 3)
     {
         const Vector& p1 = allNodes[nodeIndices_[0]];
         const Vector& p2 = allNodes[nodeIndices_[1]];
@@ -46,49 +46,64 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
         Vector crossProd = cross(vecB, vecA);
         Scalar crossProdMag = crossProd.magnitude();
 
-        area_ = S(0.5) * crossProdMag;
+        projectedArea_ = S(0.5) * crossProdMag;
+        contactArea_ = projectedArea_;  // For planar triangles, contact = projected
         normal_ = crossProd / (crossProdMag + vSmallValue);
 
-        x2_integral_ = 
-            (p1.x()*p1.x() + p2.x()*p2.x() + p3.x()*p3.x() 
-            + p1.x()*p2.x() + p1.x()*p3.x() + p2.x()*p3.x())
-            * area_ / S(6.0);
-        y2_integral_ = 
-            (p1.y()*p1.y() + p2.y()*p2.y() + p3.y()*p3.y()
-            + p1.y()*p2.y() + p1.y()*p3.y() + p2.y()*p3.y())
-            * area_ / S(6.0);
-        z2_integral_ = 
-            (p1.z()*p1.z() + p2.z()*p2.z() + p3.z()*p3.z()
-            + p1.z()*p2.z() + p1.z()*p3.z() + p2.z()*p3.z())
-            * area_ / S(6.0);
+        // Second moment integrals weighted by normal component
+
+        Scalar x2_formula =
+            p1.x()*p1.x() + p2.x()*p2.x() + p3.x()*p3.x()
+          + p1.x()*p2.x() + p1.x()*p3.x() + p2.x()*p3.x();
+
+        Scalar y2_formula =
+            p1.y()*p1.y() + p2.y()*p2.y() + p3.y()*p3.y()
+          + p1.y()*p2.y() + p1.y()*p3.y() + p2.y()*p3.y();
+
+        Scalar z2_formula =
+            p1.z()*p1.z() + p2.z()*p2.z() + p3.z()*p3.z()
+          + p1.z()*p2.z() + p1.z()*p3.z() + p2.z()*p3.z();
+
+        x2_integral_ = crossProd.x() * x2_formula / S(12.0);
+        y2_integral_ = crossProd.y() * y2_formula / S(12.0);
+        z2_integral_ = crossProd.z() * z2_formula / S(12.0);
+
+        // Volume contribution: ∫∫_face (r · n) dS = (c_tri · crossProd) / 2
+        // where c_tri = (p1+p2+p3)/3 is the triangle centroid
+        volumeContribution_ = dot(centroid_, crossProd) / S(2.0);
 
         geometricPropertiesCalculated_ = true;
     }
     // CASE 2: Face is "Polygon" (nNodes > 3)
-    else 
+    else
     {
         Vector faceCenter(0.0, 0.0, 0.0);
 
-        for (size_t i = 0; i < nNodes; ++i) 
+        for (size_t i = 0; i < nNodes; ++i)
         {
             faceCenter += allNodes[nodeIndices_[i]];
         }
 
-        if (nNodes > 0) 
+        if (nNodes > 0)
         {
             faceCenter /= S(nNodes);
         }
 
-        Scalar totalArea = 0.0;
         Vector weightedCentroidSum(0.0, 0.0, 0.0);
         Vector normalSum(0.0, 0.0, 0.0);
+        Scalar weightedAreaSum = 0.0;
 
-        for (size_t i = 0; i < nNodes; ++i) 
+        // Reset integrals (they will be accumulated)
+        x2_integral_ = 0.0;
+        y2_integral_ = 0.0;
+        z2_integral_ = 0.0;
+        volumeContribution_ = 0.0;
+
+        for (size_t i = 0; i < nNodes; ++i)
         {
             const Vector& p_i = allNodes[nodeIndices_[i]];
-            // Handles the end point
             const Vector& p_next = allNodes[nodeIndices_[(i + 1) % nNodes]];
-            
+
             const Vector& p1_tri = faceCenter;
             const Vector& p2_tri = p_i;
             const Vector& p3_tri = p_next;
@@ -100,34 +115,45 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
             Scalar triangleArea = S(0.5) * crossProd_tri.magnitude();
             normalSum += crossProd_tri;
 
-            Scalar x2_part = 
-                (p1_tri.x() * p1_tri.x() + p2_tri.x() * p2_tri.x()
-               + p3_tri.x() * p3_tri.x() + p1_tri.x() * p2_tri.x()
-               + p1_tri.x() * p3_tri.x() + p2_tri.x() * p3_tri.x())
-               * triangleArea / S(6.0);
-            Scalar y2_part = 
-                (p1_tri.y() * p1_tri.y() + p2_tri.y() * p2_tri.y()
-               + p3_tri.y() * p3_tri.y() + p1_tri.y() * p2_tri.y()
-               + p1_tri.y() * p3_tri.y() + p2_tri.y() * p3_tri.y())
-               * triangleArea / S(6.0);
-            Scalar z2_part = 
-                (p1_tri.z() * p1_tri.z() + p2_tri.z() * p2_tri.z()
-               + p3_tri.z() * p3_tri.z() + p1_tri.z() * p2_tri.z()
-               + p1_tri.z() * p3_tri.z() + p2_tri.z() * p3_tri.z())
-               * triangleArea / S(6.0);
+            // Weighted integrals using each sub-triangle's normal
+            // For divergence theorem: contribution = N_x * x2_formula / 12
+            Scalar x2_formula =
+                p1_tri.x() * p1_tri.x() + p2_tri.x() * p2_tri.x()
+              + p3_tri.x() * p3_tri.x() + p1_tri.x() * p2_tri.x()
+              + p1_tri.x() * p3_tri.x() + p2_tri.x() * p3_tri.x();
 
-            x2_integral_ += x2_part;
-            y2_integral_ += y2_part;
-            z2_integral_ += z2_part;
+            Scalar y2_formula =
+                p1_tri.y() * p1_tri.y() + p2_tri.y() * p2_tri.y()
+              + p3_tri.y() * p3_tri.y() + p1_tri.y() * p2_tri.y()
+              + p1_tri.y() * p3_tri.y() + p2_tri.y() * p3_tri.y();
+
+            Scalar z2_formula =
+                p1_tri.z() * p1_tri.z() + p2_tri.z() * p2_tri.z()
+              + p3_tri.z() * p3_tri.z() + p1_tri.z() * p2_tri.z()
+              + p1_tri.z() * p3_tri.z() + p2_tri.z() * p3_tri.z();
+
+            x2_integral_ += crossProd_tri.x() * x2_formula / S(12.0);
+            y2_integral_ += crossProd_tri.y() * y2_formula / S(12.0);
+            z2_integral_ += crossProd_tri.z() * z2_formula / S(12.0);
 
             Vector triangleCentroid = (p1_tri + p2_tri + p3_tri) / S(3.0);
-            totalArea += triangleArea;
+
+            // Volume contribution for this sub-triangle:
+            volumeContribution_ +=
+                dot(triangleCentroid, crossProd_tri) / S(2.0);
+
+            weightedAreaSum += triangleArea;
             weightedCentroidSum += triangleCentroid * triangleArea;
         }
 
-        area_ = totalArea;
+        // Use projected area (magnitude of vector sum) for flux calculations
+        projectedArea_ = normalSum.magnitude() / S(2.0);
 
-        centroid_ = weightedCentroidSum / (area_ + vSmallValue);
+        // Store contact area (sum of triangle areas)
+        contactArea_ = weightedAreaSum;
+
+        // Centroid uses contact area weighting (sum of triangle areas)
+        centroid_ = weightedCentroidSum / (weightedAreaSum + vSmallValue);
 
         normal_ = normalSum.normalized();
 
@@ -137,12 +163,13 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
 
 std::ostream& operator<<(std::ostream& os, const Face& f)
 {
-   os  << "Face(ID: " << f.id_
+   os  << "Face(ID: " << f.idx_
        << ", Nodes: [";
    
    for (size_t i = 0; i < f.nodeIndices_.size(); ++i)
    {
-       os  << f.nodeIndices_[i] << (i == f.nodeIndices_.size() - 1 ? "" : ", ");
+       os   << f.nodeIndices_[i] 
+            << (i == f.nodeIndices_.size() - 1 ? "" : ", ");
    }
    os  << "], Owner: " << f.ownerCell_
        << ", Neighbor: " << (
@@ -157,7 +184,7 @@ std::ostream& operator<<(std::ostream& os, const Face& f)
 
        os  << std::fixed << std::setprecision(6);
        os  << ", Centroid: " << f.centroid_
-           << ", Area: " << f.area_
+           << ", Area: " << f.projectedArea_
            << ", Normal: " << f.normal_;
        
        if (f.distancePropertiesCalculated_) 
@@ -206,4 +233,7 @@ void Face::calculateDistanceProperties(const CellContainer& allCells)
 }
 
 // Explicit template instantiation for the types used in the codebase
-template void Face::calculateDistanceProperties(const std::vector<Cell>& allCells);
+template void Face::calculateDistanceProperties
+(
+    const std::vector<Cell>& allCells
+);

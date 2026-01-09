@@ -1,32 +1,30 @@
 /******************************************************************************
- * @file Vector.h
+ * @file Vector.hpp
  * @brief 3D vector class for geometric and mathematical operations in CFD
  * 
  * This header defines a comprehensive 3D vector class that serves as the
  * foundation for all vector-based calculations in the CFD solver. The Vector
  * class provides essential mathematical operations for spatial computations,
- * geometric transformations, and vector algebra required in finite volume
+ * geometric transformations, and vector algebra required in the finite volume
  * discretization and mesh operations.
  * 
  * @class Vector
  * 
  * The Vector class provides:
- * - Component-wise access and manipulation (x, y, z coordinates)
+ * - Components access and manipulation (x, y, z coordinates)
  * - Full arithmetic operations (addition, subtraction, scalar multiplication)
  * - Vector algebra operations (dot product, cross product, normalization)
  * - Geometric calculations (distance, squared distance, magnitude)
  * - Comparison operators for sorting and equality testing
  * - Stream I/O operators for debugging and file output
- * 
- * The class integrates seamlessly with mesh geometry calculations,
- * face normal computations, and field interpolation operations.
  *****************************************************************************/
 
-#ifndef VECTOR_H
-#define VECTOR_H
+#ifndef VECTOR_HPP
+#define VECTOR_HPP
 
 #include <iostream>
 #include "Scalar.hpp"
+
 
 class Vector 
 {
@@ -37,31 +35,31 @@ public:
     
     /**
      * @brief Constructs vector with specified components
-     * @param x_val X component
-     * @param y_val Y component 
-     * @param z_val Z component
+     * @param x_value X component
+     * @param y_value Y component 
+     * @param z_value Z component
      */
-    Vector(Scalar x_val, Scalar y_val, Scalar z_val);
+    Vector(Scalar x_value, Scalar y_value, Scalar z_value);
 
 // Setter methods
 
     /** 
      * @brief Set X component 
-     * @param x_val New X component value 
+     * @param x_value New X component value 
      */
-    void setX(Scalar x_val) { x_ = x_val; }
+    void setX(Scalar x_value) { x_ = x_value; }
     
     /** 
      * @brief Set Y component 
-     * @param y_val New Y component value 
+     * @param y_value New Y component value 
      */
-    void setY(Scalar y_val) { y_ = y_val; }
+    void setY(Scalar y_value) { y_ = y_value; }
     
     /** 
      * @brief Set Z component 
-     * @param z_val New Z component value 
+     * @param z_value New Z component value 
      */
-    void setZ(Scalar z_val) { z_ = z_val; }
+    void setZ(Scalar z_value) { z_ = z_value; }
 
 // Accessor methods
 
@@ -82,6 +80,8 @@ public:
      * @return Z component value 
      */
     Scalar z() const { return z_; }
+
+// Operator methods
 
     /**
      * @brief Vector addition operator
@@ -154,6 +154,8 @@ public:
      * @return True if vectors are not equal
      */
     bool operator!=(const Vector& other) const;
+
+// Geometric calculations
 
     /**
      * @brief Calculates squared magnitude of vector
@@ -237,4 +239,4 @@ Scalar distance(const Vector& p1, const Vector& p2);
  */
 Scalar distanceSquared(const Vector& p1, const Vector& p2);
 
-#endif
+#endif // VECTOR_HPP

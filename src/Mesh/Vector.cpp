@@ -10,8 +10,10 @@
 
 Vector::Vector() : x_(0.0), y_(0.0), z_(0.0) {}
 
-Vector::Vector(Scalar x_val, Scalar y_val, Scalar z_val) 
-    : x_(x_val), y_(y_val), z_(z_val) {}
+Vector::Vector(Scalar x_value, Scalar y_value, Scalar z_value) 
+    : x_(x_value), y_(y_value), z_(z_value) {}
+
+// Public methods
 
 Vector Vector::operator+(const Vector& other) const 
 {
@@ -128,8 +130,11 @@ Vector& Vector::normalize()
 Vector Vector::normalized() const
 {
     Vector result = *this;
+
     return result.normalize();
 }
+
+// Non-member methods 
 
 Vector operator*(Scalar scalar, const Vector& p)
 {
@@ -139,6 +144,7 @@ Vector operator*(Scalar scalar, const Vector& p)
 std::ostream& operator<<(std::ostream& os, const Vector& p)
 {
     os  << "(" << p.x() << ", " << p.y() << ", " << p.z() << ")";
+
     return os;
 }
 

@@ -1,16 +1,22 @@
 /******************************************************************************
- * @file Cell.h
+ * @file Cell.hpp
  * @brief Represents a computational cell in the mesh
  * 
- * @class Cell 
+ * This header defines the Cell class, which represents a finite control volume
+ * in the computational mesh. The cell is the primary entity where flow 
+ * variables (pressure, velocity, turbulence quantities) are stored and solved.
+ * It is defined by a collection of bounding faces that form a closed volume.
  * 
- * A cell is a finite volume element bounded by faces. It stores
- * connectivity information, geometric properties, and provides
- * methods for calculating volume and centroid.
+ * @class Cell
+ * 
+ * The Cell class provides:
+ * - Topological connectivity (bounding faces, neighboring cells)
+ * - Orientation data (face alignment signs relative to cell)
+ * - Cell properties (centroid, volume)
  *****************************************************************************/
 
-#ifndef CELL_H
-#define CELL_H
+#ifndef CELL_HPP
+#define CELL_HPP
 
 #include <vector>
 
@@ -28,18 +34,18 @@ public:
 
     /**
      * @brief Constructs cell with connectivity data
-     * @param cellId Unique cell identifier
+     * @param cellIdx Unique cell identifier
      * @param faces Indices of bounding faces
      * @param neighbors Indices of neighboring cells
      * @param signs Face normal direction signs
      */
     Cell
     (
-        size_t cellId, 
+        size_t cellIdx, 
         const std::vector<size_t>& faces, 
         const std::vector<size_t>& neighbors, 
         const std::vector<int>& signs
-    ) : id_(cellId),
+    ) : idx_(cellIdx),
         faceIndices_(faces),
         neighborCellIndices_(neighbors),
         faceSigns_(signs) {}
@@ -48,9 +54,9 @@ public:
     
     /** 
      * @brief Set cell identifier
-     * @param cellId Unique cell ID
+     * @param cellIdx Unique cell ID
      */
-    void setId(size_t cellId) { id_ = cellId; }
+    void setIdx(size_t cellIdx) { idx_ = cellIdx; }
     
     /** 
      * @brief Add face index to cell connectivity
@@ -98,7 +104,7 @@ public:
      * @brief Get cell identifier 
      * @return Unique cell ID 
      */
-    size_t id() const { return id_; }
+    size_t idx() const { return idx_; }
 
     /** 
      * @brief Get bounding face indices 
@@ -150,13 +156,13 @@ public:
      * V = (1/3) * Σ(face_centroid · face_area_vector)
      * 
      * Calculates cell centroid using second moments of the faces.
-     * Sets geometricPropertiesCalculated flag to true upon success.
+     * Sets geometricPropertiesCalculated flag to true when success.
      */
     void calculateGeometricProperties(const std::vector<Face>& allFaces);
 
 private:
     /// Unique cell identifier
-    size_t id_ = 0;
+    size_t idx_ = 0;
     
     /// Indices of faces that bound this cell
     std::vector<size_t> faceIndices_;
@@ -187,4 +193,4 @@ private:
  */
 std::ostream& operator<<(std::ostream& os, const Cell& c);
 
-#endif
+#endif // CELL_HPP
