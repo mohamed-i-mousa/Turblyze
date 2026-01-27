@@ -40,7 +40,7 @@ inline const Scalar minVolume = 1e-30;
 /**
  * @brief Type-safe scalar literal conversion function
  * @tparam T Input type to convert
- * @param val Value to convert to Scalar type
+ * @param value Value to convert to Scalar type
  * @return Value converted to Scalar type
  * 
  * This function ensures compile-time evaluation and type safety

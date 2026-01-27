@@ -1,31 +1,25 @@
 /******************************************************************************
- * @file CellData.h
+ * @file CellData.hpp
  * @brief Template container for cell-centered field data storage
  * 
  * This header defines a generic template class for storing field variables
- * at cell centers in finite volume meshes. The container provides type-safe
- * storage with bounds checking, field initialization, and arithmetic 
- * operations for scalar, vector, and other field types. It serves as the 
- * foundation for all field variables in the CFD solver including velocity, 
- * pressure, and scalar transport quantities.
+ * at cell centers in finite volume meshes. The container manages cell-based
+ * data including velocity fields, pressure field, and cell-centered gradients
  * 
  * @class CellData<T>
  * 
  * The CellData template provides:
- * - Type-safe field storage with automatic memory management
- * - Bounds-checked array access with informative error messages  
- * - Field initialization with uniform or custom values
- * - Assignment operations and data manipulation methods
- * - Integration with solver boundary condition system
- * - Stream output support for debugging and diagnostics
+ * - Type-safe storage for cell-centered field variables
+ * - Face-specific initialization and assignment operations  
+ * - Debugging output for face field analysis
  * 
- * Common instantiations:
+ * Common Implementations:
  * - ScalarField = CellData<Scalar> for pressure, temperature fields
  * - VectorField = CellData<Vector> for velocity, momentum fields
  *****************************************************************************/
 
-#ifndef CELLDATA_H
-#define CELLDATA_H
+#ifndef CELL_DATA_HPP
+#define CELL_DATA_HPP
 
 #include <vector>
 #include <string>
@@ -35,14 +29,7 @@
 #include "Scalar.hpp"
 #include "Vector.hpp"
 
-/**
- * @brief Template class for storing cell-centered field data
- * @tparam T Data type (Scalar, Vector, etc.)
- * 
- * Provides storage and access methods for field data defined at cell centers.
- * Supports both scalar and vector fields with bounds checking and 
- * initialization options.
- */
+
 template<typename T>
 class CellData 
 {
@@ -125,4 +112,4 @@ using ScalarField = CellData<Scalar>;
 /// Type alias for general vector fields
 using VectorField = CellData<Vector>;
 
-#endif
+#endif // CELL_DATA_HPP

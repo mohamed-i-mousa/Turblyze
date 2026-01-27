@@ -1,30 +1,25 @@
 /******************************************************************************
- * @file FaceData.h
+ * @file FaceData.hpp
  * @brief Template container for face-centered field data storage
  * 
  * This header defines a generic template class for storing field variables
  * at face centers in finite volume meshes. The container manages face-based
  * data including mass fluxes, face velocities, and face-centered gradients
- * with type safety and bounds checking. It handles the specialized storage
- * requirements for face-based quantities in collocated finite volume schemes.
  * 
  * @class FaceData<T>
  * 
  * The FaceData template provides:
  * - Type-safe storage for face-centered field variables
- * - Bounds-checked access with clear error reporting
  * - Face-specific initialization and assignment operations  
- * - Integration with Rhie-Chow interpolation procedures
- * - Support for mass flux conservation and face velocity storage
- * - Debugging output capabilities for face field analysis
+ * - Debugging output for face field analysis
  * 
- * Common instantiations:
+ * Common Implementations:
  * - FaceFluxField = FaceData<Scalar> for mass fluxes, flow rates
  * - FaceVectorField = FaceData<Vector> for face velocities, face gradients
  *****************************************************************************/
 
-#ifndef FACEDATA_H
-#define FACEDATA_H
+#ifndef FACE_DATA_HPP
+#define FACE_DATA_HPP
 
 #include <vector>
 #include <string>
@@ -34,14 +29,7 @@
 #include "Scalar.hpp"
 #include "Vector.hpp"
 
-/**
- * @brief Template class for storing face-centered field data
- * @tparam T Data type (Scalar, Vector)
- * 
- * Provides storage and access methods for field data defined at face centers.
- * Commonly used for fluxes, gradients, and other face-based quantities
- * in finite volume calculations.
- */
+
 template<typename T>
 class FaceData 
 {
@@ -118,4 +106,4 @@ using FaceFluxField = FaceData<Scalar>;
 /// Type alias for vector face fields (e.g., gradients)
 using FaceVectorField = FaceData<Vector>;
 
-#endif
+#endif // FACE_DATA_HPP
