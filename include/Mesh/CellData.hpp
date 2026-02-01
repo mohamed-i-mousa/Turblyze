@@ -96,24 +96,6 @@ public:
      */
     const std::string& getName() const { return name_; }
 
-    /**
-     * @brief Set field name
-     * @param fieldName New name for the field
-     */
-    void setName(const std::string& fieldName) { name_ = fieldName; }
-
-    /**
-     * @brief Get internal field (const)
-     * @return Const reference to internal field vector
-     */
-    const std::vector<T>& getInternalField() const { return internalField_; }
-
-    /**
-     * @brief Get internal field (mutable)
-     * @return Reference to internal field vector
-     */
-    std::vector<T>& getInternalField() { return internalField_; }
-
 private:
 
     /// Field name identifier

@@ -96,24 +96,6 @@ public:
      */
     const std::string& getName() const { return name_; }
 
-    /**
-     * @brief Set field name
-     * @param fieldName New name for the field
-     */
-    void setName(const std::string& fieldName) { name_ = fieldName; }
-
-    /**
-     * @brief Get all faces values (const)
-     * @return Const reference to face values vector
-     */
-    const std::vector<T>& getAllFacesValues() const { return allFacesValues_; }
-
-    /**
-     * @brief Get all faces values (mutable)
-     * @return Reference to face values vector
-     */
-    std::vector<T>& getAllFacesValues() { return allFacesValues_; }
-
 private:
 
     /// Field name identifier
