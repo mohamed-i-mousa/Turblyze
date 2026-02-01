@@ -13,8 +13,8 @@ CellData<T>::CellData
 (
     const std::string& fieldName,
     size_t numCells
-) : name(fieldName),
-    internalField(numCells) {}
+) : name_(fieldName),
+    internalField_(numCells) {}
 
 template<typename T>
 CellData<T>::CellData
@@ -22,60 +22,59 @@ CellData<T>::CellData
     const std::string& fieldName,
     size_t numCells,
     const T& initialValue
-) : name(fieldName),
-    internalField(numCells, initialValue) {}
+) : name_(fieldName),
+    internalField_(numCells, initialValue) {}
 
 template<typename T>
 T& CellData<T>::operator[](size_t cellIndex)
 {
-    if (cellIndex >= internalField.size())
+    if (cellIndex >= internalField_.size())
     {
-        throw std::out_of_range
-        (
-            "Cell index out of range in CellData '" + name + "'"
-        );
+        throw   std::out_of_range
+                (
+                    "Cell index out of range in CellData '" + name_ + "'"
+                );
     }
 
-    return internalField[cellIndex];
+    return internalField_[cellIndex];
 }
 
 template<typename T>
 const T& CellData<T>::operator[](size_t cellIndex) const
 {
-    if (cellIndex >= internalField.size())
+    if (cellIndex >= internalField_.size())
     {
-        throw std::out_of_range
-        (
-            "Cell index out of range in CellData '" + name + "'"
-        );
+        throw   std::out_of_range
+                (
+                    "Cell index out of range in CellData '" + name_ + "'"
+                );
     }
 
-    return internalField[cellIndex];
+    return internalField_[cellIndex];
 }
 
-
 template<typename T>
-void CellData<T>::setAll(const T& value) 
+void CellData<T>::setAll(const T& value)
 {
-    for (size_t i = 0; i < internalField.size(); i++)
+    for (size_t i = 0; i < internalField_.size(); i++)
     {
-        internalField[i] = value;
+        internalField_[i] = value;
     }
 }
 
 template<typename T>
 void CellData<T>::printSummary(size_t itemsToShow) const
 {
-    std::cout   << "CellData: " << name << " (Size: " 
-                << internalField.size() << ")" << std::endl;
+    std::cout   << "CellData: " << name_ << " (Size: "
+                << internalField_.size() << ")" << std::endl;
 
-    for (size_t i = 0; i < std::min(internalField.size(), itemsToShow); ++i)
+    for (size_t i = 0; i < std::min(internalField_.size(), itemsToShow); ++i)
     {
-        std::cout   << "  Cell " << i << ": " << internalField[i] 
+        std::cout   << "  Cell " << i << ": " << internalField_[i]
                     << std::endl;
     }
-    
-    if (internalField.size() > itemsToShow)
+
+    if (internalField_.size() > itemsToShow)
     {
         std::cout << "  ..." << std::endl;
     }

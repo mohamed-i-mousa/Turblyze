@@ -4,7 +4,7 @@
  * 
  * This header defines the Face class , which is a fundamental in the finite
  * volume discretization. 
- * A face represents a planer surface defined by a sequence of nodes (vertices)
+ * A face represents a surface defined by a sequence of nodes (vertices)
  * and serves as the boundary between two control volumes (cells) or between a
  * cell and the domain boundary. 
  * 
@@ -13,7 +13,7 @@
  * The face class provides:
  * - Connectivity (nodes, owner cell, neighbor cell)
  * - Face properties (centroid, area, normal vector)
- * - Destance vectors for interpolations and gradient calculations (d_Pf, d_Nf)
+ * - Destance vectors for interpolations and gradient calculations
  * - Boundary handling (internal and boundary faces)
  *****************************************************************************/
 
@@ -145,13 +145,13 @@ public:
     
     /**
      * @brief Get face area (projected area) for flux calculations
-     * @return Face area magnitude - projected area for non-planar faces
+     * @return Face area magnitude (projected area for non-planar faces)
      */
     Scalar projectedArea() const { return projectedArea_; }
 
     /**
      * @brief Get face contact area (actual wetted surface area)
-     * @return Contact area - sum of sub-triangle areas for non-planar faces
+     * @return Contact area (sum of sub-triangle areas for non-planar faces)
      * @note Used for wall shear stress, heat transfer, and friction drag
      */
     Scalar contactArea() const { return contactArea_; }
@@ -213,15 +213,6 @@ public:
     {
         return geometricPropertiesCalculated_; 
     }
-    
-    /** 
-     * @brief Check if distance properties calculated 
-     * @return True if distances computed 
-     */
-    bool distancePropertiesCalculated() const
-    {
-        return distancePropertiesCalculated_;
-    }
 
     /**
      * @brief Calculate geometric properties of the face
@@ -232,7 +223,7 @@ public:
      * Calculates face area, centroid, normal vector, and second moment
      * integrals. For triangles, uses direct cross product. For polygons,
      * decomposes into triangles.
-     * Sets geometricPropertiesCalculated flag to true upon success.
+     * Sets geometricPropertiesCalculated flag when success.
      */
     void calculateGeometricProperties(const std::vector<Vector>& allNodes);
 
@@ -282,10 +273,12 @@ private:
     Scalar y2_integral_ = 0.0;
     Scalar z2_integral_ = 0.0;
 
-    /// Volume contribution integral: ∫∫_face (r · n) dS
+    /// Volume contribution integral: 
+    /// ∫∫_face (r · n) dS = (c_tri · crossProd) / 2
+    /// where c_tri = (p1+p2+p3)/3 is the triangle centroid
     Scalar volumeContribution_ = 0.0;
 
-    /// Face geometric center
+    /// Face geometric centroid
     Vector centroid_;
     
     /// Face normal vector (unit vector)
@@ -294,7 +287,7 @@ private:
     /// Face area (projected area for flux calculations)
     Scalar projectedArea_ = 0.0;
 
-    /// Contact area
+    /// Contact area (For shear stress calculations)
     Scalar contactArea_ = 0.0;
 
     /// Distance vector from owner cell center to face center

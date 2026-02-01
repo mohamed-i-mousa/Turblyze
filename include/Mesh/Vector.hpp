@@ -2,21 +2,19 @@
  * @file Vector.hpp
  * @brief 3D vector class for geometric and mathematical operations in CFD
  * 
- * This header defines a comprehensive 3D vector class that serves as the
- * foundation for all vector-based calculations in the CFD solver. The Vector
- * class provides essential mathematical operations for spatial computations,
- * geometric transformations, and vector algebra required in the finite volume
+ * This header defines a 3D vector class that serves as the foundation for 
+ * all vector-based calculations in the CFD solver. The Vector class provides
+ * essential mathematical operations required in the finite volume
  * discretization and mesh operations.
  * 
  * @class Vector
  * 
  * The Vector class provides:
  * - Components access and manipulation (x, y, z coordinates)
- * - Full arithmetic operations (addition, subtraction, scalar multiplication)
- * - Vector algebra operations (dot product, cross product, normalization)
- * - Geometric calculations (distance, squared distance, magnitude)
+ * - Arithmetic operations (addition, subtraction, scalar multiplication)
+ * - Vector operations (dot product, cross product, normalization)
  * - Comparison operators for sorting and equality testing
- * - Stream I/O operators for debugging and file output
+ * - Stream I/O operators for debugging
  *****************************************************************************/
 
 #ifndef VECTOR_HPP
@@ -183,6 +181,9 @@ public:
      */
     Vector normalized() const;
 
+    /// friend function for operator<<
+    friend std::ostream& operator<<(std::ostream& os, const Vector& p);
+
 private:
 
     /// X, Y, Z components of the vector 
@@ -222,21 +223,5 @@ Scalar dot(const Vector& p1, const Vector& p2);
  * @return Cross product vector
  */
 Vector cross(const Vector& p1, const Vector& p2);
-
-/**
- * @brief Calculates distance between two vectors
- * @param p1 First vector
- * @param p2 Second vector
- * @return Distance between vectors
- */
-Scalar distance(const Vector& p1, const Vector& p2);
-
-/**
- * @brief Calculates squared distance between two vectors
- * @param p1 First vector
- * @param p2 Second vector
- * @return Squared distance between vectors
- */
-Scalar distanceSquared(const Vector& p1, const Vector& p2);
 
 #endif // VECTOR_HPP

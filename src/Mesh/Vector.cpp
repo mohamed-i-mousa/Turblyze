@@ -6,6 +6,7 @@
 #include "Vector.hpp"
 #include <stdexcept>
 #include <iostream>
+#include <iomanip>
 #include <cmath>
 
 Vector::Vector() : x_(0.0), y_(0.0), z_(0.0) {}
@@ -34,10 +35,10 @@ Vector Vector::operator/(Scalar scalar) const
 {
     if (std::abs(scalar) < smallValue) 
     {
-        throw std::runtime_error
-            (
-                "Error: Division by zero in Vector::operator/"
-            );
+        throw   std::runtime_error
+                (
+                    "Error: Division by zero in Vector::operator/"
+                );
     }
 
     return Vector(x_ / scalar, y_ / scalar, z_ / scalar);
@@ -74,10 +75,10 @@ Vector& Vector::operator/=(Scalar scalar)
 {
     if (std::abs(scalar) < vSmallValue) 
     {
-        throw std::runtime_error
-            (
-                "Error: Division by zero in Vector::operator/="
-            );
+        throw   std::runtime_error
+                (
+                    "Error: Division by zero in Vector::operator/="
+                );
     }
 
     x_ /= scalar;
@@ -120,8 +121,10 @@ Vector& Vector::normalize()
     }
     else
     {
-        throw std::runtime_error(
-            "Error: Division by zero in Vector::normalize");
+        throw   std::runtime_error
+                (
+                    "Error: Division by zero in Vector::normalize"
+                );
     }
 
     return *this;
@@ -143,7 +146,14 @@ Vector operator*(Scalar scalar, const Vector& p)
 
 std::ostream& operator<<(std::ostream& os, const Vector& p)
 {
-    os  << "(" << p.x() << ", " << p.y() << ", " << p.z() << ")";
+    std::ios_base::fmtflags flags = os.flags();
+    int prec = os.precision();
+
+    os  << std::fixed << std::setprecision(6);
+    os  << "(" << p.x_ << ", " << p.y_ << ", " << p.z_ << ")";
+
+    os.flags(flags);
+    os.precision(prec);
 
     return os;
 }
@@ -161,14 +171,4 @@ Vector cross(const Vector& p1, const Vector& p2)
                 p1.z() * p2.x() - p1.x() * p2.z(),
                 p1.x() * p2.y() - p1.y() * p2.x()
             );
-}
-
-Scalar distance(const Vector& p1, const Vector& p2)
-{
-    return (p2 - p1).magnitude();
-}
-
-Scalar distanceSquared(const Vector& p1, const Vector& p2)
-{
-    return (p2 - p1).magnitudeSquared();
 }

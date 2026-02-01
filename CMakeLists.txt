@@ -9,6 +9,9 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# Find Eigen3 package (required for linear algebra)
+find_package(Eigen3 REQUIRED NO_MODULE)
+
 # Find VTK package with required components
 find_package(VTK REQUIRED COMPONENTS
   CommonCore
@@ -26,7 +29,7 @@ add_executable(${PROJECT_NAME}
     src/Mesh/CellData.cpp
     src/Mesh/FaceData.cpp
     src/Mesh/MeshReader.cpp
-    src/Mesh/checkMesh.cpp
+    src/Mesh/MeshChecker.cpp
     src/BoundaryConditions/BoundaryData.cpp
     src/BoundaryConditions/BoundaryPatch.cpp
     src/BoundaryConditions/BoundaryConditions.cpp
@@ -43,7 +46,7 @@ add_executable(${PROJECT_NAME}
     src/Setup/SetupReader.cpp
 )
 
-# --- Tell CMake about your include directories ---
+# --- Include directories ---
 target_include_directories(${PROJECT_NAME} PUBLIC
     include/Core/
     include/Mesh/
@@ -65,5 +68,5 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(${PROJECT_NAME} PRIVATE -O3)
 endif()
 
-# Link your executable against the VTK libraries
-target_link_libraries(${PROJECT_NAME} PRIVATE ${VTK_LIBRARIES})
+# Link your executable against the VTK and Eigen3 libraries
+target_link_libraries(${PROJECT_NAME} PRIVATE ${VTK_LIBRARIES} Eigen3::Eigen)

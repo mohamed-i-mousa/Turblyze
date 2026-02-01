@@ -2,10 +2,11 @@
  * @file Cell.hpp
  * @brief Represents a computational cell in the mesh
  * 
- * This header defines the Cell class, which represents a finite control volume
- * in the computational mesh. The cell is the primary entity where flow 
- * variables (pressure, velocity, turbulence quantities) are stored and solved.
- * It is defined by a collection of bounding faces that form a closed volume.
+ * This header defines the Cell class, which represents a finite control 
+ * volume in the computational mesh. The cell is the primary entity where flow
+ * variables (pressure, velocity, etc.) are stored and solved.
+ * The cell is defined by a collection of bounding faces that form a closed
+ * volume.
  * 
  * @class Cell
  * 
@@ -76,15 +77,6 @@ public:
     void clearFaceIndices() { faceIndices_.clear(); }
     
     /** 
-     * @brief Add neighboring cell index
-     * @param neighborIdx Index of neighboring cell
-     */
-    void addNeighborCellIndex(size_t neighborIdx)
-    {
-        neighborCellIndices_.push_back(neighborIdx);
-    }
-    
-    /** 
      * @brief Set all neighbor cell indices
      * @param neighbors Vector of neighboring cell indices
      */
@@ -135,7 +127,7 @@ public:
     
     /** 
      * @brief Get cell volume 
-     * @return Cell volume magnitude 
+     * @return Cell volume value 
      */
     Scalar volume() const { return volume_; }
 
@@ -182,6 +174,7 @@ private:
     /// Flag indicating if geometry has been calculated
     bool geometricPropertiesCalculated_ = false;
 
+    /// friend function for operator <<
     friend std::ostream& operator<<(std::ostream& os, const Cell& c);
 };
 

@@ -7,15 +7,12 @@
  * data including velocity fields, pressure field, and cell-centered gradients
  * 
  * @class CellData<T>
- * 
+ * @tparam T Type of field value stored at each cell (e.g., Scalar, Vector)
+ *
  * The CellData template provides:
  * - Type-safe storage for cell-centered field variables
  * - Face-specific initialization and assignment operations  
  * - Debugging output for face field analysis
- * 
- * Common Implementations:
- * - ScalarField = CellData<Scalar> for pressure, temperature fields
- * - VectorField = CellData<Vector> for velocity, momentum fields
  *****************************************************************************/
 
 #ifndef CELL_DATA_HPP
@@ -31,15 +28,9 @@
 
 
 template<typename T>
-class CellData 
+class CellData
 {
 public:
-
-    /// Field name identifier
-    std::string name;
-    
-    /// Cell-centered field values
-    std::vector<T> internalField;
 
     /**
      * @brief Constructor for uninitialized field
@@ -72,7 +63,7 @@ public:
      * @throws std::out_of_range if cellIndex is invalid
      */
     T& operator[](size_t cellIndex);
-    
+
     /**
      * @brief Const subscript operator
      * @param cellIndex Index of the cell to access
@@ -85,19 +76,51 @@ public:
      * @brief Get number of cells in the field
      * @return Number of cells
      */
-    inline size_t size() const { return internalField.size(); }
-    
+    size_t size() const { return internalField_.size(); }
+
     /**
      * @brief Set all field values to a given value
      * @param value Value to assign to all cells
      */
     void setAll(const T& value);
-    
+
     /**
      * @brief Print field summary for debugging
      * @param itemsToShow Number of items to display
      */
     void printSummary(size_t itemsToShow) const;
+
+    /**
+     * @brief Get field name
+     * @return Const reference to field name
+     */
+    const std::string& getName() const { return name_; }
+
+    /**
+     * @brief Set field name
+     * @param fieldName New name for the field
+     */
+    void setName(const std::string& fieldName) { name_ = fieldName; }
+
+    /**
+     * @brief Get internal field (const)
+     * @return Const reference to internal field vector
+     */
+    const std::vector<T>& getInternalField() const { return internalField_; }
+
+    /**
+     * @brief Get internal field (mutable)
+     * @return Reference to internal field vector
+     */
+    std::vector<T>& getInternalField() { return internalField_; }
+
+private:
+
+    /// Field name identifier
+    std::string name_;
+
+    /// Cell-centered field values
+    std::vector<T> internalField_;
 };
 
 /// Type alias for velocity fields (Vector-valued)
