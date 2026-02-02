@@ -6,40 +6,43 @@
 #include "BoundaryData.hpp"
 #include <stdexcept>
 
-void BoundaryData::setFixedValue(Scalar s_val) 
+
+// ****************************** Setter Methods ******************************
+
+void BoundaryData::setFixedValue(Scalar scalarValue) 
 {
     type_ = BCType::FIXED_VALUE;
-    scalarValue_ = s_val; 
+    scalarValue_ = scalarValue; 
     valueType_ = BCValueType::SCALAR;
 
     vectorValue_ = Vector();
     gradientType_ = BCValueType::UNDEFINED;
 }
 
-void BoundaryData::setFixedValue(const Vector& v_val) 
+void BoundaryData::setFixedValue(const Vector& vectorValue) 
 {
     type_ = BCType::FIXED_VALUE;
-    vectorValue_ = v_val; 
+    vectorValue_ = vectorValue; 
     valueType_ = BCValueType::VECTOR;
 
     scalarValue_ = S(0.0);
     gradientType_ = BCValueType::UNDEFINED;
 }
 
-void BoundaryData::setFixedGradient(Scalar s_grad) 
+void BoundaryData::setFixedGradient(Scalar scalarGradient) 
 {
     type_ = BCType::FIXED_GRADIENT;
-    scalarGradient_ = s_grad; 
+    scalarGradient_ = scalarGradient; 
     gradientType_ = BCValueType::SCALAR;
 
     vectorValue_ = Vector();
     valueType_ = BCValueType::UNDEFINED;
 }
 
-void BoundaryData::setFixedGradient(const Vector& v_grad) 
+void BoundaryData::setFixedGradient(const Vector& vectorGradient) 
 {
     type_ = BCType::FIXED_GRADIENT;
-    vectorGradient_ = v_grad; 
+    vectorGradient_ = vectorGradient; 
     gradientType_ = BCValueType::VECTOR;
 
     scalarValue_ = S(0.0);
@@ -56,7 +59,6 @@ void BoundaryData::setZeroGradient()
     gradientType_ = BCValueType::UNDEFINED;
 }
 
-
 void BoundaryData::setNoSlip() 
 {
     type_ = BCType::NO_SLIP;
@@ -67,71 +69,74 @@ void BoundaryData::setNoSlip()
     gradientType_ = BCValueType::UNDEFINED;
 }
 
-Scalar BoundaryData::fixedScalarValue() const 
+
+// ***************************** Accessor Methods *****************************
+
+Scalar BoundaryData::fixedScalarValue() const
 {
     if (type_ == BCType::FIXED_VALUE && valueType_ == BCValueType::SCALAR)
     {
         return scalarValue_;
     }
-    
-    throw std::runtime_error
-    (
-        "Attempted to get fixed scalar value, but BC is not set to "
-        "FIXED_VALUE with SCALAR type."
-    );
+
+    throw   std::runtime_error
+            (
+                "Attempted to get fixed scalar value, but BC is not set to "
+                "FIXED_VALUE with SCALAR type."
+            );
 }
 
-const Vector& BoundaryData::fixedVectorValue() const 
+const Vector& BoundaryData::fixedVectorValue() const
 {
     if (type_ == BCType::FIXED_VALUE && valueType_ == BCValueType::VECTOR)
     {
         return vectorValue_;
     }
 
-    if (type_ == BCType::NO_SLIP && valueType_ == BCValueType::VECTOR) 
+    if (type_ == BCType::NO_SLIP && valueType_ == BCValueType::VECTOR)
     {
         return vectorValue_;
     }
 
-    throw std::runtime_error
-    (
-        "Attempted to get fixed vector value, but BC is not set to "
-        "FIXED_VALUE/NO_SLIP with VECTOR type."
-    );
+    throw   std::runtime_error
+            (
+                "Attempted to get fixed vector value, but BC is not set to "
+                "FIXED_VALUE/NO_SLIP with VECTOR type."
+            );
 }
 
-Scalar BoundaryData::fixedScalarGradient() const 
+Scalar BoundaryData::fixedScalarGradient() const
 {
-    if 
+    if
     (
-        type_ == BCType::FIXED_GRADIENT 
+        type_ == BCType::FIXED_GRADIENT
      && gradientType_ == BCValueType::SCALAR
-    ) 
+    )
     {
         return scalarGradient_;
     }
 
-    throw std::runtime_error
-    (
-        "Attempted to get fixed scalar gradient, but BC is not set to "
-        "FIXED_GRADIENT with SCALAR type."
-    );
+    throw   std::runtime_error
+            (
+                "Attempted to get fixed scalar gradient, but BC is not set to "
+                "FIXED_GRADIENT with SCALAR type."
+            );
 }
 
-const Vector& BoundaryData::fixedVectorGradient() const 
+const Vector& BoundaryData::fixedVectorGradient() const
 {
-    if 
+    if
     (
-        type_ == BCType::FIXED_GRADIENT 
+        type_ == BCType::FIXED_GRADIENT
      && gradientType_ == BCValueType::VECTOR
-    ) 
+    )
     {
         return vectorGradient_;
     }
 
-    throw std::runtime_error
-    (
-        "Attempted to get fixed vector gradient, but BC is not set to "
-        "FIXED_GRADIENT with VECTOR type."
-    );
+    throw   std::runtime_error
+            (
+                "Attempted to get fixed vector gradient, but BC is not set to "
+                "FIXED_GRADIENT with VECTOR type."
+            );
 }

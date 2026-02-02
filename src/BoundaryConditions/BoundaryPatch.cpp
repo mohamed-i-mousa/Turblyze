@@ -6,6 +6,9 @@
 #include "BoundaryPatch.hpp"
 #include <iostream>
 
+
+// ****************************** Free Functions ******************************
+
 BoundaryConditionType mapFluentBCToEnum(const std::string& fluentType) 
 {
     if (fluentType == "velocity-inlet") 
@@ -49,6 +52,9 @@ BoundaryConditionType mapFluentBCToEnum(const std::string& fluentType)
                 
     return BoundaryConditionType::UNDEFINED;
 }
+
+
+// ****************************** Public Methods ******************************
 
 size_t BoundaryPatch::numberOfBoundaryFaces() const 
 {

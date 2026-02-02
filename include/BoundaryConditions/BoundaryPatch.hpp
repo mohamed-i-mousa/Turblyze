@@ -1,22 +1,22 @@
 /******************************************************************************
- * @file BoundaryPatch.h
+ * @file BoundaryPatch.hpp
  * @brief Boundary patch representation and mesh connectivity management
+ *
+ * This header defines the BoundaryPatch class, which represents a set of 
+ * faces on the domain boundary. A patch is identified by a name
+ * (e.g., "inlet", "wall") and a geometric zone ID from the mesh file.
  * 
  * @class BoundaryPatch
  * 
- * Represents a collection of boundary faces sharing the same boundary
- * condition type and patch name. Manages mesh connectivity information,
- * face-to-patch mapping, and boundary type classification for CFD solver.
- * 
- * Key features:
- * - Face grouping by boundary condition type and mesh patch name
- * - Mesh connectivity storage (face IDs, node indices, element types)
- * - Boundary type classification from mesh file input
- * - Integration with BoundaryConditions management system
+ * The BoundaryPatch class provides:
+ * - Identification of boundary zones (name, ID, type)
+ * - Topological range definitions (start face index, end face index)
+ * - Mapping between mesh file types (e.g., Fluent strings) and internal enums
+ * - Helper methods for querying patch size and face validity
  *****************************************************************************/
 
-#ifndef BOUNDARYPATCH_H
-#define BOUNDARYPATCH_H
+#ifndef BOUNDARY_PATCH_HPP
+#define BOUNDARY_PATCH_HPP
 
 #include <string>
 #include <vector>
@@ -27,23 +27,23 @@
 
 /**
  * @enum BoundaryConditionType
- * @brief Enumeration of boundary condition types from mesh files
+ * @brief Enumeration of boundary condition types
  */
-enum class BoundaryConditionType 
+enum class BoundaryConditionType
 {
-    VELOCITY_INLET,     ///< Velocity inlet boundary
-    PRESSURE_INLET,     ///< Pressure inlet boundary
-    PRESSURE_OUTLET,    ///< Pressure outlet boundary
-    WALL,               ///< Wall boundary
-    SYMMETRY,           ///< Symmetry boundary
-    PERIODIC,           ///< Periodic boundary
-    MASS_FLOW_INLET,    ///< Mass flow inlet boundary
-    OUTFLOW,            ///< Outflow boundary
-    INTERFACE,          ///< Interface boundary
-    INTERIOR,           ///< Interior boundary
-    SOLID,              ///< Solid boundary
-    FLUID,              ///< Fluid boundary
-    UNDEFINED           ///< Undefined boundary type
+    VELOCITY_INLET,   ///< Velocity inlet boundary
+    PRESSURE_INLET,   ///< Pressure inlet boundary
+    PRESSURE_OUTLET,  ///< Pressure outlet boundary
+    WALL,             ///< Wall boundary
+    SYMMETRY,         ///< Symmetry boundary
+    PERIODIC,         ///< Periodic boundary
+    MASS_FLOW_INLET,  ///< Mass flow inlet boundary
+    OUTFLOW,          ///< Outflow boundary
+    INTERFACE,        ///< Interface boundary
+    INTERIOR,         ///< Interior boundary
+    SOLID,            ///< Solid boundary
+    FLUID,            ///< Fluid boundary
+    UNDEFINED         ///< Undefined boundary type
 };
 
 /**
@@ -54,29 +54,29 @@ enum class BoundaryConditionType
 BoundaryConditionType mapFluentBCToEnum(const std::string& fluentType);
 
 
-class BoundaryPatch 
+class BoundaryPatch
 {
 public:
 
     /**
      * @brief Constructor for boundary patch
-     * @param id Zone identifier
-     * @param start_id Index of first face
-     * @param end_id Index of last face
+     * @param idx Zone identifier
+     * @param startIdx Index of first face
+     * @param endIdx Index of last face
      */
     BoundaryPatch
     (
-        size_t id, 
-        size_t start_id, 
-        size_t end_id
-    ) : zoneID_(id), 
-        firstFaceIdx_(start_id), 
-        lastFaceIdx_(end_id) {}
+        size_t id,
+        size_t startIdx,
+        size_t endIdx
+    ) : zoneIdx_(id), 
+        firstFaceIdx_(startIdx), 
+        lastFaceIdx_(endIdx) {}
 
 // Setter methods
     
     /** 
-     * @brief Set patch name 
+     * @brief Set patch name
      * @param name New human-readable name 
      */
     void setPatchName(const std::string& name) { patchName_ = name; }
@@ -92,7 +92,7 @@ public:
      * @param bcType New boundary condition type 
      */
     void setType(BoundaryConditionType bcType) { type_ = bcType; }
-  
+
 // Accessor methods
 
     /**
@@ -103,7 +103,7 @@ public:
 
     /** 
      * @brief Get patch name 
-     * @return Human-readable patch name 
+     * @return Patch name 
      */
     const std::string& patchName() const { return patchName_; }
     
@@ -123,20 +123,20 @@ public:
      * @brief Get zone identifier 
      * @return Zone ID from mesh file 
      */
-    size_t zoneID() const { return zoneID_; }
+    size_t zoneIdx() const { return zoneIdx_; }
     
     /** 
      * @brief Get first face index 
      * @return Index of first face in patch 
      */
-    size_t firstFaceIndex() const { return firstFaceIdx_; }
+    size_t firstFaceIdx() const { return firstFaceIdx_; }
     
     /** 
      * @brief Get last face index 
      * @return Index of last face in patch
      */
-    size_t lastFaceIndex() const { return lastFaceIdx_; }
-    
+    size_t lastFaceIdx() const { return lastFaceIdx_; }
+
 private:
 
 // Private members
@@ -151,7 +151,7 @@ private:
     BoundaryConditionType type_;
     
     /// Zone identifier from mesh file
-    size_t zoneID_;
+    size_t zoneIdx_;
     
     /// Index of first face in this patch
     size_t firstFaceIdx_;
@@ -160,4 +160,4 @@ private:
     size_t lastFaceIdx_;
 };
 
-#endif
+#endif // BOUNDARY_PATCH_HPP

@@ -1,22 +1,22 @@
 /******************************************************************************
- * @file BoundaryData.h
+ * @file BoundaryData.hpp
  * @brief Boundary condition data storage and type management
+ * 
+ * This header defines the BoundaryData class, which acts as a data transfer
+ * object holding the specific parameters for boundary conditions
+ * (e.g., "velocity on inlet patch").
  * 
  * @class BoundaryData
  * 
- * Stores boundary condition data including type, values, and gradients for
- * individual patches. Supports multiple BC types (FIXED_VALUE, ZERO_GRADIENT,
- * FIXED_GRADIENT, NO_SLIP) with proper scalar/vector data handling.
- * 
- * Key features:
- * - Type-safe storage of boundary condition parameters
- * - Support for scalar and vector boundary values and gradients
- * - Conditional data usage based on boundary condition type
- * - Integration with field-based boundary condition application
+ * The BoundaryData class provides:
+ * - Type-safe storage for BC parameters (scalar/vector values, gradients)
+ * - Enumerations for supported BC types (FIXED_VALUE, ZERO_GRADIENT, etc.)
+ * - Validation logic to ensure data consistency
+ * - Conditional accessors based on the active configuration
  *****************************************************************************/
 
-#ifndef BOUNDARYDATA_H
-#define BOUNDARYDATA_H
+#ifndef BOUNDARY_DATA_HPP
+#define BOUNDARY_DATA_HPP
 
 #include <string>
 
@@ -27,24 +27,24 @@
  * @enum BCType 
  * @brief Enumeration of boundary condition types
  */
-enum class BCType 
+enum class BCType
 {
-    FIXED_VALUE,     ///< Fixed value (Dirichlet) boundary condition
-    FIXED_GRADIENT,  ///< Fixed gradient (Neumann) boundary condition
-    ZERO_GRADIENT,   ///< Zero gradient boundary condition
-    NO_SLIP,         ///< No-slip wall boundary condition
-    UNDEFINED        ///< Undefined boundary condition type
+    FIXED_VALUE,    ///< Fixed value (Dirichlet) boundary condition
+    FIXED_GRADIENT, ///< Fixed gradient (Neumann) boundary condition
+    ZERO_GRADIENT,  ///< Zero gradient boundary condition
+    NO_SLIP,        ///< No-slip wall boundary condition
+    UNDEFINED       ///< Undefined boundary condition type
 };
 
 /**
  * @enum BCValueType 
  * @brief Enumeration of boundary condition value types
  */
-enum class BCValueType 
+enum class BCValueType
 {
-    SCALAR,      ///< Scalar-valued boundary condition
-    VECTOR,      ///< Vector-valued boundary condition
-    UNDEFINED    ///< Undefined value type
+    SCALAR,         ///< Scalar-valued boundary condition
+    VECTOR,         ///< Vector-valued boundary condition
+    UNDEFINED       ///< Undefined value type
 };
 
 class BoundaryData 
@@ -54,31 +54,31 @@ public:
     /// Default constructor
     BoundaryData() = default;
 
-// Setter methods 
+// Setter methods
 
     /**
      * @brief Set fixed scalar value boundary condition
-     * @param s_val Scalar value to fix at boundary
+     * @param scalarValue Scalar value to fix at boundary
      */
-    void setFixedValue(Scalar s_val);
+    void setFixedValue(Scalar scalarValue);
     
     /**
      * @brief Set fixed vector value boundary condition
-     * @param v_val Vector value to fix at boundary
+     * @param vectorValue Vector value to fix at boundary
      */
-    void setFixedValue(const Vector& v_val);
+    void setFixedValue(const Vector& vectorValue);
     
     /**
      * @brief Set fixed scalar gradient boundary condition
-     * @param s_grad Scalar gradient (normal component) at boundary
+     * @param scalarGradient Scalar gradient (normal component) at boundary
      */
-    void setFixedGradient(Scalar s_grad);
+    void setFixedGradient(Scalar scalarGradient);
     
     /**
      * @brief Set fixed vector gradient boundary condition
-     * @param v_grad Vector gradient (normal component) at boundary
+     * @param vectorGradient Vector gradient (normal component) at boundary
      */
-    void setFixedGradient(const Vector& v_grad);
+    void setFixedGradient(const Vector& vectorGradient);
     
     /**
      * @brief Set zero gradient boundary condition
@@ -90,7 +90,7 @@ public:
      */
     void setNoSlip();
 
-// Accesor methods
+// Accessor methods
     
     /** 
      * @brief Get boundary condition type 
@@ -161,10 +161,10 @@ public:
      * @throws std::runtime_error if not a fixed vector gradient BC
      */
     const Vector& fixedVectorGradient() const;
-    
+
 private:
 
-// Private members 
+// Private members
 
     /// Boundary condition type
     BCType type_ = BCType::UNDEFINED;
@@ -188,4 +188,4 @@ private:
     Vector vectorGradient_;
 };
 
-#endif
+#endif // BOUNDARY_DATA_HPP

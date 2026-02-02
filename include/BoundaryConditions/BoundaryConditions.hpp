@@ -1,20 +1,22 @@
 /******************************************************************************
- * @file BoundaryConditions.h
+ * @file BoundaryConditions.hpp
  * @brief Manages boundary conditions for the CFD solver
  * 
  * This class provides functionality to set up, store, and apply boundary
  * conditions for different fields on mesh patches. It supports various
  * boundary condition types including fixed values, gradients, and
  * special conditions like no-slip.
- * 
+ *
+ * @class BoundaryConditions
+ *
  * @example: usage hierarchy:
  * - Patch "inlet": U → fixed value, p → zero gradient
  * - Patch "outlet": U → zero gradient, p → fixed value  
  * - Patch "wall": U → no-slip, p → zero gradient
  *****************************************************************************/
 
-#ifndef BOUNDARYCONDITIONS_H
-#define BOUNDARYCONDITIONS_H
+#ifndef BOUNDARY_CONDITIONS_HPP
+#define BOUNDARY_CONDITIONS_HPP
 
 #include <vector>
 #include <string>
@@ -32,7 +34,7 @@ class BoundaryConditions
 {
 public:
 
-    /// Default constructor 
+    /// Default constructor
     BoundaryConditions() = default;
 
 // Setter methods
@@ -47,14 +49,14 @@ public:
      * @brief Set generic boundary condition
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field (U, p, k, omega, etc.)
-     * @param bc_setup Boundary condition setup
+     * @param BCSetup Boundary condition setup
      * @return True if successfully set
      */
     bool setBC
     (
         const std::string& patchName,
         const std::string& fieldName,
-        BoundaryData bc_setup
+        BoundaryData BCSetup
     );
 
     /**
@@ -136,7 +138,6 @@ public:
         const std::string& patchName, 
         const std::string& fieldName
     );
-    
 
 // Accessor methods
 
@@ -188,25 +189,21 @@ public:
     ) const;
 
     /**
-     * @brief Calculate boundary face value for vector field
-     * @param face Boundary face
-     * @param phi Vector field
-     * @param fieldName Name of the field
-     * @return Boundary value based on boundary condition
-     * @throws std::runtime_error if face not found in boundary patches
+     * @brief Get face-to-patch mapping for O(1) boundary lookups
+     * @return Const reference to the face-to-patch map
      */
-    Vector calculateBoundaryFaceVectorValue
-    (
-        const Face& face,
-        const VectorField& phi,
-        const std::string& fieldName
-    ) const;
+    const std::map<size_t, const BoundaryPatch*>& faceToPatchMap() const
+    {
+        ensureFaceToPatchCacheBuilt();
+        return faceToPatchCache_;
+    }
 
     /**
      * @brief Convert boundary condition type to string
      * @param bctype Boundary condition type enumeration
      * @return String representation of BC type
      * @throws std::runtime_error if unknown BC type
+     * @note It's used in printSummary
      */
     std::string bcTypeToString(BCType bctype) const;
 
@@ -217,7 +214,7 @@ public:
 
 private:
 
-// Private members 
+// Private members
 
     /// Nested map: patch name → field name → boundary data
     std::map<std::string, std::map<std::string, BoundaryData>>
@@ -231,8 +228,8 @@ private:
     
     /// Flag indicating if cache has been built
     mutable bool cacheBuilt_ = false;
-    
-// Private methods 
+
+// Private methods
 
     /**
      * @brief Ensure face-to-patch cache is built for efficient lookup
@@ -240,4 +237,4 @@ private:
     void ensureFaceToPatchCacheBuilt() const;
 };
 
-#endif
+#endif // BOUNDARY_CONDITIONS_HPP
