@@ -1,6 +1,6 @@
 /******************************************************************************
- * @file linearInterpolation.cpp
- * @brief Implementation of linear interpolation functions for CFD fields
+ * @file LinearInterpolation.cpp
+ * @brief Implementation of linear interpolation functions
  *****************************************************************************/
 
 #include "LinearInterpolation.hpp"
@@ -13,6 +13,11 @@ Scalar interpolateToFace
 {
     if (face.isBoundary())
     {
+        std::cerr   << "WARNING: interpolateToFace() called on boundary face "
+                    << "without BoundaryConditions. Use the overload with "
+                    << "bcManager instead. "
+                    << "Falling back to owner cell value.\n";
+
         return field[face.ownerCell()];
     }
 
@@ -63,6 +68,11 @@ Vector interpolateToFace
 {
     if (face.isBoundary())
     {
+        std::cerr   << "WARNING: interpolateToFace() called on boundary face "
+                    << "without BoundaryConditions. Use the overload with "
+                    << "bcManager instead. "
+                    << "Falling back to owner cell value.\n";
+                            
         return field[face.ownerCell()];
     }
 

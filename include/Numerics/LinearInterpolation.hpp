@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file linearInterpolation.hpp
+ * @file LinearInterpolation.hpp
  * @brief Linear interpolation functions for face value reconstruction
  *
  * Provides distance-weighted linear interpolation from cell centers to face
