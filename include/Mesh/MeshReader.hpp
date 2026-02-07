@@ -197,7 +197,7 @@ private:
     /**
      * @brief Safely convert 1-based Fluent index to 0-based index
      * @param fluentIdx 1-based index from Fluent file
-     * @param context Description of where this index is used (for error messages)
+     * @param context Where this index is used (in the Error message)
      * @return 0-based index (fluentIdx - 1)
      * @throws std::runtime_error if fluentIdx is 0
      */

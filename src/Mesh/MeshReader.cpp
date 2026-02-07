@@ -556,12 +556,13 @@ void MeshReader::buildTopology()
             {
                 cells_[i].clearNeighborCellIndices();
             }
-            std::cerr   << "Warning: Cell with index " << i
-                        << " could not have its neighbors finalized due to "
-                        << "indexing mismatch. cells_.size(): "
-                        << cells_.size()
-                        << ", tempCellNeighbors.size(): "
-                        << tempCellNeighbors.size() << std::endl;
+            std::cerr
+                << "Warning: Cell with index " << i
+                << " could not have its neighbors finalized due to "
+                << "indexing mismatch. cells_.size(): "
+                << cells_.size()
+                << ", tempCellNeighbors.size(): "
+                << tempCellNeighbors.size() << std::endl;
         }
     }
 }
@@ -586,10 +587,19 @@ void MeshReader::validateMesh() const
 
 void MeshReader::printSummary() const
 {
-    std::cout   << "Mesh loaded successfully:" << std::endl;
-    std::cout   << "  - Nodes: " << nodes_.size() << std::endl;
-    std::cout   << "  - Faces: " << faces_.size() << std::endl;
-    std::cout   << "  - Cells: " << cells_.size() << std::endl;
-    std::cout   << "  - Boundary patches: "
-                << boundaryPatches_.size() << std::endl;
+    std::cout
+        << "Mesh loaded successfully:" << std::endl;
+
+    std::cout
+        << "  - Nodes: " << nodes_.size() << std::endl;
+
+    std::cout
+        << "  - Faces: " << faces_.size() << std::endl;
+
+    std::cout
+        << "  - Cells: " << cells_.size() << std::endl;
+
+    std::cout
+        << "  - Boundary patches: "
+        << boundaryPatches_.size() << std::endl;
 }

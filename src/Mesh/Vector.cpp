@@ -11,27 +11,27 @@
 
 Vector::Vector() : x_(0.0), y_(0.0), z_(0.0) {}
 
-Vector::Vector(Scalar x_value, Scalar y_value, Scalar z_value) 
+Vector::Vector(Scalar x_value, Scalar y_value, Scalar z_value)
     : x_(x_value), y_(y_value), z_(z_value) {}
 
-// Public methods
+// ************************** Operator Overloads **************************
 
-Vector Vector::operator+(const Vector& other) const 
+Vector Vector::operator+(const Vector& other) const
 {
     return Vector(x_ + other.x_, y_ + other.y_, z_ + other.z_);
 }
 
-Vector Vector::operator-(const Vector& other) const 
+Vector Vector::operator-(const Vector& other) const
 {
     return Vector(x_ - other.x_, y_ - other.y_, z_ - other.z_);
 }
 
-Vector Vector::operator*(Scalar scalar) const 
+Vector Vector::operator*(Scalar scalar) const
 {
     return Vector(x_ * scalar, y_ * scalar, z_ * scalar);
 }
 
-Vector Vector::operator/(Scalar scalar) const 
+Vector Vector::operator/(Scalar scalar) const
 {
     if (std::abs(scalar) < smallValue) 
     {
@@ -44,7 +44,7 @@ Vector Vector::operator/(Scalar scalar) const
     return Vector(x_ / scalar, y_ / scalar, z_ / scalar);
 }
 
-Vector& Vector::operator+=(const Vector& other) 
+Vector& Vector::operator+=(const Vector& other)
 {
     x_ += other.x_;
     y_ += other.y_;
@@ -53,7 +53,7 @@ Vector& Vector::operator+=(const Vector& other)
     return *this;
 }
 
-Vector& Vector::operator-=(const Vector& other) 
+Vector& Vector::operator-=(const Vector& other)
 {
     x_ -= other.x_;
     y_ -= other.y_;
@@ -62,7 +62,7 @@ Vector& Vector::operator-=(const Vector& other)
     return *this;
 }
 
-Vector& Vector::operator*=(Scalar scalar) 
+Vector& Vector::operator*=(Scalar scalar)
 {
     x_ *= scalar;
     y_ *= scalar;
@@ -71,7 +71,7 @@ Vector& Vector::operator*=(Scalar scalar)
     return *this;
 }
 
-Vector& Vector::operator/=(Scalar scalar) 
+Vector& Vector::operator/=(Scalar scalar)
 {
     if (std::abs(scalar) < vSmallValue) 
     {
@@ -88,24 +88,24 @@ Vector& Vector::operator/=(Scalar scalar)
     return *this;
 }
 
-bool Vector::operator==(const Vector& other) const 
+bool Vector::operator==(const Vector& other) const
 {
-    return (std::abs(x_ - other.x_) < smallValue) 
+    return (std::abs(x_ - other.x_) < smallValue)
         && (std::abs(y_ - other.y_) < smallValue)
         && (std::abs(z_ - other.z_) < smallValue);
 }
 
-bool Vector::operator!=(const Vector& other) const 
+bool Vector::operator!=(const Vector& other) const
 {
     return !(*this == other);
 }
 
-Scalar Vector::magnitudeSquared() const 
+Scalar Vector::magnitudeSquared() const
 {
     return x_ * x_ + y_ * y_ + z_ * z_;
 }
 
-Scalar Vector::magnitude() const 
+Scalar Vector::magnitude() const
 {
     return std::sqrt(magnitudeSquared());
 }
@@ -137,7 +137,7 @@ Vector Vector::normalized() const
     return result.normalize();
 }
 
-// Non-member methods 
+// ************************* Non-Member Functions *************************
 
 Vector operator*(Scalar scalar, const Vector& p)
 {
@@ -150,6 +150,7 @@ std::ostream& operator<<(std::ostream& os, const Vector& p)
     int prec = os.precision();
 
     os  << std::fixed << std::setprecision(6);
+
     os  << "(" << p.x_ << ", " << p.y_ << ", " << p.z_ << ")";
 
     os.flags(flags);

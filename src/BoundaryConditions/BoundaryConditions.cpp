@@ -168,10 +168,11 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
     if (!bc)
     {
         // Default to zero-gradient for scalars if not specified
-        std::cerr   << "No BC specified for face " 
-                    << face.idx() << " in patch "
-                    << patch->patchName() << ". Defaulting to zero-gradient."
-                    << std::endl;
+        std::cerr
+            << "No BC specified for face "
+            << face.idx() << " in patch "
+            << patch->patchName() << ". Defaulting to zero-gradient."
+            << std::endl;
 
         return phi[face.ownerCell()];
     }
@@ -253,10 +254,11 @@ Vector BoundaryConditions::calculateBoundaryVectorFaceValue
     if (!bc)
     {
         // Default to zero-gradient if not specified
-        std::cerr   << "No BC specified for face "
-                    << face.idx() << " in patch "
-                    << patch->patchName() << ". Defaulting to zero-gradient."
-                    << std::endl;
+        std::cerr
+            << "No BC specified for face "
+            << face.idx() << " in patch "
+            << patch->patchName() << ". Defaulting to zero-gradient."
+            << std::endl;
 
         return phi[face.ownerCell()];
     }
@@ -338,67 +340,82 @@ std::string BoundaryConditions::bcTypeToString(BCType bctype) const
 
 void BoundaryConditions::printSummary() const 
 {
-    std::cout << "\n--- Boundary Conditions Setup Summary ---" << std::endl;
+    std::cout
+        << "\n--- Boundary Conditions Setup Summary ---" << std::endl;
 
-    if (patches_.empty()) 
+    if (patches_.empty())
     {
-        std::cout << "  No mesh patches loaded." << std::endl;
+        std::cout
+            << "  No mesh patches loaded." << std::endl;
+            
         return;
     }
 
-    std::cout   << "Total Mesh Patches Loaded: " << patches_.size() 
-                << std::endl;
+    std::cout
+        << "Total Mesh Patches Loaded: " << patches_.size()
+        << std::endl;
 
-    for (const auto& meshPatch : patches_) 
+    for (const auto& meshPatch : patches_)
     {
-        std::cout   << "  ------------------------------------" 
-                    << std::endl;
+        std::cout
+            << "  ------------------------------------"
+            << std::endl;
 
-        std::cout   << "  Mesh Patch Name         : " 
-                    << meshPatch.patchName() << std::endl;
+        std::cout
+            << "  Mesh Patch Name         : "
+            << meshPatch.patchName() << std::endl;
 
-        std::cout   << "  Fluent Type             : " 
-                    << meshPatch.fluentType() << std::endl;
+        std::cout
+            << "  Fluent Type             : "
+            << meshPatch.fluentType() << std::endl;
 
-        std::cout   << "  Zone ID                 : " 
-                    << meshPatch.zoneIdx() << std::endl;
+        std::cout
+            << "  Zone ID                 : "
+            << meshPatch.zoneIdx() << std::endl;
 
-        std::cout   << "  Number of Faces         : " 
-                    << meshPatch.numberOfBoundaryFaces() << std::endl;
+        std::cout
+            << "  Number of Faces         : "
+            << meshPatch.numberOfBoundaryFaces() << std::endl;
 
         auto patch_bc_it = patchBoundaryData_.find(meshPatch.patchName());
 
-        if 
+        if
         (
-            patch_bc_it != patchBoundaryData_.end() 
+            patch_bc_it != patchBoundaryData_.end()
          && !patch_bc_it->second.empty()
-        ) 
+        )
         {
-            std::cout << "  Configured Physical BCs :" << std::endl;
+            std::cout
+                << "  Configured Physical BCs :" << std::endl;
 
-            for (const auto& field_bc_pair : patch_bc_it->second) 
+            for (const auto& field_bc_pair : patch_bc_it->second)
             {
                 const std::string& fieldName = field_bc_pair.first;
                 const BoundaryData& fbc = field_bc_pair.second;
+
+                std::cout
+                    << "      Field '" << fieldName << "': Type: "
+                    << bcTypeToString(fbc.type());
                 
-                std::cout   << "      Field '" << fieldName << "': Type: "
-                            << bcTypeToString(fbc.type());
-                
-                if 
+                if
                 (
-                    fbc.type() == BCType::FIXED_VALUE 
+                    fbc.type() == BCType::FIXED_VALUE
                  || fbc.type() == BCType::NO_SLIP
                 )
                 {
-                    std::cout << ", Value: ";
+                    std::cout
+                        << ", Value: ";
 
                     if (fbc.valueType() == BCValueType::SCALAR)
                     {
-                        std::cout << fbc.scalarValue();
+                        std::cout
+                            << fbc.scalarValue();
                     }
                     else if
-                    (fbc.valueType() == BCValueType::VECTOR) {
-                        std::cout << fbc.vectorValue();
+                    (fbc.valueType() == BCValueType::VECTOR)
+                    {
+                        std::cout
+                            << fbc.vectorValue();
                     }
                     else
                     {
@@ -410,15 +427,18 @@ void BoundaryConditions::printSummary() const
                 }
                 else if (fbc.type() == BCType::FIXED_GRADIENT)
                 {
-                    std::cout << ", Gradient: ";
+                    std::cout
+                        << ", Gradient: ";
 
                     if (fbc.gradientType() == BCValueType::SCALAR)
                     {
-                        std::cout << fbc.scalarGradient();
+                        std::cout
+                            << fbc.scalarGradient();
                     }
                     else if (fbc.gradientType() == BCValueType::VECTOR)
                     {
-                        std::cout << fbc.vectorGradient();
+                        std::cout
+                            << fbc.vectorGradient();
                     }
                     else
                     {
@@ -434,14 +454,18 @@ void BoundaryConditions::printSummary() const
                 }
                 else if (fbc.type() == BCType::ZERO_GRADIENT)
                 {
-                    std::cout << " (implies zero gradient)";
+                    std::cout
+                        << " (implies zero gradient)";
                 }
-                std::cout << std::endl;
+
+                std::cout
+                    << std::endl;
             }
         }
     }
 
-    std::cout << "  ------------------------------------" << std::endl;
+    std::cout
+        << "  ------------------------------------" << std::endl;
 }
 
 

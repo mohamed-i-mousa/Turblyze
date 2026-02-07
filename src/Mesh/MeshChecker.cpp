@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file checkMesh.cpp
+ * @file MeshChecker.cpp
  * @brief Mesh quality assessment utilities
  *****************************************************************************/
 
@@ -84,9 +84,10 @@ Scalar MeshChecker::calculateFaceSkewness
                     );
         }
 
-        Vector vertexToCentroid = allNodes_[nodeIndices[nodeIdx]] - faceCentroid;
+        Vector vertexToCentroid =
+            allNodes_[nodeIndices[nodeIdx]] - faceCentroid;
 
-        Scalar projection = 
+        Scalar projection =
             std::abs(dot(skewnessDirection, vertexToCentroid));
 
         faceCharacteristicLength = 
@@ -233,11 +234,13 @@ Scalar MeshChecker::calculateCellAspectRatio(const Cell& cell) const
 
 void MeshChecker::check() const
 {
-    std::cout << "\n--- Mesh Quality Check ---" << std::endl;
+    std::cout
+        << "\n--- Mesh Quality Check ---" << std::endl;
 
     if (allFaces_.empty() || allCells_.empty())
     {
-        std::cout << "Warning: Empty mesh detected!" << std::endl;
+        std::cout
+            << "Warning: Empty mesh detected!" << std::endl;
         return;
     }
 
@@ -452,90 +455,146 @@ void MeshChecker::check() const
     std::ios_base::fmtflags oldFlags = std::cout.flags();
     std::streamsize oldPrecision = std::cout.precision();
 
-    std::cout << "\nFace Area Statistics:" << std::endl;
+    std::cout
+        << "\nFace Area Statistics:" << std::endl;
 
-    std::cout   << "  Minimum area: " << std::scientific
-                << std::setprecision(6) << minFaceArea << " m² (face "
-                << minFaceId << ")" << std::endl;
+    std::cout
+        << "  Minimum area: " << std::scientific << std::setprecision(6)
+        << minFaceArea << " m² (face " << minFaceId << ")" << std::endl;
 
-    std::cout   << "  Maximum area: " << std::scientific
-                << std::setprecision(6) << maxFaceArea << " m² (face "
-                << maxFaceId << ")" << std::endl;
+    std::cout
+        << "  Maximum area: " << std::scientific << std::setprecision(6)
+        << maxFaceArea << " m² (face " << maxFaceId << ")" << std::endl;
 
-    std::cout   << "\nCell Volume Statistics:" << std::endl;
+    std::cout
+        << "\nCell Volume Statistics:" << std::endl;
 
-    std::cout   << "  Minimum volume: " << std::scientific
-                << std::setprecision(6) << minCellVolume << " m³ (cell "
-                << minCellId << ")" << std::endl;
+    std::cout
+        << "  Minimum volume: " << std::scientific << std::setprecision(6)
+        << minCellVolume << " m³ (cell " << minCellId << ")" << std::endl;
 
-    std::cout   << "  Maximum volume: " << std::scientific
-                << std::setprecision(6) << maxCellVolume << " m³ (cell "
-                << maxCellId << ")" << std::endl;
+    std::cout
+        << "  Maximum volume: " << std::scientific << std::setprecision(6)
+        << maxCellVolume << " m³ (cell " << maxCellId << ")" << std::endl;
 
     // Non-orthogonality statistics
-    std::cout << "\nNon-Orthogonality Statistics:" << std::endl;
-    std::cout << std::fixed << std::setprecision(2);
-    std::cout << "  Maximum: " << maxNonOrthogonality << "° (face "
-              << maxNonOrthFaceId << ")" << std::endl;
-    std::cout << "  Average: " << avgNonOrthogonality << "°" << std::endl;
+    std::cout
+        << "\nNon-Orthogonality Statistics:" << std::endl;
+
+    std::cout
+        << std::fixed << std::setprecision(2);
+
+    std::cout
+        << "  Maximum: " << maxNonOrthogonality << "° (face " 
+        << maxNonOrthFaceId << ")" << std::endl;
+
+    std::cout
+        << "  Average: " << avgNonOrthogonality << "°" << std::endl;
 
     if (!severeNonOrthFaces.empty())
     {
-        std::cout << "  WARNING: " << severeNonOrthFaces.size()
-                  << " faces with non-orthogonality > 70°" << std::endl;
+        std::cout
+            << "  WARNING: " << severeNonOrthFaces.size()
+            << " faces with non-orthogonality > 70°"
+            << std::endl;
+
         if (severeNonOrthFaces.size() <= 10)
         {
-            std::cout << "  Face IDs: ";
+            std::cout
+                << "  Face IDs: ";
+
             for (size_t i = 0; i < severeNonOrthFaces.size(); ++i)
             {
-                std::cout << severeNonOrthFaces[i];
-                if (i < severeNonOrthFaces.size() - 1) std::cout << ", ";
+                std::cout
+                    << severeNonOrthFaces[i];
+
+                if (i < severeNonOrthFaces.size() - 1)
+                {
+                    std::cout
+                        << ", ";
+                }
             }
-            std::cout << std::endl;
+
+            std::cout
+                << std::endl;
         }
     }
 
     // Skewness statistics
-    std::cout << "\nSkewness Statistics:" << std::endl;
-    std::cout << std::fixed << std::setprecision(3);
-    std::cout << "  Maximum: " << maxSkewness << " (face "
-              << maxSkewFaceId << ")" << std::endl;
+    std::cout
+        << "\nSkewness Statistics:" << std::endl;
+
+    std::cout
+        << std::fixed << std::setprecision(3);
+
+    std::cout
+        << "  Maximum: " << maxSkewness << " (face " << maxSkewFaceId 
+        << ")" << std::endl;
 
     if (!highSkewFaces.empty())
     {
-        std::cout << "  WARNING: " << highSkewFaces.size()
-                  << " faces with skewness > 4.0" << std::endl;
+        std::cout
+            << "  WARNING: " << highSkewFaces.size() 
+            << " faces with skewness > 4.0" << std::endl;
+
         if (highSkewFaces.size() <= 10)
         {
-            std::cout << "  Face IDs: ";
+            std::cout
+                << "  Face IDs: ";
+
             for (size_t i = 0; i < highSkewFaces.size(); ++i)
             {
-                std::cout << highSkewFaces[i];
-                if (i < highSkewFaces.size() - 1) std::cout << ", ";
+                std::cout
+                    << highSkewFaces[i];
+
+                if (i < highSkewFaces.size() - 1)
+                {
+                    std::cout
+                        << ", ";
+                }
             }
-            std::cout << std::endl;
+
+            std::cout
+                << std::endl;
         }
     }
 
     // Aspect ratio statistics
-    std::cout << "\nAspect Ratio Statistics:" << std::endl;
-    std::cout << std::fixed << std::setprecision(1);
-    std::cout << "  Maximum: " << maxAspectRatio << " (cell "
-              << maxAspectCellId << ")" << std::endl;
+    std::cout
+        << "\nAspect Ratio Statistics:" << std::endl;
+
+    std::cout
+        << std::fixed << std::setprecision(1);
+
+    std::cout
+        << "  Maximum: " << maxAspectRatio << " (cell "
+        << maxAspectCellId << ")" << std::endl;
 
     if (!highAspectCells.empty())
     {
-        std::cout << "  WARNING: " << highAspectCells.size()
-                  << " cells with aspect ratio > 100" << std::endl;
+        std::cout
+            << "  WARNING: " << highAspectCells.size()
+            << " cells with aspect ratio > 100" << std::endl;
+
         if (highAspectCells.size() <= 10)
         {
-            std::cout << "  Cell IDs: ";
+            std::cout
+                << "  Cell IDs: ";
+
             for (size_t i = 0; i < highAspectCells.size(); ++i)
             {
-                std::cout << highAspectCells[i];
-                if (i < highAspectCells.size() - 1) std::cout << ", ";
+                std::cout
+                    << highAspectCells[i];
+
+                if (i < highAspectCells.size() - 1)
+                {
+                    std::cout
+                        << ", ";
+                }
             }
-            std::cout << std::endl;
+
+            std::cout
+                << std::endl;
         }
     }
 
@@ -546,90 +605,153 @@ void MeshChecker::check() const
     // Quality warnings for small areas/volumes
     if (!smallAreaFaces.empty())
     {
-        std::cout   << "\nQuality Check - Small Face Areas:" << std::endl;
-        std::cout   << "  Found " << smallAreaFaces.size()
-                    << " faces with area < "
-                    << std::scientific << std::setprecision(0) << minArea_
-                    << " m²" << std::endl;
+        std::cout
+            << "\nQuality Check - Small Face Areas:" << std::endl;
+
+        std::cout
+            << "  Found " << smallAreaFaces.size() << " faces with area < ";
+
+        std::cout
+            << std::scientific
+            << std::setprecision(0);
+        
+        std::cout 
+            << minArea_ << " m²" << std::endl;
 
         if (smallAreaFaces.size() <= 10)
         {
-            std::cout << "  Face IDs: ";
+            std::cout
+                << "  Face IDs: ";
+
             for (size_t i = 0; i < smallAreaFaces.size(); ++i)
             {
-                std::cout << smallAreaFaces[i];
-                if (i < smallAreaFaces.size() - 1) std::cout << ", ";
+                std::cout
+                    << smallAreaFaces[i];
+
+                if (i < smallAreaFaces.size() - 1)
+                {
+                    std::cout
+                        << ", ";
+                }
             }
-            std::cout << std::endl;
+
+            std::cout
+                << std::endl;
         }
         else
         {
-            std::cout << "  First 10 face IDs: ";
+            std::cout
+                << "  First 10 face IDs: ";
+
             for (size_t i = 0; i < 10; ++i)
             {
-                std::cout << smallAreaFaces[i];
-                if (i < 9) std::cout << ", ";
+                std::cout
+                    << smallAreaFaces[i];
+
+                if (i < 9)
+                {
+                    std::cout
+                        << ", ";
+                }
             }
-            std::cout << " ..." << std::endl;
+
+            std::cout
+                << " ..."
+                << std::endl;
         }
     }
 
     if (!smallVolumeCells.empty())
     {
-        std::cout   << "\nQuality Check - Small Cell Volumes:" << std::endl;
-        std::cout   << "  Found " << smallVolumeCells.size()
-                    << " cells with volume < "
-                    << std::scientific << std::setprecision(0)
-                    << minVolume_ << " m³" << std::endl;
+        std::cout
+            << "\nQuality Check - Small Cell Volumes:" << std::endl;
+
+        std::cout
+            << "  Found " << smallVolumeCells.size() 
+            << " cells with volume < ";
+
+        std::cout
+            << std::scientific << std::setprecision(0);
+
+        std::cout
+            << minVolume_ << " m³" << std::endl;
 
         if (smallVolumeCells.size() <= 10)
         {
-            std::cout << "  Cell IDs: ";
+            std::cout
+                << "  Cell IDs: ";
+
             for (size_t i = 0; i < smallVolumeCells.size(); ++i)
             {
-                std::cout << smallVolumeCells[i];
-                if (i < smallVolumeCells.size() - 1) std::cout << ", ";
+                std::cout
+                    << smallVolumeCells[i];
+
+                if (i < smallVolumeCells.size() - 1)
+                {
+                    std::cout
+                        << ", ";
+                }
             }
-            std::cout << std::endl;
+
+            std::cout
+                << std::endl;
         }
         else
         {
-            std::cout << "  First 10 cell IDs: ";
+            std::cout
+                << "  First 10 cell IDs: ";
+
             for (size_t i = 0; i < 10; ++i)
             {
-                std::cout << smallVolumeCells[i];
-                if (i < 9) std::cout << ", ";
+                std::cout
+                    << smallVolumeCells[i];
+
+                if (i < 9)
+                {
+                    std::cout
+                        << ", ";
+                }
             }
-            std::cout << " ..." << std::endl;
+
+            std::cout
+                << " ..." << std::endl;
         }
     }
 
     // Overall mesh quality summary
-    std::cout << "\n--- Mesh Quality Summary ---" << std::endl;
+    std::cout
+        << "\n--- Mesh Quality Summary ---" << std::endl;
 
     bool goodQuality = true;
 
     if (maxNonOrthogonality > S(70.0))
     {
-        std::cout << "⚠ Non-orthogonality exceeds 70° threshold" << std::endl;
+        std::cout
+            << "⚠ Non-orthogonality exceeds 70° threshold" << std::endl;
+
         goodQuality = false;
     }
 
     if (maxSkewness > S(4.0))
     {
-        std::cout << "⚠ Skewness exceeds 4.0 threshold" << std::endl;
+        std::cout
+            << "⚠ Skewness exceeds 4.0 threshold" << std::endl;
+
         goodQuality = false;
     }
 
     if (maxAspectRatio > S(100.0))
     {
-        std::cout << "⚠ Aspect ratio exceeds 100 threshold" << std::endl;
+        std::cout
+            << "⚠ Aspect ratio exceeds 100 threshold" << std::endl;
+            
         goodQuality = false;
     }
 
     if (smallAreaFaces.empty() && smallVolumeCells.empty() && goodQuality)
     {
-        std::cout   << "✓ All mesh quality metrics within acceptable ranges"
-                    << std::endl;
+        std::cout
+            << "✓ All mesh quality metrics within acceptable ranges" 
+            << std::endl;
     }
 }

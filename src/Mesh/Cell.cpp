@@ -10,6 +10,8 @@
 #include <iostream>
 #include <iomanip>
 
+// *********************** Geometric Property Methods ***********************
+
 void Cell::calculateGeometricProperties(const std::vector<Face>& allFaces)
 {
     geometricPropertiesCalculated_ = false;
@@ -85,32 +87,33 @@ void Cell::calculateGeometricProperties(const std::vector<Face>& allFaces)
 std::ostream& operator<<(std::ostream& os, const Cell& c)
 {
     os  << "Cell(ID: " << c.idx_ << ", Faces: [";
-    
-    for (size_t i = 0; i < c.faceIndices_.size(); ++i) 
+
+    for (size_t i = 0; i < c.faceIndices_.size(); ++i)
     {
-        os  << c.faceIndices_[i] 
+        os  << c.faceIndices_[i]
             << (i == c.faceIndices_.size() - 1 ? "" : ", ");
     }
 
     os  << "], Neighbors: [";
-    
+
     for (size_t i = 0; i < c.neighborCellIndices_.size(); ++i)
     {
-        os  << c.neighborCellIndices_[i] 
+        os  << c.neighborCellIndices_[i]
             << (i == c.neighborCellIndices_.size() - 1 ? "" : ", ");
     }
-    
+
     os  << "]";
 
     if (c.geometricPropertiesCalculated_)
     {
-        std::ios_base::fmtflags flags = os.flags(); 
-        int prec = os.precision(); 
+        std::ios_base::fmtflags flags = os.flags();
+        int prec = os.precision();
 
-        os  << std::fixed << std::setprecision(6); 
-        os  << ", Volume: " << c.volume_
-            << ", Centroid: " << c.centroid_;
-            
+        os  << std::fixed
+            << std::setprecision(6);
+
+        os  << ", Volume: " << c.volume_ << ", Centroid: " << c.centroid_;
+
         os.flags(flags);
         os.precision(prec);
     }
@@ -118,8 +121,8 @@ std::ostream& operator<<(std::ostream& os, const Cell& c)
     {
         os  << ", Geometry: N/A";
     }
-    
-    os << ")";
-    
+
+    os  << ")";
+
     return os;
 }

@@ -47,8 +47,9 @@ BoundaryConditionType mapFluentBCToEnum(const std::string& fluentType)
     if (fluentType == "fluid") 
         return BoundaryConditionType::FLUID;
 
-    std::cerr   << "Warning: Unknown Fluent boundary type encountered: "
-                << fluentType << std::endl;
+    std::cerr
+        << "Warning: Unknown Fluent boundary type encountered: "
+        << fluentType << std::endl;
                 
     return BoundaryConditionType::UNDEFINED;
 }

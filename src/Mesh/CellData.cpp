@@ -8,6 +8,8 @@
 #include <iostream>
 #include <algorithm>
 
+// ****************************** Constructor *******************************
+
 template<typename T>
 CellData<T>::CellData
 (
@@ -53,6 +55,8 @@ const T& CellData<T>::operator[](size_t cellIndex) const
     return internalField_[cellIndex];
 }
 
+// ***************************** Setter Methods *****************************
+
 template<typename T>
 void CellData<T>::setAll(const T& value)
 {
@@ -62,23 +66,29 @@ void CellData<T>::setAll(const T& value)
     }
 }
 
+// ***************************** Utility Methods ****************************
+
 template<typename T>
 void CellData<T>::printSummary(size_t itemsToShow) const
 {
-    std::cout   << "CellData: " << name_ << " (Size: "
-                << internalField_.size() << ")" << std::endl;
+    std::cout
+        << "CellData: " << name_ << " (Size: " << internalField_.size() 
+        << ")" << std::endl;
 
     for (size_t i = 0; i < std::min(internalField_.size(), itemsToShow); ++i)
     {
-        std::cout   << "  Cell " << i << ": " << internalField_[i]
-                    << std::endl;
+        std::cout
+            << "  Cell " << i << ": " << internalField_[i] << std::endl;
     }
 
     if (internalField_.size() > itemsToShow)
     {
-        std::cout << "  ..." << std::endl;
+        std::cout
+            << "  ..." << std::endl;
     }
 }
+
+// ************************* Template Instantiations *************************
 
 template class CellData<Vector>;
 template class CellData<Scalar>;

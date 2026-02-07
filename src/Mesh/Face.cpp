@@ -11,6 +11,8 @@
 #include <iostream>
 #include <iomanip>
 
+// ********************** Geometric Property Methods **********************
+
 void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
 {
     geometricPropertiesCalculated_ = false;
@@ -161,19 +163,19 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
 
 std::ostream& operator<<(std::ostream& os, const Face& f)
 {
-    os  << "Face(ID: " << f.idx_
-        << ", Nodes: [";
+    os  << "Face(ID: " << f.idx_ << ", Nodes: [";
 
     for (size_t i = 0; i < f.nodeIndices_.size(); ++i)
     {
         os  << f.nodeIndices_[i]
             << (i == f.nodeIndices_.size() - 1 ? "" : ", ");
     }
-    os  << "], Owner: " << f.ownerCell_
-        << ", Neighbor: " << (
-                                f.isBoundary() ? "Boundary"
-                              : std::to_string(f.neighborCell_.value_or(0))
-                             );
+
+    os  <<  "], Owner: " << f.ownerCell_ << ", Neighbor: "
+        <<  (
+                f.isBoundary() ? "Boundary"
+              : std::to_string(f.neighborCell_.value_or(0))
+            );
 
     if (f.geometricPropertiesCalculated_)
     {
@@ -181,8 +183,9 @@ std::ostream& operator<<(std::ostream& os, const Face& f)
         int prec = os.precision();
 
         os  << std::fixed << std::setprecision(6);
-        os  << ", Centroid: " << f.centroid_
-            << ", Area: " << f.projectedArea_
+
+        os  << ", Centroid: " << f.centroid_ 
+            << ", Area: "   << f.projectedArea_
             << ", Normal: " << f.normal_;
 
         if (f.distancePropertiesCalculated_)
@@ -191,7 +194,7 @@ std::ostream& operator<<(std::ostream& os, const Face& f)
 
             if (f.d_Nf_mag_.has_value())
             {
-                os << ", d_Nf_mag: " << f.d_Nf_mag_.value();
+                os  << ", d_Nf_mag: " << f.d_Nf_mag_.value();
             }
         }
 
@@ -202,10 +205,13 @@ std::ostream& operator<<(std::ostream& os, const Face& f)
     {
         os  << ", Geometry: N/A";
     }
+
     os  << ")";
 
     return os;
 }
+
+// *********************** Distance Property Methods **********************
 
 template<typename CellContainer>
 void Face::calculateDistanceProperties(const CellContainer& allCells)

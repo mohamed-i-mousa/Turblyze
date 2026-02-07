@@ -8,6 +8,8 @@
 #include <iostream>
 #include <algorithm>
 
+// ****************************** Constructor *******************************
+
 template<typename T>
 FaceData<T>::FaceData
 (
@@ -53,6 +55,7 @@ const T& FaceData<T>::operator[](size_t faceIndex) const
     return allFacesValues_[faceIndex];
 }
 
+// ***************************** Setter Methods *****************************
 
 template<typename T>
 void FaceData<T>::setAll(const T& value)
@@ -63,23 +66,29 @@ void FaceData<T>::setAll(const T& value)
     }
 }
 
+// ***************************** Utility Methods ****************************
+
 template<typename T>
 void FaceData<T>::printSummary(size_t itemsToShow) const
 {
-    std::cout   << "FaceField: " << name_ << " (Size: "
-                << allFacesValues_.size() << ")" << std::endl;
+    std::cout
+        << "FaceField: " << name_ << " (Size: " << allFacesValues_.size() 
+        << ")" << std::endl;
 
     for (size_t i = 0; i < std::min(allFacesValues_.size(), itemsToShow); ++i)
     {
-        std::cout   << "  Face " << i << ": " << allFacesValues_[i]
-                    << std::endl;
+        std::cout
+            << "  Face " << i << ": " << allFacesValues_[i] << std::endl;
     }
 
     if (allFacesValues_.size() > itemsToShow)
     {
-        std::cout   << "  ..." << std::endl;
+        std::cout
+            << "  ..." << std::endl;
     }
 }
+
+// ************************* Template Instantiations ***************************
 
 template class FaceData<Scalar>;
 template class FaceData<Vector>;
