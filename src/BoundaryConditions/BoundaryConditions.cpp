@@ -225,6 +225,99 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
     }
 }
 
+Vector BoundaryConditions::calculateBoundaryVectorFaceValue
+(
+    const Face& face,
+    const VectorField& phi,
+    const std::string& fieldName
+) const
+{
+    ensureFaceToPatchCacheBuilt();
+
+    // Find the boundary patch for this face
+    auto patch_it = faceToPatchCache_.find(face.idx());
+
+    if (patch_it == faceToPatchCache_.end())
+    {
+        throw   std::runtime_error
+                (
+                    "Boundary face "
+                  + std::to_string(face.idx())
+                  + " not found in any boundary patch. Check mesh/BC setup."
+                );
+    }
+
+    const BoundaryPatch* patch = patch_it->second;
+    const BoundaryData* bc = fieldBC(patch->patchName(), fieldName);
+
+    if (!bc)
+    {
+        // Default to zero-gradient if not specified
+        std::cerr   << "No BC specified for face "
+                    << face.idx() << " in patch "
+                    << patch->patchName() << ". Defaulting to zero-gradient."
+                    << std::endl;
+
+        return phi[face.ownerCell()];
+    }
+
+    switch (bc->type())
+    {
+        case BCType::NO_SLIP:
+        {
+            return Vector(0.0, 0.0, 0.0);
+        }
+
+        case BCType::FIXED_VALUE:
+        {
+            if (bc->valueType() == BCValueType::VECTOR)
+            {
+                return bc->vectorValue();
+            }
+            // Scalar BC on a vector field: apply scalar to all components
+            return  Vector
+                    (
+                        bc->scalarValue(),
+                        bc->scalarValue(),
+                        bc->scalarValue()
+                    );
+        }
+
+        case BCType::ZERO_GRADIENT:
+        {
+            return phi[face.ownerCell()];
+        }
+
+        case BCType::FIXED_GRADIENT:
+        {
+            Scalar d_n = dot(face.d_Pf(), face.normal());
+
+            if (bc->gradientType() == BCValueType::VECTOR)
+            {
+                return phi[face.ownerCell()] + bc->vectorGradient() * d_n;
+            }
+            // Scalar gradient on a vector field: apply to all components
+            Vector owner = phi[face.ownerCell()];
+            Scalar grad = bc->scalarGradient();
+            return  Vector
+                    (
+                        owner.x() + grad * d_n,
+                        owner.y() + grad * d_n,
+                        owner.z() + grad * d_n
+                    );
+        }
+
+        default:
+            throw   std::runtime_error
+                    (
+                        "Unknown BC type for face "
+                      + std::to_string(face.idx())
+                      + " in patch " + patch->patchName()
+                      + ": " + std::to_string(static_cast<int>(bc->type()))
+                    );
+    }
+}
+
 std::string BoundaryConditions::bcTypeToString(BCType bctype) const
 {
     switch (bctype)

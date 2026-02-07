@@ -189,6 +189,21 @@ public:
     ) const;
 
     /**
+     * @brief Calculate boundary face value for vector field
+     * @param face Boundary face
+     * @param phi Vector field
+     * @param fieldName Name of the field (e.g., "U")
+     * @return Boundary vector value based on boundary condition
+     * @throws std::runtime_error if face not found in boundary patches
+     */
+    Vector calculateBoundaryVectorFaceValue
+    (
+        const Face& face,
+        const VectorField& phi,
+        const std::string& fieldName
+    ) const;
+
+    /**
      * @brief Get face-to-patch mapping for O(1) boundary lookups
      * @return Const reference to the face-to-patch map
      */
