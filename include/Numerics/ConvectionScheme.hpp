@@ -1,29 +1,23 @@
 /******************************************************************************
- * @file ConvectionScheme.h
+ * @file ConvectionScheme.hpp
  * @brief Convection discretization schemes for finite volume method
- * 
- * This header defines various convection schemes for discretizing the 
- * convective term in transport equations. The schemes include first-order 
- * upwind (UDS), central difference (CDS), and second-order upwind (SOU) with
- * deferred correction implementation. All schemes are designed for 
- * unstructured meshes with automatic upwind direction detection based on 
- * mass flow rate.
- * 
- * @class ConvectionScheme (abstract base)
- * @class UpwindScheme (UDS - first order, unconditionally stable)
- * @class CentralDifferenceScheme (CDS - second order, requires stabilization)
- * @class SecondOrderUpwindScheme (SOU - second order, gradient-based)
- * 
- * Key features:
- * - Automatic flow direction detection via mass flow rate sign
- * - Deferred correction approach for higher-order schemes
- * - Gradient-based face value reconstruction
- * - Boundary condition integration for all schemes
- * - Matrix coefficient calculation for implicit discretization
+ *
+ * This header defines the convection scheme hierarchy for discretizing
+ * convective fluxes in transport equations. The implementation follows a
+ * deferred correction approach where all schemes use stable upwind matrix
+ * coefficients, with higher-order schemes adding explicit correction terms.
+ *
+ * @class ConvectionScheme
+ *
+ * The ConvectionScheme class provides:
+ * - Base interface for convective flux discretization
+ * - Upwind flux coefficient calculation for matrix assembly
+ * - Virtual deferred correction interface for higher-order accuracy
+ * - Support for first-order (Upwind), second-order (CDS, SOU) schemes
  *****************************************************************************/
 
-#ifndef CONVECTIONSCHEME_H
-#define CONVECTIONSCHEME_H
+#ifndef CONVECTION_SCHEME_HPP
+#define CONVECTION_SCHEME_HPP
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
@@ -33,182 +27,201 @@
 #include "FaceData.hpp"
 #include "BoundaryConditions.hpp"
 #include "BoundaryData.hpp"
+#include <memory>
 
 
-/**
- * @brief Base class for all convection discretization schemes
- * 
- * This class defines the interface for convection schemes used in
- * finite volume discretization of transport equations.
- */
-class ConvectionScheme 
+class ConvectionScheme
 {
 public:
+    /// Default destructor
     virtual ~ConvectionScheme() = default;
-    
+
+// Public types
+
     /**
-     * @brief Get convection flux coefficients
-     * @param massFlowRate Convective mass flux rate through the face
-     * @param a_P_conv Output coefficient for owner cell
-     * @param a_N_conv Output coefficient for neighbor cell
+     * @brief Upwind convection flux coefficients for matrix assembly
+     *
+     * All schemes use upwind coefficients in the matrix for stability:
+     * - owner = max(F, 0): takes flow when F >= 0
+     * - neighbor = min(F, 0): takes flow when F < 0
      */
-    virtual void getFluxCoefficients
+    struct FluxCoefficients
+    {
+        Scalar owner;
+        Scalar neighbor;
+    };
+
+// Public interface
+
+    /**
+     * @brief Get upwind convection flux coefficients for matrix assembly
+     * @param flowRate Convective volumetric flow rate through the face
+     * @return FluxCoefficients with owner and neighbor coefficients
+     */
+    static FluxCoefficients getFluxCoefficients(Scalar flowRate);
+
+    /**
+     * @brief Calculate higher-order deferred correction term
+     * @param face Face for interpolation
+     * @param phi Cell-centered field values
+     * @param grad_phi_P Cell gradient at owner cell
+     * @param grad_phi_N Cell gradient at neighbor cell
+     * @param flowRate Volumetric flow rate through face
+     * @return Correction flux: flowRate × (φ_highOrder - φ_upwind)
+     *
+     * Base implementation returns 0 (no correction for first-order upwind).
+     * Higher-order schemes override to provide explicit correction terms.
+     */
+    virtual Scalar calculateCorrection
     (
-        Scalar massFlowRate,
-        Scalar& a_P_conv,
-        Scalar& a_N_conv
-    ) const = 0;
+        const Face& face,
+        const ScalarField& phi,
+        const Vector& grad_phi_P,
+        const Vector& grad_phi_N,
+        Scalar flowRate
+    ) const;
 };
 
 /**
  * @brief First-order Upwind Differencing Scheme (UDS)
- * 
- * φ_f = φ_upwind
- * For F >= 0: φ_f = φ_P, so a_P = F, a_N = 0
- * For F < 0: φ_f = φ_N, so a_P = 0, a_N = F
+ *
+ * Discretization: φ_f = φ_upwind (flow-direction dependent)
+ *   - F >= 0: φ_f = φ_P (owner cell value)
+ *   - F < 0:  φ_f = φ_N (neighbor cell value)
+ *
+ * Unconditionally stable but diffusive (first-order accurate).
  */
-class UpwindScheme : public ConvectionScheme {
-public:
-    /**
-     * @brief Get upwind convection flux coefficients
-     * @param massFlowRate Convective mass flux rate through the face
-     * @param a_P_conv Output coefficient for owner cell
-     * @param a_N_conv Output coefficient for neighbor cell
-     */
-    void getFluxCoefficients
-    (
-        Scalar massFlowRate,
-        Scalar& a_P_conv,
-        Scalar& a_N_conv
-    ) const override;
-};
+class UpwindScheme final : public ConvectionScheme {};
 
 /**
- * @brief Bounded Central Differencing Scheme (BCDS) with gradient reformulation
- * 
- * φ_f = φ_P*w + φ_N*(1-w) + (∇φ_f · d_Pf)
- * Matrix uses upwind coefficients for stability
- * Higher-order accuracy via explicit correction term (deferred-correction)
+ * @brief Central Differencing Scheme (CDS) with deferred correction
+ *
+ * Discretization: φ_f = w·φ_P + (1-w)·φ_N (distance-weighted interpolation)
+ *
+ * Implementation uses deferred correction approach:
+ *   - Matrix coefficients: upwind (for stability)
+ *   - RHS correction: F × (φ_CDS - φ_upwind)
+ *
+ * Second-order accurate but can be unstable for high cell Peclet numbers.
  */
-class CentralDifferenceScheme : public ConvectionScheme 
+class CentralDifferenceScheme final : public ConvectionScheme
 {
 public:
-    /**
-     * @brief Get central difference convection flux coefficients
-     * @param massFlowRate Convective mass flux rate through the face
-     * @param a_P_conv Output coefficient for owner cell
-     * @param a_N_conv Output coefficient for neighbor cell
-     */
-    void getFluxCoefficients
-    (
-        Scalar massFlowRate,
-        Scalar& a_P_conv,
-        Scalar& a_N_conv
-    ) const override;
+
+// Public interface
 
     /**
-     * @brief Calculate the correction term using gradients
+     * @brief Calculate deferred correction for CDS
      * @param face Face for interpolation
      * @param phi Cell-centered field values
-     * @param grad_phi_f Face-centered gradients
-     * @param massFlowRate Mass flow rate through face
-     * @param bcManager Boundary conditions manager (optional)
-     * @param fieldName Field name for boundary conditions (optional)
-     * @return Correction term value
+     * @param grad_phi_P Cell gradient at owner (unused for CDS)
+     * @param grad_phi_N Cell gradient at neighbor (unused for CDS)
+     * @param flowRate Volumetric flow rate through face
+     * @return Correction flux: F × (φ_CDS - φ_upwind)
      */
-    Scalar calculateCentralDifferenceCorrection
-    (
-        const Face& face,
-        const ScalarField& phi,
-        const Vector& grad_phi_f,
-        Scalar massFlowRate,
-        const BoundaryConditions* bcManager = nullptr,
-        const std::string& fieldName = ""
-    ) const;
-
-    /**
-     * @brief Calculate face value using gradient-based interpolation
-     * @param face Face for interpolation
-     * @param phi Cell-centered field values
-     * @param grad_phi_f Face-centered gradients
-     * @param bcManager Boundary conditions manager (optional)
-     * @param fieldName Field name for boundary conditions (optional)
-     * @return Interpolated face value
-     */
-    Scalar calculateFaceValue
-    (
-        const Face& face,
-        const ScalarField& phi,
-        const Vector& grad_phi_f,
-        const BoundaryConditions* bcManager = nullptr,
-        const std::string& fieldName = ""
-    ) const;
-};
-
-/**
- * @brief Second-order Upwind Scheme with gradient-based formulation
- * 
- * φ_f = φ_P + (∇φ_P · d_Pf)
- * Matrix uses upwind coefficients for stability
- * Higher-order accuracy via explicit correction term (deferred-correction)
- */
-class SecondOrderUpwindScheme : public ConvectionScheme
-{
-public:
-    /**
-     * @brief Get second-order upwind convection flux coefficients
-     * @param massFlowRate Convective mass flux rate through the face
-     * @param a_P_conv Output coefficient for owner cell
-     * @param a_N_conv Output coefficient for neighbor cell
-     */
-    void getFluxCoefficients
-    (
-        Scalar massFlowRate,
-        Scalar& a_P_conv,
-        Scalar& a_N_conv
-    ) const override;
-
-    /**
-     * @brief Calculate the second-order correction term using gradients
-     * @param face Face for interpolation
-     * @param phi Cell-centered field values
-     * @param grad_phi Cell-centered gradient
-     * @param massFlowRate Mass flow rate through face
-     * @param bcManager Boundary conditions manager (optional)
-     * @param fieldName Field name for boundary conditions (optional)
-     * @return Correction term value
-     */
-    Scalar calculateSecondOrderCorrection
+    Scalar calculateCorrection
     (
         const Face& face,
         const ScalarField& phi,
         const Vector& grad_phi_P,
-        const Vector& grad_phi_N,        
-        Scalar massFlowRate,
-        const BoundaryConditions* bcManager = nullptr,
-        const std::string& fieldName = ""
-    ) const;
+        const Vector& grad_phi_N,
+        Scalar flowRate
+    ) const override;
+};
+
+/**
+ * @brief Second-order Upwind Scheme (SOU) with gradient reconstruction
+ *
+ * Discretization: φ_f = φ_upwind + ∇φ_upwind · d_{upwind→face}
+ *
+ * Implementation uses deferred correction approach:
+ *   - Matrix coefficients: upwind (for stability)
+ *   - RHS correction: F × (φ_SOU - φ_upwind)
+ *
+ * Balances accuracy (second-order) with stability (upwind bias).
+ * More robust than CDS for convection-dominated flows.
+ */
+class SecondOrderUpwindScheme final : public ConvectionScheme
+{
+public:
+
+// Public interface
 
     /**
-     * @brief Calculate face value using gradient-based upwind interpolation
+     * @brief Calculate deferred correction for SOU
      * @param face Face for interpolation
      * @param phi Cell-centered field values
-     * @param grad_phi Cell-centered gradients
-     * @param massFlowRate Mass flow rate through face
-     * @param bcManager Boundary conditions manager (optional)
-     * @param fieldName Field name for boundary conditions (optional)
-     * @return Interpolated face value
+     * @param grad_phi_P Cell gradient at owner cell
+     * @param grad_phi_N Cell gradient at neighbor cell
+     * @param flowRate Volumetric flow rate (determines upwind direction)
+     * @return Correction flux: F × (φ_SOU - φ_upwind)
      */
-    Scalar calculateFaceValue
+    Scalar calculateCorrection
     (
         const Face& face,
         const ScalarField& phi,
         const Vector& grad_phi_P,
-        const Vector& grad_phi_N,        
-        Scalar massFlowRate,
-        const BoundaryConditions* bcManager = nullptr,
-        const std::string& fieldName = ""
-    ) const;
+        const Vector& grad_phi_N,
+        Scalar flowRate
+    ) const override;
 };
 
-#endif
+/**
+ * @brief Container for equation-specific convection schemes
+ *
+ * Manages convection schemes for different transport equations:
+ * - momentum: Ux, Uy, Uz momentum equations
+ * - k: Turbulent kinetic energy transport
+ * - omega: Specific dissipation rate transport
+ * - default: Fallback for any unspecified equation
+ *
+ * Accessor methods automatically fall back to default scheme when
+ * equation-specific scheme is not set.
+ */
+struct ConvectionSchemes
+{
+// Scheme storage
+
+    /// Default scheme
+    std::unique_ptr<ConvectionScheme> defaultScheme;
+
+    /// Scheme for momentum equations (Ux, Uy, Uz)
+    std::unique_ptr<ConvectionScheme> momentumScheme;
+
+    /// Scheme for turbulent kinetic energy (k) equation
+    std::unique_ptr<ConvectionScheme> kScheme;
+
+    /// Scheme for specific dissipation rate (omega) equation
+    std::unique_ptr<ConvectionScheme> omegaScheme;
+
+// Accessor methods
+
+    /**
+     * @brief Get scheme for momentum equations
+     * @return Reference to momentum scheme if set, otherwise default scheme
+     */
+    const ConvectionScheme& momentum() const
+    {
+        return momentumScheme ? *momentumScheme : *defaultScheme;
+    }
+
+    /**
+     * @brief Get scheme for k equation
+     * @return Reference to k scheme if set, otherwise default scheme
+     */
+    const ConvectionScheme& k() const
+    {
+        return kScheme ? *kScheme : *defaultScheme;
+    }
+
+    /**
+     * @brief Get scheme for omega equation
+     * @return Reference to omega scheme if set, otherwise default scheme
+     */
+    const ConvectionScheme& omega() const
+    {
+        return omegaScheme ? *omegaScheme : *defaultScheme;
+    }
+};
+
+#endif // CONVECTION_SCHEME_HPP
