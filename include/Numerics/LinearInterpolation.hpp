@@ -61,24 +61,19 @@ Vector interpolateToFace
 );
 
 /**
- * @brief Linear interpolation of vector from component fields with BC handling
+ * @brief Linear interpolation of vector field with BC handling
  * @param face Face for interpolation
- * @param x_component X-component of vector field
- * @param y_component Y-component of vector field
- * @param z_component Z-component of vector field
+ * @param field Cell-centered vector field
  * @param bcManager Boundary condition manager
+ * @param fieldName Name of field for BC lookup (e.g., "U")
  * @return Interpolated vector value with proper BC handling
- *
- * Reconstructs a vector field from its scalar components with BC evaluation.
- * Each component uses scalar BC method at boundaries.
  */
 Vector interpolateToFace
 (
     const Face& face,
-    const ScalarField& x_component,
-    const ScalarField& y_component,
-    const ScalarField& z_component,
-    const BoundaryConditions& bcManager
+    const VectorField& field,
+    const BoundaryConditions& bcManager,
+    const std::string& fieldName
 );
 
 #endif // LINEAR_INTERPOLATION_HPP
