@@ -1,33 +1,23 @@
 /******************************************************************************
- * @file GradientScheme.h
+ * @file GradientScheme.hpp
  * @brief Gradient computation schemes for finite volume discretization
- * 
- * This class provides robust gradient reconstruction methods for scalar and
- * vector fields on unstructured finite volume meshes. The implementation
- * uses weighted least-squares approach with inverse distance squared 
- * weighting and includes gradient limiting for stability. Both cell-centered
- * and face-centered gradients are computed with proper boundary condition 
- * handling.
- * 
+ *
+ * This header defines the GradientScheme class, which provides robust
+ * gradient reconstruction methods for scalar and vector fields on
+ * unstructured finite volume meshes. The implementation uses a weighted
+ * least-squares approach with inverse distance squared weighting.
+ *
  * @class GradientScheme
- * 
- * The GradientScheme class offers:
- * - Weighted least-squares gradient reconstruction
- * - Automatic regularization for singular matrices  
- * - Barth-Jesperson gradient limiting for boundedness
- * - Face gradient interpolation with orthogonal corrections
- * - Seamless boundary condition integration
- * - Support for both scalar and vector fields
- * 
- * Key numerical features:
- * - Robust matrix solver with LLT/LU fallback mechanisms
- * - Distance-weighted interpolation for face gradients
- * - Normal/tangential gradient decomposition at boundaries
- * - Consistent treatment of non-orthogonal mesh corrections
+ *
+ * The GradientScheme class provides:
+ * - Cell-centered gradient computation via weighted least-squares
+ * - Face-centered gradient interpolation with orthogonal correction
+ * - Boundary condition handling for gradient stencils
+ * - Distance-weighted averaging for internal face gradients
  *****************************************************************************/
 
-#ifndef GRADIENTSCHEME_H
-#define GRADIENTSCHEME_H
+#ifndef GRADIENT_SCHEME_HPP
+#define GRADIENT_SCHEME_HPP
 
 #include <vector>
 #include <string>
@@ -39,93 +29,90 @@
 #include "BoundaryConditions.hpp"
 #include "CellData.hpp"
 #include "FaceData.hpp"
-#include "linearInterpolation.hpp"
 
-/**
- * @file GradientScheme.h
- * @brief Gradient reconstruction and interpolation schemes
- * 
- * For each cell P, we solve the overdetermined system:
- *   phi_N - phi_P = ∇φ_P · (r_N - r_P) + O(|r_N - r_P|²)
- * 
- * This leads to the normal equations:  A^T A ∇φ_P = A^T b
- * where:
- *   A_ij = w_i * (r_i - r_P)_j
- *   b_i = w_i * (phi_i - phi_P)
- *   w_i = 1/|r_i - r_P|² (inverse distance squared weighting)
- */
-
-/**
- * @brief Element-level gradient reconstruction and interpolation
- * 
- * Provides cell-level gradient computation and face-level gradient
- * interpolation using least-squares reconstruction.
- * 
- */
 class GradientScheme
 {
 public:
-    GradientScheme() = default;
 
     /**
-     * @brief Calculate gradient at a single cell using least-squares
+     * @brief Construct gradient scheme with mesh context
+     * @param faces Reference to all mesh faces
+     * @param cells Reference to all mesh cells
+     * @param bc Reference to boundary conditions manager
+     */
+    GradientScheme
+    (
+        const std::vector<Face>& faces,
+        const std::vector<Cell>& cells,
+        const BoundaryConditions& bc
+    );
+
+    /**
+     * @brief Calculate gradient at a single cell using least-squares.
      * @param cellIndex Index of the cell to compute gradient for
      * @param phi Scalar field for gradient calculation
-     * @param allCells Vector of all cells in the mesh
+     * @param fieldName Name of the field for BC lookup
      * @return Gradient vector at the specified cell
+     * 
+     * Uses weighted least-squares reconstruction including both
+     * internal neighbor cells and boundary faces.
      */
-    Vector CellGradient
+    Vector cellGradient
     (
         size_t cellIndex,
         const ScalarField& phi,
-        const std::vector<Cell>& allCells
-    ) const;
-
-    /**
-     * @brief Interpolate gradient at a single face
-     * @param faceIndex Index of the face to interpolate gradient for
-     * @param grad_phi Cell-centered gradient field
-     * @param phi Cell-centered scalar field
-     * @param allCells Vector of all cells in the mesh
-     * @param allFaces Vector of all faces in the mesh
-     * @param boundaryConditions Boundary conditions manager
-     * @param fieldName Name of the field for boundary condition lookup
-     * @return Gradient vector at the specified face
-     */
-    Vector FaceGradient
-    (
-        const size_t faceIndex,
-        const Vector& grad_phi_P,
-        const Vector& grad_phi_N,
-        const ScalarField& phi,
-        const std::vector<Cell>& allCells,
-        const std::vector<Face>& allFaces,
-        const BoundaryConditions& boundaryConditions,
         const std::string& fieldName
     ) const;
 
     /**
-     * @brief Linear interpolation of gradients at a face
+     * @brief Interpolate gradient at a single face
+     *
+     * For internal faces, computes a corrected face gradient using
+     * distance-weighted interpolation of cell gradients with an
+     * orthogonal correction to ensure consistency with the direct
+     * cell-to-cell difference.
+     *
+     * @param faceIndex Index of the face
+     * @param gradPhi_P Gradient at the owner cell
+     * @param gradPhi_N Gradient at the neighbor cell
+     * @param phi Cell-centered scalar field
+     * @param fieldName Name of the field for BC lookup
+     * @return Gradient vector at the specified face
+     */
+    Vector faceGradient
+    (
+        const size_t faceIndex,
+        const Vector& gradPhi_P,
+        const Vector& gradPhi_N,
+        const ScalarField& phi,
+        const std::string& fieldName
+    ) const;
+
+
+private:
+
+// Private methods
+
+    /**
+     * @brief Distance-weighted linear interpolation of gradients
      * @param face Internal face for interpolation
-     * @param grad_phi Cell-centered gradient field
+     * @param gradPhi_P Gradient at the owner cell
+     * @param gradPhi_N Gradient at the neighbor cell
      * @return Linearly interpolated gradient vector at the face
      */
     Vector averageFaceGradient
     (
         const Face& face,
-        const Vector& grad_phi_P,
-        const Vector& grad_phi_N
+        const Vector& gradPhi_P,
+        const Vector& gradPhi_N
     ) const;
 
-    
-private:
     /**
-     * @brief Calculate boundary face gradient based on boundary condition type
+     * @brief Calculate boundary face gradient based on BC type
      * @param face Boundary face
      * @param cellGradient Gradient at the owner cell
      * @param phi Scalar field values
-     * @param boundaryConditions Boundary conditions manager
-     * @param fieldName Name of the field for boundary condition lookup
+     * @param fieldName Name of the field for BC lookup
      * @return Gradient vector at the boundary face
      */
     Vector calculateBoundaryFaceGradient
@@ -133,10 +120,19 @@ private:
         const Face& face,
         const Vector& cellGradient,
         const ScalarField& phi,
-        const BoundaryConditions& boundaryConditions,
         const std::string& fieldName
     ) const;
+
+// Private members
+
+    /// Reference to all mesh faces
+    const std::vector<Face>& allFaces_;
+
+    /// Reference to all mesh cells
+    const std::vector<Cell>& allCells_;
+    
+    /// Reference to boundary conditions manager
+    const BoundaryConditions& bcManager_;
 };
 
-
-#endif
+#endif // GRADIENT_SCHEME_HPP
