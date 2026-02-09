@@ -12,22 +12,23 @@ Constraint::Constraint
 (
     VectorField& velocityField,
     ScalarField& pressureField
-) : U(velocityField),
-    p(pressureField),
-    enableVelocityConstraints(false),
-    enablePressureConstraints(false),
-    maxVelocityMagnitude(100.0),         // Default: 1000 m/s
-    minPressure(-1e6),                   // Default: -1 MPa
-    maxPressure(1e6)                     // Default: 1 MPa
+) : U_(velocityField),
+    p_(pressureField),
+    enableVelocityConstraints_(false),
+    enablePressureConstraints_(false),
+    maxVelocityMagnitude_(100.0),
+    minPressure_(-1e6),
+    maxPressure_(1e6)          
 {
 }
 
 void Constraint::setVelocityConstraints(Scalar maxVelocity)
 {
-    this->maxVelocityMagnitude = maxVelocity;
-    
-    std::cout   << "Velocity constraints set: max velocity = "
-                << maxVelocity << " m/s" << std::endl;
+    maxVelocityMagnitude_ = maxVelocity;
+
+    std::cout
+        << "Velocity constraints set: max velocity = "
+        << maxVelocity << " m/s" << std::endl;
 }
 
 void Constraint::setPressureConstraints
@@ -36,64 +37,67 @@ void Constraint::setPressureConstraints
     Scalar maxPressure
 )
 {
-    this->minPressure = minPressure;
-    this->maxPressure = maxPressure;
-    
-    std::cout   << "Pressure constraints set: range [" << minPressure
-                << ", " << maxPressure << "] Pa" << std::endl;
+    minPressure_ = minPressure;
+    maxPressure_ = maxPressure;
+
+    std::cout
+        << "Pressure constraints set: range [" << minPressure
+        << ", " << maxPressure << "] Pa" << std::endl;
 }
 
 void Constraint::enableConstraints(bool enableVel, bool enablePress)
 {
-    this->enableVelocityConstraints = enableVel;
-    this->enablePressureConstraints = enablePress;
-    
-    std::cout   << "Field constraints: velocity " 
-                << (enableVel ? "enabled" : "disabled")
-                << ", pressure " 
-                << (enablePress ? "enabled" : "disabled") << std::endl;
+    enableVelocityConstraints_ = enableVel;
+    enablePressureConstraints_ = enablePress;
+
+    std::cout
+        << "Field constraints: velocity "
+        << (enableVel ? "enabled" : "disabled")
+        << ", pressure "
+        << (enablePress ? "enabled" : "disabled") << std::endl;
 }
 
-int Constraint::applyVelocityConstraints()
+size_t Constraint::applyVelocityConstraints()
 {
-    if (!enableVelocityConstraints) return 0;
-    
-    int constraintApplications = 0;
-    
-    for (size_t i = 0; i < U.size(); ++i)
+    if (!enableVelocityConstraints_) return 0;
+
+    size_t constraintApplications = 0;
+
+    for (size_t CellIdx = 0; CellIdx < U_.size(); ++CellIdx)
     {
-        // Apply velocity magnitude constraint
-        Scalar velocityMagnitude = U[i].magnitude();
-        if (velocityMagnitude > maxVelocityMagnitude)
+        Scalar velocityMagnitude = U_[CellIdx].magnitude();
+        if (velocityMagnitude > maxVelocityMagnitude_)
         {
-            U[i] = U[i] * (maxVelocityMagnitude / velocityMagnitude);
+            U_[CellIdx] = 
+                U_[CellIdx] * (maxVelocityMagnitude_ / velocityMagnitude);
+
             constraintApplications++;
         }
     }
-    
+
     return constraintApplications;
 }
 
-int Constraint::applyPressureConstraints()
+size_t Constraint::applyPressureConstraints()
 {
-    if (!enablePressureConstraints) return 0;
-    
-    int constraintApplications = 0;
-    
-    for (size_t i = 0; i < p.size(); ++i)
+    if (!enablePressureConstraints_) return 0;
+
+    size_t constraintApplications = 0;
+
+    for (size_t CellIdx = 0; CellIdx < p_.size(); ++CellIdx)
     {
         // Apply pressure bounds
-        if (p[i] < minPressure)
+        if (p_[CellIdx] < minPressure_)
         {
-            p[i] = minPressure;
+            p_[CellIdx] = minPressure_;
             constraintApplications++;
         }
-        else if (p[i] > maxPressure)
+        else if (p_[CellIdx] > maxPressure_)
         {
-            p[i] = maxPressure;
+            p_[CellIdx] = maxPressure_;
             constraintApplications++;
         }
     }
-    
+
     return constraintApplications;
 }
