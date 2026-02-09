@@ -1,87 +1,232 @@
 /******************************************************************************
- * @file LinearSolvers.h
- * @brief Linear system solvers for sparse matrices in CFD applications
+ * @file LinearSolvers.hpp
+ * @brief Iterative solver for sparse linear systems
  * 
- * This header provides robust iterative linear solvers optimized for sparse
- * matrices arising from finite volume discretization of transport equations.
- * The solvers are built on the Eigen library and include preconditioned
- * iterative methods with convergence monitoring and adaptive tolerance
- * adjustment for numerical stability.
- * 
- * @namespace LinearSolvers
- * 
- * The LinearSolvers namespace provides:
- * - BiCGSTAB solver with incomplete LU preconditioning
- * - Conjugate gradient solver for symmetric positive definite systems
- * - Adaptive tolerance and maximum iteration controls
- * - Convergence diagnostics and residual monitoring
- * 
- * Key features:
- * - Eigen-based implementation for optimal performance
- * - ILUT preconditioning for faster convergence
- * - Configurable precision (single/double) via Scalar type
- * - Robust error handling and convergence detection
+ * This class provides configurable solvers with preconditioners for 
+ * discretized transport equations. Each LinearSolver instance maintains  
+ * independent convergence parameters and preconditioner settings.
+ *
+ * @class LinearSolver
+ *
+ * The LinearSolver class provides:
+ * - BiCGSTAB solver with ILUT preconditioner for momentum and turbulence
+ * - PCG solver with Incomplete Cholesky for pressure correction
+ * - Configurable convergence tolerances and preconditioner parameters
+ * - Optional exact residual reporting with convergence diagnostics
  *****************************************************************************/
 
-#ifndef LINEAR_SOLVER_H
-#define LINEAR_SOLVER_H
+#ifndef LINEAR_SOLVER_HPP
+#define LINEAR_SOLVER_HPP
 
 #include <eigen3/Eigen/SparseCore>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/IterativeLinearSolvers>
-#include <vector>
+#include <string>
 #include <iostream>
 #include <cmath>
+#include <optional>
+
 #include "Scalar.hpp"
 
-/**
- * @brief Namespace containing linear system solvers
- */
-namespace LinearSolvers 
+class LinearSolver
 {
+public:
 
-/**
- * @brief Solve linear system Ax = b using BiCGSTAB method
- * @param x Solution vector (input: initial guess, output: solution)
- * @param A Coefficient matrix
- * @param B Right-hand side vector
- * @param tolerance Convergence tolerance
- * @param maxIterations Maximum number of iterations
- * @param fieldName Name of the field being solved (for logging)
- * @return true if converged, false otherwise
- */
-bool BiCGSTAB
-(
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& x,
-    const Eigen::SparseMatrix<Scalar>& A,
-    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B,
-    Scalar tolerance,
-    int maxIterations,
-    const std::string& fieldName
-);
+    /**
+     * @brief Construct linear solver with convergence parameters
+     * @param fieldName Name of field being solved
+     * @param tolerance Absolute residual tolerance
+     * @param maxIterations Maximum solver iterations
+     * @param relTol Relative residual tolerance (final/initial)
+     * @param verbose Enable detailed iteration output
+     */
+    LinearSolver
+    (
+        const std::string& fieldName,
+        Scalar tolerance = S(1e-6),
+        int maxIterations = 1000,
+        Scalar relTol = S(0.0),
+        bool verbose = false
+    );
 
-/**
- * @brief Solve symmetric linear system using Preconditioned CG method
- * @param x Solution vector (input: initial guess, output: solution)
- * @param A Symmetric coefficient matrix
- * @param B Right-hand side vector
- * @param tolerance Absolute convergence tolerance
- * @param maxIterations Maximum number of iterations
- * @param fieldName Name of the field being solved (for logging)
- * @param relTol Relative tolerance (convergence if residual reduces by this factor)
- * @return true if converged, false otherwise
- */
-bool PCG
-(
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& x,
-    const Eigen::SparseMatrix<Scalar>& A,
-    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B,
-    Scalar tolerance,
-    int maxIterations,
-    const std::string& fieldName,
-    Scalar relTol = S(0.05)
-);
+// Preconditioner configuration
 
-}
+    /**
+     * @brief Configure ILUT preconditioner for BiCGSTAB solver
+     * @param fillFactor Maximum fill-in factor
+     * @param dropTol Drop tolerance for small entries during factorization
+     */
+    void setILUTParameters(int fillFactor, Scalar dropTol)
+    {
+        ilutFillFactor_ = fillFactor;
+        ilutDropTol_ = dropTol;
+    }
 
-#endif
+    /**
+     * @brief Configure Incomplete Cholesky preconditioner for PCG solver
+     * @param initialShift Initial shift parameter for numerical stability
+     */
+    void setICParameters(Scalar initialShift)
+    {
+        icInitialShift_ = initialShift;
+    }
+
+// Setters
+
+    /**
+     * @brief Set absolute residual tolerance
+     * @param tol Convergence threshold
+     */
+    void setTolerance(Scalar tol) { tolerance_ = tol; }
+
+    /**
+     * @brief Set maximum solver iterations
+     * @param maxIter Maximum allowed iterations
+     */
+    void setMaxIterations(int maxIter) { maxIterations_ = maxIter; }
+
+    /**
+     * @brief Set relative residual tolerance
+     * @param relTol Ratio of final to initial residual for convergence
+     */
+    void setRelTol(Scalar relTol) { relTol_ = relTol; }
+
+    /**
+     * @brief Enable or disable verbose output
+     * @param verbose True to print iteration statistics
+     */
+    void setVerbose(bool verbose) { verbose_ = verbose; }
+
+    /**
+     * @brief Enable or disable exact residual computation
+     * @param compute True to compute B-A*x residuals each solve
+     */
+    void setComputeResiduals(bool compute)
+    {
+        computeResiduals_ = compute;
+    }
+
+// Accessors
+
+    /// Get field name for this solver
+    const std::string& fieldName() const { return fieldName_; }
+
+    /// Get absolute tolerance
+    Scalar tolerance() const { return tolerance_; }
+
+    /// Get maximum iterations
+    int maxIterations() const { return maxIterations_; }
+
+    /// Get relative tolerance
+    Scalar relTol() const { return relTol_; }
+
+    /// Check if exact residual computation is enabled
+    bool computeResiduals() const
+    {
+        return computeResiduals_;
+    }
+
+// Solver methods
+
+    /**
+     * @brief Solve sparse system using BiCGSTAB with ILUT
+     * @param x Solution vector (initial guess -> solution)
+     * @param A Sparse coefficient matrix
+     * @param B Right-hand side vector
+     * @return True unless catastrophic failure detected
+     *
+     * Suitable for non-symmetric systems (momentum, turbulence).
+     */
+    bool solveWithBiCGSTAB
+    (
+        Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& x,
+        const Eigen::SparseMatrix<Scalar>& A,
+        const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
+    );
+
+    /**
+     * @brief Solve sparse system using PCG with Incomplete Cholesky
+     * @param x Solution vector (initial guess -> solution)
+     * @param A Sparse coefficient matrix (must be SPD)
+     * @param B Right-hand side vector
+     * @return True unless catastrophic failure detected
+     *
+     * Requires symmetric positive definite matrix
+     */
+    bool solveWithPCG
+    (
+        Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& x,
+        const Eigen::SparseMatrix<Scalar>& A,
+        const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
+    );
+    
+private:
+
+    /// Name of field being solved
+    std::string fieldName_;
+
+    /// Absolute residual tolerance for convergence
+    Scalar tolerance_;
+
+    /// Maximum solver iterations before failure
+    int maxIterations_;
+
+    /// Relative residual tolerance (final / initial)
+    Scalar relTol_;
+
+    /// Enable detailed iteration output
+    bool verbose_;
+
+    /// ILUT fill factor (controls memory vs accuracy)
+    int ilutFillFactor_ = 5;
+
+    /// ILUT drop tolerance for small entries
+    Scalar ilutDropTol_ = S(1e-6);
+
+    /// Incomplete Cholesky initial shift parameter
+    Scalar icInitialShift_ = S(1e-2);
+
+    /// Enable exact B-A*x residual computation
+    bool computeResiduals_ = true;
+
+// Shared helpers
+
+    /**
+     * @brief Container for residual metrics during solve
+     */
+    struct ResidualInfo
+    {
+        Scalar initialResidual;        ///< Initial RMS residual
+        Scalar finalResidual;          ///< Final RMS residual
+        Scalar residualRatio;          ///< finalResidual / initialResidual
+    };
+
+    /**
+     * @brief Compute RMS residual for convergence check
+     * @param residualVector Residual vector (Ax - b)
+     * @return Root mean square of residuals
+     */
+    Scalar rmsResidual
+    (
+        const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& residualVector
+    ) const;
+
+    /**
+     * @brief Report solver convergence diagnostics
+     * @param iterations Number of iterations performed
+     * @param eigenInfo Eigen's internal convergence status
+     * @param residuals Optional residual metrics
+     *
+     * Reports iteration count and Eigen status. When residuals
+     * are provided, also reports initial/final RMS residuals,
+     * residual ratio vs relTol, and final residual vs tolerance.
+     */
+    void reportConvergence
+    (
+        int iterations,
+        Eigen::ComputationInfo eigenInfo,
+        const std::optional<ResidualInfo>& residuals
+    ) const;
+};
+
+#endif // LINEAR_SOLVER_HPP

@@ -1,347 +1,286 @@
 /******************************************************************************
  * @file LinearSolvers.cpp
- * @brief Linear solver implementations for sparse matrix systems
+ * @brief LinearSolver class implementation
  *****************************************************************************/
 
 #include "LinearSolvers.hpp"
 
-namespace LinearSolvers {
+// ************************* Constructor & Setters ************************
 
-bool BiCGSTAB
+LinearSolver::LinearSolver
 (
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& x,
-    const Eigen::SparseMatrix<Scalar>& A,
-    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B,
+    const std::string& fieldName,
     Scalar tolerance,
     int maxIterations,
-    const std::string& fieldName
-) 
+    Scalar relTol,
+    bool verbose
+)
+:   fieldName_(fieldName),
+    tolerance_(tolerance),
+    maxIterations_(maxIterations),
+    relTol_(relTol),
+    verbose_(verbose)
+{}
+
+// ***************************** Shared Helpers *****************************
+
+Scalar LinearSolver::rmsResidual
+(
+    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& 
+    residualVector
+) const
 {
-    // Resize and initialize vector x     
-    if (x.size() != B.size()) 
+    size_t n = residualVector.size();
+    return std::sqrt(residualVector.squaredNorm() / S(n));
+}
+
+void LinearSolver::reportConvergence
+(
+    int iterations,
+    Eigen::ComputationInfo eigenInfo,
+    const std::optional<ResidualInfo>& residuals
+) const
+{
+    std::cout
+        << "\n--- Field '" << fieldName_
+        << "' ---" << std::endl;
+
+    std::cout
+        << "  Iterations:       " << iterations
+        << std::endl;
+
+    if (eigenInfo == Eigen::Success)
     {
-        x.resize(B.size()); 
-        x.setZero();
+        std::cout
+            << "  Eigen status:     converged"
+            << std::endl;
     }
-
-    size_t systemSize = B.size();
-
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> r(systemSize);
-    Scalar initialResidual, finalResidual;
-    
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> initialResidualVector = B - A * x;
-    Scalar initialResidualSum = S(0.0);
-
-    for (size_t i = 0; i < systemSize; ++i) 
+    else if (eigenInfo == Eigen::NoConvergence)
     {
-        initialResidualSum += std::abs(initialResidualVector(i));
-    }
-    initialResidual = initialResidualSum / S(systemSize);
-
-    // --- Main Solve (with ILU preconditioning) ---
-    Eigen::BiCGSTAB
-    <
-        Eigen::SparseMatrix<Scalar>,
-        Eigen::IncompleteLUT<Scalar>
-    > bicgstab;
-
-    bicgstab.setMaxIterations(maxIterations);
-    bicgstab.setTolerance(tolerance);
-
-    // Configure ILU (ILUT) preconditioner parameters
-    // higher fill-factor typically improves convergence but costs memory/time.
-    bicgstab.preconditioner().setFillfactor(5);
-    bicgstab.preconditioner().setDroptol(S(1e-6));
-
-    bicgstab.compute(A);
-    if (bicgstab.info() != Eigen::Success) 
-    {
-        std::cerr   << "Error for field '" << fieldName 
-                    << "': BiCGSTAB compute failed!" << std::endl;
-
-        std::cerr   << "  Eigen Info Code: " << bicgstab.info() << std::endl;
-
-        return false;
-    }
-
-    // Use solveWithGuess, as x contains the initial guess 
-    // (e.g., from previous iteration or zeros)
-
-    x = bicgstab.solveWithGuess(B, x);
-
-    std::cout   << "\n--- Solver Statistics for Field: '" 
-                << fieldName << "' ---" << std::endl;
-
-    std::cout   << "  Iterations:     " << bicgstab.iterations() << std::endl;
-
-    Scalar estimatedError = S(bicgstab.error());
-
-    std::cout   << "  Estimated Error (solver reported): " 
-                << std::scientific << estimatedError << std::endl;
-
-    // Abort on non-finite estimated error or excessively large error (divergence)
-    if (!std::isfinite(static_cast<double>(estimatedError)) || estimatedError > 1e6) 
-    {
-        throw std::runtime_error
-        (
-            "  Divergence detected for field '" 
-          + fieldName 
-          + "': estimated error is not finite or too large (" 
-          + std::to_string(estimatedError) 
-          + ")"
-        );
-    }
-    
-    bool converged = (bicgstab.info() == Eigen::Success);
-    if (converged) 
-    {
-        std::cout << "  Convergence:    SUCCESS" << std::endl;
+        std::cout
+            << "  Eigen status:     max iterations"
+            << std::endl;
     }
     else
     {
-        std::cout << "  Convergence:    FAILED (Code: " << bicgstab.info();
-        // Provide more human-readable error for common cases
-        if (bicgstab.info() == Eigen::NumericalIssue) 
-        {
-            std::cout << " - Numerical Issue";
-        }
-        else if (bicgstab.info() == Eigen::NoConvergence) 
-        {
-            std::cout << " - No Convergence (max iterations reached)";
-        }
-        else if (bicgstab.info() == Eigen::InvalidInput)
-        {
-            std::cout << " - Invalid Input";
-        }
-        
-        std::cout   << ")" << std::endl;
-        
-        std::cerr   << "  Warning: Solver for field '" << fieldName 
-                    << "' did not converge to the desired tolerance." 
-                    << std::endl;
+        std::cout
+            << "  Eigen status:     failed (code "
+            << eigenInfo << ")" << std::endl;
     }
 
-    // --- Calculate and Print Actual Final Residuals ---
-    
-    // Calculate actual residual: r = B - Ax
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> finalResidualVector = B - A * x;
-
-    // L2 norm (Euclidean norm)
-    Scalar exactResidualNormL2 = finalResidualVector.norm(); 
-
-    Scalar finalResidualSum = S(0.0);
-    
-    for (size_t i = 0; i < systemSize; ++i) 
+    if (!residuals.has_value())
     {
-        finalResidualSum += std::abs(finalResidualVector(i));
+        std::cout
+            << "  (Exact residuals: disabled)"
+            << std::endl;
+        return;
     }
 
-    finalResidual = finalResidualSum / S(systemSize);
+    std::cout
+        << std::scientific
+        << "  Initial residual: "
+        << residuals->initialResidual << std::endl;
 
-    std::cout   << "  Avg Initial Abs Residual (from guess): "
-                << std::scientific << initialResidual << std::endl;
+    std::cout
+        << "  Final residual:   "
+        << residuals->finalResidual;
 
-    std::cout   << "  Avg Final Abs Residual:                "
-                << std::scientific << finalResidual << std::endl;
-    
-    if (initialResidual > S(1e-12)) 
-    { // Avoid division by zero for ratio
-        Scalar residualRatio = finalResidual / initialResidual;
-        std::cout   << "  Residual Reduction (Avg Abs Ratio):    "
-                    << std::scientific << residualRatio << std::endl;
+    if (residuals->finalResidual < tolerance_)
+    {
+        std::cout
+            << "  CONVERGED";
     }
-    
-    std::cout   << "  Final Residual L2 Norm:                " 
-                << std::scientific << exactResidualNormL2 << std::endl;
 
-    if 
+    std::cout
+        << std::endl;
+
+    std::cout
+        << "  Tolerance:        "
+        << tolerance_ << std::endl;
+
+    if
     (
-        !std::isfinite(static_cast<double>(finalResidual)) 
-     || !std::isfinite(static_cast<double>(exactResidualNormL2))) 
+        relTol_ > S(0.0)
+     && residuals->initialResidual > S(1e-12)
+    )
     {
-        std::cerr << "  Divergence detected for field '" << fieldName
-                  << "': residual norms are not finite." << std::endl;
-        return false;
+        std::cout
+            << "  Residual ratio:   "
+            << residuals->residualRatio
+            << "  (relTol: " << relTol_ << ")"
+            << std::endl;
     }
-
-    std::cout << "----------------------------------------" << std::endl;
-
-    return converged;
 }
 
-bool PCG
+// ***************************** BiCGSTAB Solver *****************************
+
+bool LinearSolver::solveWithBiCGSTAB
 (
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& x,
     const Eigen::SparseMatrix<Scalar>& A,
-    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B,
-    Scalar tolerance,
-    int maxIterations,
-    const std::string& fieldName,
-    Scalar relTol
+    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
 )
 {
-    // Resize and initialize vector x
+    // Resize and initialize if needed
     if (x.size() != B.size())
     {
         x.resize(B.size());
         x.setZero();
     }
 
-    size_t systemSize = B.size();
-
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> r(systemSize);
-    Scalar initialResidual, finalResidual;
-
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> initialResidualVector = B - A * x;
-    Scalar initialResidualSum = S(0.0);
-
-    for (size_t i = 0; i < systemSize; ++i)
+    // Compute initial residual
+    Scalar initialResidual = S(0.0);
+    if (computeResiduals_)
     {
-        initialResidualSum += std::abs(initialResidualVector(i));
+        Eigen::Matrix<Scalar, Eigen::Dynamic, 1>
+        initialResidualVector = B - A * x;
+
+        initialResidual =
+            rmsResidual(initialResidualVector);
     }
-    initialResidual = initialResidualSum / S(systemSize);
 
-    // --- Main Solve (with Incomplete Cholesky preconditioning) ---
-    Eigen::ConjugateGradient
-    <
-        Eigen::SparseMatrix<Scalar>,
-        Eigen::Lower|Eigen::Upper,
-        Eigen::IncompleteCholesky<Scalar>
-    > pcg;
+    // Configure Eigen BiCGSTAB with ILUT preconditioning
+    Eigen::BiCGSTAB
+    <Eigen::SparseMatrix<Scalar>, Eigen::IncompleteLUT<Scalar>>
+    bicgstab;
 
-    pcg.setMaxIterations(maxIterations);
-    pcg.setTolerance(tolerance);
+    bicgstab.setMaxIterations(maxIterations_);
+    bicgstab.setTolerance(tolerance_);
+    bicgstab.preconditioner().setFillfactor(ilutFillFactor_);
+    bicgstab.preconditioner().setDroptol(ilutDropTol_);
 
-    // Configure Incomplete Cholesky preconditioner parameters
-    // Increased initial shift for better conditioning of pressure matrices
-    pcg.preconditioner().setInitialShift(S(1e-2));
-
-    pcg.compute(A);
-    if (pcg.info() != Eigen::Success) 
+    bicgstab.compute(A);
+    if (bicgstab.info() != Eigen::Success)
     {
-        std::cerr   << "Error for field '" << fieldName 
-                    << "': PCG compute failed!" << std::endl;
+        std::cerr
+            << "Error for field '" << fieldName_
+            << "': BiCGSTAB compute failed!"
+            << std::endl;
 
-        std::cerr   << "  Eigen Info Code: " << pcg.info() << std::endl;
-
+        std::cerr
+            << "  Eigen Info Code: "
+            << bicgstab.info() << std::endl;
         return false;
     }
 
-    // Use solveWithGuess, as x contains the initial guess 
-    // (e.g., from previous iteration or zeros)
+    x = bicgstab.solveWithGuess(B, x);
+
+    // Compute residuals if requested
+    std::optional<ResidualInfo> residuals;
+
+    if (computeResiduals_)
+    {
+        Eigen::Matrix<Scalar, Eigen::Dynamic, 1>
+        finalResVec = B - A * x;
+
+        ResidualInfo info;
+
+        info.initialResidual = initialResidual;
+
+        info.finalResidual = rmsResidual(finalResVec);
+        info.residualRatio =
+            (initialResidual > smallValue)
+            ? info.finalResidual/initialResidual
+            : S(0.0);
+
+        residuals = info;
+    }
+
+    if (verbose_)
+    {
+        reportConvergence
+        (
+            bicgstab.iterations(),
+            bicgstab.info(),
+            residuals
+        );
+    }
+
+    return true;
+}
+
+// ******************************* PCG Solver *******************************
+
+bool LinearSolver::solveWithPCG
+(
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& x,
+    const Eigen::SparseMatrix<Scalar>& A,
+    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
+)
+{
+    // Resize and initialize if needed
+    if (x.size() != B.size())
+    {
+        x.resize(B.size());
+        x.setZero();
+    }
+
+    // Compute initial residual only if requested
+    Scalar initialResidual = S(0.0);
+    if (computeResiduals_)
+    {
+        Eigen::Matrix<Scalar, Eigen::Dynamic, 1>
+        initialResidualVector = B - A * x;
+
+        initialResidual =
+            rmsResidual(initialResidualVector);
+    }
+
+    // Configure Eigen CG with Incomplete Cholesky preconditioning
+    Eigen::ConjugateGradient
+    <Eigen::SparseMatrix<Scalar>, Eigen::Lower|Eigen::Upper,
+    Eigen::IncompleteCholesky<Scalar>>
+    pcg;
+
+    pcg.setMaxIterations(maxIterations_);
+    pcg.setTolerance(tolerance_);
+    pcg.preconditioner().setInitialShift(icInitialShift_);
+
+    pcg.compute(A);
+    if (pcg.info() != Eigen::Success)
+    {
+        std::cerr
+            << "Error for field '" << fieldName_
+            << "': PCG compute failed!"
+            << std::endl;
+
+        std::cerr
+            << "  Eigen Info Code: "
+            << pcg.info() << std::endl;
+        return false;
+    }
 
     x = pcg.solveWithGuess(B, x);
 
-    std::cout   << "\n--- Solver Statistics for Field: '" 
-                << fieldName << "' ---" << std::endl;
+    // Compute residuals if requested
+    std::optional<ResidualInfo> residuals;
 
-    std::cout   << "  Iterations:     " << pcg.iterations() << std::endl;
-
-    Scalar estimatedError = S(pcg.error());
-
-    std::cout   << "  Estimated Error (solver reported): " 
-                << std::scientific << estimatedError << std::endl;
-
-    // Abort on non-finite estimated error or excessively large error (divergence)
-    if (!std::isfinite(static_cast<double>(estimatedError)) || estimatedError > 1e6) 
+    if (computeResiduals_)
     {
-        throw std::runtime_error
+        Eigen::Matrix<Scalar, Eigen::Dynamic, 1>
+        finalResVec = B - A * x;
+
+        ResidualInfo info;
+        info.initialResidual = initialResidual;
+        info.finalResidual = rmsResidual(finalResVec);
+
+        info.residualRatio =
+            (initialResidual > smallValue)
+            ? info.finalResidual/initialResidual
+            : S(0.0);
+
+        residuals = info;
+    }
+
+    if (verbose_)
+    {
+        reportConvergence
         (
-            "  Divergence detected for field '" 
-          + fieldName 
-          + "': estimated error is not finite or too large (" 
-          + std::to_string(estimatedError) 
-          + ")"
+            pcg.iterations(),
+            pcg.info(),
+            residuals
         );
     }
-    
-    bool converged = (pcg.info() == Eigen::Success);
-    if (converged) 
-    {
-        std::cout << "  Convergence:    SUCCESS" << std::endl;
-    }
-    else
-    {
-        std::cout << "  Convergence:    FAILED (Code: " << pcg.info();
-        // Provide more human-readable error for common cases
-        if (pcg.info() == Eigen::NumericalIssue) 
-        {
-            std::cout << " - Numerical Issue";
-        }
-        else if (pcg.info() == Eigen::NoConvergence) 
-        {
-            std::cout << " - No Convergence (max iterations reached)";
-        }
-        else if (pcg.info() == Eigen::InvalidInput)
-        {
-            std::cout << " - Invalid Input";
-        }
-        
-        std::cout   << ")" << std::endl;
-        
-        std::cerr   << "  Warning: Solver for field '" << fieldName 
-                    << "' did not converge to the desired tolerance." 
-                    << std::endl;
-    }
 
-    // --- Calculate and Print Actual Final Residuals ---
-    
-    // Calculate actual residual: r = B - Ax
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> finalResidualVector = B - A * x;
-
-    // L2 norm (Euclidean norm)
-    Scalar exactResidualNormL2 = finalResidualVector.norm(); 
-
-    Scalar finalResidualSum = S(0.0);
-    
-    for (size_t i = 0; i < systemSize; ++i) 
-    {
-        finalResidualSum += std::abs(finalResidualVector(i));
-    }
-
-    finalResidual = finalResidualSum / S(systemSize);
-
-    std::cout   << "  Avg Initial Abs Residual (from guess): "
-                << std::scientific << initialResidual << std::endl;
-
-    std::cout   << "  Avg Final Abs Residual:                "
-                << std::scientific << finalResidual << std::endl;
-
-    Scalar residualRatio = S(0.0);
-    if (initialResidual > S(1e-12))
-    { // Avoid division by zero for ratio
-        residualRatio = finalResidual / initialResidual;
-        std::cout   << "  Residual Reduction (Avg Abs Ratio):    "
-                    << std::scientific << residualRatio << std::endl;
-    }
-
-    std::cout   << "  Final Residual L2 Norm:                "
-                << std::scientific << exactResidualNormL2 << std::endl;
-
-    if
-    (
-        !std::isfinite(static_cast<double>(finalResidual))
-     || !std::isfinite(static_cast<double>(exactResidualNormL2)))
-    {
-        std::cerr << "  Divergence detected for field '" << fieldName
-                  << "': residual norms are not finite." << std::endl;
-        return false;
-    }
-
-    // Check relative tolerance convergence
-    // Converge if residual reduces by relTol factor OR absolute tolerance met
-    bool relativeConvergence = (residualRatio < relTol && initialResidual > S(1e-12));
-
-    if (relativeConvergence && !converged)
-    {
-        std::cout   << "  Relative Tolerance Met (ratio < " << relTol
-                    << ") - accepting solution" << std::endl;
-        converged = true;
-    }
-
-    std::cout << "----------------------------------------" << std::endl;
-
-    return converged;
-}
-
+    return true;
 }
