@@ -41,17 +41,17 @@ void Cell::calculateGeometricProperties(const std::vector<Face>& allFaces)
 
         centroidSum.setX
         (
-            centroidSum.x() + faceSign * face.x2_integral()
+            centroidSum.x() + faceSign * face.x2Integral()
         );
 
         centroidSum.setY
         (
-            centroidSum.y() + faceSign * face.y2_integral()
+            centroidSum.y() + faceSign * face.y2Integral()
         );
 
         centroidSum.setZ
         (
-            centroidSum.z() + faceSign * face.z2_integral()
+            centroidSum.z() + faceSign * face.z2Integral()
         );
     }
 

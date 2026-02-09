@@ -159,9 +159,9 @@ public:
     /**
      * @brief Get second moment integrals for centroid calculation
      */
-    Scalar x2_integral() const { return x2_integral_; }
-    Scalar y2_integral() const { return y2_integral_; }
-    Scalar z2_integral() const { return z2_integral_; }
+    Scalar x2Integral() const { return x2Integral_; }
+    Scalar y2Integral() const { return y2Integral_; }
+    Scalar z2Integral() const { return z2Integral_; }
 
     /**
      * @brief Get volume contribution integral for cell volume calculation
@@ -185,13 +185,13 @@ public:
      * @brief Get owner cell distance magnitude 
      * @return Distance from owner to face 
      */
-    Scalar d_Pf_mag() const { return d_Pf_mag_; }
+    Scalar dPfMag() const { return dPfMag_; }
     
     /** 
      * @brief Get neighbor cell distance magnitude 
      * @return Optional distance from neighbor to face
      */
-    const std::optional<Scalar>& d_Nf_mag() const { return d_Nf_mag_; }
+    const std::optional<Scalar>& dNfMag() const { return dNfMag_; }
     
     /** 
      * @brief Get owner cell unit vector 
@@ -269,9 +269,9 @@ private:
     std::optional<size_t> neighborCell_;
 
     /// Second moment integrals for centroid calculation (weighted by normal)
-    Scalar x2_integral_ = 0.0;
-    Scalar y2_integral_ = 0.0;
-    Scalar z2_integral_ = 0.0;
+    Scalar x2Integral_ = 0.0;
+    Scalar y2Integral_ = 0.0;
+    Scalar z2Integral_ = 0.0;
 
     /// Volume contribution integral: 
     /// ∫∫_face (r · n) dS = (c_tri · crossProd) / 2
@@ -297,10 +297,10 @@ private:
     std::optional<Vector> d_Nf_;
     
     /// Magnitude of d_Pf
-    Scalar d_Pf_mag_ = 0.0;
+    Scalar dPfMag_ = 0.0;
     
     /// Magnitude of d_Nf
-    std::optional<Scalar> d_Nf_mag_;
+    std::optional<Scalar> dNfMag_;
     
     /// Unit vector in d_Pf direction
     Vector e_Pf_;

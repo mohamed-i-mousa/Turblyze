@@ -25,8 +25,8 @@ Scalar interpolateToFace
     const size_t P = face.ownerCell();
     const size_t N = face.neighborCell().value();
 
-    const Scalar d_P = face.d_Pf_mag();
-    const Scalar d_N = face.d_Nf_mag().value();
+    const Scalar d_P = face.dPfMag();
+    const Scalar d_N = face.dNfMag().value();
     const Scalar total = d_P + d_N + vSmallValue;
 
     const Scalar w_P = d_N / total;
@@ -51,8 +51,8 @@ Scalar interpolateToFace
     const size_t P = face.ownerCell();
     const size_t N = face.neighborCell().value();
 
-    const Scalar d_P = face.d_Pf_mag();
-    const Scalar d_N = face.d_Nf_mag().value();
+    const Scalar d_P = face.dPfMag();
+    const Scalar d_N = face.dNfMag().value();
     const Scalar total = d_P + d_N + vSmallValue;
 
     const Scalar w_P = d_N / total;
@@ -81,8 +81,8 @@ Vector interpolateToFace
     const size_t P = face.ownerCell();
     const size_t N = face.neighborCell().value();
 
-    const Scalar d_P = face.d_Pf_mag();
-    const Scalar d_N = face.d_Nf_mag().value();
+    const Scalar d_P = face.dPfMag();
+    const Scalar d_N = face.dNfMag().value();
     const Scalar total = d_P + d_N + vSmallValue;
 
     const Scalar w_P = d_N / total;
@@ -110,8 +110,8 @@ Vector interpolateToFace
     const size_t P = face.ownerCell();
     const size_t N = face.neighborCell().value();
 
-    const Scalar d_P = face.d_Pf_mag();
-    const Scalar d_N = face.d_Nf_mag().value();
+    const Scalar d_P = face.dPfMag();
+    const Scalar d_N = face.dNfMag().value();
     const Scalar total = d_P + d_N + vSmallValue;
 
     const Scalar w_P = d_N / total;

@@ -68,9 +68,9 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
             p1.z()*p1.z() + p2.z()*p2.z() + p3.z()*p3.z()
           + p1.z()*p2.z() + p1.z()*p3.z() + p2.z()*p3.z();
 
-        x2_integral_ = crossProd.x() * x2_formula / S(12.0);
-        y2_integral_ = crossProd.y() * y2_formula / S(12.0);
-        z2_integral_ = crossProd.z() * z2_formula / S(12.0);
+        x2Integral_ = crossProd.x() * x2_formula / S(12.0);
+        y2Integral_ = crossProd.y() * y2_formula / S(12.0);
+        z2Integral_ = crossProd.z() * z2_formula / S(12.0);
 
         volumeContribution_ = dot(centroid_, crossProd) / S(2.0);
 
@@ -96,9 +96,9 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
         Scalar weightedAreaSum = 0.0;
 
         // Reset integrals (for accumulation)
-        x2_integral_ = 0.0;
-        y2_integral_ = 0.0;
-        z2_integral_ = 0.0;
+        x2Integral_ = 0.0;
+        y2Integral_ = 0.0;
+        z2Integral_ = 0.0;
         volumeContribution_ = 0.0;
 
         for (size_t i = 0; i < numNodes; ++i)
@@ -134,9 +134,9 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
               + p3_tri.z() * p3_tri.z() + p1_tri.z() * p2_tri.z()
               + p1_tri.z() * p3_tri.z() + p2_tri.z() * p3_tri.z();
 
-            x2_integral_ += crossProd_tri.x() * x2_formula / S(12.0);
-            y2_integral_ += crossProd_tri.y() * y2_formula / S(12.0);
-            z2_integral_ += crossProd_tri.z() * z2_formula / S(12.0);
+            x2Integral_ += crossProd_tri.x() * x2_formula / S(12.0);
+            y2Integral_ += crossProd_tri.y() * y2_formula / S(12.0);
+            z2Integral_ += crossProd_tri.z() * z2_formula / S(12.0);
 
             Vector triangleCentroid = (p1_tri + p2_tri + p3_tri) / S(3.0);
 
@@ -190,11 +190,11 @@ std::ostream& operator<<(std::ostream& os, const Face& f)
 
         if (f.distancePropertiesCalculated_)
         {
-            os  << ", d_Pf_mag: " << f.d_Pf_mag_;
+            os  << ", dPfMag: " << f.dPfMag_;
 
-            if (f.d_Nf_mag_.has_value())
+            if (f.dNfMag_.has_value())
             {
-                os  << ", d_Nf_mag: " << f.d_Nf_mag_.value();
+                os  << ", dNfMag: " << f.dNfMag_.value();
             }
         }
 
@@ -217,9 +217,9 @@ template<typename CellContainer>
 void Face::calculateDistanceProperties(const CellContainer& allCells)
 { 
     d_Pf_ = centroid_ - allCells[ownerCell_].centroid();
-    d_Pf_mag_ = d_Pf_.magnitude();
+    dPfMag_ = d_Pf_.magnitude();
     
-    e_Pf_ = d_Pf_ / (d_Pf_mag_ + vSmallValue);
+    e_Pf_ = d_Pf_ / (dPfMag_ + vSmallValue);
 
     // Calculate d_Nf only for internal faces
     if (!isBoundary())
@@ -230,7 +230,7 @@ void Face::calculateDistanceProperties(const CellContainer& allCells)
         Scalar d_Nf_magnitude = d_Nf_vec.magnitude();
 
         d_Nf_ = d_Nf_vec;
-        d_Nf_mag_ = d_Nf_magnitude;
+        dNfMag_ = d_Nf_magnitude;
         e_Nf_ = d_Nf_vec / (d_Nf_magnitude + vSmallValue);
     }
     distancePropertiesCalculated_ = true;
