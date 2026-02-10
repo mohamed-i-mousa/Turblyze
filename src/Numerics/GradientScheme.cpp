@@ -45,8 +45,6 @@ Vector GradientScheme::cellGradient
     ATA.setZero();
     ATb.setZero();
 
-    Scalar totalWeight = S(0.0);
-
     // Part 1: Internal neighbor cells contribution
     for (size_t neighborIdx : cell.neighborCellIndices())
     {
@@ -62,7 +60,6 @@ Vector GradientScheme::cellGradient
         Scalar rMagSqr = r.magnitudeSquared();
 
         Scalar w = S(1.0) / (rMagSqr + vSmallValue);
-        totalWeight += w;
 
         rVector << r.x(), r.y(), r.z();
         ATA.noalias() += w * (rVector * rVector.transpose());
@@ -82,7 +79,6 @@ Vector GradientScheme::cellGradient
         Scalar rMagSqr = r.magnitudeSquared();
 
         Scalar w = S(1.0) / (rMagSqr + vSmallValue);
-        totalWeight += w;
 
         rVector << r.x(), r.y(), r.z();
         ATA.noalias() += w * (rVector * rVector.transpose());
