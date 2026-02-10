@@ -1,0 +1,255 @@
+// ============================================================================
+// Mesh Configuration
+// ============================================================================
+mesh
+{
+    file            ../inputFiles/pipe_320k.msh;
+    checkQuality    true;
+}
+
+// ============================================================================
+// Physical Properties
+// ============================================================================
+physicalProperties
+{
+    rho             1.225;          // Density [kg/m^3]
+    mu              1.7894e-5;      // Dynamic viscosity [Pa.s]
+}
+
+// ============================================================================
+// Initial Conditions
+// ============================================================================
+initialConditions
+{
+    U               (0 0 -0.1);     // Initial velocity [m/s]
+    p               0;              // Initial pressure [Pa]
+}
+
+// ============================================================================
+// Boundary Conditions
+// ============================================================================
+boundaryConditions
+{
+    U   // Velocity field
+    {
+        inlet
+        {
+            type        fixedValue;
+            value       (0 0 -0.1);
+        }
+
+        outlet
+        {
+            type        zeroGradient;
+        }
+
+        cylinder
+        {
+            type        noSlip;
+        }
+
+        sphere
+        {
+            type        noSlip;
+        }
+
+        // Walls
+        wall1           { type noSlip; }
+        wall2           { type noSlip; }
+        wall3           { type noSlip; }
+        wall4           { type noSlip; }
+    }
+
+    p   // Pressure field
+    {
+        inlet
+        {
+            type        zeroGradient;
+        }
+
+        outlet
+        {
+            type        fixedValue;
+            value       0;
+        }
+
+        // All walls and symmetry planes
+        cylinder        { type zeroGradient; }
+        sphere          { type zeroGradient; }
+        wall1           { type zeroGradient; }
+        wall2           { type zeroGradient; }
+        wall3           { type zeroGradient; }
+        wall4           { type zeroGradient; }
+    }
+
+    phi_wall    // Wall distance field (for turbulence)
+    {
+        wall1           { type fixedValue; value 0; }
+        wall2           { type fixedValue; value 0; }
+        wall3           { type fixedValue; value 0; }
+        wall4           { type fixedValue; value 0; }
+    }
+
+    k   // Turbulent kinetic energy [m^2/s^2]
+    {
+        inlet
+        {
+            type        fixedValue;
+            value       calculated;
+        }
+
+        outlet
+        {
+            type        zeroGradient;
+        }
+
+        cylinder        { type fixedValue; value 0; }
+        sphere          { type fixedValue; value 0; }
+        wall1           { type fixedValue; value 0; }
+        wall2           { type fixedValue; value 0; }
+        wall3           { type fixedValue; value 0; }
+        wall4           { type fixedValue; value 0; }
+    }
+
+    omega   // Specific dissipation rate [1/s]
+    {
+        inlet
+        {
+            type        fixedValue;
+            value       calculated;
+        }
+
+        outlet
+        {
+            type        zeroGradient;
+        }
+
+        cylinder        { type fixedValue; value 1000; }
+        sphere          { type fixedValue; value 1000; }
+        wall1           { type fixedValue; value 1000; }
+        wall2           { type fixedValue; value 1000; }
+        wall3           { type fixedValue; value 1000; }
+        wall4           { type fixedValue; value 1000; }
+    }
+}
+
+// ============================================================================
+// Numerical Schemes
+// ============================================================================
+numericalSchemes
+{
+    // Options: Upwind, CentralDifference, SecondOrderUpwind
+    convection
+    {
+        default     Upwind;
+        U           SecondOrderUpwind;
+        k           Upwind;
+        omega       Upwind;
+    }
+}
+
+// ============================================================================
+// SIMPLE Algorithm Settings
+// ============================================================================
+SIMPLE
+{
+    numIterations           50;         // Maximum iterations
+    convergenceTolerance    1e-6;       // Convergence criterion
+
+    relaxationFactors
+    {
+        U                   0.7;        // Velocity under-relaxation
+        p                   0.3;        // Pressure under-relaxation
+        k                   0.5;        // TKE under-relaxation
+        omega               0.5;        // Omega under-relaxation
+    }
+}
+
+// ============================================================================
+// Linear Solvers
+// ============================================================================
+linearSolvers
+{
+    U   // Momentum equations
+    {
+        solver          BiCGSTAB;       // Bi-Conjugate Gradient Stabilized
+        preconditioner  ILUT;           // Incomplete LU with Threshold
+        tolerance       1e-8;           // Absolute tolerance
+        relTol          0.1;            // Relative tolerance
+        maxIter         1000;           // Maximum iterations
+        computeResiduals true;          // Exact B-A*x check
+    }
+
+    p   // Pressure correction equation
+    {
+        solver          PCG;            // Preconditioned Conjugate Gradient
+        preconditioner  IncompleteCholesky;
+        tolerance       1e-6;
+        relTol          0.05;
+        maxIter         1000;
+        initialShift    1e-2;           // Conditioning factor
+        computeResiduals true;
+    }
+
+    k   // Turbulent kinetic energy
+    {
+        solver          BiCGSTAB;
+        preconditioner  ILUT;
+        tolerance       1e-8;
+        relTol          0.1;
+        maxIter         1000;
+        computeResiduals true;
+    }
+
+    omega   // Specific dissipation rate
+    {
+        solver          BiCGSTAB;
+        preconditioner  ILUT;
+        tolerance       1e-8;
+        relTol          0.1;
+        maxIter         1000;
+        computeResiduals true;
+    }
+}
+
+// ============================================================================
+// Turbulence Modeling
+// ============================================================================
+turbulence
+{
+    model               none;           // Options: none, kOmegaSST
+    enabled             false;          // Enable/disable turbulence
+    turbulenceIntensity 0.05;           // Turbulence intensity (5%)
+    hydraulicDiameter   0.01;           // Hydraulic diameter [m]
+}
+
+// ============================================================================
+// Solution Constraints (Optional)
+// ============================================================================
+constraints
+{
+    velocity
+    {
+        enabled         false;      // Enable velocity limiting
+        maxVelocity     100;        // Maximum velocity magnitude [m/s]
+    }
+
+    pressure
+    {
+        enabled         false;      // Enable pressure limiting
+        minPressure     -0.05;      // Minimum pressure [Pa]
+        maxPressure     0.05;       // Maximum pressure [Pa]
+    }
+}
+
+// ============================================================================
+// Output Configuration
+// ============================================================================
+output
+{
+    filename        ../outputFiles.nosync/pipe_320k__.vtu;
+}
+
+// ============================================================================
+// End of Case Setup
+// ============================================================================
