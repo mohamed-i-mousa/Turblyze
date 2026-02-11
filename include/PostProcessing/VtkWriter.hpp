@@ -1,29 +1,32 @@
 /******************************************************************************
- * @file VtkWriter.h
- * @brief VTK (Visualization Toolkit) File Writer for CFD Results
- * 
- * @details This header file defines the VtkWriter namespace, which provides 
- * functionality to export CFD simulation results in VTK format for 
- * visualization in ParaView and other VTK-compatible visualization tools.
- * 
- * The VtkWriter supports:
- * - Export of mesh geometry (nodes and faces)
- * - Cell-centered scalar fields (pressure, temperature, turbulence quantities)
- * - Vector fields (velocity, gradients)
- * - Proper data mapping from cell centers to face centers for visualization
- * - VTK PolyData format (.vtp files) for efficient rendering
- * 
+ * @file VtkWriter.hpp
+ * @brief VTK (Visualization Toolkit) File Writer
+ *
+ * @details This header defines the VtkWriter namespace, a collection of
+ * utility functions for exporting simulation results in VTK format compatible
+ * with ParaView.
+ *
+ * The VtkWriter namespace provides:
+ * - VTK UnstructuredGrid export (.vtu) for 3D volume cells (tetrahedra,
+ *   hexahedra, wedges, pyramids)
+ * - Cell-centered scalar fields (pressure, turbulence quantities)
+ * - Cell-centered vector fields (velocity, gradients)
+ * - PVD time series files for transient animations
+ * - Derived field computation (velocity/vorticity magnitude, Q-criterion,
+ *   strain rate magnitude)
+ *
+ *
  * @see ParaView: https://www.paraview.org/
  * @see VTK Documentation: https://vtk.org/documentation/
- * @see VTK File Formats: https://vtk.org/Wiki/VTK_XML_Formats
  *****************************************************************************/
 
-#ifndef VTKWRITER_H
-#define VTKWRITER_H
+#ifndef VTK_WRITER_HPP
+#define VTK_WRITER_HPP
 
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
@@ -31,100 +34,24 @@
 #include "Cell.hpp"
 #include "CellData.hpp"
 
-namespace VtkWriter {
+// VTK library integration requirement
+typedef long long vtkIdType;
+
+
+namespace VtkWriter
+{
+
+// Public API
 
 /**
- * @brief Write CFD simulation results to VTK PolyData file
- * 
- * @details This function exports the complete CFD simulation results including
- * mesh geometry and field data to a VTK PolyData file (.vtp) that can be
- * directly opened in ParaView for visualization and analysis.
- * 
- * The function performs the following operations:
- * 1. **Mesh Export**: Writes node coordinates and face connectivity
- * 2. **Data Mapping**: Maps cell-centered fields to face data for visualization
- * 3. **Field Export**: Exports scalar fields (pressure, temperature, etc.)
- * 4. **File Generation**: Creates a valid VTK XML file with proper formatting
- * 
- * **Data Mapping Strategy**:
- * Since VTK PolyData represents surfaces using faces, cell-centered data
- * must be mapped to face centers. The mapping uses:
- * - Linear interpolation between adjacent cell centers
- * - Proper handling of boundary faces
- * - Conservation of field values during mapping
- * 
- * **Supported Field Types**:
- * - Scalar fields: pressure, temperature, turbulent kinetic energy
- * - Vector fields: velocity, gradients, forces
- * - Derived quantities: vorticity, strain rate, etc.
- * 
- * **File Format**:
- * The output file follows VTK XML PolyData format:
- * ```xml
- * <?xml version="1.0"?>
- * <VTKFile type="PolyData" version="0.1">
- *   <PolyData>
- *     <Piece NumberOfPoints="N" NumberOfPolys="M">
- *       <Points>...</Points>
- *       <Polys>...</Polys>
- *       <PointData>...</PointData>
- *       <CellData>...</CellData>
- *     </Piece>
- *   </PolyData>
- * </VTKFile>
- * ```
- * 
- * @param filename Output VTK file path (should end with .vtp extension)
- * @param allNodes Vector of 3D node coordinates defining the mesh
- * @param allFaces Vector of mesh faces with connectivity information
- * @param scalarCellFields Map of field names to cell-centered scalar fields
- * 
- * @note The filename should have a .vtp extension for proper ParaView 
- * recognition
- * @note Cell-centered fields are automatically mapped to face centers for 
- * visualization
- * @note Empty scalarCellFields map results in geometry-only export
- * 
- * @example
- * ```cpp
- * // Export mesh with pressure and velocity fields
- * std::map<std::string, const ScalarField*> fields;
- * fields["pressure"] = &pressureField;
- * fields["velocity_magnitude"] = &velocityMagnitudeField;
- * 
- * VtkWriter::writeVtkFile("results.vtp", nodes, faces, fields);
- * ```
- * 
- * @throws std::runtime_error if file cannot be created or written
- * @throws std::invalid_argument if mesh data is invalid
- * 
- * @return void
- * 
- * @see writeVtkFileUnstructured() for unstructured grid export
- * @see writeVtkFileStructured() for structured grid export
- * @see exportFieldData() for field-only export
- */
-void writeVtkFile
-(
-    const std::string& filename,
-    const std::vector<Vector>& allNodes,
-    const std::vector<Face>& allFaces,
-    const std::map<std::string,
-    const ScalarField*>& scalarCellFields = {},
-    const std::map<std::string,
-    const VectorField*>& vectorCellFields = {}
-);
-
-/**
- * @brief Write CFD simulation results to VTK UnstructuredGrid file
+ * @brief Write simulation results to VTK UnstructuredGrid (.vtu) file
  *
- * @details This function exports 3D volumetric mesh and field data to VTK
- * UnstructuredGrid format (.vtu) which enables full 3D visualization including
- * volume rendering, slicing, clipping, and isosurfaces.
+ * @details This function exports 3D volumetric mesh and field data to
+ * VTK UnstructuredGrid format (.vtu) which enables full 3D visualization
+ * including volume rendering, slicing, clipping, and isosurfaces.
  *
- * Unlike PolyData which only represents surfaces, UnstructuredGrid exports
- * the actual 3D cells (tetrahedra, hexahedra, prisms, pyramids) with proper
- * cell-centered data. This is the recommended format for CFD volume visualization.
+ * UnstructuredGrid exports the actual 3D cells (tetrahedra, hexahedra,
+ * prisms, pyramids) with proper cell-centered data. 
  *
  * @param filename Output VTK file path (should end with .vtu extension)
  * @param allNodes Vector of 3D node coordinates
@@ -139,9 +66,9 @@ void writeVtkUnstructuredGrid
     const std::vector<Vector>& allNodes,
     const std::vector<Cell>& allCells,
     const std::vector<Face>& allFaces,
-    const std::map<std::string,
+    const std::map<std::string, 
     const ScalarField*>& scalarCellFields = {},
-    const std::map<std::string,
+    const std::map<std::string, 
     const VectorField*>& vectorCellFields = {}
 );
 
@@ -157,7 +84,10 @@ ScalarField computeVelocityMagnitude(const VectorField& velocity);
  * @param vorticity Input vorticity vector field
  * @return Scalar field containing vorticity magnitude at each cell
  */
-ScalarField computeVorticityMagnitude(const VectorField& vorticity);
+ScalarField computeVorticityMagnitude
+(
+    const VectorField& vorticity
+);
 
 /**
  * @brief Compute Q-criterion for vortex identification
@@ -197,22 +127,13 @@ ScalarField computeStrainRateMagnitude
 );
 
 /**
- * @brief Create PVD time series file header
- *
- * @details Creates a ParaView Data (PVD) file for time series animations.
- * Call this once at the beginning, then use appendPVDTimeStep() to add
- * timesteps.
- *
+ * @brief Create PVD time series file header for transient runs
  * @param pvdFilename Path to .pvd file to create
  */
 void writePVDTimeSeriesHeader(const std::string& pvdFilename);
 
 /**
  * @brief Append a timestep to PVD time series file
- *
- * @details Adds a new timestep entry to an existing PVD file. The VTU
- * file should already be written before calling this function.
- *
  * @param pvdFilename Path to existing .pvd file
  * @param vtuFilename Relative path to .vtu file for this timestep
  * @param timeValue Physical time value for this timestep
@@ -224,6 +145,151 @@ void appendPVDTimeStep
     Scalar timeValue
 );
 
+/**
+ * @brief Write cell geometry data (volumes and centroids) to text file
+ * @param filename Output text file path
+ * @param allCells Vector of mesh cells with computed geometry
+ */
+void writeCellGeometryData
+(
+    const std::string& filename,
+    const std::vector<Cell>& allCells
+);
+
+// Internal helper functions and types
+
+/// Strain rate tensor components
+struct StrainTensor
+{
+    Scalar S_11, S_22, S_33;  ///< Diagonal components
+    Scalar S_12, S_13, S_23;  ///< Off-diagonal components
+
+    /// Compute ||S||^2 = S_ij * S_ij
+    Scalar normSquared() const
+    {
+        return S_11*S_11 + S_22*S_22 + S_33*S_33
+             + 2.0 * (S_12*S_12 + S_13*S_13 + S_23*S_23);
+    }
+};
+
+/**
+ * @brief Generic helper to compute magnitude of any vector field
+ * @param field Input vector field
+ * @param fieldName Name for the output field
+ * @return Scalar field containing magnitude at each cell
+ */
+ScalarField computeMagnitude
+(
+    const VectorField& field,
+    const std::string& fieldName
+);
+
+/**
+ * @brief Compute strain rate tensor from velocity gradient components
+ * @param gradUx Gradient of x-velocity component at a cell
+ * @param gradUy Gradient of y-velocity component at a cell
+ * @param gradUz Gradient of z-velocity component at a cell
+ * @return Strain rate tensor components
+ */
+StrainTensor computeStrainTensor
+(
+    const Vector& gradUx,
+    const Vector& gradUy,
+    const Vector& gradUz
+);
+
+/**
+ * @brief Compute centroid of a face given node indices
+ * @param faceNodes Node indices for the face
+ * @param allNodes Vector of all node coordinates
+ * @return Face centroid
+ */
+Vector computeFaceCentroid
+(
+    const std::vector<size_t>& faceNodes,
+    const std::vector<Vector>& allNodes
+);
+
+/**
+ * @brief Compute normal vector for a triangular face
+ * @param triNodes Node indices for the triangle
+ * @param allNodes Vector of all node coordinates
+ * @return Face normal vector
+ */
+Vector computeTriangleNormal
+(
+    const std::vector<size_t>& triNodes,
+    const std::vector<Vector>& allNodes
+);
+
+/**
+ * @brief Compute normal vector for a quadrilateral face
+ * @param quadNodes Node indices for the quadrilateral
+ * @param allNodes Vector of all node coordinates
+ * @return Face normal vector
+ */
+Vector computeQuadNormal
+(
+    const std::vector<size_t>& quadNodes,
+    const std::vector<Vector>& allNodes
+);
+
+/**
+ * @brief Order hexahedron nodes according to VTK convention
+ *
+ * @details VTK Hexahedron: nodes 0-3 form bottom quad, nodes 4-7 form
+ * top quad. Uses face topology for robust ordering without
+ * axis-alignment assumptions.
+ *
+ * @param faceNodeLists Node lists for all faces of the hexahedron
+ * @param uniqueNodes Set of all unique node indices
+ * @param allNodes Vector of all node coordinates
+ * @return Ordered node indices for VTK, or empty vector if ordering fails
+ */
+std::vector<vtkIdType> orderHexahedronNodes
+(
+    const std::vector<std::vector<size_t>>& faceNodeLists,
+    const std::set<size_t>& uniqueNodes,
+    const std::vector<Vector>& allNodes
+);
+
+/**
+ * @brief Order wedge (prism) nodes according to VTK convention
+ *
+ * @details VTK Wedge: nodes 0,1,2 form bottom triangle, nodes 3,4,5
+ * form top triangle. Uses actual face topology to determine correct
+ * node ordering.
+ *
+ * @param faceNodeLists Node lists for all faces of the wedge
+ * @param uniqueNodes Set of all unique node indices
+ * @param allNodes Vector of all node coordinates
+ * @return Ordered node indices for VTK, or empty vector if ordering fails
+ */
+std::vector<vtkIdType> orderWedgeNodes
+(
+    const std::vector<std::vector<size_t>>& faceNodeLists,
+    const std::set<size_t>& uniqueNodes,
+    const std::vector<Vector>& allNodes
+);
+
+/**
+ * @brief Order pyramid nodes according to VTK convention
+ *
+ * @details VTK Pyramid: nodes 0,1,2,3 form quad base, node 4 is apex.
+ * Uses face topology for robust ordering without axis assumptions.
+ *
+ * @param faceNodeLists Node lists for all faces of the pyramid
+ * @param uniqueNodes Set of all unique node indices
+ * @param allNodes Vector of all node coordinates
+ * @return Ordered node indices for VTK, or empty vector if ordering fails
+ */
+std::vector<vtkIdType> orderPyramidNodes
+(
+    const std::vector<std::vector<size_t>>& faceNodeLists,
+    const std::set<size_t>& uniqueNodes,
+    const std::vector<Vector>& allNodes
+);
+
 } // namespace VtkWriter
 
-#endif // VTKWRITER_H
+#endif // VTK_WRITER_HPP

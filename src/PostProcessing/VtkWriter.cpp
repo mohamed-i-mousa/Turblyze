@@ -1,24 +1,13 @@
 /******************************************************************************
  * @file VtkWriter.cpp
- * @brief Implementation of VTK output writer for CFD results
+ * @brief Implementation of VTK output writer for post-processing
  *****************************************************************************/
 
-#include "VtkWriter.hpp"
-#include "Cell.hpp"
-
 // VTK includes
-#include <vtkPolyData.h>
 #include <vtkPoints.h>
-#include <vtkCellArray.h>
 #include <vtkDoubleArray.h>
-#include <vtkIntArray.h>
-#include <vtkPointData.h>
 #include <vtkCellData.h>
-#include <vtkXMLPolyDataWriter.h>
 #include <vtkSmartPointer.h>
-#include <vtkPolygon.h>
-#include <vtkTriangle.h>
-#include <vtkQuad.h>
 #include <vtkUnstructuredGrid.h>
 #include <vtkXMLUnstructuredGridWriter.h>
 #include <vtkTetra.h>
@@ -27,312 +16,120 @@
 #include <vtkPyramid.h>
 #include <vtkIdList.h>
 
+// STL includes
 #include <stdexcept>
-#include <unordered_set>
 #include <set>
 #include <algorithm>
 #include <vector>
 #include <map>
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 #include <cmath>
+
+// Header includes
+#include "VtkWriter.hpp"
+#include "Cell.hpp"
+
 
 namespace VtkWriter
 {
 
-// Helper function to compute velocity magnitude
-ScalarField computeVelocityMagnitude(const VectorField& velocity)
-{
-    ScalarField velocityMag("velocityMagnitude", velocity.size());
+// ****************** Private Helper Methods: Field Utilities *****************
 
-    for (size_t i = 0; i < velocity.size(); ++i)
-    {
-        velocityMag[i] = velocity[i].magnitude();
-    }
-
-    return velocityMag;
-}
-
-// Helper function to compute vorticity magnitude
-ScalarField computeVorticityMagnitude(const VectorField& vorticity)
-{
-    ScalarField vorticityMag("vorticityMagnitude", vorticity.size());
-
-    for (size_t i = 0; i < vorticity.size(); ++i)
-    {
-        vorticityMag[i] = vorticity[i].magnitude();
-    }
-
-    return vorticityMag;
-}
-
-// Helper function to compute Q-criterion
-ScalarField computeQCriterion
+ScalarField computeMagnitude
 (
-    const VectorField& gradUx,
-    const VectorField& gradUy,
-    const VectorField& gradUz
+    const VectorField& field,
+    const std::string& fieldName
 )
 {
-    ScalarField qCriterion("QCriterion", gradUx.size());
-
-    for (size_t i = 0; i < gradUx.size(); ++i)
+    ScalarField magnitude(fieldName, field.size());
+    for (size_t idx = 0; idx < field.size(); ++idx)
     {
-        // Velocity gradient tensor components
-        Scalar dUxdx = gradUx[i].x();
-        Scalar dUxdy = gradUx[i].y();
-        Scalar dUxdz = gradUx[i].z();
-
-        Scalar dUydx = gradUy[i].x();
-        Scalar dUydy = gradUy[i].y();
-        Scalar dUydz = gradUy[i].z();
-
-        Scalar dUzdx = gradUz[i].x();
-        Scalar dUzdy = gradUz[i].y();
-        Scalar dUzdz = gradUz[i].z();
-
-        // Symmetric strain rate tensor (S_ij = 0.5 * (du_i/dx_j + du_j/dx_i))
-        Scalar S11 = dUxdx;
-        Scalar S22 = dUydy;
-        Scalar S33 = dUzdz;
-        Scalar S12 = 0.5 * (dUxdy + dUydx);
-        Scalar S13 = 0.5 * (dUxdz + dUzdx);
-        Scalar S23 = 0.5 * (dUydz + dUzdy);
-
-        // Anti-symmetric rotation rate tensor (Omega_ij = 0.5 * (du_i/dx_j - du_j/dx_i))
-        Scalar Omega12 = 0.5 * (dUxdy - dUydx);
-        Scalar Omega13 = 0.5 * (dUxdz - dUzdx);
-        Scalar Omega23 = 0.5 * (dUydz - dUzdy);
-
-        // Q-criterion = 0.5 * (||Omega||^2 - ||S||^2)
-        Scalar omegaNormSq = 2.0 * (Omega12*Omega12 + Omega13*Omega13 + Omega23*Omega23);
-        Scalar sNormSq = S11*S11 + S22*S22 + S33*S33 + 2.0*(S12*S12 + S13*S13 + S23*S23);
-
-        qCriterion[i] = 0.5 * (omegaNormSq - sNormSq);
+        magnitude[idx] = field[idx].magnitude();
     }
-
-    return qCriterion;
+    return magnitude;
 }
 
-// Helper function to compute strain rate magnitude
-ScalarField computeStrainRateMagnitude
+StrainTensor computeStrainTensor
 (
-    const VectorField& gradUx,
-    const VectorField& gradUy,
-    const VectorField& gradUz
+    const Vector& gradUx,
+    const Vector& gradUy,
+    const Vector& gradUz
 )
 {
-    ScalarField strainRateMag("strainRateMagnitude", gradUx.size());
+    StrainTensor S;
 
-    for (size_t i = 0; i < gradUx.size(); ++i)
-    {
-        // Velocity gradient tensor components
-        Scalar dUxdx = gradUx[i].x();
-        Scalar dUxdy = gradUx[i].y();
-        Scalar dUxdz = gradUx[i].z();
+    // Extract velocity gradient tensor components
+    Scalar dUxdx = gradUx.x();
+    Scalar dUxdy = gradUx.y();
+    Scalar dUxdz = gradUx.z();
 
-        Scalar dUydx = gradUy[i].x();
-        Scalar dUydy = gradUy[i].y();
-        Scalar dUydz = gradUy[i].z();
+    Scalar dUydx = gradUy.x();
+    Scalar dUydy = gradUy.y();
+    Scalar dUydz = gradUy.z();
 
-        Scalar dUzdx = gradUz[i].x();
-        Scalar dUzdy = gradUz[i].y();
-        Scalar dUzdz = gradUz[i].z();
+    Scalar dUzdx = gradUz.x();
+    Scalar dUzdy = gradUz.y();
+    Scalar dUzdz = gradUz.z();
 
-        // Symmetric strain rate tensor
-        Scalar S11 = dUxdx;
-        Scalar S22 = dUydy;
-        Scalar S33 = dUzdz;
-        Scalar S12 = 0.5 * (dUxdy + dUydx);
-        Scalar S13 = 0.5 * (dUxdz + dUzdx);
-        Scalar S23 = 0.5 * (dUydz + dUzdy);
+    // Symmetric strain rate tensor: S_ij = 0.5 * (du_i/dx_j + du_j/dx_i)
+    S.S_11 = dUxdx;
+    S.S_22 = dUydy;
+    S.S_33 = dUzdz;
+    S.S_12 = 0.5 * (dUxdy + dUydx);
+    S.S_13 = 0.5 * (dUxdz + dUzdx);
+    S.S_23 = 0.5 * (dUydz + dUzdy);
 
-        // Strain rate magnitude = sqrt(2 * S_ij * S_ij)
-        Scalar sNormSq = S11*S11 + S22*S22 + S33*S33 + 2.0*(S12*S12 + S13*S13 + S23*S23);
-        strainRateMag[i] = std::sqrt(2.0 * sNormSq);
-    }
-
-    return strainRateMag;
+    return S;
 }
 
-void writeVtkFile
+// *************** Private Helper Methods: Geometric Utilities ****************
+
+Vector computeFaceCentroid
 (
-    const std::string& filename,
-    const std::vector<Vector>& allNodes,
-    const std::vector<Face>& allFaces,
-    const std::map<std::string,
-    const ScalarField*>& scalarCellFields,
-    const std::map<std::string,
-    const VectorField*>& vectorCellFields
-) 
+    const std::vector<size_t>& faceNodes,
+    const std::vector<Vector>& allNodes
+)
 {
-    // Create a vtkPolyData object
-    vtkSmartPointer<vtkPolyData> polyData = 
-        vtkSmartPointer<vtkPolyData>::New();
-    
-    // Create vtkPoints from the allNodes vector
-    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-
-    points->SetNumberOfPoints(allNodes.size());
-    
-    // Add all nodes to the points
-    for (size_t i = 0; i < allNodes.size(); ++i) 
+    Vector centroid(0.0, 0.0, 0.0);
+    for (size_t nodeIdx : faceNodes)
     {
-        points->SetPoint(i, allNodes[i].x(), allNodes[i].y(), allNodes[i].z());
+        centroid += allNodes[nodeIdx];
     }
-    
-    // Set the points to the polyData
-    polyData->SetPoints(points);
-    
-    // Create vtkCellArray to store the polygons (faces)
-    vtkSmartPointer<vtkCellArray> polygons =
-        vtkSmartPointer<vtkCellArray>::New();
-    
-    // Keep track of owner cell for each face for mapping cell data to face data
-    std::vector<size_t> faceOwnerCells;
-    faceOwnerCells.reserve(allFaces.size());
-    
-    // Add all faces as polygons
-    for (const auto& face : allFaces) 
-    {
-        // Create a polygon for this face
-        vtkSmartPointer<vtkPolygon> polygon = 
-            vtkSmartPointer<vtkPolygon>::New();
-
-        polygon->GetPointIds()->SetNumberOfIds(face.nodeIndices().size());
-        
-        // Set the node indices for this polygon
-        for (size_t i = 0; i < face.nodeIndices().size(); ++i)
-        {
-            polygon->GetPointIds()->SetId(i, face.nodeIndices()[i]);
-        }
-        
-        // Add the polygon to the cell array
-        polygons->InsertNextCell(polygon);
-        
-        // Store the owner cell index for this face
-        faceOwnerCells.push_back(face.ownerCell());
-    }
-    
-    // Set the polygons to the polyData
-    polyData->SetPolys(polygons);
-    
-    // Add scalar cell fields to the polyData
-    // Since PolyData uses faces as cells, we need to map cell data to face data
-    for (const auto& [fieldName, scalarField] : scalarCellFields)
-    {
-        if (!scalarField) continue;
-
-        // Create a vtkDoubleArray for this field
-        vtkSmartPointer<vtkDoubleArray> dataArray =
-            vtkSmartPointer<vtkDoubleArray>::New();
-
-        dataArray->SetName(fieldName.c_str());
-        dataArray->SetNumberOfComponents(1);
-        dataArray->SetNumberOfTuples(allFaces.size());
-
-        // Map cell data to face data using the owner cell index
-        for (size_t faceIdx = 0; faceIdx < allFaces.size(); ++faceIdx)
-        {
-            size_t ownerCellIdx = faceOwnerCells[faceIdx];
-
-            // Check if the owner cell index is valid
-            if (ownerCellIdx < scalarField->size())
-            {
-                dataArray->SetValue(faceIdx, (*scalarField)[ownerCellIdx]);
-            }
-            else
-            {
-                // Set a default value if the owner cell index is out of bounds
-                dataArray->SetValue(faceIdx, 0.0);
-                std::cerr   << "Warning: Owner cell index " << ownerCellIdx
-                            << " is out of bounds for field " << fieldName
-                            << std::endl;
-            }
-        }
-
-        // Add the data array to the polyData's cell data
-        polyData->GetCellData()->AddArray(dataArray);
-    }
-
-    // Add vector cell fields to the polyData
-    for (const auto& [fieldName, vectorField] : vectorCellFields)
-    {
-        if (!vectorField) continue;
-
-        // Create a vtkDoubleArray for this vector field
-        vtkSmartPointer<vtkDoubleArray> dataArray =
-            vtkSmartPointer<vtkDoubleArray>::New();
-
-        dataArray->SetName(fieldName.c_str());
-        dataArray->SetNumberOfComponents(3);
-        dataArray->SetNumberOfTuples(allFaces.size());
-
-        // Map cell data to face data using the owner cell index
-        for (size_t faceIdx = 0; faceIdx < allFaces.size(); ++faceIdx)
-        {
-            size_t ownerCellIdx = faceOwnerCells[faceIdx];
-
-            // Check if the owner cell index is valid
-            if (ownerCellIdx < vectorField->size())
-            {
-                const Vector& vec = (*vectorField)[ownerCellIdx];
-                double vecData[3] = {vec.x(), vec.y(), vec.z()};
-                dataArray->SetTuple(faceIdx, vecData);
-            }
-            else
-            {
-                // Set a default value if the owner cell index is out of bounds
-                double zeroVec[3] = {0.0, 0.0, 0.0};
-                dataArray->SetTuple(faceIdx, zeroVec);
-                std::cerr   << "Warning: Owner cell index " << ownerCellIdx
-                            << " is out of bounds for field " << fieldName
-                            << std::endl;
-            }
-        }
-
-        // Add the data array to the polyData's cell data
-        polyData->GetCellData()->AddArray(dataArray);
-    }
-    
-    // Write the polyData to file using vtkXMLPolyDataWriter
-    // Note: The output file should use .vtp extension for VTK PolyData XML format
-    // If .vtk extension is used, the file will still be written but may cause confusion
-    vtkSmartPointer<vtkXMLPolyDataWriter> writer = 
-        vtkSmartPointer<vtkXMLPolyDataWriter>::New();
-        
-    writer->SetFileName(filename.c_str());
-    writer->SetInputData(polyData);
-    
-    // Set the data mode to ASCII for better readability (optional)
-    // writer->SetDataModeToAscii();
-    
-    // Set the data mode to Binary for better performance and smaller file size
-    writer->SetDataModeToBinary();
-    
-    // Enable compression for smaller file size
-    writer->SetCompressorTypeToZLib();
-    
-    // Write the file
-    writer->Write();
-    
-    std::cout   << "VTK PolyData file written successfully: " 
-                << filename << std::endl;
-
-    std::cout   << "  - Number of points: " << allNodes.size() << std::endl;
-
-    std::cout   << "  - Number of polygons: " << allFaces.size() << std::endl;
-
-    std::cout   << "  - Number of scalar fields: " << scalarCellFields.size()
-                << std::endl;
-
-    std::cout   << "  - Number of vector fields: " << vectorCellFields.size()
-                << std::endl;
+    return centroid / S(faceNodes.size());
 }
 
-// Helper function to order hexahedron nodes according to VTK convention
-// VTK Hexahedron: nodes 0-3 form bottom quad, nodes 4-7 form top quad
-// Uses face topology for robust ordering without axis-alignment assumptions
+Vector computeTriangleNormal
+(
+    const std::vector<size_t>& triNodes,
+    const std::vector<Vector>& allNodes
+)
+{
+    Vector v0 = allNodes[triNodes[0]];
+    Vector v1 = allNodes[triNodes[1]];
+    Vector v2 = allNodes[triNodes[2]];
+    Vector edge1 = v1 - v0;
+    Vector edge2 = v2 - v0;
+    return cross(edge1, edge2);
+}
+
+Vector computeQuadNormal
+(
+    const std::vector<size_t>& quadNodes,
+    const std::vector<Vector>& allNodes
+)
+{
+    Vector v0 = allNodes[quadNodes[0]];
+    Vector v1 = allNodes[quadNodes[1]];
+    Vector v2 = allNodes[quadNodes[2]];
+    Vector edge1 = v1 - v0;
+    Vector edge2 = v2 - v0;
+    return cross(edge1, edge2);
+}
+
+// ************ Private Helper Methods: VTK Cell Node Ordering ****************
+
 std::vector<vtkIdType> orderHexahedronNodes
 (
     const std::vector<std::vector<size_t>>& faceNodeLists,
@@ -360,9 +157,9 @@ std::vector<vtkIdType> orderHexahedronNodes
     Vector centroid(0.0, 0.0, 0.0);
     for (size_t nodeId : uniqueNodes)
     {
-        centroid = centroid + allNodes[nodeId];
+        centroid += allNodes[nodeId];
     }
-    centroid = centroid / 8.0;
+    centroid /= 8.0;
 
     // Find two opposite faces (bottom and top)
     // Opposite faces share no common nodes
@@ -409,30 +206,10 @@ std::vector<vtkIdType> orderHexahedronNodes
     }
 
     // Determine face orientation using face normals
-    auto computeQuadNormal = [&allNodes](const std::vector<size_t>& quadNodes) -> Vector
-    {
-        Vector v0 = allNodes[quadNodes[0]];
-        Vector v1 = allNodes[quadNodes[1]];
-        Vector v2 = allNodes[quadNodes[2]];
-        Vector edge1 = v1 - v0;
-        Vector edge2 = v2 - v0;
-        return cross(edge1, edge2);
-    };
-
-    auto computeFaceCentroid = [&allNodes](const std::vector<size_t>& faceNodes)
-    {
-        Vector fc(0.0, 0.0, 0.0);
-        for (size_t nid : faceNodes)
-        {
-            fc = fc + allNodes[nid];
-        }
-        return fc / static_cast<Scalar>(faceNodes.size());
-    };
-
-    Vector bottomNormal = computeQuadNormal(bottomFace);
-    Vector topNormal = computeQuadNormal(topFace);
-    Vector bottomCentroid = computeFaceCentroid(bottomFace);
-    Vector topCentroid = computeFaceCentroid(topFace);
+    Vector bottomNormal = computeQuadNormal(bottomFace, allNodes);
+    Vector topNormal = computeQuadNormal(topFace, allNodes);
+    Vector bottomCentroid = computeFaceCentroid(bottomFace, allNodes);
+    Vector topCentroid = computeFaceCentroid(topFace, allNodes);
 
     Vector bottomToCenter = centroid - bottomCentroid;
     Vector topToCenter = centroid - topCentroid;
@@ -447,39 +224,60 @@ std::vector<vtkIdType> orderHexahedronNodes
     std::vector<size_t> orderedBottomNodes = bottomFace;
 
     // Check winding and reverse if needed
-    Vector testNormal = computeQuadNormal(orderedBottomNodes);
-    Vector outwardDir = computeFaceCentroid(orderedBottomNodes) - centroid;
+    Vector testNormal = computeQuadNormal(orderedBottomNodes, allNodes);
+
+    Vector outwardDir =
+        computeFaceCentroid(orderedBottomNodes, allNodes) - centroid;
+
     if (dot(testNormal, outwardDir) < 0)
     {
         std::reverse(orderedBottomNodes.begin(), orderedBottomNodes.end());
     }
 
     // Build edge connectivity from side faces to match top to bottom
-    // Each side face connects an edge of bottom to an edge of top
-    std::map<size_t, std::set<size_t>> nodeConnections;
+    // Each side face has 4 nodes forming a quad: 2 from bottom, 2 from top
+    // We need to find which bottom node connects to which top node via
+    // vertical edges
+    std::map<size_t, size_t> nodeConnections;
 
     for (size_t i = 0; i < faceNodeLists.size(); ++i)
     {
         if (i == bottomFaceIdx || i == topFaceIdx) continue; // Skip top/bottom
 
         const auto& sideFace = faceNodeLists[i];
-        std::vector<size_t> sideBottomNodes, sideTopNodes;
+        if (sideFace.size() != 4) continue;
 
-        for (size_t nid : sideFace)
+        // For each edge of the side face, check if it connects
+        // a bottom node to a top node
+        for (size_t e = 0; e < 4; ++e)
         {
-            bool inBottom = std::find(bottomFace.begin(), bottomFace.end(), nid) != bottomFace.end();
-            bool inTop = std::find(topFace.begin(), topFace.end(), nid) != topFace.end();
+            size_t n0 = sideFace[e];
+            size_t n1 = sideFace[(e + 1) % 4];
 
-            if (inBottom) sideBottomNodes.push_back(nid);
-            if (inTop) sideTopNodes.push_back(nid);
-        }
+            bool n0_bottom =
+                std::find
+                (bottomFace.begin(), bottomFace.end(), n0)
+              != bottomFace.end();
 
-        // Record connections
-        for (size_t bn : sideBottomNodes)
-        {
-            for (size_t tn : sideTopNodes)
+            bool n1_bottom =
+                std::find
+                (bottomFace.begin(), bottomFace.end(), n1)
+              != bottomFace.end();
+
+            bool n0_top =
+                std::find(topFace.begin(), topFace.end(), n0) != topFace.end();
+
+            bool n1_top =
+                std::find(topFace.begin(), topFace.end(), n1) != topFace.end();
+
+            // If the edge connects a bottom node to a top node (vertical edge)
+            if (n0_bottom && n1_top)
             {
-                nodeConnections[bn].insert(tn);
+                nodeConnections[n0] = n1;
+            }
+            else if (n1_bottom && n0_top)
+            {
+                nodeConnections[n1] = n0;
             }
         }
     }
@@ -492,36 +290,36 @@ std::vector<vtkIdType> orderHexahedronNodes
 
         if (nodeConnections.find(bottomNode) != nodeConnections.end())
         {
-            const auto& connectedNodes = nodeConnections[bottomNode];
+            // Direct one-to-one mapping from bottom to top node
+            size_t topNode = nodeConnections[bottomNode];
 
-            for (size_t candidate : connectedNodes)
+            // Verify it's actually in the top face
+            if
+            (
+                std::find(topFace.begin(),
+                topFace.end(),
+                topNode) != topFace.end()
+            )
             {
-                if (std::find(topFace.begin(), topFace.end(), candidate) != topFace.end())
-                {
-                    orderedTopNodes[i] = candidate;
-                    break;
-                }
+                orderedTopNodes[i] = topNode;
             }
         }
     }
 
     // Build final VTK hex ordering
     orderedNodes.reserve(8);
-    for (size_t nodeId : orderedBottomNodes)
+    for (size_t nodeIdx : orderedBottomNodes)
     {
-        orderedNodes.push_back(static_cast<vtkIdType>(nodeId));
+        orderedNodes.push_back(static_cast<vtkIdType>(nodeIdx));
     }
-    for (size_t nodeId : orderedTopNodes)
+    for (size_t nodeIdx : orderedTopNodes)
     {
-        orderedNodes.push_back(static_cast<vtkIdType>(nodeId));
+        orderedNodes.push_back(static_cast<vtkIdType>(nodeIdx));
     }
 
     return orderedNodes;
 }
 
-// Helper function to order wedge (prism) nodes according to VTK convention
-// VTK Wedge: nodes 0,1,2 form bottom triangle, nodes 3,4,5 form top triangle
-// Uses actual face topology to determine correct node ordering
 std::vector<vtkIdType> orderWedgeNodes
 (
     const std::vector<std::vector<size_t>>& faceNodeLists,
@@ -563,36 +361,16 @@ std::vector<vtkIdType> orderWedgeNodes
     Vector centroid(0.0, 0.0, 0.0);
     for (size_t nodeId : uniqueNodes)
     {
-        centroid = centroid + allNodes[nodeId];
+        centroid += allNodes[nodeId];
     }
-    centroid = centroid / 6.0;
+    centroid /= 6.0;
 
     // Compute face centroids and normals for triangular faces
-    auto computeFaceCentroid = [&allNodes](const std::vector<size_t>& faceNodes)
-    {
-        Vector fc(0.0, 0.0, 0.0);
-        for (size_t nid : faceNodes)
-        {
-            fc = fc + allNodes[nid];
-        }
-        return fc / static_cast<Scalar>(faceNodes.size());
-    };
+    Vector tri0Centroid = computeFaceCentroid(triangularFaces[0], allNodes);
+    Vector tri1Centroid = computeFaceCentroid(triangularFaces[1], allNodes);
 
-    auto computeTriangleNormal = [&allNodes](const std::vector<size_t>& triNodes) -> Vector
-    {
-        Vector v0 = allNodes[triNodes[0]];
-        Vector v1 = allNodes[triNodes[1]];
-        Vector v2 = allNodes[triNodes[2]];
-        Vector edge1 = v1 - v0;
-        Vector edge2 = v2 - v0;
-        return cross(edge1, edge2); // Not normalized
-    };
-
-    Vector tri0Centroid = computeFaceCentroid(triangularFaces[0]);
-    Vector tri1Centroid = computeFaceCentroid(triangularFaces[1]);
-
-    Vector tri0Normal = computeTriangleNormal(triangularFaces[0]);
-    Vector tri1Normal = computeTriangleNormal(triangularFaces[1]);
+    Vector tri0Normal = computeTriangleNormal(triangularFaces[0], allNodes);
+    Vector tri1Normal = computeTriangleNormal(triangularFaces[1], allNodes);
 
     // Check which triangle is more "inward" pointing relative to centroid
     Vector tri0ToCenter = centroid - tri0Centroid;
@@ -616,7 +394,8 @@ std::vector<vtkIdType> orderWedgeNodes
 
     // Build edge connectivity from quad faces to establish correspondence
     // In a prism, each quad face has 4 nodes forming a cycle
-    // Two nodes are from bottom triangle (forming an edge), two from top triangle (forming an edge)
+    // Two nodes are from bottom triangle (forming an edge), two from top
+    // triangle (forming an edge)
     // The edges are connected by the quad face
     std::map<size_t, size_t> bottomToTopMap;
 
@@ -629,7 +408,10 @@ std::vector<vtkIdType> orderWedgeNodes
 
         for (size_t nid : quadNodes)
         {
-            bool inBottom = std::find(bottomTri.begin(), bottomTri.end(), nid) != bottomTri.end();
+            bool inBottom =
+                std::find
+                (bottomTri.begin(), bottomTri.end(), nid)
+              != bottomTri.end();
             if (inBottom)
             {
                 quadBottomNodes.push_back(nid);
@@ -643,18 +425,27 @@ std::vector<vtkIdType> orderWedgeNodes
         if (quadBottomNodes.size() != 2 || quadTopNodes.size() != 2) continue;
 
         // Find which nodes in the quad are adjacent (form edges)
-        // In the quad [n0, n1, n2, n3], edges are: n0-n1, n1-n2, n2-n3, n3-n0
+        // In the quad [n0, n1, n2, n3], edges are:
+        // n0-n1, n1-n2, n2-n3, n3-n0
 
-        // Check all 4 edges of the quad to find which bottom and top nodes are connected
+        // Check all 4 edges of the quad to find which bottom and top
+        // nodes are connected
         for (size_t i = 0; i < 4; ++i)
         {
             size_t n0 = quadNodes[i];
             size_t n1 = quadNodes[(i + 1) % 4];
 
-            bool n0_bottom = std::find(bottomTri.begin(), bottomTri.end(), n0) != bottomTri.end();
-            bool n1_bottom = std::find(bottomTri.begin(), bottomTri.end(), n1) != bottomTri.end();
+            bool n0_bottom =
+                std::find
+                (bottomTri.begin(), bottomTri.end(), n0)
+             != bottomTri.end();
 
-            // If this edge connects a bottom node to a top node, record the connection
+            bool n1_bottom =
+                std::find(bottomTri.begin(), bottomTri.end(), n1)
+             != bottomTri.end();
+
+            // If this edge connects a bottom node to a top node,
+            // record the connection
             if (n0_bottom && !n1_bottom)
             {
                 bottomToTopMap[n0] = n1;
@@ -666,12 +457,15 @@ std::vector<vtkIdType> orderWedgeNodes
         }
     }
 
-    // Order bottom triangle nodes consistently (counter-clockwise when viewed from outside)
+    // Order bottom triangle nodes consistently
+    // (counter-clockwise when viewed from outside)
     std::vector<size_t> orderedBottomNodes = bottomTri;
 
     // Ensure proper winding by checking normal direction
-    Vector testNormal = computeTriangleNormal(orderedBottomNodes);
-    Vector outwardDir = computeFaceCentroid(orderedBottomNodes) - centroid;
+    Vector testNormal = computeTriangleNormal(orderedBottomNodes, allNodes);
+
+    Vector outwardDir =
+        computeFaceCentroid(orderedBottomNodes, allNodes) - centroid;
     if (dot(testNormal, outwardDir) < 0)
     {
         // Reverse winding to make it outward-pointing
@@ -698,12 +492,17 @@ std::vector<vtkIdType> orderWedgeNodes
     }
 
     // Verify all top nodes were mapped and are valid
-    std::set<size_t> mappedTopNodes(orderedTopNodes.begin(), orderedTopNodes.end());
+    std::set<size_t> mappedTopNodes
+    (
+        orderedTopNodes.begin(),
+        orderedTopNodes.end()
+    );
+
     std::set<size_t> expectedTopNodes(topTri.begin(), topTri.end());
 
     if (mappedTopNodes != expectedTopNodes)
     {
-        // Mapping is incomplete or incorrect - return empty to trigger fallback
+        // Mapping is incomplete or incorrect. Return empty to trigger fallback
         return std::vector<vtkIdType>();
     }
 
@@ -721,8 +520,6 @@ std::vector<vtkIdType> orderWedgeNodes
     return orderedNodes;
 }
 
-// Helper function to order pyramid nodes according to VTK convention
-// VTK Pyramid: nodes 0,1,2,3 form quad base, node 4 is apex
 std::vector<vtkIdType> orderPyramidNodes
 (
     const std::vector<std::vector<size_t>>& faceNodeLists,
@@ -732,66 +529,156 @@ std::vector<vtkIdType> orderPyramidNodes
 {
     std::vector<vtkIdType> orderedNodes;
 
-    if (uniqueNodes.size() != 5)
+    if (uniqueNodes.size() != 5 || faceNodeLists.size() != 5)
     {
         return orderedNodes;
     }
 
-    std::vector<size_t> nodeList(uniqueNodes.begin(), uniqueNodes.end());
+    // Identify the quad face (base) and triangular faces
+    // A pyramid has 1 quad face and 4 triangular faces
+    std::vector<size_t> baseFace;
 
-    // Find apex (node with max z-coordinate, assuming pyramid points up)
-    size_t apexNode = nodeList[0];
-    Scalar maxZ = allNodes[nodeList[0]].z();
-    for (size_t i = 1; i < 5; ++i)
+    for (const auto& faceNodes : faceNodeLists)
     {
-        if (allNodes[nodeList[i]].z() > maxZ)
+        if (faceNodes.size() == 4)
         {
-            maxZ = allNodes[nodeList[i]].z();
-            apexNode = nodeList[i];
+            baseFace = faceNodes;
+            break;
         }
     }
 
-    // Collect base nodes (all except apex)
-    std::vector<size_t> baseNodes;
-    for (size_t nodeId : nodeList)
-    {
-        if (nodeId != apexNode)
-        {
-            baseNodes.push_back(nodeId);
-        }
-    }
-
-    if (baseNodes.size() != 4)
+    if (baseFace.size() != 4)
     {
         return orderedNodes;
     }
 
-    // Order base nodes by angle around base centroid
-    Vector baseCentroid(0.0, 0.0, 0.0);
-    for (size_t nodeId : baseNodes)
+    // The apex is the node NOT in the quad base face
+    size_t apexNode = 0;
+    for (size_t nodeId : uniqueNodes)
     {
-        baseCentroid = baseCentroid + allNodes[nodeId];
-    }
-    baseCentroid = baseCentroid / 4.0;
-
-    std::sort(baseNodes.begin(), baseNodes.end(),
-        [&allNodes, &baseCentroid](size_t a, size_t b)
+        if
+        (
+            std::find
+            (
+                baseFace.begin(),
+                baseFace.end(),
+                nodeId
+            ) 
+         == baseFace.end()
+        )
         {
-            Vector va = allNodes[a] - baseCentroid;
-            Vector vb = allNodes[b] - baseCentroid;
-            return std::atan2(va.y(), va.x()) < std::atan2(vb.y(), vb.x());
-        });
+            apexNode = nodeId;
+            break;
+        }
+    }
+
+    // Compute cell centroid
+    Vector centroid(0.0, 0.0, 0.0);
+    for (size_t nodeId : uniqueNodes)
+    {
+        centroid += allNodes[nodeId];
+    }
+    centroid /= 5.0;
+
+    // Ensure proper winding of base quad
+    // (outward-pointing normal when viewed from outside)
+    std::vector<size_t> orderedBase = baseFace;
+    Vector testNormal =
+        computeQuadNormal(orderedBase, allNodes);
+
+    Vector outwardDir =
+        computeFaceCentroid(orderedBase, allNodes) - centroid;
+
+    if (dot(testNormal, outwardDir) < 0)
+    {
+        std::reverse(orderedBase.begin(), orderedBase.end());
+    }
 
     // Build ordered list: 4 base nodes + apex
     orderedNodes.reserve(5);
-    for (size_t nodeId : baseNodes)
+    for (size_t nodeId : orderedBase)
     {
-        orderedNodes.push_back(static_cast<vtkIdType>(nodeId));
+        orderedNodes.push_back(
+            static_cast<vtkIdType>(nodeId));
     }
-    orderedNodes.push_back(static_cast<vtkIdType>(apexNode));
+    orderedNodes.push_back(
+        static_cast<vtkIdType>(apexNode));
 
     return orderedNodes;
 }
+
+// ******************* Public API: Derived Field Computation *******************
+
+ScalarField computeVelocityMagnitude(const VectorField& velocity)
+{
+    return computeMagnitude(velocity, "velocityMagnitude");
+}
+
+ScalarField computeVorticityMagnitude(const VectorField& vorticity)
+{
+    return computeMagnitude(vorticity, "vorticityMagnitude");
+}
+
+ScalarField computeQCriterion
+(
+    const VectorField& gradUx,
+    const VectorField& gradUy,
+    const VectorField& gradUz
+)
+{
+    ScalarField qCriterion("QCriterion", gradUx.size());
+
+    for (size_t i = 0; i < gradUx.size(); ++i)
+    {
+        // Compute strain rate tensor using helper function
+        StrainTensor S = computeStrainTensor(gradUx[i], gradUy[i], gradUz[i]);
+
+        // Extract velocity gradient tensor components for rotation tensor
+        Scalar dUxdy = gradUx[i].y();
+        Scalar dUxdz = gradUx[i].z();
+        Scalar dUydx = gradUy[i].x();
+        Scalar dUydz = gradUy[i].z();
+        Scalar dUzdx = gradUz[i].x();
+        Scalar dUzdy = gradUz[i].y();
+
+        // Anti-symmetric rotation rate tensor
+        // (Omega_ij = 0.5 * (du_i/dx_j - du_j/dx_i))
+        Scalar Omega_12 = 0.5 * (dUxdy - dUydx);
+        Scalar Omega_13 = 0.5 * (dUxdz - dUzdx);
+        Scalar Omega_23 = 0.5 * (dUydz - dUzdy);
+
+        // Q-criterion = 0.5 * (||Omega||^2 - ||S||^2)
+        Scalar omegaNormSq =
+            2.0 * (Omega_12*Omega_12 + Omega_13*Omega_13 + Omega_23*Omega_23);
+
+        qCriterion[i] = 0.5 * (omegaNormSq - S.normSquared());
+    }
+
+    return qCriterion;
+}
+
+ScalarField computeStrainRateMagnitude
+(
+    const VectorField& gradUx,
+    const VectorField& gradUy,
+    const VectorField& gradUz
+)
+{
+    ScalarField strainRateMag("strainRateMagnitude", gradUx.size());
+
+    for (size_t idx = 0; idx < gradUx.size(); ++idx)
+    {
+        // Compute strain rate tensor using helper function
+        StrainTensor S = computeStrainTensor(gradUx[idx], gradUy[idx], gradUz[idx]);
+
+        // Strain rate magnitude = sqrt(2 * S_ij * S_ij)
+        strainRateMag[idx] = std::sqrt(2.0 * S.normSquared());
+    }
+
+    return strainRateMag;
+}
+
+// *********************** Public API: VTK File Export ************************
 
 void writeVtkUnstructuredGrid
 (
@@ -806,8 +693,8 @@ void writeVtkUnstructuredGrid
 )
 {
     // Create vtkUnstructuredGrid
-    vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid =
-        vtkSmartPointer<vtkUnstructuredGrid>::New();
+    vtkSmartPointer<vtkUnstructuredGrid>
+    unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
 
     // Create vtkPoints from nodes
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
@@ -824,7 +711,8 @@ void writeVtkUnstructuredGrid
     // Build a node connectivity graph to determine proper VTK node ordering
 
     // Cell type statistics for diagnostics
-    size_t numTets = 0, numHexes = 0, numWedges = 0, numPyramids = 0, numConvex = 0;
+    size_t numTets = 0, numHexes = 0, numWedges = 0,
+           numPyramids = 0, numConvex = 0;
     size_t numWedgeOrderingFailures = 0;
 
     for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
@@ -853,13 +741,14 @@ void writeVtkUnstructuredGrid
 
         if (numNodes == 4 && numFaces == 4)
         {
-            // Tetrahedron - VTK ordering: any vertex, then 3 neighbors forming base
+            // Tetrahedron - VTK ordering:
+            // any vertex, then 3 neighbors forming base
             cellType = VTK_TETRA;
             numTets++;
             orderedNodes.reserve(4);
-            for (size_t nodeId : uniqueNodeSet)
+            for (size_t nodeIdx : uniqueNodeSet)
             {
-                orderedNodes.push_back(static_cast<vtkIdType>(nodeId));
+                orderedNodes.push_back(static_cast<vtkIdType>(nodeIdx));
             }
         }
         else if (numNodes == 8 && numFaces == 6)
@@ -867,23 +756,25 @@ void writeVtkUnstructuredGrid
             // Hexahedron - need to find proper ordering
             cellType = VTK_HEXAHEDRON;
             numHexes++;
-            orderedNodes = orderHexahedronNodes(faceNodeLists, uniqueNodeSet, allNodes);
+            orderedNodes =
+                orderHexahedronNodes(faceNodeLists, uniqueNodeSet, allNodes);
         }
         else if (numNodes == 6 && numFaces == 5)
         {
             // Wedge (prism)
             cellType = VTK_WEDGE;
             numWedges++;
-            orderedNodes = orderWedgeNodes(faceNodeLists, uniqueNodeSet, allNodes);
+            orderedNodes =
+                orderWedgeNodes(faceNodeLists, uniqueNodeSet, allNodes);
 
             if (orderedNodes.empty())
             {
                 numWedgeOrderingFailures++;
                 // Fallback to convex point set
                 cellType = VTK_CONVEX_POINT_SET;
-                for (size_t nodeId : uniqueNodeSet)
+                for (size_t nodeIdx : uniqueNodeSet)
                 {
-                    orderedNodes.push_back(static_cast<vtkIdType>(nodeId));
+                    orderedNodes.push_back(static_cast<vtkIdType>(nodeIdx));
                 }
             }
         }
@@ -892,7 +783,8 @@ void writeVtkUnstructuredGrid
             // Pyramid
             cellType = VTK_PYRAMID;
             numPyramids++;
-            orderedNodes = orderPyramidNodes(faceNodeLists, uniqueNodeSet, allNodes);
+            orderedNodes =
+                orderPyramidNodes(faceNodeLists, uniqueNodeSet, allNodes);
         }
         else
         {
@@ -909,18 +801,27 @@ void writeVtkUnstructuredGrid
         if (orderedNodes.empty())
         {
             // Fallback: use arbitrary ordering
-            vtkSmartPointer<vtkIdList> cellPointIds = vtkSmartPointer<vtkIdList>::New();
-            for (size_t nodeId : uniqueNodeSet)
+            vtkSmartPointer<vtkIdList> cellPointIds =
+                vtkSmartPointer<vtkIdList>::New();
+
+            for (size_t nodeIdx : uniqueNodeSet)
             {
-                cellPointIds->InsertNextId(static_cast<vtkIdType>(nodeId));
+                cellPointIds->InsertNextId(static_cast<vtkIdType>(nodeIdx));
             }
-            unstructuredGrid->InsertNextCell(VTK_CONVEX_POINT_SET, cellPointIds);
+            unstructuredGrid->InsertNextCell
+            (
+                VTK_CONVEX_POINT_SET,
+                cellPointIds
+            );
         }
         else
         {
-            unstructuredGrid->InsertNextCell(cellType,
-                                            static_cast<vtkIdType>(orderedNodes.size()),
-                                            orderedNodes.data());
+            unstructuredGrid->InsertNextCell
+            (
+                cellType,
+                static_cast<vtkIdType>(orderedNodes.size()),
+                orderedNodes.data()
+            );
         }
     }
 
@@ -929,8 +830,8 @@ void writeVtkUnstructuredGrid
     {
         if (!scalarField) continue;
 
-        vtkSmartPointer<vtkDoubleArray> dataArray =
-            vtkSmartPointer<vtkDoubleArray>::New();
+        vtkSmartPointer<vtkDoubleArray> 
+        dataArray = vtkSmartPointer<vtkDoubleArray>::New();
 
         dataArray->SetName(fieldName.c_str());
         dataArray->SetNumberOfComponents(1);
@@ -991,38 +892,67 @@ void writeVtkUnstructuredGrid
     writer->SetCompressorTypeToZLib();
     writer->Write();
 
-    std::cout   << "VTK UnstructuredGrid file written successfully: "
-                << filename << std::endl;
+    std::cout
+        << "VTK UnstructuredGrid file written successfully: "
+        << filename << std::endl;
 
-    std::cout   << "  - Number of points: " << allNodes.size() << std::endl;
+    std::cout
+        << "  - Number of points: " << allNodes.size() << std::endl;
 
-    std::cout   << "  - Number of cells: " << allCells.size() << std::endl;
+    std::cout
+        << "  - Number of cells: " << allCells.size() << std::endl;
 
-    std::cout   << "  - Cell types:" << std::endl;
+    std::cout
+        << "  - Cell types:" << std::endl;
+
     if (numTets > 0)
-        std::cout << "    - Tetrahedra: " << numTets << std::endl;
+    {
+        std::cout
+            << "    - Tetrahedra: " << numTets << std::endl;
+    }
+
     if (numHexes > 0)
-        std::cout << "    - Hexahedra: " << numHexes << std::endl;
+    {
+        std::cout
+            << "    - Hexahedra: " << numHexes << std::endl;
+    }
+
     if (numWedges > 0)
-        std::cout << "    - Wedges (prisms): " << numWedges << std::endl;
+    {
+        std::cout
+            << "    - Wedges (prisms): " << numWedges << std::endl;
+    }
+
     if (numPyramids > 0)
-        std::cout << "    - Pyramids: " << numPyramids << std::endl;
+    {
+        std::cout
+            << "    - Pyramids: " << numPyramids << std::endl;
+    }
+
     if (numConvex > 0)
-        std::cout << "    - Convex point sets: " << numConvex << std::endl;
+    {
+        std::cout
+            << "    - Convex point sets: " << numConvex << std::endl;
+    }
 
     if (numWedgeOrderingFailures > 0)
     {
-        std::cout   << "  - WARNING: " << numWedgeOrderingFailures
-                    << " wedge cells failed proper ordering (using convex fallback)"
-                    << std::endl;
+        std::cout
+            << "  - WARNING: " << numWedgeOrderingFailures
+            << " wedge cells failed proper ordering"
+            << std::endl;
     }
 
-    std::cout   << "  - Number of scalar fields: " << scalarCellFields.size()
-                << std::endl;
+    std::cout
+        << "  - Number of scalar fields: " << scalarCellFields.size()
+        << std::endl;
 
-    std::cout   << "  - Number of vector fields: " << vectorCellFields.size()
-                << std::endl;
+    std::cout
+        << "  - Number of vector fields: " << vectorCellFields.size()
+        << std::endl;
 }
+
+// *********************** Public API: PVD Time Series ************************
 
 void writePVDTimeSeriesHeader
 (
@@ -1033,18 +963,24 @@ void writePVDTimeSeriesHeader
 
     if (!pvdFile.is_open())
     {
-        throw std::runtime_error("Failed to open PVD file: " + pvdFilename);
+        throw   std::runtime_error
+                (
+                    "Failed to open PVD file: " + pvdFilename
+                );
     }
 
     pvdFile << "<?xml version=\"1.0\"?>\n";
-    pvdFile << "<VTKFile type=\"Collection\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+    pvdFile << "<VTKFile type=\"Collection\" version=\"0.1\" "
+            << "byte_order=\"LittleEndian\">\n";
     pvdFile << "  <Collection>\n";
     pvdFile << "  </Collection>\n";
     pvdFile << "</VTKFile>\n";
 
     pvdFile.close();
 
-    std::cout << "PVD time series header written: " << pvdFilename << std::endl;
+    std::cout
+        << "PVD time series header written: "
+        << pvdFilename << std::endl;
 }
 
 void appendPVDTimeStep
@@ -1058,7 +994,10 @@ void appendPVDTimeStep
     std::ifstream pvdFileIn(pvdFilename);
     if (!pvdFileIn.is_open())
     {
-        throw std::runtime_error("Failed to open PVD file for reading: " + pvdFilename);
+        throw   std::runtime_error
+                (
+                    "Failed to open PVD file for reading: " + pvdFilename
+                );
     }
 
     std::vector<std::string> lines;
@@ -1073,7 +1012,10 @@ void appendPVDTimeStep
     std::ofstream pvdFileOut(pvdFilename);
     if (!pvdFileOut.is_open())
     {
-        throw std::runtime_error("Failed to open PVD file for writing: " + pvdFilename);
+        throw   std::runtime_error
+                (
+                    "Failed to open PVD file for writing: " + pvdFilename
+                );
     }
 
     for (const auto& existingLine : lines)
@@ -1089,7 +1031,49 @@ void appendPVDTimeStep
 
     pvdFileOut.close();
 
-    std::cout << "Added timestep " << timeValue << " to PVD file" << std::endl;
+    std::cout
+        << "Added timestep " << timeValue << " to PVD file"
+        << std::endl;
 }
 
+// *********************** Public API: Geometry Export ************************
+
+void writeCellGeometryData
+(
+    const std::string& filename,
+    const std::vector<Cell>& allCells
+)
+{
+    std::ofstream outFile(filename);
+    if (!outFile.is_open())
+    {
+        throw   std::runtime_error
+                (
+                    "Failed to open file: " + filename
+                );
+    }
+
+    // Header line
+    outFile << "# cellIndex volume centroid_x centroid_y centroid_z\n";
+    outFile << std::scientific << std::setprecision(12);
+
+    for (size_t i = 0; i < allCells.size(); ++i)
+    {
+        const Cell& cell = allCells[i];
+        const Vector& c = cell.centroid();
+
+        outFile << i << " "
+                << cell.volume() << " "
+                << c.x() << " "
+                << c.y() << " "
+                << c.z() << "\n";
+    }
+
+    outFile.close();
+    std::cout
+        << "Cell geometry data written to: " << filename << std::endl;
+
+    std::cout
+        << "  - Number of cells: " << allCells.size() << std::endl;
+}
 } // namespace VtkWriter
