@@ -1,30 +1,25 @@
 /******************************************************************************
- * @file Matrix.h
+ * @file Matrix.hpp
  * @brief Matrix assembly for finite volume discretization
- * 
- * This class handles the assembly of sparse linear systems (Ax=b) for various
- * transport equations in computational fluid dynamics including momentum,
- * pressure correction, and scalar transport. It manages gradient computation,
- * face-level interpolation, convection and diffusion discretization, and
- * boundary condition application.
- * 
+ *
+ * This header defines the Matrix class, which handles the assembly of sparse
+ * linear systems (Ax=b) for transport equations.
+ * It manages gradient computation, face-level interpolation, convection and
+ * diffusion discretization, and boundary condition application.
+ *
  * @class Matrix
- * 
- * The Matrix class provides unified assembly for:
- * - Momentum equations with convection-diffusion operators
- * - Pressure correction equations for SIMPLE algorithm
- * - Scalar transport equations with source terms
- * - Implicit under-relaxation for solution stability
- * 
- * Key features:
- * - Eigen sparse matrix backend for efficient storage and solution
+ *
+ * The Matrix class provides:
+ * - Assembly for momentum, pressure correction, and scalar equations
+ * - Eigen sparse matrix for efficient storage and solution
  * - Deferred correction for higher-order convection schemes
- * - Non-orthogonal mesh corrections via face gradients
- * - Seamless boundary condition integration during assembly
+ * - Non-orthogonal mesh corrections
+ * - Implicit under-relaxation (Patankar) for solution stability
+ * - Boundary condition integration during assembly
  *****************************************************************************/
 
-#ifndef MATRIXCONSTRUCTOR_H
-#define MATRIXCONSTRUCTOR_H
+#ifndef MATRIX_HPP
+#define MATRIX_HPP
 
 #include <vector>
 #include <string>
@@ -37,20 +32,11 @@
 #include "Face.hpp"
 #include "BoundaryConditions.hpp"
 #include "CellData.hpp"
+#include "FaceData.hpp"
 #include "ConvectionScheme.hpp"
 #include "GradientScheme.hpp"
 
-// Forward declaration of classes
-class KOmegaSST;
 
-/**
- * @brief Matrix assembly class for finite volume discretization
- * 
- * This class handles the assembly of linear systems Ax=b for various
- * transport equations including momentum, pressure correction, and
- * scalar transport. It manages gradient fields, face-level data,
- * and boundary condition application.
- */
 class Matrix
 {
 public:
@@ -59,7 +45,7 @@ public:
      * @brief Constructor for matrix assembly
      * @param faces Reference to face data
      * @param cells Reference to cell data
-     * @param boundaryConds Reference to boundary conditions
+     * @param boundaryConds Boundary conditions manager
      */
     Matrix
     (
@@ -69,90 +55,213 @@ public:
     );
 
     /**
-     * @brief Build momentum equation matrix
+     * @brief Build transport equation matrix with convection-diffusion
      * @param phi Current field values
-     * @param phi_source Source term values
+     * @param phiSource Source term field
+     * @param flowRateFace Face volumetric flow rates
      * @param Gamma Diffusion coefficient field
-     * @param convScheme Convection scheme
-     * @param gradScheme Gradient scheme
-     * @param fieldName Field name
+     * @param convScheme Convection discretization scheme
+     * @param gradScheme Gradient reconstruction scheme
+     * @param gradPhi Pre-computed cell gradients of phi
+     * @param fieldName Name of the field being solved
+     *        (e.g., "U_x", "U_y", "U_z", "k", "omega")
      */
     void buildMatrix
     (
         const ScalarField& phi,
-        const ScalarField& phi_source,
-        const VectorField& U_field,
+        const ScalarField& phiSource,
+        const FaceFluxField& flowRateFace,
         const ScalarField& Gamma,
         const ConvectionScheme& convScheme,
         const GradientScheme& gradScheme,
+        const VectorField& gradPhi,
         const std::string& fieldName
     );
 
     /**
-     * @brief Build pressure correction matrix
-     * @param RhieChowFlowRate Face volume flow rate 
-     * @param D_f Face-based diffusion coefficients
+     * @brief Build pressure correction matrix for SIMPLE algorithm
+     * @param RhieChowFlowRate Face flow rate from Rhie-Chow
+     * @param DUf Face diffusion coefficients (D_f = V / a_P)
+     * @param pCorr Pressure correction field
+     * @param gradScheme Gradient reconstruction scheme
+     * @param gradpCorr Pre-computed cell gradients of pCorr
      */
     void buildPressureCorrectionMatrix
     (
         const FaceFluxField& RhieChowFlowRate,
-        const FaceFluxField& DUf
+        const FaceFluxField& DUf,
+        const ScalarField& pCorr,
+        const GradientScheme& gradScheme,
+        const VectorField& gradpCorr
     );
 
+// Accessor methods
+
     /**
-     * @brief Get the assembled matrix A
-     * @return Reference to the sparse matrix A
+     * @brief Get assembled sparse matrix A (const)
+     * @return Const reference to coefficient matrix
      */
-    const Eigen::SparseMatrix<Scalar>& getMatrixA() const 
+    const Eigen::SparseMatrix<Scalar>& getMatrixA() const
     {
-        return A_matrix; 
+        return matrixA_;
     }
 
     /**
-     * @brief Get the right-hand side vector b
-     * @return Reference to the right-hand side vector
+     * @brief Get assembled sparse matrix A (non-const)
+     * @return Mutable reference to coefficient matrix
      */
-    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& getVectorB() const
+    Eigen::SparseMatrix<Scalar>& getMatrixA()
     {
-        return b_vector;
+        return matrixA_;
     }
 
     /**
-     * @brief Apply implicit under-relaxation to the linear system
-     * @param alpha Relaxation factor (0 < alpha < 1)
-     * @param phi_prev Previous iteration values
-     * Apply under-relaxation to the assembled linear system (Ax=b)
-     * Diagonal: a_c <- a_c / alpha
-     * RHS:      b   <- b + ((1 - alpha)/alpha) * a_c_original * phi_prev
+     * @brief Get right-hand side vector b (const)
+     * @return Const reference to RHS vector
      */
-    void relax(Scalar alpha, const ScalarField& phi_prev);
+    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&
+    getVectorB() const
+    {
+        return vectorB_;
+    }
+
+    /**
+     * @brief Get right-hand side vector b (non-const)
+     * @return Mutable reference to RHS vector
+     */
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& getVectorB()
+    {
+        return vectorB_;
+    }
+
+    /**
+     * @brief Apply Patankar implicit under-relaxation
+     * @param alpha Relaxation factor (0 < alpha <= 1)
+     * @param phiPrev Previous iteration field values
+     *
+     * Modifies the assembled system (Ax=b):
+     * - Diagonal: a_P <- a_P / alpha
+     * - RHS: b <- b + ((1-alpha)/alpha) * aPOriginal * phiPrev
+     */
+    void relax(Scalar alpha, const ScalarField& phiPrev);
 
 private:
 
-    /// References to mesh data and numerical schemes
-    const std::vector<Face>& allFaces;
-    const std::vector<Cell>& allCells;
-    const BoundaryConditions& bcManager;
+// Private members
 
-    /// Linear system matrix A and right-hand side vector b
-    Eigen::SparseMatrix<Scalar> A_matrix;
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> b_vector;
+    /// Mesh and boundary data references
+    const std::vector<Face>& allFaces_;
+    const std::vector<Cell>& allCells_;
+    const BoundaryConditions& bcManager_;
 
-    /// Storage for matrix assembly
-    std::vector<Eigen::Triplet<Scalar>> tripletList;
-    
-    /// Mapping from face indices to boundary patches
-    std::map<size_t, const BoundaryPatch*> faceToPatchMap;
+    /// Sparse linear system components
+    Eigen::SparseMatrix<Scalar> matrixA_;
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> vectorB_;
+
+    /// Triplet storage for efficient sparse matrix assembly
+    std::vector<Eigen::Triplet<Scalar>> tripletList_;
+
+    /// Cached face counts for triplet list reservation
+    size_t numInternalFaces_;
+    size_t numBoundaryFaces_;
+
+// Private methods
 
     /**
-     * @brief Clear matrix and vector storage
+     * @brief Clear matrix and vector for new assembly
      */
     void clear();
 
     /**
-     * @brief Reserve memory for triplet list based on mesh topology
+     * @brief Reserve triplet list capacity based on mesh topology
      */
     void reserveTripletList();
+
+    /**
+     * @brief Assemble internal face for transport equation
+     * @param face Internal face to process
+     * @param phi Current field values
+     * @param flowRateFace Face volumetric flow rates
+     * @param Gamma Diffusion coefficient field
+     * @param convScheme Convection discretization scheme
+     * @param gradScheme Gradient reconstruction scheme
+     * @param gradPhi Pre-computed cell gradients
+     * @param fieldName Name of the field being solved
+     */
+    void assembleInternalFace
+    (
+        const Face& face,
+        const ScalarField& phi,
+        const FaceFluxField& flowRateFace,
+        const ScalarField& Gamma,
+        const ConvectionScheme& convScheme,
+        const GradientScheme& gradScheme,
+        const VectorField& gradPhi,
+        const std::string& fieldName
+    );
+
+    /**
+     * @brief Assemble boundary face for transport equation
+     * @param face Boundary face to process
+     * @param phi Current field values
+     * @param flowRateFace Face volumetric flow rates
+     * @param Gamma Diffusion coefficient field
+     * @param gradScheme Gradient reconstruction scheme
+     * @param gradPhi Pre-computed cell gradients
+     * @param fieldName Name of the field being solved
+     */
+    void assembleBoundaryFace
+    (
+        const Face& face,
+        const ScalarField& phi,
+        const FaceFluxField& flowRateFace,
+        const ScalarField& Gamma,
+        const GradientScheme& gradScheme,
+        const VectorField& gradPhi,
+        const std::string& fieldName
+    );
+
+    /**
+     * @brief Assemble internal face for pressure correction
+     * @param face Internal face to process
+     * @param DUf Face diffusion coefficients
+     * @param pCorr Pressure correction field
+     * @param gradScheme Gradient reconstruction scheme
+     * @param gradpCorr Pre-computed pCorr gradients
+     */
+    void assemblePCorrInternalFace
+    (
+        const Face& face,
+        const FaceFluxField& DUf,
+        const ScalarField& pCorr,
+        const GradientScheme& gradScheme,
+        const VectorField& gradpCorr
+    );
+
+    /**
+     * @brief Assemble boundary face for pressure correction
+     * @param face Boundary face to process
+     * @param DUf Face diffusion coefficients
+     * @param grad_pCorr Pre-computed pCorr gradients
+     */
+    void assemblePCorrBoundaryFace
+    (
+        const Face& face,
+        const FaceFluxField& DUf,
+        const VectorField& gradpCorr
+    );
+
+    /**
+     * @brief Extract scalar boundary value from BC data
+     * @param bc Boundary data for the patch/field
+     * @param fieldName Field name for vector component dispatch
+     * @return Scalar boundary value
+     */
+    static Scalar extractBoundaryScalar
+    (
+        const BoundaryData& bc,
+        const std::string& fieldName
+    );
 };
 
-#endif
+#endif // MATRIX_HPP
