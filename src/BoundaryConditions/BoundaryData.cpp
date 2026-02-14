@@ -59,13 +59,23 @@ void BoundaryData::setZeroGradient()
     gradientType_ = BCValueType::UNDEFINED;
 }
 
-void BoundaryData::setNoSlip() 
+void BoundaryData::setNoSlip()
 {
     type_ = BCType::NO_SLIP;
     vectorValue_ = Vector(S(0.0), S(0.0), S(0.0));
     valueType_ = BCValueType::VECTOR;
 
     scalarValue_ = S(0.0);
+    gradientType_ = BCValueType::UNDEFINED;
+}
+
+void BoundaryData::setWallFunction()
+{
+    type_ = BCType::WALL_FUNCTION;
+    scalarGradient_ = S(0.0);
+    vectorGradient_ = Vector(S(0.0), S(0.0), S(0.0));
+
+    valueType_ = BCValueType::UNDEFINED;
     gradientType_ = BCValueType::UNDEFINED;
 }
 

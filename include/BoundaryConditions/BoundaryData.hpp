@@ -33,6 +33,7 @@ enum class BCType
     FIXED_GRADIENT, ///< Fixed gradient (Neumann) boundary condition
     ZERO_GRADIENT,  ///< Zero gradient boundary condition
     NO_SLIP,        ///< No-slip wall boundary condition
+    WALL_FUNCTION,  ///< Wall function boundary condition
     UNDEFINED       ///< Undefined boundary condition type
 };
 
@@ -89,6 +90,11 @@ public:
      * @brief Set no-slip boundary condition (for velocity)
      */
     void setNoSlip();
+
+    /**
+     * @brief Set wall function boundary condition
+     */
+    void setWallFunction();
 
 // Accessor methods
     

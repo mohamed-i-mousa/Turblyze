@@ -135,7 +135,19 @@ public:
      */
     bool setNoSlip
     (
-        const std::string& patchName, 
+        const std::string& patchName,
+        const std::string& fieldName
+    );
+
+    /**
+     * @brief Set wall function boundary condition
+     * @param patchName Name of the boundary patch
+     * @param fieldName Name of the field
+     * @return True if successfully set
+     */
+    bool setWallFunction
+    (
+        const std::string& patchName,
         const std::string& fieldName
     );
 

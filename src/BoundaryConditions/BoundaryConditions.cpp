@@ -105,6 +105,17 @@ bool BoundaryConditions::setZeroGradient
     return setBC(patchName, fieldName, std::move(bc_setup));
 }
 
+bool BoundaryConditions::setWallFunction
+(
+    const std::string& patchName,
+    const std::string& fieldName
+)
+{
+    BoundaryData bc_setup;
+    bc_setup.setWallFunction();
+    return setBC(patchName, fieldName, std::move(bc_setup));
+}
+
 bool BoundaryConditions::setNoSlip
 (
     const std::string& patchName,
@@ -190,11 +201,11 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
             }
             else if (bc->valueType() == BCValueType::VECTOR)
             {
-                if (fieldName == "U_x")
+                if (fieldName == "Ux")
                     return bc->vectorValue().x();
-                else if (fieldName == "U_y")
+                else if (fieldName == "Uy")
                     return bc->vectorValue().y();
-                else if (fieldName == "U_z")
+                else if (fieldName == "Uz")
                     return bc->vectorValue().z();
                 else
                     return phi[face.ownerCell()];  // Fallback to zero-gradient
@@ -202,6 +213,7 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
             return bc->fixedScalarValue();
         }
 
+        case BCType::WALL_FUNCTION:
         case BCType::ZERO_GRADIENT:
         {
             // Zero gradient: φ_f = φ_P
@@ -285,6 +297,7 @@ Vector BoundaryConditions::calculateBoundaryVectorFaceValue
                     );
         }
 
+        case BCType::WALL_FUNCTION:
         case BCType::ZERO_GRADIENT:
         {
             return phi[face.ownerCell()];
@@ -329,6 +342,7 @@ std::string BoundaryConditions::bcTypeToString(BCType bctype) const
         case BCType::FIXED_GRADIENT: return "FIXED_GRADIENT";
         case BCType::ZERO_GRADIENT: return "ZERO_GRADIENT";
         case BCType::NO_SLIP: return "NO_SLIP";
+        case BCType::WALL_FUNCTION: return "WALL_FUNCTION";
         default:
             throw   std::runtime_error
                     (
@@ -456,6 +470,11 @@ void BoundaryConditions::printSummary() const
                 {
                     std::cout
                         << " (implies zero gradient)";
+                }
+                else if (fbc.type() == BCType::WALL_FUNCTION)
+                {
+                    std::cout
+                        << " (wall function)";
                 }
 
                 std::cout
