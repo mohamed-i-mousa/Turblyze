@@ -91,6 +91,18 @@ public:
     void printSummary(size_t itemsToShow) const;
 
     /**
+     * @brief Get pointer to field storage
+     * @return Pointer to first element
+     */
+    T* data() { return internalField_.data(); }
+
+    /**
+     * @brief Get const pointer to field storage
+     * @return Const pointer to first element
+     */
+    const T* data() const { return internalField_.data(); }
+
+    /**
      * @brief Get field name
      * @return Const reference to field name
      */
