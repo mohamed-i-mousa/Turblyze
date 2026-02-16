@@ -139,13 +139,22 @@ public:
         const std::string& fieldName
     );
 
-    /**
-     * @brief Set wall function boundary condition
-     * @param patchName Name of the boundary patch
-     * @param fieldName Name of the field
-     * @return True if successfully set
-     */
-    bool setWallFunction
+    /// Set OpenFOAM-like kqR wall function boundary condition
+    bool setKWallFunction
+    (
+        const std::string& patchName,
+        const std::string& fieldName
+    );
+
+    /// Set OpenFOAM-like omega wall function boundary condition
+    bool setOmegaWallFunction
+    (
+        const std::string& patchName,
+        const std::string& fieldName
+    );
+
+    /// Set OpenFOAM-like nutk wall function boundary condition
+    bool setNutWallFunction
     (
         const std::string& patchName,
         const std::string& fieldName

@@ -105,14 +105,36 @@ bool BoundaryConditions::setZeroGradient
     return setBC(patchName, fieldName, std::move(bc_setup));
 }
 
-bool BoundaryConditions::setWallFunction
+bool BoundaryConditions::setKWallFunction
 (
     const std::string& patchName,
     const std::string& fieldName
 )
 {
     BoundaryData bc_setup;
-    bc_setup.setWallFunction();
+    bc_setup.setKWallFunction();
+    return setBC(patchName, fieldName, std::move(bc_setup));
+}
+
+bool BoundaryConditions::setOmegaWallFunction
+(
+    const std::string& patchName,
+    const std::string& fieldName
+)
+{
+    BoundaryData bc_setup;
+    bc_setup.setOmegaWallFunction();
+    return setBC(patchName, fieldName, std::move(bc_setup));
+}
+
+bool BoundaryConditions::setNutWallFunction
+(
+    const std::string& patchName,
+    const std::string& fieldName
+)
+{
+    BoundaryData bc_setup;
+    bc_setup.setNutWallFunction();
     return setBC(patchName, fieldName, std::move(bc_setup));
 }
 
@@ -213,7 +235,9 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
             return bc->fixedScalarValue();
         }
 
-        case BCType::WALL_FUNCTION:
+        case BCType::K_WALL_FUNCTION:
+        case BCType::OMEGA_WALL_FUNCTION:
+        case BCType::NUT_WALL_FUNCTION:
         case BCType::ZERO_GRADIENT:
         {
             // Zero gradient: φ_f = φ_P
@@ -297,7 +321,9 @@ Vector BoundaryConditions::calculateBoundaryVectorFaceValue
                     );
         }
 
-        case BCType::WALL_FUNCTION:
+        case BCType::K_WALL_FUNCTION:
+        case BCType::OMEGA_WALL_FUNCTION:
+        case BCType::NUT_WALL_FUNCTION:
         case BCType::ZERO_GRADIENT:
         {
             return phi[face.ownerCell()];
@@ -342,7 +368,9 @@ std::string BoundaryConditions::bcTypeToString(BCType bctype) const
         case BCType::FIXED_GRADIENT: return "FIXED_GRADIENT";
         case BCType::ZERO_GRADIENT: return "ZERO_GRADIENT";
         case BCType::NO_SLIP: return "NO_SLIP";
-        case BCType::WALL_FUNCTION: return "WALL_FUNCTION";
+        case BCType::K_WALL_FUNCTION: return "K_WALL_FUNCTION";
+        case BCType::OMEGA_WALL_FUNCTION: return "OMEGA_WALL_FUNCTION";
+        case BCType::NUT_WALL_FUNCTION: return "NUT_WALL_FUNCTION";
         default:
             throw   std::runtime_error
                     (
@@ -471,7 +499,12 @@ void BoundaryConditions::printSummary() const
                     std::cout
                         << " (implies zero gradient)";
                 }
-                else if (fbc.type() == BCType::WALL_FUNCTION)
+                else if
+                (
+                    fbc.type() == BCType::K_WALL_FUNCTION
+                 || fbc.type() == BCType::OMEGA_WALL_FUNCTION
+                 || fbc.type() == BCType::NUT_WALL_FUNCTION
+                )
                 {
                     std::cout
                         << " (wall function)";

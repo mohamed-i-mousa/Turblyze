@@ -33,8 +33,10 @@ enum class BCType
     FIXED_GRADIENT, ///< Fixed gradient (Neumann) boundary condition
     ZERO_GRADIENT,  ///< Zero gradient boundary condition
     NO_SLIP,        ///< No-slip wall boundary condition
-    WALL_FUNCTION,  ///< Wall function boundary condition
-    UNDEFINED       ///< Undefined boundary condition type
+    K_WALL_FUNCTION,        ///< kWallFunction-like boundary condition
+    OMEGA_WALL_FUNCTION,    ///< omegaWallFunction-like boundary condition
+    NUT_WALL_FUNCTION,      ///< nutWallFunction-like boundary condition
+    UNDEFINED               ///< Undefined boundary condition type
 };
 
 /**
@@ -92,9 +94,19 @@ public:
     void setNoSlip();
 
     /**
-     * @brief Set wall function boundary condition
+     * @brief Set k wall function boundary condition
      */
-    void setWallFunction();
+    void setKWallFunction();
+
+    /**
+     * @brief Set omega wall function boundary condition
+     */ 
+    void setOmegaWallFunction();
+
+    /**
+     * @brief nut wall function boundary condition
+     */ 
+    void setNutWallFunction();
 
 // Accessor methods
     

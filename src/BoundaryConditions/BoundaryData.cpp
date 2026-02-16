@@ -69,9 +69,29 @@ void BoundaryData::setNoSlip()
     gradientType_ = BCValueType::UNDEFINED;
 }
 
-void BoundaryData::setWallFunction()
+void BoundaryData::setKWallFunction()
 {
-    type_ = BCType::WALL_FUNCTION;
+    type_ = BCType::K_WALL_FUNCTION;
+    scalarGradient_ = S(0.0);
+    vectorGradient_ = Vector(S(0.0), S(0.0), S(0.0));
+
+    valueType_ = BCValueType::UNDEFINED;
+    gradientType_ = BCValueType::UNDEFINED;
+}
+
+void BoundaryData::setOmegaWallFunction()
+{
+    type_ = BCType::OMEGA_WALL_FUNCTION;
+    scalarGradient_ = S(0.0);
+    vectorGradient_ = Vector(S(0.0), S(0.0), S(0.0));
+
+    valueType_ = BCValueType::UNDEFINED;
+    gradientType_ = BCValueType::UNDEFINED;
+}
+
+void BoundaryData::setNutWallFunction()
+{
+    type_ = BCType::NUT_WALL_FUNCTION;
     scalarGradient_ = S(0.0);
     vectorGradient_ = Vector(S(0.0), S(0.0), S(0.0));
 
