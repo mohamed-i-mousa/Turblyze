@@ -130,7 +130,7 @@ public:
 
     /**
      * @brief Solve sparse system using BiCGSTAB with ILUT
-     * @param x Solution vector (initial guess -> solution)
+     * @param x Solution vector
      * @param A Sparse coefficient matrix
      * @param B Right-hand side vector
      * @return True unless catastrophic failure detected
@@ -139,14 +139,14 @@ public:
      */
     bool solveWithBiCGSTAB
     (
-        Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& x,
+        Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
         const Eigen::SparseMatrix<Scalar>& A,
         const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
     );
 
     /**
      * @brief Solve sparse system using PCG with Incomplete Cholesky
-     * @param x Solution vector (initial guess -> solution)
+     * @param x Solution vector
      * @param A Sparse coefficient matrix (must be SPD)
      * @param B Right-hand side vector
      * @return True unless catastrophic failure detected
@@ -155,7 +155,7 @@ public:
      */
     bool solveWithPCG
     (
-        Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& x,
+        Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
         const Eigen::SparseMatrix<Scalar>& A,
         const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
     );
@@ -208,7 +208,25 @@ private:
      */
     Scalar rmsResidual
     (
-        const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& residualVector
+        const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&
+            residualVector
+    ) const;
+
+    /**
+     * @brief Convert our tolerance to Eigen's convention
+     * @param initialResidual RMS of initial residual
+     * @param bNorm L2 norm of RHS vector
+     * @param n Number of unknowns
+     * @return Tolerance for Eigen's setTolerance()
+     *
+     * Maps max(absTol, relTol * initRMS) to Eigen's
+     * |r|/|b| criterion via sqrt(n) * effectiveTol / |b|.
+     */
+    Scalar computeEigenTolerance
+    (
+        Scalar initialResidual,
+        Scalar bNorm,
+        Eigen::Index n
     ) const;
 
     /**

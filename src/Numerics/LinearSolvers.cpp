@@ -4,6 +4,7 @@
  *****************************************************************************/
 
 #include "LinearSolvers.hpp"
+#include <cassert>
 
 // ************************* Constructor & Setters ************************
 
@@ -112,32 +113,57 @@ void LinearSolver::reportConvergence
     }
 }
 
+Scalar LinearSolver::computeEigenTolerance
+(
+    Scalar initialResidual,
+    Scalar bNorm,
+    Eigen::Index n
+) const
+{
+    // Default: pass tolerance_ directly to Eigen
+    // (preserves original |r|/|b| < tolerance_ behavior)
+    Scalar eigenTol = tolerance_;
+
+    if (relTol_ > S(0.0) && initialResidual > S(1e-20))
+    {
+        // Convert relTol threshold from RMS space to
+        // Eigen's |r|/|b| space
+        Scalar safeBNorm = std::max(bNorm, S(1e-20));
+        Scalar relThresholdEigen =
+            std::sqrt(S(n)) * relTol_ * initialResidual
+          / safeBNorm;
+
+        // relTol only relaxes (never tightens)
+        eigenTol = std::max(tolerance_, relThresholdEigen);
+    }
+
+    return eigenTol;
+}
+
 // ***************************** BiCGSTAB Solver *****************************
 
 bool LinearSolver::solveWithBiCGSTAB
 (
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& x,
+    Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
     const Eigen::SparseMatrix<Scalar>& A,
     const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
 )
 {
-    // Resize and initialize if needed
-    if (x.size() != B.size())
-    {
-        x.resize(B.size());
-        x.setZero();
-    }
+    assert(x.size() == B.size());
 
-    // Compute initial residual
-    Scalar initialResidual = S(0.0);
-    if (computeResiduals_)
-    {
-        Eigen::Matrix<Scalar, Eigen::Dynamic, 1>
-        initialResidualVector = B - A * x;
+    // Initial residuals
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>
+    initialResidualVector = B - A * x;
 
-        initialResidual =
-            rmsResidual(initialResidualVector);
-    }
+    Scalar initialResidual =
+        rmsResidual(initialResidualVector);
+
+    Scalar eigenTol = computeEigenTolerance
+    (
+        initialResidual,
+        B.norm(),
+        B.size()
+    );
 
     // Configure Eigen BiCGSTAB with ILUT preconditioning
     Eigen::BiCGSTAB
@@ -145,7 +171,7 @@ bool LinearSolver::solveWithBiCGSTAB
     bicgstab;
 
     bicgstab.setMaxIterations(maxIterations_);
-    bicgstab.setTolerance(tolerance_);
+    bicgstab.setTolerance(eigenTol);
     bicgstab.preconditioner().setFillfactor(ilutFillFactor_);
     bicgstab.preconditioner().setDroptol(ilutDropTol_);
 
@@ -165,7 +191,7 @@ bool LinearSolver::solveWithBiCGSTAB
 
     x = bicgstab.solveWithGuess(B, x);
 
-    // Compute residuals if requested
+    // Compute final residuals if requested
     std::optional<ResidualInfo> residuals;
 
     if (computeResiduals_)
@@ -203,28 +229,27 @@ bool LinearSolver::solveWithBiCGSTAB
 
 bool LinearSolver::solveWithPCG
 (
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& x,
+    Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
     const Eigen::SparseMatrix<Scalar>& A,
     const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
 )
 {
-    // Resize and initialize if needed
-    if (x.size() != B.size())
-    {
-        x.resize(B.size());
-        x.setZero();
-    }
+    assert(x.size() == B.size());
 
-    // Compute initial residual only if requested
-    Scalar initialResidual = S(0.0);
-    if (computeResiduals_)
-    {
-        Eigen::Matrix<Scalar, Eigen::Dynamic, 1>
-        initialResidualVector = B - A * x;
+    // Always compute initial residual for relTol support
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>
+    initialResidualVector = B - A * x;
 
-        initialResidual =
-            rmsResidual(initialResidualVector);
-    }
+    Scalar initialResidual =
+        rmsResidual(initialResidualVector);
+
+    // Compute effective Eigen tolerance
+    Scalar eigenTol = computeEigenTolerance
+    (
+        initialResidual,
+        B.norm(),
+        B.size()
+    );
 
     // Configure Eigen CG with Incomplete Cholesky preconditioning
     Eigen::ConjugateGradient
@@ -233,7 +258,7 @@ bool LinearSolver::solveWithPCG
     pcg;
 
     pcg.setMaxIterations(maxIterations_);
-    pcg.setTolerance(tolerance_);
+    pcg.setTolerance(eigenTol);
     pcg.preconditioner().setInitialShift(icInitialShift_);
 
     pcg.compute(A);
@@ -252,7 +277,7 @@ bool LinearSolver::solveWithPCG
 
     x = pcg.solveWithGuess(B, x);
 
-    // Compute residuals if requested
+    // Compute final residuals if requested
     std::optional<ResidualInfo> residuals;
 
     if (computeResiduals_)
