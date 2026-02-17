@@ -103,12 +103,12 @@ boundaryConditions
             type        zeroGradient;
         }
 
-        cylinder        { type fixedValue; value 0; }
-        sphere          { type fixedValue; value 0; }
-        wall1           { type fixedValue; value 0; }
-        wall2           { type fixedValue; value 0; }
-        wall3           { type fixedValue; value 0; }
-        wall4           { type fixedValue; value 0; }
+        cylinder        { type kWallFunction; }
+        sphere          { type kWallFunction; }
+        wall1           { type kWallFunction; }
+        wall2           { type kWallFunction; }
+        wall3           { type kWallFunction; }
+        wall4           { type kWallFunction; }
     }
 
     omega   // Specific dissipation rate [1/s]
@@ -124,12 +124,32 @@ boundaryConditions
             type        zeroGradient;
         }
 
-        cylinder        { type fixedValue; value 1000; }
-        sphere          { type fixedValue; value 1000; }
-        wall1           { type fixedValue; value 1000; }
-        wall2           { type fixedValue; value 1000; }
-        wall3           { type fixedValue; value 1000; }
-        wall4           { type fixedValue; value 1000; }
+        cylinder        { type omegaWallFunction; }
+        sphere          { type omegaWallFunction; }
+        wall1           { type omegaWallFunction; }
+        wall2           { type omegaWallFunction; }
+        wall3           { type omegaWallFunction; }
+        wall4           { type omegaWallFunction; }
+    }
+
+    nut // Turbulent kinematic viscosity [m^2/s]
+    {
+        inlet
+        {
+            type        zeroGradient;
+        }
+
+        outlet
+        {
+            type        zeroGradient;
+        }
+
+        cylinder        { type nutWallFunction; }
+        sphere          { type nutWallFunction; }
+        wall1           { type nutWallFunction; }
+        wall2           { type nutWallFunction; }
+        wall3           { type nutWallFunction; }
+        wall4           { type nutWallFunction; }
     }
 }
 
@@ -142,7 +162,7 @@ numericalSchemes
     convection
     {
         default     Upwind;
-        U           SecondOrderUpwind;
+        U           Upwind;
         k           Upwind;
         omega       Upwind;
     }
@@ -195,8 +215,8 @@ linearSolvers
     {
         solver          BiCGSTAB;
         preconditioner  ILUT;
-        tolerance       1e-8;
-        relTol          0.1;
+        tolerance       1e-16;
+        relTol          0.0;
         maxIter         1000;
         computeResiduals true;
     }
@@ -205,8 +225,8 @@ linearSolvers
     {
         solver          BiCGSTAB;
         preconditioner  ILUT;
-        tolerance       1e-8;
-        relTol          0.1;
+        tolerance       1e-16;
+        relTol          0.0;
         maxIter         1000;
         computeResiduals true;
     }
@@ -217,8 +237,8 @@ linearSolvers
 // ============================================================================
 turbulence
 {
-    model               none;           // Options: none, kOmegaSST
-    enabled             false;          // Enable/disable turbulence
+    model               kOmegaSST;      // Options: none, kOmegaSST
+    enabled             true;           // Enable/disable turbulence
     turbulenceIntensity 0.05;           // Turbulence intensity (5%)
     hydraulicDiameter   0.01;           // Hydraulic diameter [m]
 }
