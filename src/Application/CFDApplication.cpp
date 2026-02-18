@@ -85,19 +85,20 @@ void CFDApplication::loadCase()
     turbulenceModel_ = turbulence.lookup<std::string>("model");
 
     // Compute turbulence initial conditions
-    Scalar turbIntensity =
+    turbIntensity_ =
         turbulence.lookupOrDefault<Scalar>("turbulenceIntensity", S(0.05));
-    Scalar hydraulicDiam =
+    hydrDiameter_ =
         turbulence.lookupOrDefault<Scalar>("hydraulicDiameter", S(0.01));
 
-    Scalar lTurb = S(0.07) * hydraulicDiam;
+    Scalar lTurb = S(0.07) * hydrDiameter_;
     Scalar Cmu = S(0.09);
     Scalar UMag = initialVelocity_.magnitude();
 
     defaultK_ = 
         std::max
         (
-            S(1.5) * (turbIntensity * UMag) * (turbIntensity * UMag), S(1e-8)
+            S(1.5) * (turbIntensity_ * UMag) * (turbIntensity_ * UMag),
+            S(1e-8)
         );
 
     defaultOmega_ = 
@@ -391,6 +392,9 @@ void CFDApplication::setupBoundaryConditions()
     }
 
     // Process turbulent kinetic energy BCs
+    const Scalar Cmu = S(0.09);
+    const Scalar lengthScale = std::max(S(0.07) * hydrDiameter_, S(1e-20));
+
     if (BCs.hasSection("k"))
     {
         auto kBCs = BCs.section("k");
@@ -403,12 +407,45 @@ void CFDApplication::setupBoundaryConditions()
             if (bcType == "fixedValue")
             {
                 std::string valStr = patchBC.lookup<std::string>("value");
-                Scalar value = 
-                    (valStr == "calculated") ? 
-                        defaultK_
-                      : patchBC.lookup<Scalar>("value");
 
-                bcManager_.setFixedValue(patchName, "k", value);
+                Scalar value = S(0.0);
+
+                if (valStr == "calculated")
+                {
+                    const BoundaryData* velocityBC = 
+                        bcManager_.fieldBC(patchName, "U");
+
+                    Scalar UMag = initialVelocity_.magnitude();
+
+                    if
+                    (
+                        velocityBC
+                     && velocityBC->type() == BCType::FIXED_VALUE
+                     && velocityBC->valueType() == BCValueType::VECTOR
+                    )
+                    {
+                        UMag = velocityBC->fixedVectorValue().magnitude();
+                    }
+                    else if
+                    (
+                        velocityBC && velocityBC->type() == BCType::NO_SLIP
+                    )
+                    {
+                        UMag = S(0.0);
+                    }
+
+                    const Scalar uPrime = turbIntensity_ * UMag;
+                    value = std::max(S(1.5) * uPrime * uPrime, S(1e-8));
+                }
+                else
+                {
+                    value = patchBC.lookup<Scalar>("value");
+                }
+
+                bcManager_.setFixedValue
+                (
+                    patchName, "k", value
+                );
 
                 if (std::abs(value) <= S(1e-14))
                 {
@@ -439,12 +476,71 @@ void CFDApplication::setupBoundaryConditions()
             if (bcType == "fixedValue")
             {
                 std::string valStr = patchBC.lookup<std::string>("value");
-                Scalar value =
-                    (valStr == "calculated") ?
-                    defaultOmega_
-                  : patchBC.lookup<Scalar>("value");
-                
-                  bcManager_.setFixedValue(patchName, "omega", value);
+
+                Scalar value = S(0.0);
+
+                if (valStr == "calculated")
+                {
+                    // Determine k value for this patch
+                    Scalar kValue = S(0.0);
+
+                    const BoundaryData* kPatchBC =
+                        bcManager_.fieldBC(patchName, "k");
+
+                    if
+                    (
+                        kPatchBC
+                     && kPatchBC->type() == BCType::FIXED_VALUE
+                     && kPatchBC->valueType() == BCValueType::SCALAR
+                    )
+                    {
+                        kValue = kPatchBC->fixedScalarValue();
+                    }
+                    else
+                    {
+                        // Compute k from velocity BC
+                        const BoundaryData* velocityBC =
+                            bcManager_.fieldBC(patchName, "U");
+
+                        Scalar UMag = initialVelocity_.magnitude();
+
+                        if
+                        (
+                            velocityBC
+                         && velocityBC->type() == BCType::FIXED_VALUE
+                         && velocityBC->valueType() == BCValueType::VECTOR
+                        )
+                        {
+                            UMag = velocityBC->fixedVectorValue().magnitude();
+                        }
+                        else if
+                        (
+                            velocityBC && velocityBC->type() == BCType::NO_SLIP
+                        )
+                        {
+                            UMag = S(0.0);
+                        }
+
+                        const Scalar uPrime = turbIntensity_ * UMag;
+                        kValue = std::max(S(1.5) * uPrime * uPrime, S(1e-8));
+                    }
+
+                    // Compute omega from k
+                    const Scalar omegaValue =
+                        std::sqrt(std::max(kValue, S(0.0)))
+                      / (std::pow(Cmu, S(0.25)) * lengthScale);
+
+                    value = std::max(omegaValue, S(1e-4));
+                }
+                else
+                {
+                    value = patchBC.lookup<Scalar>("value");
+                }
+
+                bcManager_.setFixedValue
+                (
+                    patchName, "omega", value
+                );
             }
             else if (bcType == "omegaWallFunction")
             {

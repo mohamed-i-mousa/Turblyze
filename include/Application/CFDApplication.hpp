@@ -129,6 +129,8 @@ private:
     /// Turbulence configuration
     bool turbulenceEnabled_ = false;
     std::string turbulenceModel_;
+    Scalar turbIntensity_ = S(0.05);
+    Scalar hydrDiameter_ = S(0.01);
 
     /// Mesh configuration
     bool checkQuality_ = true;
