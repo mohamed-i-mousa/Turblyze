@@ -3,6 +3,7 @@ project(MyCFDCode VERSION "1.0.0" LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE)
@@ -36,25 +37,25 @@ add_executable(${PROJECT_NAME}
     src/Numerics/GradientScheme.cpp
     src/Numerics/ConvectionScheme.cpp
     src/Numerics/Matrix.cpp
-    src/Numerics/flowRate.cpp
     src/Numerics/LinearSolvers.cpp
     src/Numerics/SIMPLE.cpp
     src/Numerics/Constraint.cpp
-    src/Numerics/linearInterpolation.cpp
-    src/Models/KOmegaSST.cpp
+    src/Numerics/LinearInterpolation.cpp
+    src/Models/kOmegaSST.cpp
     src/PostProcessing/VtkWriter.cpp
-    src/Setup/SetupReader.cpp
+    src/Case/CaseReader.cpp
+    src/Application/CFDApplication.cpp
 )
 
 # --- Include directories ---
 target_include_directories(${PROJECT_NAME} PUBLIC
-    include/Core/
     include/Mesh/
     include/BoundaryConditions/
     include/Numerics/
     include/Models/
     include/PostProcessing/
-    include/Setup/
+    include/Case/
+    include/Application/
 )
 
 # Set output directory for executable
