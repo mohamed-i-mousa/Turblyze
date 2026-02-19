@@ -178,24 +178,9 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
     const Face& face,
     const ScalarField& phi,
     const std::string& fieldName
-) const 
-{ 
-    ensureFaceToPatchCacheBuilt();
-    
-    // Find the boundary patch for this face
-    auto patch_it = faceToPatchCache_.find(face.idx());
-
-    if (patch_it == faceToPatchCache_.end())
-    {
-        throw   std::runtime_error
-                (
-                    "Boundary face "
-                  + std::to_string(face.idx())
-                  + " not found in any boundary patch. Check mesh/BC setup."
-                );
-    }
-    
-    const BoundaryPatch* patch = patch_it->second;
+) const
+{
+    const BoundaryPatch* patch = face.patch();
     const BoundaryData* bc = fieldBC(patch->patchName(), fieldName);
 
     if (!bc)
@@ -269,22 +254,7 @@ Vector BoundaryConditions::calculateBoundaryVectorFaceValue
     const std::string& fieldName
 ) const
 {
-    ensureFaceToPatchCacheBuilt();
-
-    // Find the boundary patch for this face
-    auto patch_it = faceToPatchCache_.find(face.idx());
-
-    if (patch_it == faceToPatchCache_.end())
-    {
-        throw   std::runtime_error
-                (
-                    "Boundary face "
-                  + std::to_string(face.idx())
-                  + " not found in any boundary patch. Check mesh/BC setup."
-                );
-    }
-
-    const BoundaryPatch* patch = patch_it->second;
+    const BoundaryPatch* patch = face.patch();
     const BoundaryData* bc = fieldBC(patch->patchName(), fieldName);
 
     if (!bc)
@@ -356,6 +326,22 @@ Vector BoundaryConditions::calculateBoundaryVectorFaceValue
                       + " in patch " + patch->patchName()
                       + ": " + std::to_string(static_cast<int>(bc->type()))
                     );
+    }
+}
+
+void BoundaryConditions::linkFaces(std::vector<Face>& faces) const
+{
+    for (const auto& patch : patches_)
+    {
+        for
+        (
+            size_t f = patch.firstFaceIdx();
+            f <= patch.lastFaceIdx();
+            ++f
+        )
+        {
+            faces[f].setPatch(&patch);
+        }
     }
 }
 
@@ -518,30 +504,4 @@ void BoundaryConditions::printSummary() const
 
     std::cout
         << "  ------------------------------------" << std::endl;
-}
-
-
-// ***************************** Private Methods ******************************
-
-void BoundaryConditions::ensureFaceToPatchCacheBuilt() const
-{
-    if (!cacheBuilt_)
-    {
-        faceToPatchCache_.clear();
-        
-        for (const auto& patch : patches_)
-        {
-            for 
-            (
-                size_t f = patch.firstFaceIdx();
-                f <= patch.lastFaceIdx();
-                ++f
-            )
-            {
-                faceToPatchCache_[f] = &patch;
-            }
-        }
-
-        cacheBuilt_ = true;
-    }
 }

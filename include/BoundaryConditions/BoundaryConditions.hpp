@@ -225,14 +225,10 @@ public:
     ) const;
 
     /**
-     * @brief Get face-to-patch mapping for O(1) boundary lookups
-     * @return Const reference to the face-to-patch map
+     * @brief Link boundary faces to their owning patches
+     * @param faces All mesh faces (boundary faces get patch pointers set)
      */
-    const std::map<size_t, const BoundaryPatch*>& faceToPatchMap() const
-    {
-        ensureFaceToPatchCacheBuilt();
-        return faceToPatchCache_;
-    }
+    void linkFaces(std::vector<Face>& faces) const;
 
     /**
      * @brief Convert boundary condition type to string
@@ -258,19 +254,6 @@ private:
     
     /// Vector of all boundary patches
     std::vector<BoundaryPatch> patches_;
-
-    /// Cache for fast face-to-patch mapping
-    mutable std::map<size_t, const BoundaryPatch*> faceToPatchCache_;
-    
-    /// Flag indicating if cache has been built
-    mutable bool cacheBuilt_ = false;
-
-// Private methods
-
-    /**
-     * @brief Ensure face-to-patch cache is built for efficient lookup
-     */
-    void ensureFaceToPatchCacheBuilt() const;
 };
 
 #endif // BOUNDARY_CONDITIONS_HPP

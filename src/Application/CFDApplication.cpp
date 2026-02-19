@@ -290,6 +290,21 @@ void CFDApplication::setupBoundaryConditions()
         bcManager_.addPatch(patch);
     }
 
+    // Link boundary faces to their owning patches
+    bcManager_.linkFaces(faces_);
+
+    for (const auto& face : faces_)
+    {
+        if (face.isBoundary() && !face.patch())
+        {
+            throw   std::runtime_error
+                    (
+                        "Boundary face " + std::to_string(face.idx())
+                      + " has no patch after linking."
+                    );
+        }
+    }
+
     // Load boundary conditions from case file
     auto BCs = caseReader_->section("boundaryConditions");
 

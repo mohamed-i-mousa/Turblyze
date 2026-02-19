@@ -25,10 +25,12 @@
 #include <optional>
 
 #include "Scalar.hpp"
-#include "Vector.hpp"    
+#include "Vector.hpp"
 
+// Forward declaration
+class BoundaryPatch;
 
-class Face 
+class Face
 {
 public:
 
@@ -100,10 +102,16 @@ public:
      */
     void addNodeIndex(size_t nodeIdx) { nodeIndices_.push_back(nodeIdx); }
     
-    /** 
+    /**
      * @brief Clear all node indices
      */
     void clearNodeIndices() { nodeIndices_.clear(); }
+
+    /**
+     * @brief Set the boundary patch this face belongs to
+     * @param p Pointer to the owning boundary patch
+     */
+    void setPatch(const BoundaryPatch* p) { patch_ = p; }
 
 // Accessor methods
 
@@ -248,6 +256,12 @@ public:
     }
 
     /**
+     * @brief Get the boundary patch this face belongs to
+     * @return Pointer to owning patch, nullptr for internal faces
+     */
+    const BoundaryPatch* patch() const { return patch_; }
+
+    /**
      * @brief Flip the face normal direction
      */
     void flipNormal()
@@ -310,11 +324,14 @@ private:
 
     /// Flag indicating if geometric properties calculated
     bool geometricPropertiesCalculated_ = false;
-    
+
     /// Flag indicating if distance properties calculated
     bool distancePropertiesCalculated_ = false;
 
-    /// friend function for operator << 
+    /// Owning boundary patch (nullptr for internal faces)
+    const BoundaryPatch* patch_ = nullptr;
+
+    /// friend function for operator <<
     friend std::ostream& operator<<(std::ostream& os, const Face& f);
 };
 
