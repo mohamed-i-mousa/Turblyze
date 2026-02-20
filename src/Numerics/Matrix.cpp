@@ -3,9 +3,11 @@
  * @brief Matrix assembly and linear system construction for equations
  *****************************************************************************/
 
-#include "Matrix.hpp"
 #include <iostream>
 #include <algorithm>
+#include <cmath>
+
+#include "Matrix.hpp"
 #include "CellData.hpp"
 #include "LinearInterpolation.hpp"
 
@@ -25,10 +27,8 @@ Matrix::Matrix
 {
     for (const auto& face : allFaces_)
     {
-        if (face.isBoundary())
-            ++numBoundaryFaces_;
-        else
-            ++numInternalFaces_;
+        if (face.isBoundary()) ++numBoundaryFaces_;
+        else ++numInternalFaces_;
     }
 }
 
@@ -44,7 +44,8 @@ void Matrix::buildMatrix
     const ConvectionScheme& convScheme,
     const GradientScheme& gradScheme,
     const VectorField& gradPhi,
-    const std::string& fieldName
+    const std::string& fieldName,
+    const FaceData<Scalar>* boundaryFaceValues
 )
 {
     clear();
@@ -71,7 +72,8 @@ void Matrix::buildMatrix
                 Gamma,
                 gradScheme,
                 gradPhi,
-                fieldName
+                fieldName,
+                boundaryFaceValues
             );
         }
         else
@@ -235,9 +237,9 @@ Scalar Matrix::extractBoundaryScalar
 {
     if (bc.valueType() == BCValueType::VECTOR)
     {
-        if (fieldName == "U_x") return bc.vectorValue().x();
-        if (fieldName == "U_y") return bc.vectorValue().y();
-        if (fieldName == "U_z") return bc.vectorValue().z();
+        if (fieldName == "Ux") return bc.vectorValue().x();
+        if (fieldName == "Uy") return bc.vectorValue().y();
+        if (fieldName == "Uz") return bc.vectorValue().z();
     }
 
     return bc.scalarValue();
@@ -307,14 +309,14 @@ void Matrix::assembleInternalFace
     const Vector& gradPhi_P = gradPhi[ownerIdx];
     const Vector& gradPhi_N = gradPhi[neighborIdx];
 
-    Vector gradPhi_f = 
+    Vector gradPhi_f =
         gradScheme.faceGradient
         (
             face.idx(),
-            gradPhi_P,
-            gradPhi_N,
+            fieldName,
             phi,
-            fieldName
+            gradPhi_P,
+            gradPhi_N
         );
 
     Scalar nonOrthogonalFlux = Gamma_f * dot(gradPhi_f, T_f);
@@ -344,38 +346,21 @@ void Matrix::assembleBoundaryFace
     const ScalarField& Gamma,
     const GradientScheme& gradScheme,
     const VectorField& gradPhi,
-    const std::string& fieldName
+    const std::string& fieldName,
+    const FaceData<Scalar>* boundaryFaceValues
 )
 {
     const size_t ownerIdx = face.ownerCell();
 
-    // Look up patch and BC for this face
-    const auto& patchMap = bcManager_.faceToPatchMap();
-    auto patchIt = patchMap.find(face.idx());
-
-    if (patchIt == patchMap.end())
-    {
-        std::cerr
-            << "ERROR: Boundary face " << face.idx()
-            << " not found in patch map! Owner cell "
-            << ownerIdx << " will have zero diagonal."
-            << std::endl;
-        return;
-    }
-
     const BoundaryData* bc =
-        bcManager_.fieldBC
-        (
-            patchIt->second->patchName(),
-            fieldName
-        );
+        bcManager_.fieldBC(face.patch()->patchName(), fieldName);
 
     if (!bc)
     {
         std::cerr
             << "ERROR: No boundary condition found"
             << " for patch "
-            << patchIt->second->patchName()
+            << face.patch()->patchName()
             << " field " << fieldName
             << " face " << face.idx()
             << " owner cell " << ownerIdx
@@ -399,12 +384,36 @@ void Matrix::assembleBoundaryFace
     (
         bc->type() == BCType::FIXED_VALUE
      || bc->type() == BCType::NO_SLIP
+     || bc->type() == BCType::OMEGA_WALL_FUNCTION
     )
     {
-        // Dirichlet BC: phi_b is prescribed (0 for NO_SLIP)
-        Scalar phi_b = (bc->type() == BCType::NO_SLIP)
-            ? S(0.0)
-            : extractBoundaryScalar(*bc, fieldName);
+        // Dirichlet BC: phi_b is prescribed (0 for NO_SLIP or dynamic wall value)
+        Scalar phi_b = S(0.0);
+        if (bc->type() == BCType::NO_SLIP)
+        {
+            phi_b = S(0.0);
+        }
+        else if (bc->type() == BCType::OMEGA_WALL_FUNCTION)
+        {
+            bool hasDynamicValue =
+                boundaryFaceValues
+             && face.idx() < boundaryFaceValues->size()
+             && std::isfinite((*boundaryFaceValues)[face.idx()]);
+
+            if (hasDynamicValue)
+            {
+                phi_b = (*boundaryFaceValues)[face.idx()];
+            }
+            else
+            {
+                // Fallback for robustness if a dynamic wall value is missing.
+                phi_b = phi[ownerIdx];
+            }
+        }
+        else
+        {
+            phi_b = extractBoundaryScalar(*bc, fieldName);
+        }
 
         // Diffusion: a_diff * phi_P on diagonal, a_diff * phi_b to RHS
         tripletList_.emplace_back(ownerIdx, ownerIdx, a_diff);
@@ -420,10 +429,11 @@ void Matrix::assembleBoundaryFace
         Vector gradPhi_f = gradScheme.faceGradient
             (
                 face.idx(),
+                fieldName,
+                phi,
                 gradPhi[ownerIdx],
                 Vector(),
-                phi,
-                fieldName
+                boundaryFaceValues
             );
 
         Scalar nonOrthogonalFlux =
@@ -431,7 +441,12 @@ void Matrix::assembleBoundaryFace
 
         vectorB_(ownerIdx) += nonOrthogonalFlux;
     }
-    else if (bc->type() == BCType::ZERO_GRADIENT)
+    else if
+    (
+        bc->type() == BCType::ZERO_GRADIENT
+     || bc->type() == BCType::K_WALL_FUNCTION
+     || bc->type() == BCType::NUT_WALL_FUNCTION
+    )
     {
         // Zero normal gradient: no diffusive flux, only convection
         // a_C += F_b (mass flux to diagonal)
@@ -464,7 +479,7 @@ void Matrix::assembleBoundaryFace
             << "Warning: Undefined boundary "
             << "condition type for field "
             << fieldName << " on patch "
-            << patchIt->second->patchName()
+            << face.patch()->patchName()
             << ". Applying zero gradient."
             << std::endl;
 
@@ -518,14 +533,14 @@ void Matrix::assemblePCorrInternalFace
     const Vector& gradpCorr_P = gradPCorr[ownerIdx];
     const Vector& gradpCorr_N = gradPCorr[neighborIdx];
 
-    Vector gradPCorr_f = 
+    Vector gradPCorr_f =
         gradScheme.faceGradient
         (
             face.idx(),
-            gradpCorr_P,
-            gradpCorr_N,
+            "pCorr",
             pCorr,
-            "pCorr"
+            gradpCorr_P,
+            gradpCorr_N
         );
 
     Scalar nonOrthogonalFlux =
@@ -544,25 +559,8 @@ void Matrix::assemblePCorrBoundaryFace
 {
     const size_t ownerIdx = face.ownerCell();
 
-    // Guarded patch lookup
-    const auto& patchMap = bcManager_.faceToPatchMap();
-    auto patchIt = patchMap.find(face.idx());
-
-    if (patchIt == patchMap.end())
-    {
-        std::cerr
-            << "ERROR: Boundary face " << face.idx()
-            << " not found in patch map for"
-            << " pressure correction!"
-            << std::endl;
-        return;
-    }
-
     const BoundaryData* bc =
-        bcManager_.fieldBC
-        (
-            patchIt->second->patchName(), "p"
-        );
+        bcManager_.fieldBC(face.patch()->patchName(), "p");
 
     // Fixed-value pressure BC: pCorr = 0 at boundary
     if (bc && bc->type() == BCType::FIXED_VALUE)
@@ -571,8 +569,7 @@ void Matrix::assemblePCorrBoundaryFace
         const Vector e_Pf = face.e_Pf();
         const Scalar dPfMag = face.dPfMag();
 
-        Vector E_f =
-            (dot(S_f, S_f) / dot(S_f, e_Pf)) * e_Pf;
+        Vector E_f = (dot(S_f, S_f) / dot(S_f, e_Pf)) * e_Pf;
 
         Scalar a_diff =
             DUf[face.idx()] * E_f.magnitude()

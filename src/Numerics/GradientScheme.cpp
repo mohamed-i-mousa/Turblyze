@@ -32,8 +32,9 @@ GradientScheme::GradientScheme
 Vector GradientScheme::cellGradient
 (
     size_t cellIndex,
+    const std::string& fieldName,
     const ScalarField& phi,
-    const std::string& fieldName
+    const FaceData<Scalar>* boundaryFaceValues
 ) const
 {
     const Cell& cell = allCells_[cellIndex];
@@ -83,14 +84,27 @@ Vector GradientScheme::cellGradient
         rVector << r.x(), r.y(), r.z();
         ATA.noalias() += w * (rVector * rVector.transpose());
 
-        // Get boundary value from BC
-        Scalar phiBoundary =
-            bcManager_.calculateBoundaryFaceValue
-            (
-                face, 
-                phi, 
-                fieldName
-            );
+        Scalar phiBoundary = S(0.0);
+        bool useOverride =
+            boundaryFaceValues
+         && face.idx() < boundaryFaceValues->size()
+         && std::isfinite((*boundaryFaceValues)[face.idx()]);
+
+        if (useOverride)
+        {
+            phiBoundary = (*boundaryFaceValues)[face.idx()];
+        }
+        else
+        {
+            // Get boundary value from BC
+            phiBoundary =
+                bcManager_.calculateBoundaryFaceValue
+                (
+                    face,
+                    phi,
+                    fieldName
+                );
+        }
 
         Scalar deltaPhi = phiBoundary - phi[cellIndex];
         ATb.noalias() += w * deltaPhi * rVector;
@@ -133,10 +147,11 @@ Vector GradientScheme::cellGradient
 Vector GradientScheme::faceGradient
 (
     const size_t faceIndex,
-    const Vector& gradPhi_P,
-    const Vector& gradPhi_N,
+    const std::string& fieldName,
     const ScalarField& phi,
-    const std::string& fieldName
+    const Vector& gradPhiP,
+    const Vector& gradPhiN,
+    const FaceData<Scalar>* boundaryFaceValues
 ) const
 {
     const Face& face = allFaces_[faceIndex];
@@ -147,25 +162,24 @@ Vector GradientScheme::faceGradient
         return
             calculateBoundaryFaceGradient
             (
-                face, 
-                gradPhi_P, 
-                phi, 
-                fieldName
+                face,
+                fieldName,
+                phi,
+                gradPhiP,
+                boundaryFaceValues
             );
     }
     else
     {
         size_t N = face.neighborCell().value();
 
-        Vector d_PN =
-            allCells_[N].centroid() - allCells_[P].centroid();
+        Vector d_PN = allCells_[N].centroid() - allCells_[P].centroid();
 
         Scalar dPNMag = d_PN.magnitude();
 
         Vector e_PN = d_PN / (dPNMag + vSmallValue);
 
-        Vector gradAvg =
-            averageFaceGradient(face, gradPhi_P, gradPhi_N);
+        Vector gradAvg = averageFaceGradient(face, gradPhiP, gradPhiN);
 
         Scalar phiDiff = phi[N] - phi[P];
 
@@ -206,18 +220,13 @@ Vector GradientScheme::averageFaceGradient
 Vector GradientScheme::calculateBoundaryFaceGradient
 (
     const Face& face,
-    const Vector& cellGradient,
+    const std::string& fieldName,
     const ScalarField& phi,
-    const std::string& fieldName
+    const Vector& cellGradient,
+    const FaceData<Scalar>* boundaryFaceValues
 ) const
 {
-    // Patch lookup
-    const auto& patchMap = bcManager_.faceToPatchMap();
-    auto it = patchMap.find(face.idx());
-    const BoundaryPatch* patch =
-        (it != patchMap.end()) ? it->second : nullptr;
-
-    if (!patch) return cellGradient;
+    const BoundaryPatch* patch = face.patch();
 
     const BoundaryData* bc =
         bcManager_.fieldBC(patch->patchName(), fieldName);
@@ -260,17 +269,17 @@ Vector GradientScheme::calculateBoundaryFaceGradient
             }
             else if (bc->valueType() == BCValueType::VECTOR)
             {
-                if (fieldName == "U_x")
+                if (fieldName == "Ux")
                 {
                     boundaryValue =
                         bc->vectorValue().x();
                 }
-                else if (fieldName == "U_y")
+                else if (fieldName == "Uy")
                 {
                     boundaryValue =
                         bc->vectorValue().y();
                 }
-                else if (fieldName == "U_z")
+                else if (fieldName == "Uz")
                 {
                     boundaryValue =
                         bc->vectorValue().z();
@@ -310,6 +319,8 @@ Vector GradientScheme::calculateBoundaryFaceGradient
                  + normalGradient * face.normal();
         }
 
+        case BCType::K_WALL_FUNCTION:
+        case BCType::NUT_WALL_FUNCTION:
         case BCType::ZERO_GRADIENT:
         {
             // Zero normal gradient: retain only tangential
@@ -319,6 +330,42 @@ Vector GradientScheme::calculateBoundaryFaceGradient
               * face.normal();
 
             return tangentialGradient;
+        }
+
+        case BCType::OMEGA_WALL_FUNCTION:
+        {
+            bool useOverride =
+                boundaryFaceValues
+             && face.idx() < boundaryFaceValues->size()
+             && std::isfinite((*boundaryFaceValues)[face.idx()]);
+
+            if (!useOverride)
+            {
+                // Fallback to tangential-only if no dynamic wall value exists
+                Vector tangentialGradient =
+                    cellGradient
+                  - dot(cellGradient, face.normal())
+                  * face.normal();
+                return tangentialGradient;
+            }
+
+            Scalar boundaryValue = (*boundaryFaceValues)[face.idx()];
+            Scalar cellValue = phi[face.ownerCell()];
+
+            Scalar d_n =
+                dot(face.d_Pf(), face.normal());
+
+            // Keep strict wall-normal spacing for omega wall-function gradients.
+            Scalar dnStabilized = std::max(std::abs(d_n), S(1e-20));
+
+            Scalar normalGradient =
+                (boundaryValue - cellValue) / dnStabilized;
+
+            Vector tangentialGradient =
+                cellGradient
+              - dot(cellGradient, face.normal()) * face.normal();
+
+            return tangentialGradient + normalGradient * face.normal();
         }
 
         case BCType::FIXED_GRADIENT:

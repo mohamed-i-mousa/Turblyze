@@ -64,7 +64,7 @@ public:
      * @param gradScheme Gradient reconstruction scheme
      * @param gradPhi Pre-computed cell gradients of phi
      * @param fieldName Name of the field being solved
-     *        (e.g., "U_x", "U_y", "U_z", "k", "omega")
+     *        (e.g., "Ux", "Uy", "Uz", "k", "omega")
      */
     void buildMatrix
     (
@@ -75,7 +75,8 @@ public:
         const ConvectionScheme& convScheme,
         const GradientScheme& gradScheme,
         const VectorField& gradPhi,
-        const std::string& fieldName
+        const std::string& fieldName,
+        const FaceData<Scalar>* boundaryFaceValues = nullptr
     );
 
     /**
@@ -218,7 +219,8 @@ private:
         const ScalarField& Gamma,
         const GradientScheme& gradScheme,
         const VectorField& gradPhi,
-        const std::string& fieldName
+        const std::string& fieldName,
+        const FaceData<Scalar>* boundaryFaceValues = nullptr
     );
 
     /**

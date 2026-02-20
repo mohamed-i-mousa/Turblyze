@@ -50,18 +50,18 @@ public:
     /**
      * @brief Calculate gradient at a single cell using least-squares.
      * @param cellIndex Index of the cell to compute gradient for
-     * @param phi Scalar field for gradient calculation
      * @param fieldName Name of the field for BC lookup
+     * @param phi Scalar field for gradient calculation
+     * @param boundaryFaceValues Optional pre-computed boundary face
+     *        values that override BC lookup when provided
      * @return Gradient vector at the specified cell
-     * 
-     * Uses weighted least-squares reconstruction including both
-     * internal neighbor cells and boundary faces.
      */
     Vector cellGradient
     (
         size_t cellIndex,
+        const std::string& fieldName,
         const ScalarField& phi,
-        const std::string& fieldName
+        const FaceData<Scalar>* boundaryFaceValues = nullptr
     ) const;
 
     /**
@@ -73,19 +73,22 @@ public:
      * cell-to-cell difference.
      *
      * @param faceIndex Index of the face
+     * @param fieldName Name of the field for BC lookup
+     * @param phi Cell-centered scalar field
      * @param gradPhi_P Gradient at the owner cell
      * @param gradPhi_N Gradient at the neighbor cell
-     * @param phi Cell-centered scalar field
-     * @param fieldName Name of the field for BC lookup
+     * @param boundaryFaceValues Optional pre-computed boundary face
+     *        values that override BC lookup when provided
      * @return Gradient vector at the specified face
      */
     Vector faceGradient
     (
         const size_t faceIndex,
+        const std::string& fieldName,
+        const ScalarField& phi,
         const Vector& gradPhi_P,
         const Vector& gradPhi_N,
-        const ScalarField& phi,
-        const std::string& fieldName
+        const FaceData<Scalar>* boundaryFaceValues = nullptr
     ) const;
 
 
@@ -103,24 +106,27 @@ private:
     Vector averageFaceGradient
     (
         const Face& face,
-        const Vector& gradPhi_P,
-        const Vector& gradPhi_N
+        const Vector& gradPhiP,
+        const Vector& gradPhiN
     ) const;
 
     /**
      * @brief Calculate boundary face gradient based on BC type
      * @param face Boundary face
-     * @param cellGradient Gradient at the owner cell
-     * @param phi Scalar field values
      * @param fieldName Name of the field for BC lookup
+     * @param phi Scalar field values
+     * @param cellGradient Gradient at the owner cell
+     * @param boundaryFaceValues Optional pre-computed boundary face
+     *        values that override BC lookup when provided
      * @return Gradient vector at the boundary face
      */
     Vector calculateBoundaryFaceGradient
     (
         const Face& face,
-        const Vector& cellGradient,
+        const std::string& fieldName,
         const ScalarField& phi,
-        const std::string& fieldName
+        const Vector& cellGradient,
+        const FaceData<Scalar>* boundaryFaceValues = nullptr
     ) const;
 
 // Private members
