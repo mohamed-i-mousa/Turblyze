@@ -60,16 +60,14 @@ kOmegaSST::kOmegaSST
       omegaSolver_("omega", S(1e-8), 1000)
 {
     matrixConstruct_ =
-        std::make_unique<Matrix>
-        (
-            allFaces_,
-            allCells_,
-            bcManager_
-        );
+        std::make_unique<Matrix>(allFaces_, allCells_, bcManager_);
 
-    std::cout
-        << "k-omega SST turbulence model initialized with "
-        << allCells_.size() << " cells." << std::endl;
+    if (debug_)
+    {
+        std::cout
+            << "k-omega SST turbulence model initialized with "
+            << allCells_.size() << " cells." << std::endl;
+    }
 }
 
 kOmegaSST::~kOmegaSST() = default;
@@ -90,9 +88,13 @@ void kOmegaSST::initialize
     alphaK_ = alphaK;
     alphaOmega_ = alphaOmega;
 
-    std::cout
-        << "\n=== Initializing k-omega SST Turbulence Model ==="
-        << std::endl;
+    if (debug_)
+    {
+        std::cout
+            << std::endl
+            << "=== Initializing k-omega SST Turbulence Model ===" 
+            << std::endl;
+    }
 
     calculateWallDistance();
     buildOmegaWallCellWeights();
@@ -107,14 +109,15 @@ void kOmegaSST::initialize
     size_t numCells = allCells_.size();
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        nut_[cellIdx] =
-            k_[cellIdx] / (omega_[cellIdx] + vSmallValue);
+        nut_[cellIdx] = k_[cellIdx] / (omega_[cellIdx] + vSmallValue);
         nut_[cellIdx] = std::max(nut_[cellIdx], S(0.0));
     }
 
-    std::cout
-        << "Turbulence fields initialized successfully."
-        << std::endl;
+    if (debug_)
+    {
+        std::cout
+            << "Turbulence fields initialized successfully." << std::endl;
+    }
 }
 
 void kOmegaSST::solve
@@ -186,9 +189,12 @@ ScalarField kOmegaSST::getEffectiveViscosity() const
 
 void kOmegaSST::calculateWallDistance()
 {
-    std::cout
-        << "  Computing wall distance using meshWave method..."
-        << std::endl;
+    if (debug_)
+    {
+        std::cout
+            << "  Computing wall distance using meshWave method..."
+            << std::endl;
+    }
 
     // Initialize with large value
     wallDistance_.setAll(S(1e10));
@@ -261,14 +267,16 @@ void kOmegaSST::calculateWallDistance()
         if (iter == maxIterations - 1)
         {
             std::cout
-                << "  WARNING: Reached max iterations "
-                << "without convergence"
+                << "  WARNING: Reached max iterations without convergence"
                 << std::endl;
         }
     }
 
-    std::cout
-        << "  Wall distance calculation completed." << std::endl;
+    if (debug_)
+    {
+        std::cout
+            << "  Wall distance calculation completed." << std::endl;
+    }
 }
 
 void kOmegaSST::buildOmegaWallCellWeights()
@@ -319,9 +327,12 @@ void kOmegaSST::solveOmegaEquation
     const FaceFluxField& flowRateFace
 )
 {
-    std::cout
-        << "  Solving omega transport equation (relaxation = "
-        << alphaOmega_ << ")..." << std::endl;
+    if (debug_)
+    {
+        std::cout
+            << "  Solving omega transport equation (relaxation = "
+            << alphaOmega_ << ")..." << std::endl;
+    }
 
     size_t numCells = allCells_.size();
 
@@ -334,21 +345,24 @@ void kOmegaSST::solveOmegaEquation
         GammaOmega[cellIdx] = nu_ + sigmaOmega * nut_[cellIdx];
     }
 
-    // Construct transport matrix
+    // Construct transport equation
     ScalarField omegaSource("omega_source", numCells, 0.0);
 
-    matrixConstruct_->buildMatrix
-    (
-        omega_,
-        omegaSource,
-        flowRateFace,
-        GammaOmega,
-        omegaConvectionScheme_,
-        gradientScheme_,
-        gradOmega_,
-        "omega",
-        &omegaWallFunctionFaceValues_
-    );
+    TransportEquation equationOmega
+    {
+        omega_,                                    // phi
+        "omega",                                   // fieldName
+        std::cref(flowRateFace),                   // flowRate
+        std::cref(omegaConvectionScheme_),         // convScheme
+        std::cref(GammaOmega),                     // Gamma
+        std::nullopt,                              // GammaFace
+        omegaSource,                               // source
+        gradOmega_,                                // gradPhi
+        gradientScheme_,                           // gradScheme
+        std::cref(omegaWallFunctionFaceValues_)    // boundaryFaceValues
+    };
+
+    matrixConstruct_->buildMatrix(equationOmega);
 
     auto& matrixA = matrixConstruct_->getMatrixA();
     auto& vectorB = matrixConstruct_->getVectorB();
@@ -371,34 +385,26 @@ void kOmegaSST::solveOmegaEquation
         matrixA.coeffRef(cellIdx, cellIdx) +=
             beta * omega_[cellIdx] * cellVolume;
 
-        // Cross-diffusion linearization for -SuSp((F1-1)*CDkOmega/omega, omega)
+        // Cross-diffusion linearization -SuSp((F1-1)*CDkOmega/omega, omega)
         // mapped to this solver's A*phi=b convention:
         //   if susp > 0 : implicit sink      -> +susp*omega on diagonal
         //   if susp < 0 : explicit source    -> +(-susp*omega) on RHS
-        Scalar dotKOmega =
-            dot(gradK_[cellIdx], gradOmega_[cellIdx]);
+        Scalar dotKOmega = dot(gradK_[cellIdx], gradOmega_[cellIdx]);
 
         Scalar CDkOmega =
-            std::max
-            (
-                2.0 * constants_.sigmaOmega2 * dotKOmega,
-                S(1e-10)
-            );
+            std::max(2.0 * constants_.sigmaOmega2 * dotKOmega, S(1e-10));
 
         Scalar susp =
             (F1_[cellIdx] - S(1.0)) * CDkOmega
           / (omega_[cellIdx] + vSmallValue);
 
-        const Scalar spCoeff =
-            std::max(susp, S(0.0));
+        const Scalar spCoeff = std::max(susp, S(0.0));
 
-        const Scalar suCoeff =
-            -std::min(susp, S(0.0));
+        const Scalar suCoeff = -std::min(susp, S(0.0));
 
         if (spCoeff > S(0.0))
         {
-            matrixA.coeffRef(cellIdx, cellIdx) +=
-                spCoeff * cellVolume;
+            matrixA.coeffRef(cellIdx, cellIdx) += spCoeff * cellVolume;
         }
 
         vectorB(cellIdx) +=
@@ -412,12 +418,7 @@ void kOmegaSST::solveOmegaEquation
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
     omega_solution(omega_.data(), numCells);
 
-    omegaSolver_.solveWithBiCGSTAB
-    (
-        omega_solution,
-        matrixA,
-        vectorB
-    );
+    omegaSolver_.solveWithBiCGSTAB(omega_solution, matrixA, vectorB);
 
     // Clamp to minimum value
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -455,8 +456,7 @@ void kOmegaSST::solveOmegaEquation
             continue;
         }
 
-        Scalar omegaWF =
-            omegaWallFunctionFaceValues_[face.idx()];
+        Scalar omegaWF = omegaWallFunctionFaceValues_[face.idx()];
 
         if (std::isfinite(omegaWF))
         {
@@ -485,11 +485,17 @@ void kOmegaSST::solveOmegaEquation
 
 void kOmegaSST::updateOmegaWallFunctionBoundaryValues()
 {
-    std::cout
-        << "  Updating omega wall-function boundary values..."
-        << std::endl;
+    if (debug_)
+    {
+        std::cout
+            << "  Updating omega wall-function boundary values..."
+            << std::endl;
+    }
 
-    omegaWallFunctionFaceValues_.setAll(std::numeric_limits<Scalar>::quiet_NaN());
+    omegaWallFunctionFaceValues_.setAll
+    (
+        std::numeric_limits<Scalar>::quiet_NaN()
+    );
 
     for (const auto& face : allFaces_)
     {
@@ -517,8 +523,7 @@ void kOmegaSST::updateOmegaWallFunctionBoundaryValues()
             std::max(std::abs(dot(face.d_Pf(), face.normal())), S(1e-20));
 
         // Viscous sublayer contribution
-        Scalar omegaVis =
-            6.0 * nu_ / (constants_.beta1 * y * y);
+        Scalar omegaVis = 6.0 * nu_ / (constants_.beta1 * y * y);
 
         // Log-layer contribution
         Scalar Cmu25 = std::pow(constants_.Cmu, 0.25);
@@ -540,9 +545,13 @@ void kOmegaSST::solveKEquation
     const FaceFluxField& flowRateFace
 )
 {
-    std::cout
-        << "  Solving k transport equation (relaxation = "
-        << alphaK_ << ")..." << std::endl;
+    if (debug_)
+    {
+        std::cout
+            << "  Solving k transport equation"
+            << " (relaxation = "
+            << alphaK_ << ")..." << std::endl;
+    }
 
     size_t numCells = allCells_.size();
 
@@ -559,17 +568,20 @@ void kOmegaSST::solveKEquation
 
     ScalarField k_source("k_source", numCells, 0.0);
 
-    matrixConstruct_->buildMatrix
-    (
-        k_,
-        k_source, // Source term (zero for k)
-        flowRateFace,
-        GammaK,
-        kConvectionScheme_,
-        gradientScheme_,
-        gradK_,
-        "k"
-    );
+    TransportEquation equationK
+    {
+        k_,                            // phi
+        "k",                           // fieldName
+        std::cref(flowRateFace),       // flowRate
+        std::cref(kConvectionScheme_), // convScheme
+        std::cref(GammaK),            // Gamma
+        std::nullopt,                  // GammaFace
+        k_source,                      // source
+        gradK_,                        // gradPhi
+        gradientScheme_                // gradScheme
+    };
+
+    matrixConstruct_->buildMatrix(equationK);
 
     auto& A_matrix = matrixConstruct_->getMatrixA();
     auto& b_vector = matrixConstruct_->getVectorB();
@@ -613,8 +625,12 @@ void kOmegaSST::calculateTurbulentViscosity()
 {
     // SST turbulent viscosity:
     // nut = a1*k / max(a1*omega, b1*F23*sqrt(S2))
-    std::cout
-        << "  Calculating turbulent viscosity..." << std::endl;
+    if (debug_)
+    {
+        std::cout
+            << "  Calculating turbulent viscosity..."
+            << std::endl;
+    }
 
     size_t numCells = allCells_.size();
 
@@ -641,9 +657,11 @@ void kOmegaSST::calculateWallShearStress
     const VectorField& U
 )
 {
-    std::cout
-        << "  Calculating wall shear stress..."
-        << std::endl;
+    if (debug_)
+    {
+        std::cout
+            << "  Calculating wall shear stress..." << std::endl;
+    }
 
     // Non-wall cells have zero shear stress
     wallShearStress_.setAll(S(0.0));
@@ -872,13 +890,7 @@ void kOmegaSST::calculateGradients
     {
         if (computeGradK)
         {
-            gradK_[cellIdx] =
-                gradientScheme_.cellGradient
-                (
-                    cellIdx,
-                    "k",
-                    k_
-                );
+            gradK_[cellIdx] = gradientScheme_.cellGradient("k",k_,cellIdx);
         }
 
         if (computeGradOmega)
@@ -886,9 +898,9 @@ void kOmegaSST::calculateGradients
             gradOmega_[cellIdx] =
                 gradientScheme_.cellGradient
                 (
-                    cellIdx,
                     "omega",
                     omega_,
+                    cellIdx,
                     &omegaWallFunctionFaceValues_
                 );
         }
@@ -957,6 +969,8 @@ void kOmegaSST::boundTurbulenceFields()
 
 void kOmegaSST::logFieldDiagnostics() const
 {
+    if (!debug_) return;
+
     size_t numCells = allCells_.size();
 
     Scalar kMin = k_[0], kMax = k_[0], kSum = S(0.0);

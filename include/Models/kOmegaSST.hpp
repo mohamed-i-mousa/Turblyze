@@ -140,6 +140,12 @@ public:
     /// Access omega-equation linear solver for external configuration
     LinearSolver& omegaSolverSettings() { return omegaSolver_; }
 
+    /**
+     * @brief Enable or disable verbose console output
+     * @param d True to enable debug output
+     */
+    void setDebug(bool d) { debug_ = d; }
+
 private:
 
 // Turbulence fields
@@ -303,6 +309,9 @@ private:
 
     /// Under-relaxation factor for omega equation
     Scalar alphaOmega_;
+
+    /// Enable verbose console output
+    bool debug_ = false;
 
 // Numerical tools
 
