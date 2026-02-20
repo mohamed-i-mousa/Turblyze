@@ -21,7 +21,6 @@
 #ifndef SIMPLE_HPP
 #define SIMPLE_HPP
 
-#include <iostream>
 #include <vector>
 #include <memory>
 
@@ -68,13 +67,15 @@ public:
      * @param initialPressure Initial pressure field
      * @param initialK Initial turbulent kinetic energy
      * @param initialOmega Initial specific dissipation rate
+     * @param enableTurbulence Enable k-omega SST turbulence modeling
      */
     void initialize
     (
         const Vector& initialVelocity,
         Scalar initialPressure,
         Scalar initialK = S(1e-6),
-        Scalar initialOmega = S(1.0)
+        Scalar initialOmega = S(1.0),
+        bool enableTurbulence = false
     );
 
     /// Solve momentum equations for velocity components
@@ -172,25 +173,11 @@ public:
         maxIterations_ = maxIter;
     }
 
-    /// Enable or disable turbulence modeling
-    void enableTurbulenceModeling(bool enable = true)
-    {
-        enableTurbulence_ = enable;
-
-        if (enable)
-        {
-            std::cout
-                << "k-omega SST turbulence modeling enabled."
-                << std::endl;
-        }
-        else
-        {
-            std::cout
-                << "Laminar flow (turbulence modeling"
-                << " disabled)."
-                << std::endl;
-        }
-    }
+    /**
+     * @brief Enable or disable verbose console output
+     * @param d True to enable debug output
+     */
+    void setDebug(bool d) { debug_ = d; }
 
     /**
      * @brief Set physical properties
@@ -220,8 +207,6 @@ public:
      * @brief Set linear solvers for turbulence equations
      * @param kSolver Configured LinearSolver for k equation
      * @param omegaSolver Configured LinearSolver for omega equation
-     *
-     * Must be called after initialize() when turbulence is enabled.
      */
     void setTurbulenceSolvers
     (
@@ -232,8 +217,7 @@ public:
         if (turbulenceModel_)
         {
             turbulenceModel_->kSolverSettings() = kSolver;
-            turbulenceModel_->omegaSolverSettings()
-                = omegaSolver;
+            turbulenceModel_->omegaSolverSettings() = omegaSolver;
         }
     }
 
@@ -243,7 +227,7 @@ public:
     /// Get turbulent kinetic energy field (null if turbulence disabled)
     const ScalarField* getTurbulentKineticEnergy() const
     {
-        if (enableTurbulence_ && turbulenceModel_)
+        if (turbulenceModel_)
         {
             return &(turbulenceModel_->getk());
         }
@@ -253,7 +237,7 @@ public:
     /// Get specific dissipation rate field (null if turbulence disabled)
     const ScalarField* getSpecificDissipationRate() const
     {
-        if (enableTurbulence_ && turbulenceModel_)
+        if (turbulenceModel_)
         {
             return &(turbulenceModel_->getOmega());
         }
@@ -263,10 +247,9 @@ public:
     /// Get turbulent viscosity field (null if turbulence disabled)
     const ScalarField* getTurbulentViscosity() const
     {
-        if (enableTurbulence_ && turbulenceModel_)
+        if (turbulenceModel_)
         {
-            return &(turbulenceModel_
-                ->getTurbulentViscosity());
+            return &(turbulenceModel_->getTurbulentViscosity());
         }
         return nullptr;
     }
@@ -274,10 +257,9 @@ public:
     /// Get wall distance field (null if turbulence disabled)
     const ScalarField* getWallDistance() const
     {
-        if (enableTurbulence_ && turbulenceModel_)
+        if (turbulenceModel_)
         {
-            return &(turbulenceModel_
-                ->getWallDistance());
+            return &(turbulenceModel_->getWallDistance());
         }
         return nullptr;
     }
@@ -293,7 +275,7 @@ private:
     const GradientScheme& gradientScheme_;
     const ConvectionSchemes& convectionScheme_;
 
-    /// Physical properties
+// Physical properties
 
     /// Fluid density
     Scalar rho_;
@@ -302,7 +284,7 @@ private:
     /// Kinematic viscosity
     Scalar nu_;
 
-    /// Algorithm parameters
+/// Algorithm parameters
 
     /// Under-relaxation factor for velocity
     Scalar alphaU_;
@@ -316,8 +298,9 @@ private:
     int maxIterations_;
     /// Convergence tolerance
     Scalar tolerance_;
-    /// Enable turbulence modeling
-    bool enableTurbulence_;
+
+    /// Enable verbose console output
+    bool debug_ = false;
 
     /// Turbulence model
     std::unique_ptr<kOmegaSST> turbulenceModel_;
@@ -362,7 +345,8 @@ private:
     /// Face diffusion coefficients for momentum
     FaceFluxField DUf_;
 
-    // Gradient fields
+// Gradient fields
+
     /// Pressure gradient field
     VectorField gradP_;
 
@@ -386,16 +370,16 @@ private:
 
     /**
      * @brief Extract a component (x=0, y=1, z=2) from a VectorField
+     * @param name Name for the resulting scalar field
      * @param V Source vector field
      * @param component Component index (0=x, 1=y, 2=z)
-     * @param name Name for the resulting scalar field
      * @return ScalarField containing the extracted component
      */
     static ScalarField extractComponent
     (
+        const std::string& name,
         const VectorField& V,
-        int component,
-        const std::string& name
+        int component
     );
 
     /// Calculate mass imbalance across domain
@@ -410,17 +394,14 @@ private:
     /**
      * @brief Calculate transpose gradient source term for momentum equations
      *
-     * Computes the explicit source term: ∇·(ν_eff · (∇U)^T)
+     * @details Computes the explicit source term: ∇·(ν_eff · (∇U)^T)
      * This term arises from the full viscous stress tensor τ = μ(∇U + (∇U)^T)
      * and is non-zero when viscosity varies spatially (turbulent flows).
      *
-     * Implemented as face-based divergence following OpenFOAM's approach:
+     * Implemented as face-based divergence:
      * Σ_f (ν_eff)_f · (∇U)_f^T · S_f
      *
      * @param nu_eff Effective viscosity field (ν + ν_t)
-     * @param gradUx Pre-computed gradient of x-velocity
-     * @param gradUy Pre-computed gradient of y-velocity
-     * @param gradUz Pre-computed gradient of z-velocity
      * @param transposeSourceX Output: x-momentum source term
      * @param transposeSourceY Output: y-momentum source term
      * @param transposeSourceZ Output: z-momentum source term
@@ -428,9 +409,6 @@ private:
     void calculateTransposeGradientSource
     (
         const ScalarField& nu_eff,
-        const VectorField& gradUx,
-        const VectorField& gradUy,
-        const VectorField& gradUz,
         ScalarField& transposeSourceX,
         ScalarField& transposeSourceY,
         ScalarField& transposeSourceZ
@@ -439,32 +417,25 @@ private:
     /**
      * @brief Solve a single momentum component equation
      *
-     * Builds and solves the discretized momentum equation for one velocity
-     * component (x, y, or z). Handles matrix assembly, under-relaxation,
-     * and linear solver iteration.
+     * @details Builds and solves the discretized momentum equation for one
+     * velocity component (x, y, or z). Handles matrix assembly,
+     * under-relaxation, and linear solver iteration.
      *
      * @param component Component identifier ('x', 'y', or 'z')
-     * @param U_component Current velocity component field
-     * @param source Source term for this component (includes pressure gradient)
-     * @param U_component_prev Previous iteration velocity component
-     * @param nu_eff Effective viscosity field
-     * @param grad_component Pre-computed cell gradients
-     *        of this velocity component
+     * @param eq Transport equation data for this component
+     * @param componentPrev Previous iteration velocity component
      */
     void solveMomentumComponent
     (
         char component,
-        ScalarField& U_component,
-        const ScalarField& source,
-        const ScalarField& U_component_prev,
-        const ScalarField& nu_eff,
-        const VectorField& grad_component
+        TransportEquation& eq,
+        const ScalarField& componentPrev
     );
 
     /**
      * @brief Build gradient transpose vector from velocity gradients
      *
-     * Constructs the transpose gradient columns for a given component:
+     * @details Constructs the transpose gradient columns:
      * - component 0 (x): [∂u/∂x, ∂v/∂x, ∂w/∂x]
      * - component 1 (y): [∂u/∂y, ∂v/∂y, ∂w/∂y]
      * - component 2 (z): [∂u/∂z, ∂v/∂z, ∂w/∂z]
