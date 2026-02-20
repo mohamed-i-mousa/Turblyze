@@ -58,9 +58,9 @@ public:
      */
     Vector cellGradient
     (
-        size_t cellIndex,
         const std::string& fieldName,
         const ScalarField& phi,
+        size_t cellIndex,
         const FaceData<Scalar>* boundaryFaceValues = nullptr
     ) const;
 
@@ -72,22 +72,22 @@ public:
      * orthogonal correction to ensure consistency with the direct
      * cell-to-cell difference.
      *
-     * @param faceIndex Index of the face
      * @param fieldName Name of the field for BC lookup
      * @param phi Cell-centered scalar field
      * @param gradPhi_P Gradient at the owner cell
      * @param gradPhi_N Gradient at the neighbor cell
+     * @param faceIndex Index of the face
      * @param boundaryFaceValues Optional pre-computed boundary face
      *        values that override BC lookup when provided
      * @return Gradient vector at the specified face
      */
     Vector faceGradient
     (
-        const size_t faceIndex,
         const std::string& fieldName,
         const ScalarField& phi,
         const Vector& gradPhi_P,
         const Vector& gradPhi_N,
+        const size_t faceIndex,
         const FaceData<Scalar>* boundaryFaceValues = nullptr
     ) const;
 

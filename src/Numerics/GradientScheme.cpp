@@ -31,9 +31,9 @@ GradientScheme::GradientScheme
 
 Vector GradientScheme::cellGradient
 (
-    size_t cellIndex,
     const std::string& fieldName,
     const ScalarField& phi,
+    size_t cellIndex,
     const FaceData<Scalar>* boundaryFaceValues
 ) const
 {
@@ -146,11 +146,11 @@ Vector GradientScheme::cellGradient
 
 Vector GradientScheme::faceGradient
 (
-    const size_t faceIndex,
     const std::string& fieldName,
     const ScalarField& phi,
     const Vector& gradPhiP,
     const Vector& gradPhiN,
+    const size_t faceIndex,
     const FaceData<Scalar>* boundaryFaceValues
 ) const
 {
