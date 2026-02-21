@@ -350,8 +350,8 @@ void kOmegaSST::solveOmegaEquation
 
     TransportEquation equationOmega
     {
-        omega_,                                    // phi
         "omega",                                   // fieldName
+        omega_,                                    // phi
         std::cref(flowRateFace),                   // flowRate
         std::cref(omegaConvectionScheme_),         // convScheme
         std::cref(GammaOmega),                     // Gamma
@@ -570,8 +570,8 @@ void kOmegaSST::solveKEquation
 
     TransportEquation equationK
     {
-        k_,                            // phi
         "k",                           // fieldName
+        k_,                            // phi
         std::cref(flowRateFace),       // flowRate
         std::cref(kConvectionScheme_), // convScheme
         std::cref(GammaK),            // Gamma

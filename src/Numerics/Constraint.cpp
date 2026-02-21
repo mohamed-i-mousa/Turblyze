@@ -4,9 +4,6 @@
  *****************************************************************************/
 
 #include "Constraint.hpp"
-#include <iostream>
-#include <cmath>
-#include <algorithm>
 
 Constraint::Constraint
 (
@@ -25,10 +22,6 @@ Constraint::Constraint
 void Constraint::setVelocityConstraints(Scalar maxVelocity)
 {
     maxVelocityMagnitude_ = maxVelocity;
-
-    std::cout
-        << "Velocity constraints set: max velocity = "
-        << maxVelocity << " m/s" << std::endl;
 }
 
 void Constraint::setPressureConstraints
@@ -39,22 +32,12 @@ void Constraint::setPressureConstraints
 {
     minPressure_ = minPressure;
     maxPressure_ = maxPressure;
-
-    std::cout
-        << "Pressure constraints set: range [" << minPressure
-        << ", " << maxPressure << "] Pa" << std::endl;
 }
 
 void Constraint::enableConstraints(bool enableVel, bool enablePress)
 {
     enableVelocityConstraints_ = enableVel;
     enablePressureConstraints_ = enablePress;
-
-    std::cout
-        << "Field constraints: velocity "
-        << (enableVel ? "enabled" : "disabled")
-        << ", pressure "
-        << (enablePress ? "enabled" : "disabled") << std::endl;
 }
 
 size_t Constraint::applyVelocityConstraints()
