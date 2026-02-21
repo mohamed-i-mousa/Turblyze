@@ -2,15 +2,16 @@
  * @file Matrix.hpp
  * @brief Matrix assembly for finite volume discretization
  *
- * This header defines the Matrix class, which handles the assembly of sparse
- * linear systems (Ax=b) for transport equations.
- * It manages gradient computation, face-level interpolation, convection and
- * diffusion discretization, and boundary condition application.
+ * This header defines the TransportEquation struct and the Matrix class.
+ * TransportEquation bundles all data describing a scalar transport equation
+ * (field, convection, diffusion, source, gradients). The Matrix class
+ * handles assembly of sparse linear systems (Ax=b) for any transport
+ * equation type — momentum, pressure correction, and turbulence.
  *
  * @class Matrix
  *
  * The Matrix class provides:
- * - Assembly for momentum, pressure correction, and scalar equations
+ * - Unified assembly for all transport equation types
  * - Eigen sparse matrix for efficient storage and solution
  * - Deferred correction for higher-order convection schemes
  * - Non-orthogonal mesh corrections
@@ -24,6 +25,8 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <optional>
+#include <functional>
 
 #include <eigen3/Eigen/SparseCore>
 #include <eigen3/Eigen/Dense>
@@ -35,6 +38,69 @@
 #include "FaceData.hpp"
 #include "ConvectionScheme.hpp"
 #include "GradientScheme.hpp"
+
+
+/// Non-owning optional reference (absent = std::nullopt)
+template<typename T>
+using OptionalRef = std::optional<std::reference_wrapper<const T>>;
+
+
+/**
+ * @brief Data describing a scalar transport equation
+ *
+ * @details Bundles the field value, convection, diffusion, source,
+ * and gradient data needed by Matrix::buildMatrix().
+ * Organised by physics terms:
+ *   field, transient (placeholder), convection, diffusion,
+ *   source, gradient reconstruction, boundary overrides.
+ */
+struct TransportEquation
+{
+
+// Field
+
+    /// Name of the field ("Ux", "k", "pCorr", etc.)
+    std::string fieldName;
+
+    /// Current cell-centered field values (mutable for zero-copy solve)
+    ScalarField& phi;
+
+// Transient (placeholder for future)
+
+// Convection: div(F * phi)
+
+    /// Face volumetric flow rates (nullopt = no convection)
+    OptionalRef<FaceFluxField> flowRate = std::nullopt;
+
+    /// Convection discretization scheme (nullopt = no convection)
+    OptionalRef<ConvectionScheme> convScheme = std::nullopt;
+
+// Diffusion: div(Gamma * grad(phi))
+
+    /// Cell-centered diffusion coefficient
+    OptionalRef<ScalarField> Gamma = std::nullopt;
+
+    /// Pre-interpolated face diffusion coefficient
+    OptionalRef<FaceFluxField> GammaFace = std::nullopt;
+
+// Source
+
+    /// Explicit source term field
+    const ScalarField& source;
+
+// Gradient reconstruction
+
+    /// Pre-computed cell gradients of phi
+    const VectorField& gradPhi;
+
+    /// Gradient reconstruction scheme
+    const GradientScheme& gradScheme;
+
+// Boundary overrides
+
+    /// Dynamic boundary face values (e.g. omega wall-function values)
+    OptionalRef<FaceData<Scalar>> boundaryFaceValues = std::nullopt;
+};
 
 
 class Matrix
@@ -55,46 +121,10 @@ public:
     );
 
     /**
-     * @brief Build transport equation matrix with convection-diffusion
-     * @param phi Current field values
-     * @param phiSource Source term field
-     * @param flowRateFace Face volumetric flow rates
-     * @param Gamma Diffusion coefficient field
-     * @param convScheme Convection discretization scheme
-     * @param gradScheme Gradient reconstruction scheme
-     * @param gradPhi Pre-computed cell gradients of phi
-     * @param fieldName Name of the field being solved
-     *        (e.g., "Ux", "Uy", "Uz", "k", "omega")
+     * @brief Build transport equation matrix
+     * @param equation Transport equation data
      */
-    void buildMatrix
-    (
-        const ScalarField& phi,
-        const ScalarField& phiSource,
-        const FaceFluxField& flowRateFace,
-        const ScalarField& Gamma,
-        const ConvectionScheme& convScheme,
-        const GradientScheme& gradScheme,
-        const VectorField& gradPhi,
-        const std::string& fieldName,
-        const FaceData<Scalar>* boundaryFaceValues = nullptr
-    );
-
-    /**
-     * @brief Build pressure correction matrix for SIMPLE algorithm
-     * @param RhieChowFlowRate Face flow rate from Rhie-Chow
-     * @param DUf Face diffusion coefficients (D_f = V / a_P)
-     * @param pCorr Pressure correction field
-     * @param gradScheme Gradient reconstruction scheme
-     * @param gradpCorr Pre-computed cell gradients of pCorr
-     */
-    void buildPressureCorrectionMatrix
-    (
-        const FaceFluxField& RhieChowFlowRate,
-        const FaceFluxField& DUf,
-        const ScalarField& pCorr,
-        const GradientScheme& gradScheme,
-        const VectorField& gradpCorr
-    );
+    void buildMatrix(const TransportEquation& equation);
 
 // Accessor methods
 
@@ -140,7 +170,7 @@ public:
      * @param alpha Relaxation factor (0 < alpha <= 1)
      * @param phiPrev Previous iteration field values
      *
-     * Modifies the assembled system (Ax=b):
+     * @details Modifies the assembled system (Ax=b):
      * - Diagonal: a_P <- a_P / alpha
      * - RHS: b <- b + ((1-alpha)/alpha) * aPOriginal * phiPrev
      */
@@ -179,78 +209,25 @@ private:
     void reserveTripletList();
 
     /**
-     * @brief Assemble internal face for transport equation
+     * @brief Assemble internal face contributions
      * @param face Internal face to process
-     * @param phi Current field values
-     * @param flowRateFace Face volumetric flow rates
-     * @param Gamma Diffusion coefficient field
-     * @param convScheme Convection discretization scheme
-     * @param gradScheme Gradient reconstruction scheme
-     * @param gradPhi Pre-computed cell gradients
-     * @param fieldName Name of the field being solved
+     * @param equation Transport equation data
      */
     void assembleInternalFace
     (
         const Face& face,
-        const ScalarField& phi,
-        const FaceFluxField& flowRateFace,
-        const ScalarField& Gamma,
-        const ConvectionScheme& convScheme,
-        const GradientScheme& gradScheme,
-        const VectorField& gradPhi,
-        const std::string& fieldName
+        const TransportEquation& equation
     );
 
     /**
-     * @brief Assemble boundary face for transport equation
+     * @brief Assemble boundary face contributions
      * @param face Boundary face to process
-     * @param phi Current field values
-     * @param flowRateFace Face volumetric flow rates
-     * @param Gamma Diffusion coefficient field
-     * @param gradScheme Gradient reconstruction scheme
-     * @param gradPhi Pre-computed cell gradients
-     * @param fieldName Name of the field being solved
+     * @param equation Transport equation data
      */
     void assembleBoundaryFace
     (
         const Face& face,
-        const ScalarField& phi,
-        const FaceFluxField& flowRateFace,
-        const ScalarField& Gamma,
-        const GradientScheme& gradScheme,
-        const VectorField& gradPhi,
-        const std::string& fieldName,
-        const FaceData<Scalar>* boundaryFaceValues = nullptr
-    );
-
-    /**
-     * @brief Assemble internal face for pressure correction
-     * @param face Internal face to process
-     * @param DUf Face diffusion coefficients
-     * @param pCorr Pressure correction field
-     * @param gradScheme Gradient reconstruction scheme
-     * @param gradpCorr Pre-computed pCorr gradients
-     */
-    void assemblePCorrInternalFace
-    (
-        const Face& face,
-        const FaceFluxField& DUf,
-        const ScalarField& pCorr,
-        const GradientScheme& gradScheme,
-        const VectorField& gradpCorr
-    );
-
-    /**
-     * @brief Assemble boundary face for pressure correction
-     * @param face Boundary face to process
-     * @param DUf Face diffusion coefficients
-     * @param grad_pCorr Pre-computed pCorr gradients
-     */
-    void assemblePCorrBoundaryFace
-    (
-        const Face& face,
-        const FaceFluxField& DUf,
-        const VectorField& gradpCorr
+        const TransportEquation& equation
     );
 
     /**

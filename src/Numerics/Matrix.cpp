@@ -35,18 +35,7 @@ Matrix::Matrix
 
 // ****************************** Public Methods ******************************
 
-void Matrix::buildMatrix
-(
-    const ScalarField& phi,
-    const ScalarField& phiSource,
-    const FaceFluxField& flowRateFace,
-    const ScalarField& Gamma,
-    const ConvectionScheme& convScheme,
-    const GradientScheme& gradScheme,
-    const VectorField& gradPhi,
-    const std::string& fieldName,
-    const FaceData<Scalar>* boundaryFaceValues
-)
+void Matrix::buildMatrix(const TransportEquation& equation)
 {
     clear();
     reserveTripletList();
@@ -55,98 +44,22 @@ void Matrix::buildMatrix
 
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        vectorB_(cellIdx) += phiSource[cellIdx];
+        vectorB_(cellIdx) += equation.source[cellIdx];
     }
 
-    for (size_t faceIdx = 0; faceIdx < allFaces_.size(); ++faceIdx)
+    for (size_t faceIdx = 0;
+         faceIdx < allFaces_.size();
+         ++faceIdx)
     {
         const Face& face = allFaces_[faceIdx];
 
         if (face.isBoundary())
         {
-            assembleBoundaryFace
-            (
-                face,
-                phi,
-                flowRateFace,
-                Gamma,
-                gradScheme,
-                gradPhi,
-                fieldName,
-                boundaryFaceValues
-            );
+            assembleBoundaryFace(face, equation);
         }
         else
         {
-            assembleInternalFace
-            (
-                face,
-                phi,
-                flowRateFace,
-                Gamma,
-                convScheme,
-                gradScheme,
-                gradPhi,
-                fieldName
-            );
-        }
-    }
-
-    matrixA_.setFromTriplets
-    (
-        tripletList_.begin(),
-        tripletList_.end()
-    );
-}
-
-void Matrix::buildPressureCorrectionMatrix
-(
-    const FaceFluxField& RhieChowFlowRate,
-    const FaceFluxField& DUf,
-    const ScalarField& pCorr,
-    const GradientScheme& gradScheme,
-    const VectorField& gradPCorr
-)
-{
-    clear();
-    reserveTripletList();
-
-    // Build mass imbalance RHS
-    for (size_t cellIdx = 0; cellIdx < allCells_.size(); ++cellIdx)
-    {
-        const Cell& cell = allCells_[cellIdx];
-
-        Scalar massImbalance = 0.0;
-
-        for (size_t i = 0; i < cell.faceIndices().size(); ++i)
-        {
-            const size_t faceIdx = cell.faceIndices()[i];
-            const int sign = cell.faceSigns()[i];
-            massImbalance += sign * RhieChowFlowRate[faceIdx];
-        }
-
-        vectorB_[cellIdx] = -massImbalance;
-    }
-
-    // Build matrix coefficients
-    for (size_t faceIdx = 0; faceIdx < allFaces_.size(); ++faceIdx)
-    {
-        const Face& face = allFaces_[faceIdx];
-
-        if (face.isBoundary())
-        {
-            assemblePCorrBoundaryFace(face, DUf, gradPCorr);
-        }
-        else
-        {
-            assemblePCorrInternalFace
-            (
-                face, 
-                DUf, 
-                pCorr, 
-                gradScheme, 
-                gradPCorr
-            );
+            assembleInternalFace(face, equation);
         }
     }
 
@@ -183,14 +96,13 @@ void Matrix::relax(Scalar alpha, const ScalarField& phiPrev)
 
     for (int idx = 0; idx < numCells; ++idx)
     {
-        originalDiag[static_cast<size_t>(idx)] =
-            matrixA_.coeff(idx, idx);
+        originalDiag[static_cast<size_t>(idx)] = matrixA_.coeff(idx, idx);
     }
 
     // Scale diagonal: a_P <- a_P / alpha
     for (int idx = 0; idx < numCells; ++idx)
     {
-        matrixA_.coeffRef(idx, idx) =
+        matrixA_.coeffRef(idx, idx) = 
             originalDiag[static_cast<size_t>(idx)] / alpha;
     }
 
@@ -223,8 +135,7 @@ void Matrix::clear()
 
 void Matrix::reserveTripletList()
 {
-    size_t reserveSize =
-        4 * numInternalFaces_ + numBoundaryFaces_;
+    size_t reserveSize = 4 * numInternalFaces_ + numBoundaryFaces_;
 
     tripletList_.reserve(reserveSize);
 }
@@ -251,134 +162,153 @@ Scalar Matrix::extractBoundaryScalar
 void Matrix::assembleInternalFace
 (
     const Face& face,
-    const ScalarField& phi,
-    const FaceFluxField& flowRateFace,
-    const ScalarField& Gamma,
-    const ConvectionScheme& convScheme,
-    const GradientScheme& gradScheme,
-    const VectorField& gradPhi,
-    const std::string& fieldName
+    const TransportEquation& equation
 )
 {
     const size_t ownerIdx = face.ownerCell();
     const size_t neighborIdx = face.neighborCell().value();
 
-    Vector S_f = face.normal() * face.projectedArea();
+    Vector Sf = face.normal() * face.projectedArea();
 
-    Vector d_PN =
+    Vector dPN =
         allCells_[neighborIdx].centroid()
       - allCells_[ownerIdx].centroid();
 
-    Scalar d_PN_magnitude = d_PN.magnitude();
-    Vector e_PN = d_PN / (d_PN_magnitude + vSmallValue);
+    Scalar dPNMag = dPN.magnitude();
+    Vector ePN = dPN / (dPNMag + vSmallValue);
 
     // Orthogonal component (over-relaxed)
-    Vector E_f = (dot(S_f, S_f) / dot(S_f, e_PN)) * e_PN;
+    Vector Ef = (dot(Sf, Sf) / dot(Sf, ePN)) * ePN;
 
-    // Harmonic interpolation for diffusion coefficient
-    Scalar d_Pf = face.dPfMag();
-    Scalar d_Nf = face.dNfMag().value();
+    // Diffusion coefficient at face
+    Scalar Gammaf;
 
-    Scalar Gamma_f =
-        d_PN_magnitude
-      / ((d_Pf / (Gamma[ownerIdx] + vSmallValue))
-       + (d_Nf / (Gamma[neighborIdx] + vSmallValue)));
+    if (equation.Gamma)
+    {
+        // Cell-based: harmonic interpolation
+        const auto& G = equation.Gamma->get();
+        Scalar d_Pf = face.dPfMag();
+        Scalar d_Nf = face.dNfMag().value();
+
+        Gammaf =
+            dPNMag
+          / ((d_Pf / (G[ownerIdx] + vSmallValue))
+           + (d_Nf / (G[neighborIdx] + vSmallValue)));
+    }
+    else
+    {
+        // Face-based: use directly
+        Gammaf = equation.GammaFace->get()[face.idx()];
+    }
 
     Scalar a_diff =
-        Gamma_f * E_f.magnitude()
-      / (d_PN_magnitude + vSmallValue);
+        Gammaf * Ef.magnitude() / (dPNMag + vSmallValue);
 
-    // Convection coefficients (upwind)
-    Scalar flowRate = flowRateFace[face.idx()];
+    // Convection coefficients
+    Scalar aPConv = S(0.0);
+    Scalar aNConv = S(0.0);
 
-    auto [a_P_conv, a_N_conv] =
-        convScheme.getFluxCoefficients(flowRate);
+    if (equation.flowRate)
+    {
+        Scalar flowRate = equation.flowRate->get()[face.idx()];
+
+        auto [aP, aN] = 
+            equation.convScheme->get().getFluxCoefficients(flowRate);
+
+        aPConv = aP;
+        aNConv = aN;
+    }
 
     // Matrix coefficients for owner and neighbor cells
-    tripletList_.emplace_back(ownerIdx, ownerIdx, a_diff + a_P_conv);
+    tripletList_.emplace_back(ownerIdx, ownerIdx, a_diff + aPConv);
 
-    tripletList_.emplace_back(ownerIdx, neighborIdx, -a_diff + a_N_conv);
+    tripletList_.emplace_back(ownerIdx, neighborIdx, -a_diff + aNConv);
 
-    tripletList_.emplace_back(neighborIdx, neighborIdx, a_diff - a_N_conv);
+    tripletList_.emplace_back(neighborIdx, neighborIdx, a_diff - aNConv);
 
-    tripletList_.emplace_back(neighborIdx, ownerIdx, -a_diff - a_P_conv);
+    tripletList_.emplace_back(neighborIdx, ownerIdx, -a_diff - aPConv);
 
     // Non-orthogonal correction (explicit)
-    Vector T_f = S_f - E_f;
+    Vector Tf = Sf - Ef;
 
-    const Vector& gradPhi_P = gradPhi[ownerIdx];
-    const Vector& gradPhi_N = gradPhi[neighborIdx];
+    const Vector& gradPhiP = equation.gradPhi[ownerIdx];
+    const Vector& gradPhiN = equation.gradPhi[neighborIdx];
 
-    Vector gradPhi_f =
-        gradScheme.faceGradient
+    Vector gradPhif =
+        equation.gradScheme.faceGradient
         (
-            face.idx(),
-            fieldName,
-            phi,
-            gradPhi_P,
-            gradPhi_N
+            equation.fieldName,
+            equation.phi,
+            gradPhiP,
+            gradPhiN,
+            face.idx()
         );
 
-    Scalar nonOrthogonalFlux = Gamma_f * dot(gradPhi_f, T_f);
+    Scalar nonOrthogonalFlux = Gammaf * dot(gradPhif, Tf);
 
     vectorB_(ownerIdx)    += nonOrthogonalFlux;
     vectorB_(neighborIdx) -= nonOrthogonalFlux;
 
-    // Deferred correction (explicit)
-    Scalar deferredCorrection = convScheme.calculateCorrection
-        (
-            face,
-            phi,
-            gradPhi_P,
-            gradPhi_N,
-            flowRate
-        );
+    // Deferred correction (explicit, convection only)
+    if (equation.convScheme)
+    {
+        Scalar deferredCorrection =
+            equation.convScheme->get().calculateCorrection
+            (
+                face,
+                equation.phi,
+                gradPhiP,
+                gradPhiN,
+                equation.flowRate->get()[face.idx()]
+            );
 
-    vectorB_(ownerIdx)    -= deferredCorrection;
-    vectorB_(neighborIdx) += deferredCorrection;
+        vectorB_(ownerIdx)    -= deferredCorrection;
+        vectorB_(neighborIdx) += deferredCorrection;
+    }
 }
 
 void Matrix::assembleBoundaryFace
 (
     const Face& face,
-    const ScalarField& phi,
-    const FaceFluxField& flowRateFace,
-    const ScalarField& Gamma,
-    const GradientScheme& gradScheme,
-    const VectorField& gradPhi,
-    const std::string& fieldName,
-    const FaceData<Scalar>* boundaryFaceValues
+    const TransportEquation& equation
 )
 {
     const size_t ownerIdx = face.ownerCell();
 
     const BoundaryData* bc =
-        bcManager_.fieldBC(face.patch()->patchName(), fieldName);
+        bcManager_.fieldBC(face.patch()->patchName(), equation.fieldName);
 
     if (!bc)
     {
-        std::cerr
-            << "ERROR: No boundary condition found"
-            << " for patch "
-            << face.patch()->patchName()
-            << " field " << fieldName
-            << " face " << face.idx()
-            << " owner cell " << ownerIdx
-            << std::endl;
+        // No BC found: skip face (zero-gradient behaviour)
         return;
     }
 
-    Vector S_f = face.normal() * face.projectedArea();
-    const Vector e_Pf = face.e_Pf();
+    Vector Sf = face.normal() * face.projectedArea();
+    const Vector ePf = face.e_Pf();
     const Scalar dPfMag = face.dPfMag();
 
-    Vector E_f = (dot(S_f, S_f) / dot(S_f, e_Pf)) * e_Pf;
+    Vector Ef =(dot(Sf, Sf) / dot(Sf, ePf)) * ePf;
 
-    Scalar Gamma_f = Gamma[ownerIdx];
+    // Diffusion coefficient at boundary face
+    Scalar Gammaf;
 
-    Scalar a_diff =
-        Gamma_f * E_f.magnitude()
-      / (dPfMag + vSmallValue);
+    if (equation.Gamma)
+    {
+        Gammaf = equation.Gamma->get()[ownerIdx];
+    }
+    else
+    {
+        Gammaf = equation.GammaFace->get()[face.idx()];
+    }
+
+    Scalar aDiff = Gammaf * Ef.magnitude() / (dPfMag + vSmallValue);
+
+    // Convert OptionalRef to raw pointer for GradientScheme compatibility
+    const FaceData<Scalar>* bfv =
+        equation.boundaryFaceValues ? 
+        &equation.boundaryFaceValues->get() 
+      : nullptr;
 
     if
     (
@@ -387,57 +317,61 @@ void Matrix::assembleBoundaryFace
      || bc->type() == BCType::OMEGA_WALL_FUNCTION
     )
     {
-        // Dirichlet BC: phi_b is prescribed (0 for NO_SLIP or dynamic wall value)
-        Scalar phi_b = S(0.0);
+        // Dirichlet BC: phi_b is prescribed
+        Scalar phiB = S(0.0);
+
         if (bc->type() == BCType::NO_SLIP)
         {
-            phi_b = S(0.0);
+            phiB = S(0.0);
         }
         else if (bc->type() == BCType::OMEGA_WALL_FUNCTION)
         {
             bool hasDynamicValue =
-                boundaryFaceValues
-             && face.idx() < boundaryFaceValues->size()
-             && std::isfinite((*boundaryFaceValues)[face.idx()]);
+                bfv
+             && face.idx() < bfv->size()
+             && std::isfinite((*bfv)[face.idx()]);
 
             if (hasDynamicValue)
             {
-                phi_b = (*boundaryFaceValues)[face.idx()];
+                phiB = (*bfv)[face.idx()];
             }
             else
             {
-                // Fallback for robustness if a dynamic wall value is missing.
-                phi_b = phi[ownerIdx];
+                phiB = equation.phi[ownerIdx];
             }
         }
         else
         {
-            phi_b = extractBoundaryScalar(*bc, fieldName);
+            phiB = extractBoundaryScalar(*bc, equation.fieldName);
         }
 
-        // Diffusion: a_diff * phi_P on diagonal, a_diff * phi_b to RHS
-        tripletList_.emplace_back(ownerIdx, ownerIdx, a_diff);
-        vectorB_(ownerIdx) += a_diff * phi_b;
+        // Diffusion contribution
+        tripletList_.emplace_back(ownerIdx, ownerIdx, aDiff);
+        vectorB_(ownerIdx) += aDiff * phiB;
 
-        // Convection: flux F * phi_b to RHS
-        Scalar a_conv = flowRateFace[face.idx()];
-        vectorB_(ownerIdx) -= a_conv * phi_b;
+        // Convection contribution
+        if (equation.flowRate)
+        {
+            Scalar a_conv = equation.flowRate->get()[face.idx()];
+            vectorB_(ownerIdx) -= a_conv * phiB;
+        }
 
         // Non-orthogonal correction
-        Vector T_f = S_f - E_f;
+        Vector Tf = Sf - Ef;
 
-        Vector gradPhi_f = gradScheme.faceGradient
+        Vector gradPhif =
+            equation.gradScheme.faceGradient
             (
-                face.idx(),
-                fieldName,
-                phi,
-                gradPhi[ownerIdx],
+                equation.fieldName,
+                equation.phi,
+                equation.gradPhi[ownerIdx],
                 Vector(),
-                boundaryFaceValues
+                face.idx(),
+                bfv
             );
 
         Scalar nonOrthogonalFlux =
-            Gamma_f * dot(gradPhi_f, T_f);
+            Gammaf * dot(gradPhif, Tf);
 
         vectorB_(ownerIdx) += nonOrthogonalFlux;
     }
@@ -448,29 +382,26 @@ void Matrix::assembleBoundaryFace
      || bc->type() == BCType::NUT_WALL_FUNCTION
     )
     {
-        // Zero normal gradient: no diffusive flux, only convection
-        // a_C += F_b (mass flux to diagonal)
-        Scalar a_conv = flowRateFace[face.idx()];
+        // Zero normal gradient: only convection
+        if (equation.flowRate)
+        {
+            Scalar a_conv = equation.flowRate->get()[face.idx()];
 
-        tripletList_.emplace_back(ownerIdx, ownerIdx, a_conv);
+            tripletList_.emplace_back(ownerIdx, ownerIdx, a_conv);
 
-        // Tangential gradient extrapolation correction
-        const Vector& gradPhi_P = gradPhi[ownerIdx];
+            // Tangential gradient correction
+            const Vector& gradPhiP = equation.gradPhi[ownerIdx];
 
-        // Remove normal component: grad_b = grad_C - (grad_C . e_b) e_b
-        Vector e_b = face.normal();
-        Scalar normal_component = dot(gradPhi_P, e_b);
-        Vector gradPhi_b =
-            gradPhi_P - normal_component * e_b;
+            Vector eb = face.normal();
+            Scalar normal_component = dot(gradPhiP, eb);
+            Vector gradPhib = gradPhiP - normal_component * eb;
 
-        // d_{Cb} = cell centroid to boundary face centroid
-        Vector d_Cb =
-            face.centroid()
-          - allCells_[ownerIdx].centroid();
+            Vector dCb = face.centroid() - allCells_[ownerIdx].centroid();
 
-        // Source correction: -F_b * (grad_b . d_{Cb})
-        Scalar correction = a_conv * dot(gradPhi_b, d_Cb);
-        vectorB_(ownerIdx) -= correction;
+            Scalar correction = a_conv * dot(gradPhib, dCb);
+            vectorB_(ownerIdx) -= correction;
+        }
+        // No convection + zero gradient = no contribution
     }
     else
     {
@@ -478,114 +409,15 @@ void Matrix::assembleBoundaryFace
         std::cerr
             << "Warning: Undefined boundary "
             << "condition type for field "
-            << fieldName << " on patch "
+            << equation.fieldName << " on patch "
             << face.patch()->patchName()
             << ". Applying zero gradient."
             << std::endl;
 
-        Scalar a_conv = flowRateFace[face.idx()];
-        tripletList_.emplace_back(ownerIdx, ownerIdx, a_conv);
+        if (equation.flowRate)
+        {
+            Scalar a_conv = equation.flowRate->get()[face.idx()];
+            tripletList_.emplace_back(ownerIdx, ownerIdx, a_conv);
+        }
     }
-}
-
-
-// *************** Pressure Correction Assembly Helpers ******************
-
-void Matrix::assemblePCorrInternalFace
-(
-    const Face& face,
-    const FaceFluxField& DUf,
-    const ScalarField& pCorr,
-    const GradientScheme& gradScheme,
-    const VectorField& gradPCorr
-)
-{
-    const size_t ownerIdx = face.ownerCell();
-    const size_t neighborIdx = face.neighborCell().value();
-
-    Vector S_f = face.normal() * face.projectedArea();
-
-    Vector d_PN =
-        allCells_[neighborIdx].centroid()
-      - allCells_[ownerIdx].centroid();
-
-    Scalar dPNMag = d_PN.magnitude();
-    Vector e_PN = d_PN / (dPNMag + vSmallValue);
-
-    // Orthogonal component
-    Vector E_f = (dot(S_f, S_f) / dot(S_f, e_PN)) * e_PN;
-
-    Scalar a_diff =
-        DUf[face.idx()] * E_f.magnitude()
-      / (dPNMag + vSmallValue);
-
-    tripletList_.emplace_back(ownerIdx, ownerIdx, a_diff);
-
-    tripletList_.emplace_back(neighborIdx, neighborIdx, a_diff);
-
-    tripletList_.emplace_back (ownerIdx, neighborIdx, -a_diff);
-
-    tripletList_.emplace_back(neighborIdx, ownerIdx, -a_diff);
-
-    // Non-orthogonal correction
-    Vector T_f = S_f - E_f;
-
-    const Vector& gradpCorr_P = gradPCorr[ownerIdx];
-    const Vector& gradpCorr_N = gradPCorr[neighborIdx];
-
-    Vector gradPCorr_f =
-        gradScheme.faceGradient
-        (
-            face.idx(),
-            "pCorr",
-            pCorr,
-            gradpCorr_P,
-            gradpCorr_N
-        );
-
-    Scalar nonOrthogonalFlux =
-        DUf[face.idx()] * dot(gradPCorr_f, T_f);
-
-    vectorB_(ownerIdx)    += nonOrthogonalFlux;
-    vectorB_(neighborIdx) -= nonOrthogonalFlux;
-}
-
-void Matrix::assemblePCorrBoundaryFace
-(
-    const Face& face,
-    const FaceFluxField& DUf,
-    const VectorField& gradPCorr
-)
-{
-    const size_t ownerIdx = face.ownerCell();
-
-    const BoundaryData* bc =
-        bcManager_.fieldBC(face.patch()->patchName(), "p");
-
-    // Fixed-value pressure BC: pCorr = 0 at boundary
-    if (bc && bc->type() == BCType::FIXED_VALUE)
-    {
-        Vector S_f = face.normal() * face.projectedArea();
-        const Vector e_Pf = face.e_Pf();
-        const Scalar dPfMag = face.dPfMag();
-
-        Vector E_f = (dot(S_f, S_f) / dot(S_f, e_Pf)) * e_Pf;
-
-        Scalar a_diff =
-            DUf[face.idx()] * E_f.magnitude()
-          / (dPfMag + vSmallValue);
-
-        tripletList_.emplace_back(ownerIdx, ownerIdx, a_diff);
-
-        // Non-orthogonal correction (explicit)
-        Vector T_f = S_f - E_f;
-
-        const Vector& gradPCorr_P = gradPCorr[ownerIdx];
-
-        Scalar nonOrthogonalFlux =
-            DUf[face.idx()] * dot(gradPCorr_P, T_f);
-
-        vectorB_(ownerIdx) += nonOrthogonalFlux;
-    }
-    // ZERO_GRADIENT: no contribution
 }
