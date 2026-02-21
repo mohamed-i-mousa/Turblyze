@@ -324,6 +324,13 @@ private:
     Scalar lastKResidual_ = S(1e9);
     Scalar lastOmegaResidual_ = S(1e9);
 
+    /// First-iteration reference values for scaled residuals
+    Scalar massImbalance0_ = S(0.0);
+    Scalar velocityResidual0_ = S(0.0);
+    Scalar pressureResidual0_ = S(0.0);
+    Scalar kResidual0_ = S(0.0);
+    Scalar omegaResidual0_ = S(0.0);
+
     /// Velocity from previous iteration
     VectorField UPrev_;
 

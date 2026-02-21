@@ -77,8 +77,8 @@ SIMPLE::SIMPLE
     matrixConstruct_(nullptr),
 
     // Linear solvers (per-equation defaults)
-    momentumSolver_("momentum", S(1e-8), 1000),
-    pressureSolver_("pCorr", S(1e-6), 1000, S(0.05))
+    momentumSolver_("momentum", S(1e-6), 1000),
+    pressureSolver_("pCorr", S(1e-6), 1000)
 {}
 
 
@@ -322,43 +322,43 @@ void SIMPLE::solveMomentumEquations()
     // Solve momentum equations for each component
     TransportEquation equationUx
     {
-        Ux,                                     // phi
-        "Ux",                                   // fieldName
-        std::cref(RhieChowFlowRatePrev_),       // flowRate
-        std::cref(convectionScheme_.momentum()), // convScheme
-        std::cref(nuEff),                       // Gamma
-        std::nullopt,                           // GammaFace
-        UxSource,                               // source
-        gradUx,                                 // gradPhi
-        gradientScheme_                         // gradScheme
+        "Ux",                                       // fieldName
+        Ux,                                         // phi
+        std::cref(RhieChowFlowRatePrev_),           // flowRate
+        std::cref(convectionScheme_.momentum()),    // convScheme
+        std::cref(nuEff),                           // Gamma
+        std::nullopt,                               // GammaFace
+        UxSource,                                   // source
+        gradUx,                                     // gradPhi
+        gradientScheme_                             // gradScheme
     };
     solveMomentumComponent('x', equationUx, UxPrev);
 
     TransportEquation equationUy
     {
-        Uy,                                     // phi
-        "Uy",                                   // fieldName
-        std::cref(RhieChowFlowRatePrev_),       // flowRate
-        std::cref(convectionScheme_.momentum()), // convScheme
-        std::cref(nuEff),                       // Gamma
-        std::nullopt,                           // GammaFace
-        UySource,                               // source
-        gradUy,                                 // gradPhi
-        gradientScheme_                         // gradScheme
+        "Uy",                                       // fieldName
+        Uy,                                         // phi
+        std::cref(RhieChowFlowRatePrev_),           // flowRate
+        std::cref(convectionScheme_.momentum()),    // convScheme
+        std::cref(nuEff),                           // Gamma
+        std::nullopt,                               // GammaFace
+        UySource,                                   // source
+        gradUy,                                     // gradPhi
+        gradientScheme_                             // gradScheme
     };
     solveMomentumComponent('y', equationUy, UyPrev);
 
     TransportEquation equationUz
     {
-        Uz,                                     // phi
-        "Uz",                                   // fieldName
-        std::cref(RhieChowFlowRatePrev_),       // flowRate
-        std::cref(convectionScheme_.momentum()), // convScheme
-        std::cref(nuEff),                       // Gamma
-        std::nullopt,                           // GammaFace
-        UzSource,                               // source
-        gradUz,                                 // gradPhi
-        gradientScheme_                         // gradScheme
+        "Uz",                                       // fieldName
+        Uz,                                         // phi
+        std::cref(RhieChowFlowRatePrev_),           // flowRate
+        std::cref(convectionScheme_.momentum()),    // convScheme
+        std::cref(nuEff),                           // Gamma
+        std::nullopt,                               // GammaFace
+        UzSource,                                   // source
+        gradUz,                                     // gradPhi
+        gradientScheme_                             // gradScheme
     };
     solveMomentumComponent('z', equationUz, UzPrev);
 
@@ -520,8 +520,8 @@ void SIMPLE::solvePressureCorrection()
 
     TransportEquation equationPCorr
     {
-        pCorr_,                  // phi
         "pCorr",                 // fieldName
+        pCorr_,                  // phi
         std::nullopt,            // flowRate
         std::nullopt,            // convScheme
         std::nullopt,            // Gamma
@@ -741,41 +741,66 @@ void SIMPLE::solveTurbulence()
 
 bool SIMPLE::checkConvergence()
 {
-    // Check mass conservation and velocity/pressure residuals
+    // Compute raw residuals
     Scalar massImbalance = calculateMassImbalance();
     Scalar velocityResidual = calculateVelocityResidual();
     Scalar pressureResidual = calculatePressureResidual();
 
-    bool converged =
-        (
-            (massImbalance < tolerance_)
-         && (velocityResidual < tolerance_)
-         && (pressureResidual < tolerance_)
-        );
-
-    // Include turbulence residuals when enabled
-    if (turbulenceModel_)
+    // Store first-iteration references for scaling
+    if (massImbalance0_ < vSmallValue)
     {
-        converged = 
-            converged
-         && (lastKResidual_ < tolerance_)
-         && (lastOmegaResidual_ < tolerance_);
+        massImbalance0_ = massImbalance;
+        velocityResidual0_ = velocityResidual;
+        pressureResidual0_ = pressureResidual;
+        if (turbulenceModel_)
+        {
+            kResidual0_ = lastKResidual_;
+            omegaResidual0_ = lastOmegaResidual_;
+        }
     }
 
-    std::cout
-        << " - Mass: " << std::scientific << massImbalance
-        << ", Velocity: " << velocityResidual
-        << ", Pressure: " << pressureResidual;
+    // Scale by first-iteration values
+    Scalar scaledMass = massImbalance
+        / (massImbalance0_ + vSmallValue);
+    Scalar scaledVelocity = velocityResidual
+        / (velocityResidual0_ + vSmallValue);
+    Scalar scaledPressure = pressureResidual
+        / (pressureResidual0_ + vSmallValue);
+
+    bool converged =
+        (scaledMass < tolerance_)
+     && (scaledVelocity < tolerance_)
+     && (scaledPressure < tolerance_);
 
     if (turbulenceModel_)
+    {
+        Scalar scaledK = lastKResidual_
+            / (kResidual0_ + vSmallValue);
+        Scalar scaledOmega = lastOmegaResidual_
+            / (omegaResidual0_ + vSmallValue);
+
+        converged = converged
+            && (scaledK < tolerance_)
+            && (scaledOmega < tolerance_);
+
+        std::cout
+            << " - Mass: " << std::scientific
+            << scaledMass
+            << ", Velocity: " << scaledVelocity
+            << ", Pressure: " << scaledPressure
+            << ", k: " << scaledK
+            << ", omega: " << scaledOmega
+            << std::fixed << std::endl;
+    }
+    else
     {
         std::cout
-            << ", k: " << lastKResidual_
-            << ", omega: " << lastOmegaResidual_;
+            << " - Mass: " << std::scientific
+            << scaledMass
+            << ", Velocity: " << scaledVelocity
+            << ", Pressure: " << scaledPressure
+            << std::fixed << std::endl;
     }
-
-    std::cout
-        << std::fixed << std::endl;
 
     return converged;
 }
