@@ -138,6 +138,9 @@ private:
     /// Output configuration
     std::string vtkOutputFilename_;
 
+    /// Enable verbose console output
+    bool debug_ = false;
+
     /// Constraint configuration
     bool velocityConstraintEnabled_ = false;
     Scalar maxVelocityConstraint_ = 0;

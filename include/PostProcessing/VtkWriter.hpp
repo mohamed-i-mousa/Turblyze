@@ -66,10 +66,11 @@ void writeVtkUnstructuredGrid
     const std::vector<Vector>& allNodes,
     const std::vector<Cell>& allCells,
     const std::vector<Face>& allFaces,
-    const std::map<std::string, 
+    const std::map<std::string,
     const ScalarField*>& scalarCellFields = {},
-    const std::map<std::string, 
-    const VectorField*>& vectorCellFields = {}
+    const std::map<std::string,
+    const VectorField*>& vectorCellFields = {},
+    bool debug = false
 );
 
 /**

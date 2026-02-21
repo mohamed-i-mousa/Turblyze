@@ -115,6 +115,10 @@ void CFDApplication::loadCase()
     // Extract output configuration
     auto outputDict = caseReader_->section("output");
     vtkOutputFilename_ = outputDict.lookup<std::string>("filename");
+    debug_ = outputDict.lookupOrDefault<bool>("debug", false);
+
+    std::cout
+        << "Case file loaded." << std::endl;
 
     // Extract constraints (optional)
     if (caseReader_->hasSection("constraints"))
@@ -175,9 +179,12 @@ void CFDApplication::prepareMesh()
     {
         face.calculateGeometricProperties(nodes_);
     }
-    std::cout
-        << "Geometric properties calculated for faces."
-        << std::endl;
+    if (debug_)
+    {
+        std::cout
+            << "Geometric properties calculated for faces."
+            << std::endl;
+    }
 
     {
         std::vector<Vector> approxCentroids(cells_.size(), Vector(0,0,0));
@@ -237,7 +244,7 @@ void CFDApplication::prepareMesh()
             }
         }
 
-        if (flippedCount > 0)
+        if (debug_ && flippedCount > 0)
         {
             std::cout
                 << "Corrected " << flippedCount
@@ -250,24 +257,33 @@ void CFDApplication::prepareMesh()
         cell.calculateGeometricProperties(faces_);
     }
 
-    std::cout
-        << "Geometric properties calculated for cells."
-        << std::endl;
+    if (debug_)
+    {
+        std::cout
+            << "Geometric properties calculated for cells."
+            << std::endl;
+    }
 
     // Write cell geometry data for verification
-    VtkWriter::writeCellGeometryData
-    (
-        "../outputFiles.nosync/cell_geometry_mycfdcode.txt",
-        cells_
-    );
+    if (debug_)
+    {
+        VtkWriter::writeCellGeometryData
+        (
+            "../outputFiles.nosync/cell_geometry_mycfdcode.txt",
+            cells_
+        );
+    }
 
     for (auto& face : faces_)
     {
         face.calculateDistanceProperties(cells_);
     }
-    std::cout
-        << "Distance properties calculated for faces."
-        << std::endl;
+    if (debug_)
+    {
+        std::cout
+            << "Distance properties calculated for faces."
+            << std::endl;
+    }
 
     // Check mesh quality if requested
     if (checkQuality_)
@@ -595,7 +611,14 @@ void CFDApplication::setupBoundaryConditions()
         }
     }
 
-    bcManager_.printSummary();
+    if (debug_)
+    {
+        bcManager_.printSummary();
+    }
+
+    std::cout
+        << "Boundary conditions set for "
+        << patches_.size() << " patches." << std::endl;
 }
 
 
@@ -619,9 +642,10 @@ void CFDApplication::configureSolver()
             convectionSchemes_
         );
 
-    // Configure turbulence modeling
-    solver_->enableTurbulenceModeling(turbulenceEnabled_);
-    if (turbulenceEnabled_)
+    // Set debug mode before any output-producing calls
+    solver_->setDebug(debug_);
+
+    if (debug_ && turbulenceEnabled_)
     {
         std::cout
             << "Turbulence modeling enabled: "
@@ -635,7 +659,8 @@ void CFDApplication::configureSolver()
             initialVelocity_,
             initialPressure_,
             initialK_,
-            initialOmega_
+            initialOmega_,
+            turbulenceEnabled_
         );
 
     solver_->setPhysicalProperties(rho_, mu_);
@@ -660,18 +685,19 @@ void CFDApplication::configureSolver()
                 USection.lookupOrDefault<Scalar>("tolerance", S(1e-8)),
                 USection.lookupOrDefault<int>("maxIter", 1000)
             );
-            momentumSolver.setComputeResiduals
-            (
-                USection.lookupOrDefault<bool>("computeResiduals", false)
-            );
             solver_->setMomentumSolver(momentumSolver);
 
-            std::cout
-                << "  Momentum solver: tolerance="
-                << USection.lookupOrDefault<Scalar>("tolerance", S(1e-8))
-                << ", maxIter="
-                << USection.lookupOrDefault<int>("maxIter", 1000)
-                << std::endl;
+            if (debug_)
+            {
+                std::cout
+                    << "  Momentum solver: tolerance="
+                    << USection.lookupOrDefault<Scalar>(
+                        "tolerance", S(1e-8))
+                    << ", maxIter="
+                    << USection.lookupOrDefault<int>(
+                        "maxIter", 1000)
+                    << std::endl;
+            }
         }
 
         // Pressure solver (p)
@@ -682,8 +708,7 @@ void CFDApplication::configureSolver()
             (
                 "pCorr",
                 pSection.lookupOrDefault<Scalar>("tolerance", S(1e-6)),
-                pSection.lookupOrDefault<int>("maxIter", 1000),
-                pSection.lookupOrDefault<Scalar>("relTol", S(0.05))
+                pSection.lookupOrDefault<int>("maxIter", 1000)
             );
 
             Scalar initialShift =
@@ -691,23 +716,19 @@ void CFDApplication::configureSolver()
 
             pressureSolver.setICParameters(initialShift);
 
-            pressureSolver.setComputeResiduals
-            (
-                pSection.lookupOrDefault<bool>("computeResiduals", false)
-            );
-
             solver_->setPressureSolver(pressureSolver);
 
-            std::cout
-                << "  Pressure solver: tolerance="
-                << pSection.lookupOrDefault<Scalar>("tolerance", S(1e-6))
-                << ", relTol="
-                << pSection.lookupOrDefault<Scalar>(
-                    "relTol", S(0.05))
-                << ", maxIter="
-                << pSection.lookupOrDefault<int>(
-                    "maxIter", 1000)
-                << std::endl;
+            if (debug_)
+            {
+                std::cout
+                    << "  Pressure solver: tolerance="
+                    << pSection.lookupOrDefault<Scalar>(
+                        "tolerance", S(1e-6))
+                    << ", maxIter="
+                    << pSection.lookupOrDefault<int>(
+                        "maxIter", 1000)
+                    << std::endl;
+            }
         }
 
         // Turbulence solvers (k, omega)
@@ -716,96 +737,60 @@ void CFDApplication::configureSolver()
             LinearSolver kSolver
             (
                 "k",
-                solvers.hasSection("k") ? 
-                solvers.section("k").lookupOrDefault<Scalar>
-                (
-                    "tolerance",
-                    S(1e-8)
-                )
-              : S(1e-8),
+                solvers.hasSection("k")
+              ? solvers.section("k").lookupOrDefault<Scalar>
+                ("tolerance", S(1e-6))
+              : S(1e-6),
 
-                solvers.hasSection("k") ? 
-                solvers.section("k").lookupOrDefault<int>("maxIter", 1000)
-              : 1000,
-
-                solvers.hasSection("k") ?
-                solvers.section("k").lookupOrDefault<Scalar>("relTol", S(0.1))
-              : S(0.1)
+                solvers.hasSection("k")
+              ? solvers.section("k").lookupOrDefault<int>
+                ("maxIter", 1000)
+              : 1000
             );
-            if (solvers.hasSection("k"))
-            {
-                kSolver.setComputeResiduals
-                (
-                    solvers.section("k").lookupOrDefault<bool>
-                    (
-                        "computeResiduals",
-                        false
-                    )
-                );
-            }
 
             LinearSolver omegaSolver
             (
                 "omega",
-                solvers.hasSection("omega") ?
-                solvers.section("omega").lookupOrDefault<Scalar>
-                (
-                    "tolerance", 
-                    S(1e-8)
-                )
-              : S(1e-8),
+                solvers.hasSection("omega")
+              ? solvers.section("omega").lookupOrDefault<Scalar>
+                ("tolerance", S(1e-6))
+              : S(1e-6),
 
-                solvers.hasSection("omega") ?
-                solvers.section("omega").lookupOrDefault<int>("maxIter", 1000)
-              : 1000,
-
-                solvers.hasSection("omega") ?
-                solvers.section("omega").lookupOrDefault<Scalar>
-                (
-                    "relTol", 
-                    S(0.1)
-                )
-              : S(0.1)
+                solvers.hasSection("omega")
+              ? solvers.section("omega").lookupOrDefault<int>
+                ("maxIter", 1000)
+              : 1000
             );
-            if (solvers.hasSection("omega"))
-            {
-                omegaSolver.setComputeResiduals
-                (
-                    solvers.section("omega").lookupOrDefault<bool>
-                    (
-                        "computeResiduals",
-                        false
-                    )
-                );
-            }
-
             solver_->setTurbulenceSolvers(kSolver, omegaSolver);
         }
     }
 
-    std::cout
-        << "SIMPLE parameters:" << std::endl;
-    std::cout
-        << "  Max iterations: " << maxIterations_
-        << std::endl;
-    std::cout
-        << "  Convergence tolerance: "
-        << convergenceTolerance_ << std::endl;
-    std::cout
-        << "  Velocity relaxation: " << alphaU_
-        << std::endl;
-    std::cout
-        << "  Pressure relaxation: " << alphaP_
-        << std::endl;
-
-    if (turbulenceEnabled_)
+    if (debug_)
     {
         std::cout
-            << "  k relaxation: " << alphaK_
+            << "SIMPLE parameters:" << std::endl;
+        std::cout
+            << "  Max iterations: " << maxIterations_
             << std::endl;
         std::cout
-            << "  omega relaxation: " << alphaOmega_
+            << "  Convergence tolerance: "
+            << convergenceTolerance_ << std::endl;
+        std::cout
+            << "  Velocity relaxation: " << alphaU_
             << std::endl;
+        std::cout
+            << "  Pressure relaxation: " << alphaP_
+            << std::endl;
+
+        if (turbulenceEnabled_)
+        {
+            std::cout
+                << "  k relaxation: " << alphaK_
+                << std::endl;
+            std::cout
+                << "  omega relaxation: " << alphaOmega_
+                << std::endl;
+        }
     }
 
     // Configure field constraints
@@ -815,11 +800,16 @@ void CFDApplication::configureSolver()
     {
         if (velocityConstraintEnabled_)
         {
-            constraintSystem->setVelocityConstraints(maxVelocityConstraint_);
-            std::cout
-                << "Velocity constraint enabled: max = "
-                << maxVelocityConstraint_ << " m/s"
-                << std::endl;
+            constraintSystem->setVelocityConstraints(
+                maxVelocityConstraint_);
+
+            if (debug_)
+            {
+                std::cout
+                    << "Velocity constraint enabled: max = "
+                    << maxVelocityConstraint_ << " m/s"
+                    << std::endl;
+            }
         }
         if (pressureConstraintEnabled_)
         {
@@ -829,11 +819,14 @@ void CFDApplication::configureSolver()
                 maxPressureConstraint_
             );
 
-            std::cout
-                << "Pressure constraint enabled: ["
-                << minPressureConstraint_
-                << ", " << maxPressureConstraint_
-                << "] Pa" << std::endl;
+            if (debug_)
+            {
+                std::cout
+                    << "Pressure constraint enabled: ["
+                    << minPressureConstraint_
+                    << ", " << maxPressureConstraint_
+                    << "] Pa" << std::endl;
+            }
         }
         constraintSystem->enableConstraints
         (
@@ -841,6 +834,9 @@ void CFDApplication::configureSolver()
             pressureConstraintEnabled_
         );
     }
+
+    std::cout
+        << "SIMPLE solver initialized." << std::endl;
 }
 
 
@@ -866,8 +862,11 @@ void CFDApplication::postProcess()
     const VectorField& velocity = solver_->getVelocity();
     const ScalarField& pressure = solver_->getPressure();
 
-    std::cout
-        << "Solution extracted." << std::endl;
+    if (debug_)
+    {
+        std::cout
+            << "Solution extracted." << std::endl;
+    }
 
     std::cout
          << std::endl << "--- 6. Post-Processing Results ---" << std::endl;
@@ -972,9 +971,13 @@ void CFDApplication::exportResults()
         }
     }
 
-    std::cout
-        << std::endl << "Exporting results to VTK UnstructuredGrid..."
-        << std::endl;
+    if (debug_)
+    {
+        std::cout
+            << std::endl
+            << "Exporting results to VTK UnstructuredGrid..."
+            << std::endl;
+    }
 
     VtkWriter::writeVtkUnstructuredGrid
     (
@@ -983,7 +986,8 @@ void CFDApplication::exportResults()
         cells_,
         faces_,
         scalarFieldsToVtk,
-        vectorFieldsToVtk
+        vectorFieldsToVtk,
+        debug_
     );
 
     std::cout
@@ -1038,9 +1042,12 @@ ConvectionSchemes CFDApplication::parseConvectionSchemes()
 
         schemes.defaultScheme = createConvectionScheme(defaultSchemeName);
 
-        std::cout
-            << "Default convection scheme: "
-            << defaultSchemeName << std::endl;
+        if (debug_)
+        {
+            std::cout
+                << "Default convection scheme: "
+                << defaultSchemeName << std::endl;
+        }
 
         // Per-equation overrides (fall back to default if unset)
         std::string uSchemeName =
@@ -1048,11 +1055,15 @@ ConvectionSchemes CFDApplication::parseConvectionSchemes()
 
         if (!uSchemeName.empty())
         {
-            schemes.momentumScheme = createConvectionScheme(uSchemeName);
-            
-            std::cout
-                << "Momentum convection scheme: "
-                << uSchemeName << std::endl;
+            schemes.momentumScheme =
+                createConvectionScheme(uSchemeName);
+
+            if (debug_)
+            {
+                std::cout
+                    << "Momentum convection scheme: "
+                    << uSchemeName << std::endl;
+            }
         }
 
         std::string kSchemeName =
@@ -1060,11 +1071,15 @@ ConvectionSchemes CFDApplication::parseConvectionSchemes()
 
         if (!kSchemeName.empty())
         {
-            schemes.kScheme = createConvectionScheme(kSchemeName);
-            
-            std::cout
-                << "k convection scheme: "
-                << kSchemeName << std::endl;
+            schemes.kScheme =
+                createConvectionScheme(kSchemeName);
+
+            if (debug_)
+            {
+                std::cout
+                    << "k convection scheme: "
+                    << kSchemeName << std::endl;
+            }
         }
 
         std::string omegaSchemeName =
@@ -1072,11 +1087,15 @@ ConvectionSchemes CFDApplication::parseConvectionSchemes()
 
         if (!omegaSchemeName.empty())
         {
-            schemes.omegaScheme = createConvectionScheme(omegaSchemeName);
-            
-            std::cout
-                << "omega convection scheme: "
-                << omegaSchemeName << std::endl;
+            schemes.omegaScheme =
+                createConvectionScheme(omegaSchemeName);
+
+            if (debug_)
+            {
+                std::cout
+                    << "omega convection scheme: "
+                    << omegaSchemeName << std::endl;
+            }
         }
     }
     else

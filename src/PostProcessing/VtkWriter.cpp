@@ -689,7 +689,8 @@ void writeVtkUnstructuredGrid
     const std::map<std::string,
     const ScalarField*>& scalarCellFields,
     const std::map<std::string,
-    const VectorField*>& vectorCellFields
+    const VectorField*>& vectorCellFields,
+    bool debug
 )
 {
     // Create vtkUnstructuredGrid
@@ -893,63 +894,76 @@ void writeVtkUnstructuredGrid
     writer->Write();
 
     std::cout
-        << "VTK UnstructuredGrid file written successfully: "
+        << "VTK UnstructuredGrid file written: "
         << filename << std::endl;
 
-    std::cout
-        << "  - Number of points: " << allNodes.size() << std::endl;
-
-    std::cout
-        << "  - Number of cells: " << allCells.size() << std::endl;
-
-    std::cout
-        << "  - Cell types:" << std::endl;
-
-    if (numTets > 0)
+    if (debug)
     {
         std::cout
-            << "    - Tetrahedra: " << numTets << std::endl;
-    }
+            << "  - Number of points: "
+            << allNodes.size() << std::endl;
 
-    if (numHexes > 0)
-    {
         std::cout
-            << "    - Hexahedra: " << numHexes << std::endl;
-    }
+            << "  - Number of cells: "
+            << allCells.size() << std::endl;
 
-    if (numWedges > 0)
-    {
         std::cout
-            << "    - Wedges (prisms): " << numWedges << std::endl;
-    }
+            << "  - Cell types:" << std::endl;
 
-    if (numPyramids > 0)
-    {
-        std::cout
-            << "    - Pyramids: " << numPyramids << std::endl;
-    }
+        if (numTets > 0)
+        {
+            std::cout
+                << "    - Tetrahedra: "
+                << numTets << std::endl;
+        }
 
-    if (numConvex > 0)
-    {
-        std::cout
-            << "    - Convex point sets: " << numConvex << std::endl;
-    }
+        if (numHexes > 0)
+        {
+            std::cout
+                << "    - Hexahedra: "
+                << numHexes << std::endl;
+        }
 
-    if (numWedgeOrderingFailures > 0)
-    {
+        if (numWedges > 0)
+        {
+            std::cout
+                << "    - Wedges (prisms): "
+                << numWedges << std::endl;
+        }
+
+        if (numPyramids > 0)
+        {
+            std::cout
+                << "    - Pyramids: "
+                << numPyramids << std::endl;
+        }
+
+        if (numConvex > 0)
+        {
+            std::cout
+                << "    - Convex point sets: "
+                << numConvex << std::endl;
+        }
+
+        if (numWedgeOrderingFailures > 0)
+        {
+            std::cout
+                << "  - WARNING: "
+                << numWedgeOrderingFailures
+                << " wedge cells failed proper ordering"
+                << std::endl;
+        }
+
         std::cout
-            << "  - WARNING: " << numWedgeOrderingFailures
-            << " wedge cells failed proper ordering"
+            << "  - Number of scalar fields: "
+            << scalarCellFields.size()
+            << std::endl;
+
+        std::cout
+            << "  - Number of vector fields: "
+            << vectorCellFields.size()
             << std::endl;
     }
-
-    std::cout
-        << "  - Number of scalar fields: " << scalarCellFields.size()
-        << std::endl;
-
-    std::cout
-        << "  - Number of vector fields: " << vectorCellFields.size()
-        << std::endl;
 }
 
 // *********************** Public API: PVD Time Series ************************
