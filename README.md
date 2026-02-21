@@ -9,17 +9,17 @@ A comprehensive 3D incompressible CFD solver implementing the SIMPLE algorithm w
 - **Rhie-Chow Interpolation**: Face-velocity interpolation to prevent pressure checkerboarding on collocated grids
 - **Multiple Discretization Schemes**: Production-ready upwind (UDS), second-order upwind (SOU), and central-difference (CDS) convection schemes with mathematically validated coefficient handling
 - **Robust Gradient Reconstruction**: Weighted least-squares cell-centered gradients with dual-solver approach (LLT/LU fallback), Barth-Jesperson limiting, and comprehensive regularization
-- **Comprehensive Boundary Conditions**: Fully validated BC system with smart vector component mapping, face-to-patch caching, and robust fallback mechanisms for all boundary types
+- **Comprehensive Boundary Conditions**: Fully validated BC system with smart vector component mapping, direct face-to-patch linking, and robust fallback mechanisms for all boundary types
 - **Turbulence Modeling**: Optional k-omega SST model with wall distance calculation and wall functions
 - **Precision Control**: Configurable single (float) or double precision arithmetic
 
 ### Advanced Features
 - **Rhie-Chow Face Velocities**: Prevents pressure-velocity decoupling with under-relaxation effects
-- **Wall Distance Calculation**: Poisson equation-based wall distance for accurate turbulence modeling  
+- **Wall Distance Calculation**: Mesh wave iterative propagation for accurate turbulence modeling
 - **VTK Export**: Comprehensive output including all flow variables and turbulence quantities
 - **Mass Conservation**: Built-in mass conservation checking and diagnostics
 - **Production-Ready Numerical Methods**: Extensively tested and validated boundary conditions, convection schemes, and gradient reconstruction with comprehensive error handling
-- **Smart Boundary Handling**: Automatic vector component detection (U_x, U_y, U_z → U), intelligent face-to-patch mapping, and robust boundary value calculations
+- **Smart Boundary Handling**: Automatic vector component detection (Ux, Uy, Uz → U), direct face-to-patch linking, and robust boundary value calculations
 - **Comprehensive Documentation**: Full Doxygen-style code documentation with detailed testing methodology
 
 ## Prerequisites
@@ -56,42 +56,43 @@ make -j$(nproc)
 
 ### Build Types
 ```bash
-# Debug build (default)
-cmake -DCMAKE_BUILD_TYPE=Debug ..
-
-# Optimized release build
+# Release build (default)
 cmake -DCMAKE_BUILD_TYPE=Release ..
+make -j$(nproc)
+
+# Debug build
+cmake -DCMAKE_BUILD_TYPE=Debug ..
 make -j$(nproc)
 ```
 
-The executable `MyCFDCode` will be generated in the `build/` directory.
+The executable `MyCFDCode` will be generated in the `build.nosync/` directory.
 
 ## Running Simulations
 
 ### Basic Execution
-Run from the `build/` directory to ensure correct path resolution:
+Run from the `build.nosync/` directory to ensure correct path resolution:
 ```bash
-cd build
-./MyCFDCode                    # Uses default defaultSetup file
-./MyCFDCode customSetup        # Uses custom setup file
+cd build.nosync
+./MyCFDCode                    # Uses default defaultCase file
+./MyCFDCode customCase         # Uses custom case file
 ```
 
-### Setup File System
-The solver uses a dictionary-based setup system (default file: `defaultSetup`) instead of hard-coded parameters. This allows runtime setup without recompilation.
+### Case File System
+The solver uses a case file system (default file: `defaultCase`) instead of hard-coded parameters. This allows runtime configuration without recompilation.
 
-### Default Setup
-The default `defaultSetup` file contains:
+### Default Case
+The default `defaultCase` file contains:
 - **Mesh**: `../inputFiles/pipe_320k.msh` (320k cell pipe mesh)
 - **Boundary Conditions**:
   - Inlet: Fixed velocity (0, 0, -0.1) m/s, zero gradient pressure
   - Outlet: Fixed pressure (0 Pa), zero gradient velocity
   - Walls: No-slip velocity, zero gradient pressure
 - **Discretization**: Upwind convection scheme, least-squares gradients
-- **SIMPLE Parameters**: αU = 0.3, αp = 0.1, tolerance = 1e-6, max iterations = 1
+- **SIMPLE Parameters**: αU = 0.7, αp = 0.3, tolerance = 1e-6, max iterations = 50
 - **Turbulence**: Enabled by default with k-omega SST model
-- **Output**: `../outputFiles/pipe_320k.vtp`
+- **Output**: `../outputFiles.nosync/pipe_320k.vtu`
 
-### Flow Physics Setup
+### Flow Physics
 - **Fluid Properties**: Air (ρ = 1.225 kg/m³, μ = 1.7894e-5 Pa·s)
 - **Reynolds Number**: Low-Re flow for numerical stability
 - **Flow Type**: Internal pipe flow with cylindrical obstacles
@@ -107,28 +108,30 @@ The default `defaultSetup` file contains:
 ### Available Test Meshes
 Located in `inputFiles/`:
 - `cylinder.msh`, `cylinder_228k.msh`, `cylinder_57k.msh`, `cylinder_coarse.msh`
+- `pipe_304.msh`, `pipe_320k.msh`
+- `rod_convection.msh`, `simple_rod_tetras.msh`
 - `sphere.msh`, `sphere_24k.msh`, `sphere_74k.msh`
 
 ### Output Visualization
-- **Format**: VTK PolyData (`.vtp`) for ParaView
+- **Format**: VTK UnstructuredGrid (`.vtu`) for ParaView
 - **Fields Exported**:
-  - Flow variables: `pressure`, `velocityMagnitude`, `U_x`, `U_y`, `U_z`
+  - Flow variables: `pressure`, `U` (velocity vector)
   - Turbulence (if enabled): `k`, `omega`, `nu_t`, `wallDistance`
   - Derived quantities: `turbulentIntensity`, `turbulentViscosityRatio`, `yPlus`
 
 ### ParaView Visualization
-1. Open the `.vtp` file in ParaView
+1. Open the `.vtu` file in ParaView
 2. Apply the file and click the "eye" icon to make it visible
-3. Color by desired field (e.g., `velocityMagnitude`, `pressure`)
-4. Note: Fields are face-centered data (mesh faces become ParaView cells)
+3. Color by desired field (e.g., `pressure`, velocity magnitude via `U`)
+4. Note: Fields are cell-centered data (3D volume cells)
 
-## Setup and Customization
+## Case Configuration
 
-### Setup File Format
-The solver uses OpenFOAM-style dictionary files for setup. The default `defaultSetup` file contains all simulation parameters organized in sections:
+### Case File Format
+The solver uses OpenFOAM-style case files for configuration. The default `defaultCase` file contains all simulation parameters organized in sections:
 
 ```cpp
-// Example setup entries
+// Example case file entries
 mesh
 {
     file            ../inputFiles/your_mesh.msh;
@@ -143,7 +146,7 @@ physicalProperties
 
 SIMPLE
 {
-    nIterations             100;    // Max iterations
+    numIterations           100;    // Max iterations
     convergenceTolerance    1e-6;   // Tolerance
     relaxationFactors
     {
@@ -154,31 +157,37 @@ SIMPLE
 
 numericalSchemes
 {
-    convection      CentralDifference;  // or Upwind, SecondOrderUpwind
-    gradient        leastSquares;
+    convection
+    {
+        default     Upwind;             // Fallback scheme
+        U           SecondOrderUpwind;  // Momentum equations
+        k           Upwind;             // TKE (if turbulence enabled)
+        omega       Upwind;             // Omega (if turbulence enabled)
+    }
 }
 ```
 
-### Creating Custom Setups
-1. Copy the default `defaultSetup` file:
+### Creating Custom Cases
+1. Copy the default `defaultCase` file:
    ```bash
-   cp defaultSetup mySetup
+   cp defaultCase myCase
    ```
-2. Edit parameters in `mySetup`
-3. Run with custom setup:
+2. Edit parameters in `myCase`
+3. Run with custom case:
    ```bash
-   ./MyCFDCode mySetup
+   ./MyCFDCode myCase
    ```
 
-### Key Setup Sections
+### Key Case Sections
 - **mesh**: Mesh file path and quality checking options
 - **physicalProperties**: Fluid density and viscosity
 - **initialConditions**: Initial velocity and pressure fields
-- **boundaryConditions**: Boundary condition setup for all patches
-- **numericalSchemes**: Convection and gradient discretization schemes
+- **boundaryConditions**: Boundary condition specification for all patches
+- **numericalSchemes**: Per-equation convection scheme selection
 - **SIMPLE**: Algorithm parameters and relaxation factors
+- **linearSolvers**: Per-field solver type, preconditioner, and tolerances
 - **turbulence**: Turbulence model parameters (k-omega SST)
-- **output**: VTK export setup
+- **output**: VTK export configuration
 - **constraints**: Optional velocity/pressure limiting (disabled by default)
 
 ### Precision Control
@@ -199,12 +208,13 @@ The solver prints precision mode at runtime via `SCALAR_MODE`.
 ## Project Architecture
 
 ### Header Organization (`include/`)
-- **`Core/`**: `Scalar.h`, `Vector.h`, utility functions (`linearInterpolation.h`, `massFlowRate.h`)
-- **`Mesh/`**: Geometric entities (`Face.h`, `Cell.h`), data containers (`CellData.h`, `FaceData.h`), I/O (`MeshReader.h`)
-- **`BoundaryConditions/`**: BC system (`BoundaryConditions.h`, `BoundaryData.h`, `BoundaryPatch.h`)
-- **`Numerics/`**: Schemes (`GradientScheme.h`, `ConvectionScheme.h`), matrix assembly (`Matrix.h`), solvers (`LinearSolvers.h`, `SIMPLE.h`)
-- **`Models/`**: Turbulence modeling (`KOmegaSST.h`)
-- **`PostProcessing/`**: Output (`VtkWriter.h`)
+- **`Application/`**: Top-level driver (`CFDApplication.hpp`)
+- **`Mesh/`**: Geometric entities (`Face.hpp`, `Cell.hpp`), data containers (`CellData.hpp`, `FaceData.hpp`), fundamental types (`Scalar.hpp`, `Vector.hpp`), I/O (`MeshReader.hpp`, `MeshChecker.hpp`)
+- **`BoundaryConditions/`**: BC system (`BoundaryConditions.hpp`, `BoundaryData.hpp`, `BoundaryPatch.hpp`)
+- **`Numerics/`**: Schemes (`GradientScheme.hpp`, `ConvectionScheme.hpp`), matrix assembly (`Matrix.hpp`), solvers (`LinearSolvers.hpp`, `SIMPLE.hpp`), interpolation (`LinearInterpolation.hpp`), constraints (`Constraint.hpp`)
+- **`Models/`**: Turbulence modeling (`kOmegaSST.hpp`)
+- **`PostProcessing/`**: Output (`VtkWriter.hpp`)
+- **`Case/`**: Case file system (`CaseReader.hpp`)
 
 ### Source Organization (`src/`)
 Mirrors header organization with corresponding `.cpp` implementations.
@@ -218,25 +228,26 @@ Mirrors header organization with corresponding `.cpp` implementations.
 ## Solution Algorithm
 
 ### SIMPLE Algorithm Flow (SIMPLE.cpp:solve())
-1. **Cache Refresh**: Update gradients using robust least-squares method and mass fluxes for current iteration
-2. **Momentum Solution**: Solve Ux, Uy, Uz with effective viscosity (μ + μt) using validated boundary condition handling
-3. **Rhie-Chow Interpolation**: Compute face velocities and mass fluxes with pressure correction terms
-4. **Pressure Correction**: Assemble and solve pressure correction equation with non-orthogonal corrections
-5. **Velocity Correction**: Update velocity field using pressure correction with component-wise diffusion
-6. **Field Updates**: Correct mass fluxes and pressure with under-relaxation; reset pressure correction
-7. **Turbulence**: Advance k-omega SST model (if enabled) with wall distance calculations
-8. **Convergence Check**: Monitor mass, velocity, and pressure residuals
+1. **Pressure gradient**: Store previous-iteration fields, compute gradP via least-squares
+2. **Momentum solution**: Solve Ux, Uy, Uz with effective viscosity (μ + μt); computes velocity gradients and stores in `gradU_`
+3. **Rhie-Chow interpolation**: Compute face velocities and mass fluxes with pressure correction terms
+4. **Pressure correction**: Assemble and solve pressure correction equation with non-orthogonal corrections
+5. **Velocity correction**: Update velocity field using pressure correction gradient
+6. **Flow rate correction**: Correct face mass fluxes using updated velocity field
+7. **Pressure update**: Correct pressure with under-relaxation; reset pressure correction
+8. **Turbulence**: Advance k-omega SST model (if enabled), receiving pre-computed `gradU_`
+9. **Convergence check**: Monitor mass, velocity, and pressure residuals
 
 ### Numerical Method Implementation
 - **Convection Schemes**: Deferred correction approach with upwind base discretization and high-order corrections
 - **Gradient Reconstruction**: Weighted least-squares with automatic regularization and dual-solver robustness (LLT primary, LU fallback)
-- **Boundary Treatment**: Smart component mapping with comprehensive fallback mechanisms and face-to-patch caching
-- **Matrix Assembly**: Centralized approach with non-orthogonal diffusion corrections and under-relaxation
+- **Boundary Treatment**: Smart component mapping with comprehensive fallback mechanisms and direct face-to-patch linking
+- **Matrix Assembly**: Unified `TransportEquation` struct with single `buildMatrix()` method, non-orthogonal diffusion corrections, and under-relaxation
 
 ### Convergence Criteria
-- **Mass Imbalance**: RMS of mass conservation residuals across all internal faces
-- **Velocity Residual**: RMS change in velocity field components with L2 norm
-- **Pressure Residual**: RMS of pressure correction field indicating pressure-velocity coupling
+- **Mass Imbalance**: Dimensionless normalized continuity residual, averaged per cell
+- **Velocity Residual**: Normalized L2 change: ||U - U_prev||_2 / (||U_prev||_2 + eps)
+- **Pressure Residual**: Normalized pressure correction: RMS(p') / RMS(p)
 
 ## Numerical Method Validation
 
@@ -244,9 +255,9 @@ Mirrors header organization with corresponding `.cpp` implementations.
 All core numerical methods have been comprehensively tested and validated:
 
 #### Boundary Conditions System (BoundaryConditions.cpp)
-- **Patch Management**: Robust face-to-patch mapping with intelligent caching
-- **Boundary Value Calculation**: Smart vector component handling (U_x/U_y/U_z → U fallback)
-- **BC Types**: All boundary condition types validated (FIXED_VALUE, ZERO_GRADIENT, FIXED_GRADIENT, NO_SLIP)
+- **Patch Management**: Direct face-to-patch linking via `Face::patch()` pointer
+- **Boundary Value Calculation**: Smart vector component handling (Ux/Uy/Uz → U fallback)
+- **BC Types**: All boundary condition types validated (FIXED_VALUE, ZERO_GRADIENT, FIXED_GRADIENT, NO_SLIP, wall functions)
 - **Error Handling**: Comprehensive fallback mechanisms for undefined boundary conditions
 
 #### Convection Schemes (ConvectionScheme.cpp)
@@ -276,12 +287,12 @@ All core numerical methods have been comprehensively tested and validated:
 
 ### Runtime Issues  
 - **2D mesh error**: Only 3D meshes supported - check mesh export settings
-- **File not found**: Run from `build/` directory for correct relative paths
+- **File not found**: Run from `build.nosync/` directory for correct relative paths
 - **Memory issues**: Large meshes may require significant RAM
 
 ### Visualization Issues
 - **Empty ParaView display**: Check that fields are applied and visible
-- **Incorrect values**: Remember that fields are face-centered in VTK output
+- **Incorrect values**: Remember that fields are cell-centered in VTK output
 - **Missing fields**: Ensure turbulence is enabled if turbulence fields are expected
 
 ### Convergence Issues

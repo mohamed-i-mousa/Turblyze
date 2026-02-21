@@ -21,24 +21,24 @@ This document explains the internal architecture and implementation details of t
 ### Architecture overview (Current Structure)
 
 **Headers (`include/`):**
-- **`Core/`**: fundamental types and utilities
-  - `Scalar.h`, `Vector.h`, `linearInterpolation.h`, `massFlowRate.h`
-- **`Mesh/`**: geometry, fields, mesh I/O
-  - `Face.h`, `Cell.h`, `CellData.h`, `FaceData.h`, `MeshReader.h`, `checkMesh.h`
+- **`Application/`**: top-level driver
+  - `CFDApplication.hpp`
+- **`Mesh/`**: geometry, fields, fundamental types, mesh I/O
+  - `Face.hpp`, `Cell.hpp`, `CellData.hpp`, `FaceData.hpp`, `Scalar.hpp`, `Vector.hpp`, `MeshReader.hpp`, `MeshChecker.hpp`
 - **`BoundaryConditions/`**: patch metadata and physical BC configuration
-  - `BoundaryPatch.h`, `BoundaryData.h`, `BoundaryConditions.h`
+  - `BoundaryPatch.hpp`, `BoundaryData.hpp`, `BoundaryConditions.hpp`
 - **`Numerics/`**: discretization and algebraic system
-  - `GradientScheme.h`, `ConvectionScheme.h`, `Matrix.h`, `LinearSolvers.h`, `SIMPLE.h`
+  - `GradientScheme.hpp`, `ConvectionScheme.hpp`, `Matrix.hpp`, `LinearSolvers.hpp`, `SIMPLE.hpp`, `LinearInterpolation.hpp`, `Constraint.hpp`
 - **`Models/`**: turbulence
-  - `KOmegaSST.h`
+  - `kOmegaSST.hpp`
 - **`PostProcessing/`**: output
-  - `VtkWriter.h`
-- **`Setup/`**: setup system
-  - `DictionaryReader.hpp`: OpenFOAM-style dictionary parser
+  - `VtkWriter.hpp`
+- **`Case/`**: case system
+  - `CaseReader.hpp`: OpenFOAM-style case file parser
 
 **Sources (`src/`):**
 - Corresponding `.cpp` implementations for all headers
-- `main.cpp`: complete end-to-end example case that loads setup from dictionary file
+- `main.cpp`: complete end-to-end example case that loads configuration from case file
 
 
 ## Core data structures
@@ -46,7 +46,7 @@ This document explains the internal architecture and implementation details of t
 ### Scalar precision
 - `Scalar` is aliased to `double` by default via `PROJECT_USE_DOUBLE_PRECISION` (set in `CMakeLists.txt`).
 - Switch to float by removing that definition. The program prints the mode via `SCALAR_MODE`.
-- Global tolerances in `include/Core/Scalar.h` (e.g., `DIVISION_TOLERANCE`, `EQUALITY_TOLERANCE`, `AREA_TOLERANCE`, `VOLUME_TOLERANCE`, `GRADIENT_TOLERANCE`).
+- Global tolerances in `include/Mesh/Scalar.hpp` (e.g., `DIVISION_TOLERANCE`, `EQUALITY_TOLERANCE`, `AREA_TOLERANCE`, `VOLUME_TOLERANCE`, `GRADIENT_TOLERANCE`).
 
 ### Vector
 - Simple 3D vector with arithmetic, `dot`, `cross`, `magnitude`, normalization, and stream IO.
@@ -101,30 +101,33 @@ Notes:
 ### BoundaryData Implementation
 **Supported BC Types**:
 - `FIXED_VALUE`: Dirichlet boundary conditions
-- `FIXED_GRADIENT`: Neumann boundary conditions  
+- `FIXED_GRADIENT`: Neumann boundary conditions
 - `ZERO_GRADIENT`: Natural boundary conditions
 - `NO_SLIP`: Special case for velocity (vector value = 0)
+- `K_WALL_FUNCTION`: Wall function for turbulent kinetic energy
+- `OMEGA_WALL_FUNCTION`: Wall function for specific dissipation rate
+- `NUT_WALL_FUNCTION`: Wall function for turbulent viscosity
 
 **Value Storage**:
 - `BCValueType::SCALAR` or `BCValueType::VECTOR`
-- Type-safe getters: `getFixedScalarValue()`, `getFixedScalarGradient()`
-- Vector storage: `vectorValue`, `vectorGradient`
+- Type-safe getters: `fixedScalarValue()`, `fixedScalarGradient()`
+- Vector access: `vectorValue()`, `vectorGradient()`
 
 ### BoundaryConditions Manager
 **Data Structure**: `patchBoundaryData[patchName][fieldName] = BoundaryData`
 
 **Key Features**:
-1. **Fast Lookup**: Face-to-patch cache built on demand via `ensureFaceToPatchCacheBuilt()`
-2. **Smart Field Mapping**: Automatic fallback from `U_x`/`U_y`/`U_z` to parent field `U`
+1. **Direct Patch Lookup**: `Face::patch()` returns `const BoundaryPatch*` directly, linked at startup via `BoundaryConditions::linkFaces()`
+2. **Smart Field Mapping**: Automatic fallback from `Ux`/`Uy`/`Uz` to parent field `U`
 3. **Robust Retrieval**: `fieldBC()` with comprehensive error handling
-4. **Boundary Value Calculation**: `calculateBoundaryFaceValue()` for scalars and vectors
+4. **Boundary Value Calculation**: `calculateBoundaryFaceValue()` for scalars, `calculateBoundaryVectorFaceValue()` for vectors
 
 **Vector Component Handling**:
 ```cpp
 // Smart component extraction
-if (fieldName == "U_x") boundaryValue = bc->vectorValue.x;
-else if (fieldName == "U_y") boundaryValue = bc->vectorValue.y;
-else if (fieldName == "U_z") boundaryValue = bc->vectorValue.z;
+if (fieldName == "Ux") val = bc->vectorValue().x();
+else if (fieldName == "Uy") val = bc->vectorValue().y();
+else if (fieldName == "Uz") val = bc->vectorValue().z();
 ```
 
 ### BC Evaluation Logic
@@ -252,26 +255,34 @@ else
 
 ## Linear system assembly (`Matrix`)
 
-Holds cached gradients and face data per SIMPLE iteration:
-- Cell gradients: `gradP`, `gradUx`, `gradUy`, `gradUz`, optionally `gradk`, `gradOmega`.
-- Face gradients: `grad*_f` via interpolation.
-- Face mass fluxes `mdotFaces` for consistent assembly.
+Uses a unified `TransportEquation` struct to bundle all data for any transport equation (momentum, pressure correction, turbulence). Gradients and mass fluxes are stored in `SIMPLE`, not in `Matrix`.
 
-### Momentum matrices (per component)
-`buildMomentumMatrix(fieldName, φ, φ_old, source, ρ, Γ, timeScheme, dt, θ, grad_φ, grad_φ_f, conv)`:
-- Steady-state path:
-  - Assembles diffusion and convection for internal faces with non-orthogonal correction.
-  - Boundary faces:
-    - Dirichlet: contributes to diagonal and RHS using `computeDirichletValue` (handles vector-valued U components).
-    - Neumann: adds to RHS for fixed-gradient; zero-gradient eliminates diffusive normal flux.
-  - Deferred-correction for CDS/SOU added to RHS.
-- Transient path: adds implicit diagonal `ρV/dt` and explicit old-state contributions as per θ-scheme.
+### TransportEquation struct
+```cpp
+struct TransportEquation
+{
+    const ScalarField& phi;             // Current field values
+    std::string fieldName;              // "Ux", "k", "pCorr", etc.
+    OptionalRef<FaceFluxField> flowRate;    // Face flow rates (nullopt = no convection)
+    OptionalRef<ConvectionScheme> convScheme;
+    OptionalRef<ScalarField> Gamma;         // Cell-based diffusion coefficient
+    OptionalRef<FaceFluxField> GammaFace;   // Face-based diffusion coefficient
+    const ScalarField& source;          // Explicit source term
+    const VectorField& gradPhi;         // Pre-computed cell gradients
+    const GradientScheme& gradScheme;
+    OptionalRef<FaceData<Scalar>> boundaryFaceValues;
+};
+```
 
-### Pressure correction matrix
-`buildPressureMatrix(massFlux, a_Ux, a_Uy, a_Uz, ρ)`:
-- RHS is negative mass imbalance per cell.
-- Coefficients derived from Rhie–Chow-consistent momentum diagonals `a_U*` and face metric/normals (minimum correction, with ρ).
-- If no fixed-pressure BC exists, anchors p' at one cell to avoid singularity.
+### Unified build method
+`buildMatrix(const TransportEquation& eq)`:
+- Single method handles all equation types:
+  - **Momentum**: convection + diffusion via cell-based `Gamma` (nuEff)
+  - **Pressure correction**: face-based diffusion via `GammaFace` (DUf), no convection (flowRate = nullopt)
+  - **Turbulence k/omega**: convection + diffusion
+- Internal faces: assembles diffusion and convection with non-orthogonal correction
+- Boundary faces: handles FIXED_VALUE, ZERO_GRADIENT, NO_SLIP, and wall function types
+- Deferred-correction for CDS/SOU added to RHS
 
 ### Under-relaxation
 `relax(α, φ_prev)` performs Patankar-style implicit relaxation by scaling the diagonal and adjusting RHS with the previous state.
@@ -280,22 +291,23 @@ Holds cached gradients and face data per SIMPLE iteration:
 ## SIMPLE algorithm
 
 Entry point: `SIMPLE::solve()` performs the outer iteration until convergence or `maxIterations`:
-1) Cache refresh: gradients and `mdotFaces` for the current iteration.
-2) Solve momentum equations for `U_x`, `U_y`, `U_z` with effective viscosity `μ_eff = μ + μ_t` (if turbulence enabled).
-3) Compute Rhie–Chow face velocities and mass fluxes from updated U.
-4) Build and solve pressure correction p'.
-5) Correct velocity with `U = U* - (1/a_rep) ∇p'` (a representative diag per cell).
-6) Correct face mass fluxes and pressure `p = p + α_p p'`; reset p'.
-7) If enabled, advance k–ω SST using current fields and gradients.
-8) Check convergence using mass imbalance, velocity RMS, and p' RMS; warn on divergence.
+1) Store previous-iteration fields (U, face velocities, flow rates), compute gradP.
+2) `solveMomentumEquations()`: extracts Ux/Uy/Uz components, computes velocity gradients once into `gradU_` member, solves each component via `solveMomentumComponent()` with `buildMatrix()` + Patankar relaxation.
+3) `calculateRhieChowFlowRate()`: compute face velocities and mass fluxes.
+4) `solvePressureCorrection()`: pre-compute mass imbalance source, build and solve p' equation using `buildMatrix()` with face-based diffusion (DUf), no convection.
+5) `correctVelocity()`: update U using `U = U* - D ∇p'`.
+6) `correctFlowRate()`: update face mass fluxes.
+7) `correctPressure()`: apply `p = p + α_p p'`; reset p'.
+8) `solveTurbulence()`: advance k–ω SST using current fields and pre-computed `gradU_` (if enabled).
+9) `checkConvergence()`: monitor mass imbalance (normalized per-cell average), velocity residual (normalized L2), and pressure correction residual (normalized RMS).
 
 Controls:
-- `setRelaxationFactors(α_U, α_p)`, `setConvergenceTolerance(tol)`, `setMaxIterations(n)`, `enableTurbulenceModeling(bool)`.
+- `setRelaxationFactors(α_U, α_p, α_k, α_omega)`, `setConvergenceTolerance(tol)`, `setMaxIterations(n)`. Turbulence is enabled by passing `enableTurbulence = true` to `initialize()`.
 
 
 ## Rhie–Chow face-velocity interpolation
 
-Used in `calculateRhieChowFaceVelocities()` to prevent pressure checkerboarding:
+Used in `calculateRhieChowFlowRate()` to prevent pressure checkerboarding:
 - Start with linear-interpolated face velocity `U_f_lin`.
 - Compute face D-like coefficient from interpolated momentum diagonals and geometry.
 - Apply correction with face pressure gradient: `U_f = U_f_lin + D_f (∇p_f_lin - ∇p_f_cache)`.
@@ -305,27 +317,29 @@ Used in `calculateRhieChowFaceVelocities()` to prevent pressure checkerboarding:
 
 ## Turbulence model (k–omega SST)
 
-Class `KOmegaSST`:
-- Initializes `k`, `ω`, `μ_t`, and computes `wallDistance` by solving a Poisson-like equation with `φ=0` at walls and `∇²φ=-1`.
-- Solves ω and k transport with variable diffusion (`μ + σ·μ_t`), production/destruction, and cross-diffusion for SST.
-- Calculates blending functions `F1`/`F2`, turbulent viscosity `μ_t = ρ a1 k / max(a1 ω, S F2)`, and applies wall corrections.
-- Provides getters used by SIMPLE to form `μ_eff` and for post-processing: `k`, `ω`, `μ_t`, `wallDistance`, `wallShearStress`.
-- Supports transient mode (`setTransientMode`), though main driver currently uses steady flow.
+Class `kOmegaSST`:
+- Initializes `k`, `ω`, `nut`, and computes `wallDistance` via mesh wave iterative propagation from wall boundaries.
+- `solve(U, flowRateFace, gradU)` accepts pre-computed velocity gradients from SIMPLE.
+- Solves ω and k transport with variable diffusion (`ν + σ·ν_t`), production/destruction, and cross-diffusion for SST.
+- Calculates blending functions `F1`/`F2`, turbulent viscosity `ν_t = a1 k / max(a1 ω, S F2)`, and applies wall corrections.
+- Provides getters used by SIMPLE to form effective viscosity and for post-processing: `k`, `ω`, `nut`, `wallDistance`, `wallShearStress`.
 
 
 ## Post-processing and VTK export
 
-`VtkWriter::writeVtkFile(filename, allNodes, allFaces, allCells, scalarCellFields)`:
-- Writes VTK PolyData (`.vtp`) with points and polygonal faces.
-- Maps cell-centered scalar fields to faces via owner-cell index.
-- Used in `main.cpp` to export pressure, velocity magnitude and components, and when available: `k`, `ω`, `μ_t`, `wallDistance`, and derived quantities (`turbulentIntensity`, `turbulentViscosityRatio`, `yPlus`).
+`writeVtkUnstructuredGrid(filename, allNodes, allCells, allFaces, scalarCellFields, vectorCellFields)`:
+- Writes VTK UnstructuredGrid (`.vtu`) with 3D volume cells (tetrahedra, hexahedra, wedges, pyramids).
+- Exports cell-centered scalar fields (pressure, turbulence quantities) and vector fields (velocity).
+- Uses topology-aware node ordering for proper VTK cell types (hexahedron, wedge, pyramid).
+- Used in `main.cpp` to export pressure, velocity vector `U`, and when available: `k`, `ω`, `μ_t`, `wallDistance`, and derived quantities (`turbulentIntensity`, `turbulentViscosityRatio`, `yPlus`).
 
 
 ## Linear solvers
 
-`LinearSolvers::BiCGSTAB` wraps Eigen’s BiCGSTAB with ILUT preconditioning:
-- Configurable max iterations and tolerance per solve call.
-- Logs iteration counts, estimated error, and exact final residual norms (L2 and avg abs).
+`LinearSolver` provides both `solveWithBiCGSTAB()` (ILUT preconditioner) and `solveWithPCG()` (Incomplete Cholesky preconditioner):
+- Per-field solver instances with independent convergence parameters.
+- Configurable absolute tolerance, relative tolerance, and max iterations.
+- Optional exact RMS residual computation with convergence diagnostics.
 - Throws on non-finite errors; returns success boolean.
 
 
@@ -341,20 +355,26 @@ Class `KOmegaSST`:
 ### Add a new scalar transport equation
 1) Create a `ScalarField phi("phi", numCells, initial)` in your driver.
 2) Build an effective diffusion field `Gamma` and a source `phi_source` per cell.
-3) Use `Matrix::buildScalarTransportMatrix("phi", phi, phi_old, U, phi_source, rho, Gamma, TimeScheme::Steady, 0.0, 1.0, convScheme)`.
-4) Solve with `LinearSolvers::BiCGSTAB`, copy solution back to `phi`.
-5) Apply boundary conditions if needed via `BoundaryConditions`.
+3) Pre-compute cell gradients `gradPhi` via `GradientScheme::cellGradient()`.
+4) Create a `TransportEquation` struct with all required fields:
+   ```cpp
+   TransportEquation eq{phi, "phi", flowRate, convScheme,
+       Gamma, std::nullopt, source, gradPhi, gradScheme,
+       std::nullopt};
+   ```
+5) Call `matrix.buildMatrix(eq)`, then solve with `LinearSolver::solveWithBiCGSTAB()`.
+6) Apply under-relaxation via `matrix.relax(alpha, phiPrev)` if needed.
 
 ### Add a new convection scheme
-1) Derive from `ConvectionScheme` and implement `getFluxCoefficients`.
+1) Derive from `ConvectionScheme` (base `getFluxCoefficients` returns `FluxCoefficients` struct).
 2) Optionally add high-order face value and correction methods (see CDS/SOU) and integrate as deferred-correction in `Matrix`.
 
 ### Add a new boundary condition
-1) **Extend enums**: Add new type to `BCType` enum
+1) **Extend enums**: Add new type to `BCType` enum in `BoundaryData.hpp`
 2) **Update BoundaryData**: Add setters/getters for new BC type
 3) **Extend evaluation**: Update `calculateBoundaryFaceValue()` and `calculateBoundaryFaceGradient()`
-4) **Matrix integration**: Update boundary handling in `Matrix::buildMomentumMatrix()`
-5) **Testing**: Add comprehensive test cases for the new BC type
+4) **Matrix integration**: Update boundary handling in `Matrix::buildMatrix()`
+5) **Case file parsing**: Add parsing support in `CFDApplication::setupBoundaryConditions()`
 
 **Example Implementation**:
 ```cpp
@@ -385,9 +405,9 @@ case BCType::PERIODIC:
 1. **Patch Registration**: Verify patch names, zones, face ranges
 2. **BC Storage**: Confirm type-safe storage of scalar/vector values
 3. **Field Lookup**: Test `fieldBC()` with various field names
-4. **Vector Components**: Verify `U_x`/`U_y`/`U_z` → `U` fallback
+4. **Vector Components**: Verify `Ux`/`Uy`/`Uz` → `U` fallback
 5. **Boundary Values**: Test `calculateBoundaryFaceValue()` for all BC types
-6. **Cache Operations**: Verify face-to-patch mapping performance
+6. **Patch Linking**: Verify `Face::patch()` returns correct patch after `linkFaces()`
 
 **Key Tests**:
 ```cpp
@@ -464,58 +484,60 @@ gradMag * maxDistance < 10.0 * phiRange  // Gradient limiting
 
 ### Development Tips
 
-- **BCs**: Use `BoundaryConditions::printSummary()` to inspect setup
+- **BCs**: Use `BoundaryConditions::printSummary()` to inspect configuration
 - **Gradients**: Check matrix conditioning with `ATA.determinant()`
-- **Convection**: Verify upwind logic with simple 1D test cases  
+- **Convection**: Verify upwind logic with simple 1D test cases
 - **Solver logs**: High residuals indicate BC or relaxation issues
 - **Mesh validation**: Reader throws early for malformed `.msh` files
-- **ParaView**: PolyData cells are faces; color by face arrays
+- **ParaView**: UnstructuredGrid cells are 3D volume cells; color by cell arrays
 - **Debugging**: Use comprehensive std::cout for method tracing
 
 
-## Setup System
+## Case System
 
-The solver uses `DictionaryReader` for runtime setup instead of hard-coded parameters.
+The solver uses `CaseReader` for runtime configuration instead of hard-coded parameters.
 
-### DictionaryReader Implementation
-- **Location**: `include/Setup/DictionaryReader.hpp` and `src/Setup/DictionaryReader.cpp`
-- **Parser**: OpenFOAM-style dictionary format with nested sections
+### CaseReader Implementation
+- **Location**: `include/Case/CaseReader.hpp` and `src/Case/CaseReader.cpp`
+- **Parser**: OpenFOAM-style format with nested sections
 - **Features**:
   - Type-safe template-based lookups: `lookup<Scalar>("keyword")`
   - Optional parameters with defaults: `lookupOrDefault<bool>("key", false)`
-  - Nested dictionaries: `subDict("sectionName")`
+  - Nested sections: `section("sectionName")`
   - Vectors: `(x y z)` format automatically converted to `Vector`
   - Comments: Single-line `//` and multi-line `/* */`
 
-### Setup File Structure
-The default `defaultSetup` file is organized into logical sections:
+### Case File Structure
+The default `defaultCase` file is organized into logical sections:
 
 ```cpp
 mesh { file path; checkQuality bool; }
 physicalProperties { rho scalar; mu scalar; }
 initialConditions { U vector; p scalar; }
 boundaryConditions { U { patch { type value; } } p { ... } }
-numericalSchemes { convection scheme; gradient scheme; }
-SIMPLE { nIterations int; convergenceTolerance scalar; relaxationFactors { U scalar; p scalar; } }
+numericalSchemes { convection { default scheme; U scheme; k scheme; omega scheme; } }
+SIMPLE { numIterations int; convergenceTolerance scalar; relaxationFactors { U scalar; p scalar; k scalar; omega scalar; } }
+linearSolvers { U { solver type; preconditioner type; tolerance scalar; maxIter int; } p { ... } }
 turbulence { model string; enabled bool; }
-output { format string; filename string; }
+output { filename string; }
+constraints { velocity { enabled bool; maxVelocity scalar; } pressure { enabled bool; ... } }
 ```
 
-### Adding New Setup Parameters
-1. Add entry to appropriate section in `defaultSetup`
-2. Read in `main.cpp` using `setup.lookup<Type>("parameter")`
+### Adding New Case Parameters
+1. Add entry to appropriate section in `defaultCase`
+2. Read in `main.cpp` using `caseReader.lookup<Type>("parameter")`
 3. Apply to solver/model as needed
 
 Example:
 ```cpp
-// In defaultSetup
+// In defaultCase
 SIMPLE
 {
     newParameter    0.5;    // New parameter
 }
 
 // In main.cpp
-auto simpleDict = setup.section("SIMPLE");
+auto simpleDict = caseReader.section("SIMPLE");
 Scalar newParam = simpleDict.lookup<Scalar>("newParameter");
 simpleSolver.setNewParameter(newParam);
 ```
@@ -531,23 +553,24 @@ simpleSolver.setNewParameter(newParam);
 
 ```mermaid
 flowchart TD
-  A[main.cpp] --> B[readMshFile]
+  A[main.cpp / CFDApplication] --> B[readMshFile]
   B --> C[compute face geometry]
   C --> D[compute face distances]
   D --> E[compute cell geometry]
-  E --> F[BoundaryConditions setup]
+  E --> F[BoundaryConditions + linkFaces]
   F --> G[SIMPLE constructor]
   G --> H[SIMPLE.solve]
-  H --> I[refresh caches]
-  I --> J[solve Ux,Uy,Uz]
-  J --> K[Rhie-Chow face U]
-  K --> L[calc mass flux]
-  L --> M[solve p prime]
-  M --> N[correct U, mdot, p]
-  N -.-> T[k omega SST]
-  T --> P[convergence check]
+  H --> I[compute gradP]
+  I --> J[solveMomentumEquations]
+  J --> K[calculateRhieChowFlowRate]
+  K --> L[solvePressureCorrection]
+  L --> M[correctVelocity]
+  M --> N[correctFlowRate]
+  N --> O[correctPressure]
+  O -.-> T[solveTurbulence]
+  T --> P[checkConvergence]
   P -->|loop| I
-  P --> Q[post-process + VTK]
+  P --> Q[postProcess + VTK]
 ```
 
 
