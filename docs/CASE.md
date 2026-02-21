@@ -314,6 +314,7 @@ Output configuration.
 output
 {
     filename        ../outputFiles.nosync/result.vtu;    // Output file path
+    debug           false;      // Optional: verbose console output
 }
 ```
 
@@ -321,3 +322,10 @@ output
 - Output format is always VTK
 - All computed fields are written to the output file
 - Output is written at the end of the simulation only
+- `debug` (default: `false`): When `true`, enables verbose
+  console output including mesh geometry details, boundary
+  condition summaries, solver configuration, per-equation
+  solver convergence, turbulence field diagnostics, and VTK
+  export statistics. When `false`, only essential output is
+  shown (phase headers, iteration residuals, convergence
+  status, flow statistics, and error/warning messages).
