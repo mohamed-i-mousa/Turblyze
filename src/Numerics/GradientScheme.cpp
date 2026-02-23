@@ -100,9 +100,9 @@ Vector GradientScheme::cellGradient
             phiBoundary =
                 bcManager_.calculateBoundaryFaceValue
                 (
-                    face,
+                    fieldName,
                     phi,
-                    fieldName
+                    face
                 );
         }
 
@@ -134,12 +134,13 @@ Vector GradientScheme::cellGradient
         }
         else
         {
-            throw   std::runtime_error
-                    (
-                        "Gradient computation failed"
-                      + std::string(" for cell ")
-                      + std::to_string(cellIndex)
-                    );
+            throw
+                std::runtime_error
+                (
+                    "Gradient computation failed"
+                  + std::string(" for cell ")
+                  + std::to_string(cellIndex)
+                );
         }
     }
 }
@@ -162,10 +163,10 @@ Vector GradientScheme::faceGradient
         return
             calculateBoundaryFaceGradient
             (
-                face,
                 fieldName,
                 phi,
                 gradPhiP,
+                face,
                 boundaryFaceValues
             );
     }
@@ -200,11 +201,12 @@ Vector GradientScheme::averageFaceGradient
 {
     if (face.isBoundary())
     {
-        throw   std::invalid_argument
-                (
-                    "VectorLinearInterpolation: "
-                    "Cannot interpolate on boundary face"
-                );
+        throw
+            std::invalid_argument
+            (
+                "VectorLinearInterpolation: "
+                "Cannot interpolate on boundary face"
+            );
     }
 
     Scalar d_Pf = face.dPfMag();
@@ -219,10 +221,10 @@ Vector GradientScheme::averageFaceGradient
 
 Vector GradientScheme::calculateBoundaryFaceGradient
 (
-    const Face& face,
     const std::string& fieldName,
     const ScalarField& phi,
     const Vector& cellGradient,
+    const Face& face,
     const FaceData<Scalar>* boundaryFaceValues
 ) const
 {
@@ -240,7 +242,7 @@ Vector GradientScheme::calculateBoundaryFaceGradient
             Scalar cellValue = phi[face.ownerCell()];
 
             Scalar d_n =
-                dot(face.d_Pf(), face.normal());
+                dot(face.dPf(), face.normal());
 
             Scalar dPfMag = face.dPfMag();
 
@@ -297,7 +299,7 @@ Vector GradientScheme::calculateBoundaryFaceGradient
             Scalar cellValue = phi[face.ownerCell()];
 
             Scalar d_n =
-                dot(face.d_Pf(), face.normal());
+                dot(face.dPf(), face.normal());
 
             Scalar dPfMag = face.dPfMag();
 
@@ -353,7 +355,7 @@ Vector GradientScheme::calculateBoundaryFaceGradient
             Scalar cellValue = phi[face.ownerCell()];
 
             Scalar d_n =
-                dot(face.d_Pf(), face.normal());
+                dot(face.dPf(), face.normal());
 
             // Keep strict wall-normal spacing for omega wall-function gradients.
             Scalar dnStabilized = std::max(std::abs(d_n), S(1e-20));

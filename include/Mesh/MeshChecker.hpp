@@ -2,9 +2,9 @@
  * @file MeshChecker.hpp
  * @brief Mesh quality assessment and diagnostic utilities
  *
- * This header provides mesh quality checking functions that analyze geometric
- * properties and report statistics to help identify potential numerical
- * issues.
+ * @details This header provides mesh quality checking functions that analyze 
+ * geometric properties and report statistics to help identify potential 
+ * numerical issues.
  *
  * @class MeshChecker
  *
@@ -43,9 +43,7 @@ public:
         const std::vector<Cell>& cells
     );
 
-    /**
-     * @brief Perform mesh quality checks and report statistics
-     */
+    /// Perform mesh quality checks and report statistics
     void check() const;
 
 private:
@@ -54,6 +52,7 @@ private:
 
     /// Minimum face area before warning
     static constexpr Scalar minArea_ = 1e-12;
+
     /// Minimum cell volume before warning
     static constexpr Scalar minVolume_ = 1e-30;
 
@@ -61,8 +60,10 @@ private:
 
     /// Reference to all mesh nodes
     const std::vector<Vector>& allNodes_;
+
     /// Reference to all mesh faces
     const std::vector<Face>& allFaces_;
+
     /// Reference to all mesh cells
     const std::vector<Cell>& allCells_;
 

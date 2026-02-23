@@ -2,7 +2,7 @@
  * @file CFDApplication.hpp
  * @brief Top-level application driver for the CFD solver
  *
- * This header defines the CFDApplication class, which manages the
+ * @details This header defines the CFDApplication class, which manages the
  * entire simulation: case file parsing, mesh preparation, boundary condition
  * setup, solver configuration, solution, and output.
  *
@@ -42,9 +42,8 @@ public:
      */
     explicit CFDApplication(const std::string& caseFilePath);
 
-    /**
-     * @brief Run the full simulation
-     */
+
+    /// Run the full simulation
     void run();
 
 private:
@@ -76,8 +75,7 @@ private:
 
     /**
      * @brief Create a convection scheme by name
-     * @param name Scheme name (Upwind, CentralDifference,
-     *        SecondOrderUpwind)
+     * @param name Scheme name (Upwind, CentralDifference, SecondOrderUpwind)
      * @return Unique pointer to created scheme
      * @throws std::runtime_error if name is unknown
      */
@@ -151,8 +149,8 @@ private:
     /// Solver components
     BoundaryConditions bcManager_;
     std::unique_ptr<GradientScheme> gradScheme_;
-    std::unique_ptr<SIMPLE> solver_;
     ConvectionSchemes convectionSchemes_;
+    std::unique_ptr<SIMPLE> solver_;
 };
 
 #endif // CFD_APPLICATION_HPP

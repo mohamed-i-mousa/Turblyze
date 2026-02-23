@@ -109,11 +109,13 @@ Scalar BoundaryData::fixedScalarValue() const
         return scalarValue_;
     }
 
-    throw   std::runtime_error
-            (
-                "Attempted to get fixed scalar value, but BC is not set to "
-                "FIXED_VALUE with SCALAR type."
-            );
+    throw
+        std::runtime_error
+        (
+            "Attempted to get fixed scalar value, "
+            "but BC is not set to "
+            "FIXED_VALUE with SCALAR type."
+        );
 }
 
 const Vector& BoundaryData::fixedVectorValue() const
@@ -128,11 +130,13 @@ const Vector& BoundaryData::fixedVectorValue() const
         return vectorValue_;
     }
 
-    throw   std::runtime_error
-            (
-                "Attempted to get fixed vector value, but BC is not set to "
-                "FIXED_VALUE/NO_SLIP with VECTOR type."
-            );
+    throw
+        std::runtime_error
+        (
+            "Attempted to get fixed vector value, "
+            "but BC is not set to "
+            "FIXED_VALUE/NO_SLIP with VECTOR type."
+        );
 }
 
 Scalar BoundaryData::fixedScalarGradient() const
@@ -146,11 +150,13 @@ Scalar BoundaryData::fixedScalarGradient() const
         return scalarGradient_;
     }
 
-    throw   std::runtime_error
-            (
-                "Attempted to get fixed scalar gradient, but BC is not set to "
-                "FIXED_GRADIENT with SCALAR type."
-            );
+    throw
+        std::runtime_error
+        (
+            "Attempted to get fixed scalar gradient, "
+            "but BC is not set to "
+            "FIXED_GRADIENT with SCALAR type."
+        );
 }
 
 const Vector& BoundaryData::fixedVectorGradient() const
@@ -164,9 +170,11 @@ const Vector& BoundaryData::fixedVectorGradient() const
         return vectorGradient_;
     }
 
-    throw   std::runtime_error
-            (
-                "Attempted to get fixed vector gradient, but BC is not set to "
-                "FIXED_GRADIENT with VECTOR type."
-            );
+    throw
+        std::runtime_error
+        (
+            "Attempted to get fixed vector gradient, "
+            "but BC is not set to "
+            "FIXED_GRADIENT with VECTOR type."
+        );
 }

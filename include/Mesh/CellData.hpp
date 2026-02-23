@@ -2,9 +2,10 @@
  * @file CellData.hpp
  * @brief Template container for cell-centered field data storage
  * 
- * This header defines a generic template class for storing field variables
- * at cell centers in finite volume meshes. The container manages cell-based
- * data including velocity fields, pressure field, and cell-centered gradients
+ * @details This header defines a generic template class for storing field 
+ * variables at cell centers in finite volume meshes. The container manages 
+ * cell-based data including velocity fields, pressure field, and 
+ * cell-centered gradients
  * 
  * @class CellData<T>
  * @tparam T Type of field value stored at each cell (e.g., Scalar, Vector)
@@ -85,12 +86,6 @@ public:
     void setAll(const T& value);
 
     /**
-     * @brief Print field summary for debugging
-     * @param itemsToShow Number of items to display
-     */
-    void printSummary(size_t itemsToShow) const;
-
-    /**
      * @brief Get pointer to field storage
      * @return Pointer to first element
      */
@@ -106,7 +101,13 @@ public:
      * @brief Get field name
      * @return Const reference to field name
      */
-    const std::string& getName() const { return name_; }
+    const std::string& name() const { return name_; }
+
+    /**
+     * @brief Print field summary for debugging
+     * @param itemsToShow Number of items to display
+     */
+    void printSummary(size_t itemsToShow) const;
 
 private:
 

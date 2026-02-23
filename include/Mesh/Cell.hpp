@@ -2,9 +2,9 @@
  * @file Cell.hpp
  * @brief Represents a computational cell in the mesh
  * 
- * This header defines the Cell class, which represents a finite control 
- * volume in the computational mesh. The cell is the primary entity where flow
- * variables (pressure, velocity, etc.) are stored and solved.
+ * @details This header defines the Cell class, which represents a finite 
+ * control volume in the computational mesh. The cell is the primary entity 
+ * where flow variables (pressure, velocity, etc.) are stored and solved.
  * The cell is defined by a collection of bounding faces that form a closed
  * volume.
  * 
@@ -71,9 +71,7 @@ public:
      */
     void addFaceSign(int sign) { faceSigns_.push_back(sign); }
     
-    /** 
-     * @brief Clear all face indices
-     */
+    /// Clear all face indices
     void clearFaceIndices() { faceIndices_.clear(); }
     
     /** 
@@ -84,10 +82,8 @@ public:
     {
         neighborCellIndices_ = neighbors;
     }
-    
-    /** 
-     * @brief Clear all neighbor cell indices
-     */
+     
+    /// Clear all neighbor cell indices
     void clearNeighborCellIndices() { neighborCellIndices_.clear(); }
 
 // Accessor methods
@@ -142,13 +138,14 @@ public:
 
     /**
      * @brief Calculate geometric properties of the cell
+     * 
+     * @details 
+     * - Calculates cell volume using the divergence theorem:
+     *   V = (1/3) * Σ(face_centroid · face_area_vector)
+     * - Calculates cell centroid using second moments of the faces.
+     * - Sets geometricPropertiesCalculated flag to true when success.
+     * 
      * @param allFaces Vector containing all mesh faces
-     * 
-     * Calculates cell volume using the divergence theorem:
-     * V = (1/3) * Σ(face_centroid · face_area_vector)
-     * 
-     * Calculates cell centroid using second moments of the faces.
-     * Sets geometricPropertiesCalculated flag to true when success.
      */
     void calculateGeometricProperties(const std::vector<Face>& allFaces);
 

@@ -22,14 +22,17 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
     {
         if (nodeIndices_[i] >= allNodes.size())
         {
-            throw   std::out_of_range
-                    (
-                        "Error calculating properties for Face "
-                      + std::to_string(idx_) + ": Node index "
-                      + std::to_string(nodeIndices_[i]) + " out of range ("
-                      + "Node list size: " + std::to_string(allNodes.size())
-                      + ")."
-                    );
+            throw
+                std::out_of_range
+                (
+                    "Error calculating properties for Face "
+                  + std::to_string(idx_) + ": Node index "
+                  + std::to_string(nodeIndices_[i])
+                  + " out of range ("
+                  + "Node list size: "
+                  + std::to_string(allNodes.size())
+                  + ")."
+                );
         }
     }
 
@@ -216,22 +219,22 @@ std::ostream& operator<<(std::ostream& os, const Face& f)
 template<typename CellContainer>
 void Face::calculateDistanceProperties(const CellContainer& allCells)
 { 
-    d_Pf_ = centroid_ - allCells[ownerCell_].centroid();
-    dPfMag_ = d_Pf_.magnitude();
-    
-    e_Pf_ = d_Pf_ / (dPfMag_ + vSmallValue);
+    dPf_ = centroid_ - allCells[ownerCell_].centroid();
+    dPfMag_ = dPf_.magnitude();
 
-    // Calculate d_Nf only for internal faces
+    ePf_ = dPf_ / (dPfMag_ + vSmallValue);
+
+    // Calculate dNf only for internal faces
     if (!isBoundary())
     {
         size_t N = neighborCell_.value();
-        
-        Vector d_Nf_vec = centroid_ - allCells[N].centroid();
-        Scalar d_Nf_magnitude = d_Nf_vec.magnitude();
 
-        d_Nf_ = d_Nf_vec;
-        dNfMag_ = d_Nf_magnitude;
-        e_Nf_ = d_Nf_vec / (d_Nf_magnitude + vSmallValue);
+        Vector dNfVec = centroid_ - allCells[N].centroid();
+        Scalar dNfMagnitude = dNfVec.magnitude();
+
+        dNf_ = dNfVec;
+        dNfMag_ = dNfMagnitude;
+        eNf_ = dNfVec / (dNfMagnitude + vSmallValue);
     }
     distancePropertiesCalculated_ = true;
 }

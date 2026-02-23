@@ -128,7 +128,7 @@ Located in `inputFiles/`:
 ## Case Configuration
 
 ### Case File Format
-The solver uses OpenFOAM-style case files for configuration. The default `defaultCase` file contains all simulation parameters organized in sections:
+The solver uses case files for configuration. The default `defaultCase` file contains all simulation parameters organized in sections:
 
 ```cpp
 // Example case file entries

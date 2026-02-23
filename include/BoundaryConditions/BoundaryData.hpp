@@ -2,8 +2,8 @@
  * @file BoundaryData.hpp
  * @brief Boundary condition data storage and type management
  * 
- * This header defines the BoundaryData class, which acts as a data transfer
- * object holding the specific parameters for boundary conditions
+ * @details This header defines the BoundaryData class, which acts as a data 
+ * transfer object holding the specific parameters for boundary conditions
  * (e.g., "velocity on inlet patch").
  * 
  * @class BoundaryData
@@ -29,10 +29,10 @@
  */
 enum class BCType
 {
-    FIXED_VALUE,    ///< Fixed value (Dirichlet) boundary condition
-    FIXED_GRADIENT, ///< Fixed gradient (Neumann) boundary condition
-    ZERO_GRADIENT,  ///< Zero gradient boundary condition
-    NO_SLIP,        ///< No-slip wall boundary condition
+    FIXED_VALUE,            ///< Fixed value (Dirichlet) boundary condition
+    FIXED_GRADIENT,         ///< Fixed gradient (Neumann) boundary condition
+    ZERO_GRADIENT,          ///< Zero gradient boundary condition
+    NO_SLIP,                ///< No-slip wall boundary condition
     K_WALL_FUNCTION,        ///< kWallFunction-like boundary condition
     OMEGA_WALL_FUNCTION,    ///< omegaWallFunction-like boundary condition
     NUT_WALL_FUNCTION,      ///< nutWallFunction-like boundary condition
@@ -45,9 +45,9 @@ enum class BCType
  */
 enum class BCValueType
 {
-    SCALAR,         ///< Scalar-valued boundary condition
-    VECTOR,         ///< Vector-valued boundary condition
-    UNDEFINED       ///< Undefined value type
+    SCALAR,                 ///< Scalar-valued boundary condition
+    VECTOR,                 ///< Vector-valued boundary condition
+    UNDEFINED               ///< Undefined value type
 };
 
 class BoundaryData 
@@ -83,29 +83,19 @@ public:
      */
     void setFixedGradient(const Vector& vectorGradient);
     
-    /**
-     * @brief Set zero gradient boundary condition
-     */
+    /// Set zero gradient boundary condition
     void setZeroGradient();
     
-    /**
-     * @brief Set no-slip boundary condition (for velocity)
-     */
+    /// Set no-slip boundary condition (for velocity)
     void setNoSlip();
 
-    /**
-     * @brief Set k wall function boundary condition
-     */
+    /// Set k wall function boundary condition
     void setKWallFunction();
 
-    /**
-     * @brief Set omega wall function boundary condition
-     */ 
+    /// Set omega wall function boundary condition
     void setOmegaWallFunction();
 
-    /**
-     * @brief nut wall function boundary condition
-     */ 
+    /// nut wall function boundary condition
     void setNutWallFunction();
 
 // Accessor methods

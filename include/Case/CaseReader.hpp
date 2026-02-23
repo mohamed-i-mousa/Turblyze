@@ -2,8 +2,8 @@
  * @file CaseReader.hpp
  * @brief Parser for the case file
  *
- * This header defines the CaseReader class, which parses the input case
- * file for solver configuration.
+ * @details This header defines the CaseReader class, which parses the input 
+ * case file for solver configuration.
  *
  * @class CaseReader
  *
@@ -27,6 +27,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <iostream>
+
 #include "Scalar.hpp"
 #include "Vector.hpp"
 
@@ -41,9 +42,7 @@ public:
      */
     explicit CaseReader(const std::string& filename);
 
-    /**
-     * @brief Constructor for sections
-     */
+    /// Constructor for sections
     CaseReader() = default;
 
 // Accessor methods
@@ -108,13 +107,13 @@ private:
     /**
      * @brief Parse a section from stream
      * @param is Input stream
-     * @param dict Section to populate
+     * @param sec Section to populate
      * @param terminator Character that ends this section
      */
     void parseSection
     (
         std::istream& is,
-        CaseReader& dict,
+        CaseReader& sec,
         char terminator = '\0'
     );
 
@@ -172,10 +171,11 @@ inline Scalar CaseReader::convertTo<Scalar>(const std::string& value) const
     }
     catch (const std::exception& e)
     {
-        throw   std::runtime_error
-                (
-                    "Cannot convert '" + value + "' to Scalar"
-                );
+        throw   
+            std::runtime_error
+            (
+                "Cannot convert '" + value + "' to Scalar"
+            );
     }
 }
 
@@ -188,10 +188,11 @@ inline int CaseReader::convertTo<int>(const std::string& value) const
     }
     catch (const std::exception& e)
     {
-        throw   std::runtime_error
-                (
-                    "Cannot convert '" + value + "' to int"
-                );
+        throw   
+            std::runtime_error
+            (
+                "Cannot convert '" + value + "' to int"
+            );
     }
 }
 
@@ -213,10 +214,11 @@ inline bool CaseReader::convertTo<bool>(const std::string& value) const
         return false;
     }
 
-    throw   std::runtime_error
-            (
-                "Cannot convert '" + value + "' to bool"
-            );
+    throw   
+        std::runtime_error
+        (
+            "Cannot convert '" + value + "' to bool"
+        );
 }
 
 template<>
@@ -250,10 +252,11 @@ inline Vector CaseReader::convertTo<Vector>(const std::string& value) const
 
     if (!(iss >> x >> y >> z))
     {
-        throw   std::runtime_error
-                (
-                    "Cannot convert '" + value + "' to Vector"
-                );
+        throw   
+            std::runtime_error
+            (
+                "Cannot convert '" + value + "' to Vector"
+            );
     }
 
     return Vector(x, y, z);
@@ -267,11 +270,13 @@ T CaseReader::lookup(const std::string& keyword) const
     auto it = entries_.find(keyword);
     if (it == entries_.end())
     {
-        throw   std::runtime_error
-                (
-                    "Keyword '" + keyword + "' not found in case file"
-                );
+        throw   
+            std::runtime_error
+            (
+                "Keyword '" + keyword + "' not found in case file"
+            );
     }
+
     return convertTo<T>(it->second);
 }
 

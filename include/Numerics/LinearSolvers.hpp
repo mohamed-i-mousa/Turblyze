@@ -2,7 +2,7 @@
  * @file LinearSolvers.hpp
  * @brief Iterative solver for sparse linear systems
  * 
- * This class provides configurable solvers with preconditioners for 
+ * @details This class provides configurable solvers with preconditioners for 
  * discretized transport equations. Each LinearSolver instance maintains  
  * independent convergence parameters and preconditioner settings.
  *
@@ -17,10 +17,11 @@
 #ifndef LINEAR_SOLVER_HPP
 #define LINEAR_SOLVER_HPP
 
+#include <string>
+
 #include <eigen3/Eigen/SparseCore>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/IterativeLinearSolvers>
-#include <string>
 
 #include "Scalar.hpp"
 

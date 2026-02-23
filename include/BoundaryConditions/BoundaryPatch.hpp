@@ -2,8 +2,8 @@
  * @file BoundaryPatch.hpp
  * @brief Boundary patch representation and mesh connectivity management
  *
- * This header defines the BoundaryPatch class, which represents a set of 
- * faces on the domain boundary. A patch is identified by a name
+ * @details This header defines the BoundaryPatch class, which represents a 
+ * set of faces on the domain boundary. A patch is identified by a name
  * (e.g., "inlet", "wall") and a geometric zone ID from the mesh file.
  * 
  * @class BoundaryPatch
@@ -31,19 +31,19 @@
  */
 enum class BoundaryConditionType
 {
-    VELOCITY_INLET,   ///< Velocity inlet boundary
-    PRESSURE_INLET,   ///< Pressure inlet boundary
-    PRESSURE_OUTLET,  ///< Pressure outlet boundary
-    WALL,             ///< Wall boundary
-    SYMMETRY,         ///< Symmetry boundary
-    PERIODIC,         ///< Periodic boundary
-    MASS_FLOW_INLET,  ///< Mass flow inlet boundary
-    OUTFLOW,          ///< Outflow boundary
-    INTERFACE,        ///< Interface boundary
-    INTERIOR,         ///< Interior boundary
-    SOLID,            ///< Solid boundary
-    FLUID,            ///< Fluid boundary
-    UNDEFINED         ///< Undefined boundary type
+    VELOCITY_INLET,         ///< Velocity inlet boundary
+    PRESSURE_INLET,         ///< Pressure inlet boundary
+    PRESSURE_OUTLET,        ///< Pressure outlet boundary
+    WALL,                   ///< Wall boundary
+    SYMMETRY,               ///< Symmetry boundary
+    PERIODIC,               ///< Periodic boundary
+    MASS_FLOW_INLET,        ///< Mass flow inlet boundary
+    OUTFLOW,                ///< Outflow boundary
+    INTERFACE,              ///< Interface boundary
+    INTERIOR,               ///< Interior boundary
+    SOLID,                  ///< Solid boundary
+    FLUID,                  ///< Fluid boundary
+    UNDEFINED               ///< Undefined boundary type
 };
 
 /**
@@ -66,10 +66,10 @@ public:
      */
     BoundaryPatch
     (
-        size_t id,
+        size_t idx,
         size_t startIdx,
         size_t endIdx
-    ) : zoneIdx_(id), 
+    ) : zoneIdx_(idx), 
         firstFaceIdx_(startIdx), 
         lastFaceIdx_(endIdx) {}
 
@@ -99,7 +99,10 @@ public:
      * @brief Get number of faces in this boundary patch
      * @return Number of boundary faces
      */
-    size_t numberOfBoundaryFaces() const;
+    size_t numberOfBoundaryFaces() const
+    { 
+        return lastFaceIdx_ - firstFaceIdx_ + 1; 
+    }
 
     /** 
      * @brief Get patch name 

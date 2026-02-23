@@ -129,11 +129,6 @@ boundaryConditions
         walls           { type zeroGradient; }
     }
 
-    phi_wall    // Wall distance field (for turbulence)
-    {
-        walls           { type fixedValue; value 0; }
-    }
-
     k   // Turbulent kinetic energy
     {
         inlet           { type fixedValue; value calculated; }

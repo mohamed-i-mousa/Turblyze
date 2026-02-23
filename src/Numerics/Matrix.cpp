@@ -74,21 +74,23 @@ void Matrix::relax(Scalar alpha, const ScalarField& phiPrev)
 {
     if (alpha <= 0.0)
     {
-        throw   std::runtime_error
-                (
-                    "Matrix::relax: alpha must be positive"
-                );
+        throw
+            std::runtime_error
+            (
+                "Matrix::relax: alpha must be positive"
+            );
     }
 
     const int numCells = static_cast<int>(matrixA_.rows());
 
     if (phiPrev.size() != static_cast<size_t>(numCells))
     {
-        throw   std::runtime_error
-                (
-                    "Matrix::relax: phiPrev size mismatch"
-                    " with matrix size"
-                );
+        throw
+            std::runtime_error
+            (
+                "Matrix::relax: phiPrev size mismatch"
+                " with matrix size"
+            );
     }
 
     // Cache original diagonal
@@ -285,7 +287,7 @@ void Matrix::assembleBoundaryFace
     }
 
     Vector Sf = face.normal() * face.projectedArea();
-    const Vector ePf = face.e_Pf();
+    const Vector ePf = face.ePf();
     const Scalar dPfMag = face.dPfMag();
 
     Vector Ef =(dot(Sf, Sf) / dot(Sf, ePf)) * ePf;

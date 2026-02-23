@@ -2,8 +2,8 @@
  * @file Face.hpp
  * @brief Represents a face in the computational mesh
  * 
- * This header defines the Face class , which is a fundamental in the finite
- * volume discretization. 
+ * @details This header defines the Face class , which is a fundamental in 
+ * the finite volume discretization. 
  * A face represents a surface defined by a sequence of nodes (vertices)
  * and serves as the boundary between two control volumes (cells) or between a
  * cell and the domain boundary. 
@@ -166,6 +166,7 @@ public:
 
     /**
      * @brief Get second moment integrals for centroid calculation
+     * @return second moment integrals in each direction
      */
     Scalar x2Integral() const { return x2Integral_; }
     Scalar y2Integral() const { return y2Integral_; }
@@ -181,13 +182,13 @@ public:
      * @brief Get owner cell distance vector 
      * @return Vector from owner to face 
      */
-    const Vector& d_Pf() const { return d_Pf_; }
+    const Vector& dPf() const { return dPf_; }
     
     /** 
      * @brief Get neighbor cell distance vector 
      * @return Optional vector from neighbor to face
      */
-    const std::optional<Vector>& d_Nf() const { return d_Nf_; }
+    const std::optional<Vector>& dNf() const { return dNf_; }
     
     /** 
      * @brief Get owner cell distance magnitude 
@@ -205,13 +206,13 @@ public:
      * @brief Get owner cell unit vector 
      * @return Unit vector from owner to face
      */
-    const Vector& e_Pf() const { return e_Pf_; }
+    const Vector& ePf() const { return ePf_; }
     
     /** 
      * @brief Get neighbor cell unit vector 
      * @return Optional unit vector from neighbor to face 
      */
-    const std::optional<Vector>& e_Nf() const { return e_Nf_; }
+    const std::optional<Vector>& eNf() const { return eNf_; }
 
     /** 
      * @brief Check if geometric properties calculated 
@@ -224,24 +225,29 @@ public:
 
     /**
      * @brief Calculate geometric properties of the face
+     * 
+     * @details 
+     * - Calculates face area, centroid, normal vector, and second moment
+     *   integrals.
+     * - For triangles, uses direct cross product. For polygons, decomposes
+     *   into triangles.
+     * - Sets geometricPropertiesCalculated flag when success.
+     * 
      * @param allNodes Vector of all mesh nodes
      * @throws std::out_of_range if node index is invalid
      * @throws std::runtime_error if face is degenerate
-     * 
-     * Calculates face area, centroid, normal vector, and second moment
-     * integrals. For triangles, uses direct cross product. For polygons,
-     * decomposes into triangles.
-     * Sets geometricPropertiesCalculated flag when success.
      */
     void calculateGeometricProperties(const std::vector<Vector>& allNodes);
 
     /**
      * @brief Calculate distance properties of the face
-     * @param allCells Container of all mesh cells
      * 
-     * Calculates distance vectors, magnitudes, and unit vectors
-     * from cell centers to face center. For boundary faces,
-     * only owner cell distances are calculated.
+     * @details
+     * - Calculates distance vectors, magnitudes, and unit vectors
+     *   from cell centers to face center. For boundary faces,
+     *   only owner cell distances are calculated.
+     * 
+     * @param allCells Container of all mesh cells
      */
     template<typename CellContainer>
     void calculateDistanceProperties(const CellContainer& allCells);
@@ -287,9 +293,7 @@ private:
     Scalar y2Integral_ = 0.0;
     Scalar z2Integral_ = 0.0;
 
-    /// Volume contribution integral: 
-    /// ∫∫_face (r · n) dS = (c_tri · crossProd) / 2
-    /// where c_tri = (p1+p2+p3)/3 is the triangle centroid
+    /// Volume contribution integral
     Scalar volumeContribution_ = 0.0;
 
     /// Face geometric centroid
@@ -305,10 +309,10 @@ private:
     Scalar contactArea_ = 0.0;
 
     /// Distance vector from owner cell center to face center
-    Vector d_Pf_;
+    Vector dPf_;
     
     /// Distance vector from neighbor cell center to face center
-    std::optional<Vector> d_Nf_;
+    std::optional<Vector> dNf_;
     
     /// Magnitude of d_Pf
     Scalar dPfMag_ = 0.0;
@@ -317,10 +321,10 @@ private:
     std::optional<Scalar> dNfMag_;
     
     /// Unit vector in d_Pf direction
-    Vector e_Pf_;
+    Vector ePf_;
     
     /// Unit vector in d_Nf direction
-    std::optional<Vector> e_Nf_;
+    std::optional<Vector> eNf_;
 
     /// Flag indicating if geometric properties calculated
     bool geometricPropertiesCalculated_ = false;

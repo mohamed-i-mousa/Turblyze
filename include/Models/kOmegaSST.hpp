@@ -2,10 +2,12 @@
  * @file kOmegaSST.hpp
  * @brief k-omega SST Shear Stress Transport Turbulence Model Implementation
  * 
- * This header file defines the KOmegaSST class, which implements the 
+ * @details This header file defines the KOmegaSST class, which implements the 
  * k-omega SST turbulence model developed by Menter. The model combines the 
  * robustness of the k-omega model in the near-wall region with the freestream
  * independence of the k-epsilon model in the far field.
+ * 
+ * @class kOmegaSST
  * 
  * The model solves two transport equations:
  * - Turbulent kinetic energy
@@ -37,7 +39,7 @@
 #include "ConvectionScheme.hpp"
 #include "LinearSolvers.hpp"
 
-// Forward declaration
+/// Forward declaration
 class Matrix;
 
 class kOmegaSST 
@@ -77,17 +79,19 @@ public:
 
     /**
      * @brief Solve turbulence equations for current iteration
-     * @param U Current velocity field
-     * @param flowRateFace Face volume flow rates
-     * @param gradU Pre-computed velocity gradients {gradUx, gradUy, gradUz}
      *
-     * @details This is the main solve method that:
+     * @details 
+     * This is the main solve method that:
      * 1. Computes k and omega gradients
      * 2. Calculates blending functions F1 and F2
      * 3. Computes strain rate, production, and cross-diffusion terms
      * 4. Solves the omega-equation with under-relaxation
      * 5. Solves the k-equation with under-relaxation
      * 6. Updates turbulent viscosity and wall shear stress
+     * 
+     * @param U Current velocity field
+     * @param flowRateFace Face volume flow rates
+     * @param gradU Pre-computed velocity gradients {gradUx, gradUy, gradUz}
      */
     void solve
     (
@@ -102,42 +106,48 @@ public:
      * @brief Get turbulent kinetic energy field
      * @return Const reference to k field
      */
-    const ScalarField& getk() const { return k_; }
+    const ScalarField& k() const { return k_; }
 
     /**
      * @brief Get specific dissipation rate field
      * @return Const reference to omega field
      */
-    const ScalarField& getOmega() const { return omega_; }
+    const ScalarField& omega() const { return omega_; }
 
     /**
      * @brief Get turbulent kinematic viscosity field
      * @return Const reference to νₜ field
      */
-    const ScalarField& getTurbulentViscosity() const { return nut_; }
+    const ScalarField& turbulentViscosity() const { return nut_; }
 
     /**
      * @brief Get wall distance field
      * @return Const reference to wall distance field
      */
-    const ScalarField& getWallDistance() const { return wallDistance_; }
+    const ScalarField& wallDistance() const { return wallDistance_; }
 
     /**
      * @brief Get wall shear stress field
      * @return Const reference to wall shear stress field
      */
-    const ScalarField& getWallShearStress() const { return wallShearStress_; }
+    const ScalarField& wallShearStress() const { return wallShearStress_; }
 
     /**
      * @brief Get effective viscosity (laminar + turbulent)
      * @return Effective viscosity field ν_eff = ν_lam + ν_t
      */
-    ScalarField getEffectiveViscosity() const;
+    ScalarField effectiveViscosity() const;
 
-    /// Access k-equation linear solver for external configuration
+    /**
+     * @brief Access k-equation linear solver for external configuration
+     * @return Reference to k linear solver
+     */
     LinearSolver& kSolverSettings() { return kSolver_; }
 
-    /// Access omega-equation linear solver for external configuration
+    /**
+     * @brief Access omega-equation linear solver for external configuration
+     * @return Reference to omega linear solver
+     */
     LinearSolver& omegaSolverSettings() { return omegaSolver_; }
 
     /**
@@ -150,19 +160,19 @@ private:
 
 // Turbulence fields
 
-    /// Turbulent kinetic energy [m²/s²]
+    /// Turbulent kinetic energy
     ScalarField k_;
 
-    /// Specific dissipation rate [1/s]
+    /// Specific dissipation rate
     ScalarField omega_;
 
-    /// Turbulent kinematic viscosity [m²/s]
+    /// Turbulent kinematic viscosity
     ScalarField nut_;
 
-    /// Distance to nearest wall [m]
+    /// Distance to nearest wall
     ScalarField wallDistance_;
 
-    /// Wall shear stress magnitude [Pa]
+    /// Wall shear stress magnitude
     ScalarField wallShearStress_;
 
 // Gradient fields
@@ -285,14 +295,14 @@ private:
         
         /// Cross-diffusion coefficient
         Scalar sigmaD = 2.0 * sigmaOmega2;
-    } constants_;
+    } const_;
 
 // Physical properties
 
-    /// Fluid density [kg/m³]
+    /// Fluid density
     Scalar rho_;
 
-    /// Laminar kinematic viscosity [m²/s]
+    /// Laminar kinematic viscosity
     Scalar nu_;
 
     /// Optional SST F3 switch
@@ -326,15 +336,10 @@ private:
 
 // Private helper methods
 
-    /**
-     * @brief Calculate wall distance field using an iterative propagation
-     * approach (Dijkstra's shortest path)
-     */
+    /// Calculate wall distance field using (Dijkstra's shortest path)
     void calculateWallDistance();
 
-    /**
-     * @brief Build per-cell corner weights for omega wall-function faces
-     */
+    /// Build per-cell corner weights for omega wall-function faces
     void buildOmegaWallCellWeights();
 
     /**
@@ -343,9 +348,7 @@ private:
      */
     void solveOmegaEquation(const FaceFluxField& flowRateFace);
 
-    /**
-     * @brief Update dynamic omega wall-function boundary values per face
-     */
+    /// Update dynamic omega wall-function boundary values per face
     void updateOmegaWallFunctionBoundaryValues();
 
     /**
@@ -354,16 +357,17 @@ private:
      */
     void solveKEquation(const FaceFluxField& flowRateFace);
 
-    /**
-     * @brief Calculate SST turbulent viscosity with limiter
-     */
+    /// Calculate SST turbulent viscosity with limiter
     void calculateTurbulentViscosity();
 
     /**
      * @brief Calculate wall shear stress using parallel velocity only
-     * @param U Current velocity field
-     * @details Computes wall shear stress as:
+     * 
+     * @details 
+     * Computes wall shear stress as:
      * τ_wall = μ_eff * (∂U_parallel/∂n)_wall
+     * 
+     * @param U Current velocity field
      */
     void calculateWallShearStress(const VectorField& U);
 
@@ -375,13 +379,17 @@ private:
     /**
      * @brief Calculate production terms for k and omega equations
      *
-     * Computes Pk = μₜ(∇U:∇U) and P_ω = γ/νₜ * P_k
+     * @details
+     * Computes Pk = μₜ(∇U:∇U) and Pω = γ/νₜ * Pk
      */
     void calculateProductionTerms();
 
     /**
      * @brief Override k production at wall-adjacent cells
+     * 
+     * @details
      *   G = (ν + νₜ) Cμ^0.25 √k |U∥| / (κ y²)
+     *
      * @param U Current velocity field
      */
     void overrideWallCellProduction(const VectorField& U);
@@ -399,9 +407,7 @@ private:
      */
     void calculateGradients(bool computeGradK, bool computeGradOmega);
 
-    /**
-     * @brief Calculate cross-diffusion term for omega equation
-     */
+    /// Calculate cross-diffusion term for omega equation
     void calculateCrossDiffusion();
 
     /**
@@ -434,12 +440,7 @@ private:
     Scalar limitProduction(Scalar Pk, size_t cellIdx) const;
 
     /// Blend two constants using SST blending function
-    inline Scalar blend
-    (
-        Scalar F1,
-        Scalar c1,
-        Scalar c2
-    ) const
+    inline Scalar blend(Scalar F1, Scalar c1, Scalar c2) const
     {
         return F1 * (c1 - c2) + c2;
     }

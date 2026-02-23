@@ -45,7 +45,7 @@ Scalar interpolateToFace
 {
     if (face.isBoundary())
     {
-        return bcManager.calculateBoundaryFaceValue(face, field, fieldName);
+        return bcManager.calculateBoundaryFaceValue(fieldName, field, face);
     }
 
     const size_t P = face.ownerCell();
@@ -103,7 +103,7 @@ Vector interpolateToFace
     {
         return bcManager.calculateBoundaryVectorFaceValue
         (
-            face, field, fieldName
+            fieldName, field, face
         );
     }
 

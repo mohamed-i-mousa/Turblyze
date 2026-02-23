@@ -1,5 +1,6 @@
 /******************************************************************************
  * @file BoundaryConditions.cpp
+ * @version 
  * @brief Implementation of boundary conditions management system
  *****************************************************************************/
 
@@ -11,28 +12,11 @@
 #include <utility>
 
 
-// ****************************** Public Methods ******************************
+// ****************************** Setter Methods ******************************
 
 void BoundaryConditions::addPatch(const BoundaryPatch& patch)
 {
     patches_.push_back(patch);
-}
-
-const BoundaryPatch* 
-BoundaryConditions::patch(const std::string& name) const
-{
-    for (const auto& patch : patches_) 
-    {
-        if (patch.patchName() == name) 
-        {
-            return &patch;
-        }
-    }
-    
-    throw   std::runtime_error
-            (
-                "Patch " + name + " not found"
-            );
 }
 
 bool BoundaryConditions::setBC
@@ -105,6 +89,17 @@ bool BoundaryConditions::setZeroGradient
     return setBC(patchName, fieldName, std::move(bc_setup));
 }
 
+bool BoundaryConditions::setNoSlip
+(
+    const std::string& patchName,
+    const std::string& fieldName
+)
+{
+    BoundaryData bc_setup;
+    bc_setup.setNoSlip();
+    return setBC(patchName, fieldName, std::move(bc_setup));
+}
+
 bool BoundaryConditions::setKWallFunction
 (
     const std::string& patchName,
@@ -138,17 +133,26 @@ bool BoundaryConditions::setNutWallFunction
     return setBC(patchName, fieldName, std::move(bc_setup));
 }
 
-bool BoundaryConditions::setNoSlip
-(
-    const std::string& patchName,
-    const std::string& fieldName
-)
-{
-    BoundaryData bc_setup;
-    bc_setup.setNoSlip();
-    return setBC(patchName, fieldName, std::move(bc_setup));
-}
 
+// ****************************** Accessor Methods ******************************
+
+const BoundaryPatch*
+BoundaryConditions::patch(const std::string& name) const
+{
+    for (const auto& patch : patches_)
+    {
+        if (patch.patchName() == name)
+        {
+            return &patch;
+        }
+    }
+
+    throw
+        std::runtime_error
+        (
+            "Patch " + name + " not found"
+        );
+}
 
 const BoundaryData* BoundaryConditions::fieldBC
 (
@@ -156,17 +160,17 @@ const BoundaryData* BoundaryConditions::fieldBC
     const std::string& fieldName
 ) const
 {
-    auto patch_it = patchBoundaryData_.find(patchName);
+    auto patchIterator = patchBoundaryData_.find(patchName);
 
-    if (patch_it != patchBoundaryData_.end()) 
+    if (patchIterator != patchBoundaryData_.end())
     {
-        const auto& field_map = patch_it->second;
+        const auto& fieldMap = patchIterator->second;
 
-        auto field_it = field_map.find(fieldName);
+        auto fieldIterator = fieldMap.find(fieldName);
 
-        if (field_it != field_map.end())
+        if (fieldIterator != fieldMap.end())
         {
-            return &(field_it->second);
+            return &(fieldIterator->second);
         }
     }
 
@@ -175,9 +179,9 @@ const BoundaryData* BoundaryConditions::fieldBC
 
 Scalar BoundaryConditions::calculateBoundaryFaceValue
 (
-    const Face& face,
+    const std::string& fieldName,
     const ScalarField& phi,
-    const std::string& fieldName
+    const Face& face
 ) const
 {
     const BoundaryPatch* patch = face.patch();
@@ -185,38 +189,22 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
 
     if (!bc)
     {
-        // Default to zero-gradient for scalars if not specified
         std::cerr
             << "No BC specified for face "
             << face.idx() << " in patch "
-            << patch->patchName() << ". Defaulting to zero-gradient."
+            << patch->patchName()
+            << ". Defaulting to zero-gradient."
             << std::endl;
 
         return phi[face.ownerCell()];
     }
-    
+
     switch (bc->type())
     {
         case BCType::NO_SLIP:
         case BCType::FIXED_VALUE:
         {
-            // Fixed value: φ_f = φ_b
-            // NO_SLIP is treated as FIXED_VALUE with (0, 0, 0)
-            if (bc->valueType() == BCValueType::SCALAR)
-            {
-                return bc->fixedScalarValue();
-            }
-            else if (bc->valueType() == BCValueType::VECTOR)
-            {
-                if (fieldName == "Ux")
-                    return bc->vectorValue().x();
-                else if (fieldName == "Uy")
-                    return bc->vectorValue().y();
-                else if (fieldName == "Uz")
-                    return bc->vectorValue().z();
-                else
-                    return phi[face.ownerCell()];  // Fallback to zero-gradient
-            }
+            // Fixed value: φf = φb
             return bc->fixedScalarValue();
         }
 
@@ -225,33 +213,37 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
         case BCType::NUT_WALL_FUNCTION:
         case BCType::ZERO_GRADIENT:
         {
-            // Zero gradient: φ_f = φ_P
+            // Zero gradient: φf = φP
             return phi[face.ownerCell()];
         }
 
         case BCType::FIXED_GRADIENT:
         {
-            // Fixed gradient: φ_f = φ_P + grad * distance
-            Scalar d_n = dot(face.d_Pf(), face.normal());
-            return phi[face.ownerCell()] + bc->fixedScalarGradient() * d_n;
+            // Fixed gradient: φf = φP + grad * distance
+            Scalar dn = dot(face.dPf(), face.normal());
+            return
+                phi[face.ownerCell()]
+              + bc->fixedScalarGradient() * dn;
         }
 
         default:
-            throw   std::runtime_error
-                    (
-                        "Unknown BC type for face "
-                      + std::to_string(face.idx())
-                      + " in patch " + patch->patchName()
-                      + ": " + std::to_string(static_cast<int>(bc->type()))
-                    );
+            throw
+                std::runtime_error
+                (
+                    "Unknown BC type for face "
+                  + std::to_string(face.idx())
+                  + " in patch " + patch->patchName()
+                  + ": "
+                  + std::to_string(static_cast<int>(bc->type()))
+                );
     }
 }
 
 Vector BoundaryConditions::calculateBoundaryVectorFaceValue
 (
-    const Face& face,
+    const std::string& fieldName,
     const VectorField& phi,
-    const std::string& fieldName
+    const Face& face
 ) const
 {
     const BoundaryPatch* patch = face.patch();
@@ -259,11 +251,11 @@ Vector BoundaryConditions::calculateBoundaryVectorFaceValue
 
     if (!bc)
     {
-        // Default to zero-gradient if not specified
         std::cerr
             << "No BC specified for face "
             << face.idx() << " in patch "
-            << patch->patchName() << ". Defaulting to zero-gradient."
+            << patch->patchName()
+            << ". Defaulting to zero-gradient."
             << std::endl;
 
         return phi[face.ownerCell()];
@@ -278,22 +270,10 @@ Vector BoundaryConditions::calculateBoundaryVectorFaceValue
 
         case BCType::FIXED_VALUE:
         {
-            if (bc->valueType() == BCValueType::VECTOR)
-            {
-                return bc->vectorValue();
-            }
-            // Scalar BC on a vector field: apply scalar to all components
-            return  Vector
-                    (
-                        bc->scalarValue(),
-                        bc->scalarValue(),
-                        bc->scalarValue()
-                    );
+            // Fixed value: Uf = Ub
+            return bc->fixedVectorValue();
         }
 
-        case BCType::K_WALL_FUNCTION:
-        case BCType::OMEGA_WALL_FUNCTION:
-        case BCType::NUT_WALL_FUNCTION:
         case BCType::ZERO_GRADIENT:
         {
             return phi[face.ownerCell()];
@@ -301,31 +281,36 @@ Vector BoundaryConditions::calculateBoundaryVectorFaceValue
 
         case BCType::FIXED_GRADIENT:
         {
-            Scalar d_n = dot(face.d_Pf(), face.normal());
+            Scalar dn = dot(face.dPf(), face.normal());
 
             if (bc->gradientType() == BCValueType::VECTOR)
             {
-                return phi[face.ownerCell()] + bc->vectorGradient() * d_n;
+                return
+                    phi[face.ownerCell()]
+                  + bc->vectorGradient() * dn;
             }
-            // Scalar gradient on a vector field: apply to all components
+            // Scalar gradient on a vector field
             Vector owner = phi[face.ownerCell()];
             Scalar grad = bc->scalarGradient();
-            return  Vector
-                    (
-                        owner.x() + grad * d_n,
-                        owner.y() + grad * d_n,
-                        owner.z() + grad * d_n
-                    );
+            return
+                Vector
+                (
+                    owner.x() + grad * dn,
+                    owner.y() + grad * dn,
+                    owner.z() + grad * dn
+                );
         }
 
         default:
-            throw   std::runtime_error
-                    (
-                        "Unknown BC type for face "
-                      + std::to_string(face.idx())
-                      + " in patch " + patch->patchName()
-                      + ": " + std::to_string(static_cast<int>(bc->type()))
-                    );
+            throw
+                std::runtime_error
+                (
+                    "Unknown BC type for face "
+                  + std::to_string(face.idx())
+                  + " in patch " + patch->patchName()
+                  + ": "
+                  + std::to_string(static_cast<int>(bc->type()))
+                );
     }
 }
 
@@ -358,24 +343,26 @@ std::string BoundaryConditions::bcTypeToString(BCType bctype) const
         case BCType::OMEGA_WALL_FUNCTION: return "OMEGA_WALL_FUNCTION";
         case BCType::NUT_WALL_FUNCTION: return "NUT_WALL_FUNCTION";
         default:
-            throw   std::runtime_error
-                    (
-                        "Unknown BC type: "
-                      + std::to_string(static_cast<int>(bctype))
-                    );
+            throw
+                std::runtime_error
+                (
+                    "Unknown BC type: "
+                  + std::to_string(static_cast<int>(bctype))
+                );
     }
 }
 
-void BoundaryConditions::printSummary() const 
+void BoundaryConditions::printSummary() const
 {
     std::cout
-        << "\n--- Boundary Conditions Setup Summary ---" << std::endl;
+        << std::endl
+        << "--- Boundary Conditions Setup Summary ---" << std::endl;
 
     if (patches_.empty())
     {
         std::cout
             << "  No mesh patches loaded." << std::endl;
-            
+
         return;
     }
 
@@ -405,26 +392,28 @@ void BoundaryConditions::printSummary() const
             << "  Number of Faces         : "
             << meshPatch.numberOfBoundaryFaces() << std::endl;
 
-        auto patch_bc_it = patchBoundaryData_.find(meshPatch.patchName());
+        auto patchBCIterator =
+            patchBoundaryData_.find(meshPatch.patchName());
 
         if
         (
-            patch_bc_it != patchBoundaryData_.end()
-         && !patch_bc_it->second.empty()
+            patchBCIterator != patchBoundaryData_.end()
+         && !patchBCIterator->second.empty()
         )
         {
             std::cout
                 << "  Configured Physical BCs :" << std::endl;
 
-            for (const auto& field_bc_pair : patch_bc_it->second)
+            for (const auto& fieldBCPair : patchBCIterator->second)
             {
-                const std::string& fieldName = field_bc_pair.first;
-                const BoundaryData& fbc = field_bc_pair.second;
+                const std::string& fieldName = fieldBCPair.first;
+                const BoundaryData& fbc = fieldBCPair.second;
 
                 std::cout
-                    << "      Field '" << fieldName << "': Type: "
+                    << "      Field '" << fieldName
+                    << "': Type: "
                     << bcTypeToString(fbc.type());
-                
+
                 if
                 (
                     fbc.type() == BCType::FIXED_VALUE
@@ -447,10 +436,11 @@ void BoundaryConditions::printSummary() const
                     }
                     else
                     {
-                        throw   std::runtime_error
-                                (
-                                    "Unknown BC value type"
-                                );
+                        throw
+                            std::runtime_error
+                            (
+                                "Unknown BC value type"
+                            );
                     }
                 }
                 else if (fbc.type() == BCType::FIXED_GRADIENT)
@@ -463,21 +453,26 @@ void BoundaryConditions::printSummary() const
                         std::cout
                             << fbc.scalarGradient();
                     }
-                    else if (fbc.gradientType() == BCValueType::VECTOR)
+                    else if
+                    (fbc.gradientType() == BCValueType::VECTOR)
                     {
                         std::cout
                             << fbc.vectorGradient();
                     }
                     else
                     {
-                        throw   std::runtime_error
+                        throw
+                            std::runtime_error
+                            (
+                                "Unknown BC gradient type: "
+                              + std::to_string
                                 (
-                                    "Unknown BC gradient type: "
-                                  + std::to_string
+                                    static_cast<int>
                                     (
-                                        static_cast<int>(fbc.gradientType())
+                                        fbc.gradientType()
                                     )
-                                );
+                                )
+                            );
                     }
                 }
                 else if (fbc.type() == BCType::ZERO_GRADIENT)

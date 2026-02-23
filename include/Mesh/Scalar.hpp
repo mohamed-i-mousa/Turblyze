@@ -2,8 +2,8 @@
  * @file Scalar.hpp
  * @brief Floating-point precision configuration and tolerance definitions
  * 
- * This file defines the Scalar type used throughout the CFD solver and the 
- * numerical tolerances that adapt to the chosen precision.
+ * @details This file defines the Scalar type used throughout the CFD solver 
+ * and the numerical tolerances that adapt to the chosen precision.
  * Precision is controlled via CMake configuration.
  *****************************************************************************/
 
@@ -37,6 +37,7 @@ inline const Scalar vSmallValue =
  * @param value Value to convert to Scalar type
  * @return Value converted to Scalar type
  * 
+ * @details
  * This function ensures compile-time evaluation and type safety
  * when converting numeric literals to the configured Scalar type.
  */

@@ -35,7 +35,497 @@
 namespace VtkWriter
 {
 
-// ****************** Private Helper Methods: Field Utilities *****************
+// *********************** Public API: VTK File Export ************************
+
+void writeVtkUnstructuredGrid
+(
+    const std::string& filename,
+    const std::vector<Vector>& allNodes,
+    const std::vector<Cell>& allCells,
+    const std::vector<Face>& allFaces,
+    const std::map<std::string,
+    const ScalarField*>& scalarCellFields,
+    const std::map<std::string,
+    const VectorField*>& vectorCellFields,
+    bool debug
+)
+{
+    // Create vtkUnstructuredGrid
+    vtkSmartPointer<vtkUnstructuredGrid>
+    unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+
+    // Create vtkPoints from nodes
+    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+    points->SetNumberOfPoints(allNodes.size());
+
+    for (size_t i = 0; i < allNodes.size(); ++i)
+    {
+        points->SetPoint(i, allNodes[i].x(), allNodes[i].y(), allNodes[i].z());
+    }
+
+    unstructuredGrid->SetPoints(points);
+
+    // Add cells to unstructured grid with proper topology preservation
+    // Build a node connectivity graph to determine proper VTK node ordering
+
+    // Cell type statistics for diagnostics
+    size_t numTets = 0, numHexes = 0, numWedges = 0,
+           numPyramids = 0, numConvex = 0;
+    size_t numWedgeOrderingFailures = 0;
+
+    for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
+    {
+        const Cell& cell = allCells[cellIdx];
+        const auto& faceIndices = cell.faceIndices();
+
+        // Collect all unique nodes and build connectivity
+        std::set<size_t> uniqueNodeSet;
+        std::vector<std::vector<size_t>> faceNodeLists;
+
+        for (size_t faceIdx : faceIndices)
+        {
+            const Face& face = allFaces[faceIdx];
+            const auto& nodeIndices = face.nodeIndices();
+            uniqueNodeSet.insert(nodeIndices.begin(), nodeIndices.end());
+            faceNodeLists.push_back(nodeIndices);
+        }
+
+        size_t numNodes = uniqueNodeSet.size();
+        size_t numFaces = faceIndices.size();
+
+        // Determine cell type
+        int cellType = VTK_CONVEX_POINT_SET; // Fallback
+        std::vector<vtkIdType> orderedNodes;
+
+        if (numNodes == 4 && numFaces == 4)
+        {
+            // Tetrahedron - VTK ordering:
+            // any vertex, then 3 neighbors forming base
+            cellType = VTK_TETRA;
+            numTets++;
+            orderedNodes.reserve(4);
+            for (size_t nodeIdx : uniqueNodeSet)
+            {
+                orderedNodes.push_back(static_cast<vtkIdType>(nodeIdx));
+            }
+        }
+        else if (numNodes == 8 && numFaces == 6)
+        {
+            // Hexahedron - need to find proper ordering
+            cellType = VTK_HEXAHEDRON;
+            numHexes++;
+            orderedNodes =
+                orderHexahedronNodes(faceNodeLists, uniqueNodeSet, allNodes);
+        }
+        else if (numNodes == 6 && numFaces == 5)
+        {
+            // Wedge (prism)
+            cellType = VTK_WEDGE;
+            numWedges++;
+            orderedNodes =
+                orderWedgeNodes(faceNodeLists, uniqueNodeSet, allNodes);
+
+            if (orderedNodes.empty())
+            {
+                numWedgeOrderingFailures++;
+                // Fallback to convex point set
+                cellType = VTK_CONVEX_POINT_SET;
+                for (size_t nodeIdx : uniqueNodeSet)
+                {
+                    orderedNodes.push_back(static_cast<vtkIdType>(nodeIdx));
+                }
+            }
+        }
+        else if (numNodes == 5 && numFaces == 5)
+        {
+            // Pyramid
+            cellType = VTK_PYRAMID;
+            numPyramids++;
+            orderedNodes =
+                orderPyramidNodes(faceNodeLists, uniqueNodeSet, allNodes);
+        }
+        else
+        {
+            // Use convex point set for unknown topology
+            numConvex++;
+            orderedNodes.reserve(numNodes);
+            for (size_t nodeId : uniqueNodeSet)
+            {
+                orderedNodes.push_back(static_cast<vtkIdType>(nodeId));
+            }
+        }
+
+        // Insert cell with ordered nodes
+        if (orderedNodes.empty())
+        {
+            // Fallback: use arbitrary ordering
+            vtkSmartPointer<vtkIdList> cellPointIds =
+                vtkSmartPointer<vtkIdList>::New();
+
+            for (size_t nodeIdx : uniqueNodeSet)
+            {
+                cellPointIds->InsertNextId(static_cast<vtkIdType>(nodeIdx));
+            }
+            unstructuredGrid->InsertNextCell
+            (
+                VTK_CONVEX_POINT_SET,
+                cellPointIds
+            );
+        }
+        else
+        {
+            unstructuredGrid->InsertNextCell
+            (
+                cellType,
+                static_cast<vtkIdType>(orderedNodes.size()),
+                orderedNodes.data()
+            );
+        }
+    }
+
+    // Add scalar cell fields
+    for (const auto& [fieldName, scalarField] : scalarCellFields)
+    {
+        if (!scalarField) continue;
+
+        vtkSmartPointer<vtkDoubleArray>
+        dataArray = vtkSmartPointer<vtkDoubleArray>::New();
+
+        dataArray->SetName(fieldName.c_str());
+        dataArray->SetNumberOfComponents(1);
+        dataArray->SetNumberOfTuples(allCells.size());
+
+        for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
+        {
+            if (cellIdx < scalarField->size())
+            {
+                dataArray->SetValue(cellIdx, (*scalarField)[cellIdx]);
+            }
+            else
+            {
+                dataArray->SetValue(cellIdx, 0.0);
+            }
+        }
+
+        unstructuredGrid->GetCellData()->AddArray(dataArray);
+    }
+
+    // Add vector cell fields
+    for (const auto& [fieldName, vectorField] : vectorCellFields)
+    {
+        if (!vectorField) continue;
+
+        vtkSmartPointer<vtkDoubleArray> dataArray =
+            vtkSmartPointer<vtkDoubleArray>::New();
+
+        dataArray->SetName(fieldName.c_str());
+        dataArray->SetNumberOfComponents(3);
+        dataArray->SetNumberOfTuples(allCells.size());
+
+        for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
+        {
+            if (cellIdx < vectorField->size())
+            {
+                const Vector& vec = (*vectorField)[cellIdx];
+                double vecData[3] = {vec.x(), vec.y(), vec.z()};
+                dataArray->SetTuple(cellIdx, vecData);
+            }
+            else
+            {
+                double zeroVec[3] = {0.0, 0.0, 0.0};
+                dataArray->SetTuple(cellIdx, zeroVec);
+            }
+        }
+
+        unstructuredGrid->GetCellData()->AddArray(dataArray);
+    }
+
+    // Write the unstructured grid to file
+    vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer =
+        vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
+
+    writer->SetFileName(filename.c_str());
+    writer->SetInputData(unstructuredGrid);
+    writer->SetDataModeToBinary();
+    writer->SetCompressorTypeToZLib();
+    writer->Write();
+
+    std::cout
+        << "VTK UnstructuredGrid file written: "
+        << filename << std::endl;
+
+    if (debug)
+    {
+        std::cout
+            << "  - Number of points: "
+            << allNodes.size() << std::endl;
+
+        std::cout
+            << "  - Number of cells: "
+            << allCells.size() << std::endl;
+
+        std::cout
+            << "  - Cell types:" << std::endl;
+
+        if (numTets > 0)
+        {
+            std::cout
+                << "    - Tetrahedra: "
+                << numTets << std::endl;
+        }
+
+        if (numHexes > 0)
+        {
+            std::cout
+                << "    - Hexahedra: "
+                << numHexes << std::endl;
+        }
+
+        if (numWedges > 0)
+        {
+            std::cout
+                << "    - Wedges (prisms): "
+                << numWedges << std::endl;
+        }
+
+        if (numPyramids > 0)
+        {
+            std::cout
+                << "    - Pyramids: "
+                << numPyramids << std::endl;
+        }
+
+        if (numConvex > 0)
+        {
+            std::cout
+                << "    - Convex point sets: "
+                << numConvex << std::endl;
+        }
+
+        if (numWedgeOrderingFailures > 0)
+        {
+            std::cout
+                << "  - WARNING: "
+                << numWedgeOrderingFailures
+                << " wedge cells failed proper ordering"
+                << std::endl;
+        }
+
+        std::cout
+            << "  - Number of scalar fields: "
+            << scalarCellFields.size()
+            << std::endl;
+
+        std::cout
+            << "  - Number of vector fields: "
+            << vectorCellFields.size()
+            << std::endl;
+    }
+}
+
+// ******************* Public API: Derived Field Computation *******************
+
+ScalarField computeVelocityMagnitude(const VectorField& velocity)
+{
+    return computeMagnitude(velocity, "velocityMagnitude");
+}
+
+ScalarField computeVorticityMagnitude(const VectorField& vorticity)
+{
+    return computeMagnitude(vorticity, "vorticityMagnitude");
+}
+
+ScalarField computeQCriterion
+(
+    const VectorField& gradUx,
+    const VectorField& gradUy,
+    const VectorField& gradUz
+)
+{
+    ScalarField qCriterion("QCriterion", gradUx.size());
+
+    for (size_t i = 0; i < gradUx.size(); ++i)
+    {
+        // Compute strain rate tensor using helper function
+        StrainTensor S = computeStrainTensor(gradUx[i], gradUy[i], gradUz[i]);
+
+        // Extract velocity gradient tensor components for rotation tensor
+        Scalar dUxdy = gradUx[i].y();
+        Scalar dUxdz = gradUx[i].z();
+        Scalar dUydx = gradUy[i].x();
+        Scalar dUydz = gradUy[i].z();
+        Scalar dUzdx = gradUz[i].x();
+        Scalar dUzdy = gradUz[i].y();
+
+        // Anti-symmetric rotation rate tensor
+        // (Omega_ij = 0.5 * (du_i/dx_j - du_j/dx_i))
+        Scalar Omega_12 = 0.5 * (dUxdy - dUydx);
+        Scalar Omega_13 = 0.5 * (dUxdz - dUzdx);
+        Scalar Omega_23 = 0.5 * (dUydz - dUzdy);
+
+        // Q-criterion = 0.5 * (||Omega||^2 - ||S||^2)
+        Scalar omegaNormSq =
+            2.0 * (Omega_12*Omega_12 + Omega_13*Omega_13 + Omega_23*Omega_23);
+
+        qCriterion[i] = 0.5 * (omegaNormSq - S.normSquared());
+    }
+
+    return qCriterion;
+}
+
+ScalarField computeStrainRateMagnitude
+(
+    const VectorField& gradUx,
+    const VectorField& gradUy,
+    const VectorField& gradUz
+)
+{
+    ScalarField strainRateMag("strainRateMagnitude", gradUx.size());
+
+    for (size_t idx = 0; idx < gradUx.size(); ++idx)
+    {
+        // Compute strain rate tensor using helper function
+        StrainTensor S = computeStrainTensor(gradUx[idx], gradUy[idx], gradUz[idx]);
+
+        // Strain rate magnitude = sqrt(2 * S_ij * S_ij)
+        strainRateMag[idx] = std::sqrt(2.0 * S.normSquared());
+    }
+
+    return strainRateMag;
+}
+
+// *********************** Public API: PVD Time Series ************************
+
+void writePVDTimeSeriesHeader
+(
+    const std::string& pvdFilename
+)
+{
+    std::ofstream pvdFile(pvdFilename);
+
+    if (!pvdFile.is_open())
+    {
+        throw
+            std::runtime_error
+            (
+                "Failed to open PVD file: " + pvdFilename
+            );
+    }
+
+    pvdFile << "<?xml version=\"1.0\"?>\n";
+    pvdFile << "<VTKFile type=\"Collection\" version=\"0.1\" "
+            << "byte_order=\"LittleEndian\">\n";
+    pvdFile << "  <Collection>\n";
+    pvdFile << "  </Collection>\n";
+    pvdFile << "</VTKFile>\n";
+
+    pvdFile.close();
+
+    std::cout
+        << "PVD time series header written: "
+        << pvdFilename << std::endl;
+}
+
+void appendPVDTimeStep
+(
+    const std::string& pvdFilename,
+    const std::string& vtuFilename,
+    Scalar timeValue
+)
+{
+    // Read existing PVD file
+    std::ifstream pvdFileIn(pvdFilename);
+    if (!pvdFileIn.is_open())
+    {
+        throw
+            std::runtime_error
+            (
+                "Failed to open PVD file for reading: "
+              + pvdFilename
+            );
+    }
+
+    std::vector<std::string> lines;
+    std::string line;
+    while (std::getline(pvdFileIn, line))
+    {
+        lines.push_back(line);
+    }
+    pvdFileIn.close();
+
+    // Find the </Collection> line and insert before it
+    std::ofstream pvdFileOut(pvdFilename);
+    if (!pvdFileOut.is_open())
+    {
+        throw
+            std::runtime_error
+            (
+                "Failed to open PVD file for writing: "
+              + pvdFilename
+            );
+    }
+
+    for (const auto& existingLine : lines)
+    {
+        if (existingLine.find("</Collection>") != std::string::npos)
+        {
+            // Insert the new timestep before closing collection
+            pvdFileOut << "    <DataSet timestep=\"" << timeValue
+                      << "\" file=\"" << vtuFilename << "\"/>\n";
+        }
+        pvdFileOut << existingLine << "\n";
+    }
+
+    pvdFileOut.close();
+
+    std::cout
+        << "Added timestep " << timeValue << " to PVD file"
+        << std::endl;
+}
+
+// *********************** Public API: Geometry Export ************************
+
+void writeCellGeometryData
+(
+    const std::string& filename,
+    const std::vector<Cell>& allCells
+)
+{
+    std::ofstream outFile(filename);
+    if (!outFile.is_open())
+    {
+        throw
+            std::runtime_error
+            (
+                "Failed to open file: " + filename
+            );
+    }
+
+    // Header line
+    outFile << "# cellIndex volume centroid_x centroid_y centroid_z\n";
+    outFile << std::scientific << std::setprecision(12);
+
+    for (size_t i = 0; i < allCells.size(); ++i)
+    {
+        const Cell& cell = allCells[i];
+        const Vector& c = cell.centroid();
+
+        outFile << i << " "
+                << cell.volume() << " "
+                << c.x() << " "
+                << c.y() << " "
+                << c.z() << "\n";
+    }
+
+    outFile.close();
+    std::cout
+        << "Cell geometry data written to: " << filename << std::endl;
+
+    std::cout
+        << "  - Number of cells: " << allCells.size() << std::endl;
+}
+
+// ****************** Internal Helper Methods: Field Utilities *****************
 
 ScalarField computeMagnitude
 (
@@ -84,7 +574,7 @@ StrainTensor computeStrainTensor
     return S;
 }
 
-// *************** Private Helper Methods: Geometric Utilities ****************
+// *************** Internal Helper Methods: Geometric Utilities ****************
 
 Vector computeFaceCentroid
 (
@@ -128,7 +618,7 @@ Vector computeQuadNormal
     return cross(edge1, edge2);
 }
 
-// ************ Private Helper Methods: VTK Cell Node Ordering ****************
+// ************ Internal Helper Methods: VTK Cell Node Ordering ****************
 
 std::vector<vtkIdType> orderHexahedronNodes
 (
@@ -563,7 +1053,7 @@ std::vector<vtkIdType> orderPyramidNodes
                 baseFace.begin(),
                 baseFace.end(),
                 nodeId
-            ) 
+            )
          == baseFace.end()
         )
         {
@@ -607,487 +1097,4 @@ std::vector<vtkIdType> orderPyramidNodes
     return orderedNodes;
 }
 
-// ******************* Public API: Derived Field Computation *******************
-
-ScalarField computeVelocityMagnitude(const VectorField& velocity)
-{
-    return computeMagnitude(velocity, "velocityMagnitude");
-}
-
-ScalarField computeVorticityMagnitude(const VectorField& vorticity)
-{
-    return computeMagnitude(vorticity, "vorticityMagnitude");
-}
-
-ScalarField computeQCriterion
-(
-    const VectorField& gradUx,
-    const VectorField& gradUy,
-    const VectorField& gradUz
-)
-{
-    ScalarField qCriterion("QCriterion", gradUx.size());
-
-    for (size_t i = 0; i < gradUx.size(); ++i)
-    {
-        // Compute strain rate tensor using helper function
-        StrainTensor S = computeStrainTensor(gradUx[i], gradUy[i], gradUz[i]);
-
-        // Extract velocity gradient tensor components for rotation tensor
-        Scalar dUxdy = gradUx[i].y();
-        Scalar dUxdz = gradUx[i].z();
-        Scalar dUydx = gradUy[i].x();
-        Scalar dUydz = gradUy[i].z();
-        Scalar dUzdx = gradUz[i].x();
-        Scalar dUzdy = gradUz[i].y();
-
-        // Anti-symmetric rotation rate tensor
-        // (Omega_ij = 0.5 * (du_i/dx_j - du_j/dx_i))
-        Scalar Omega_12 = 0.5 * (dUxdy - dUydx);
-        Scalar Omega_13 = 0.5 * (dUxdz - dUzdx);
-        Scalar Omega_23 = 0.5 * (dUydz - dUzdy);
-
-        // Q-criterion = 0.5 * (||Omega||^2 - ||S||^2)
-        Scalar omegaNormSq =
-            2.0 * (Omega_12*Omega_12 + Omega_13*Omega_13 + Omega_23*Omega_23);
-
-        qCriterion[i] = 0.5 * (omegaNormSq - S.normSquared());
-    }
-
-    return qCriterion;
-}
-
-ScalarField computeStrainRateMagnitude
-(
-    const VectorField& gradUx,
-    const VectorField& gradUy,
-    const VectorField& gradUz
-)
-{
-    ScalarField strainRateMag("strainRateMagnitude", gradUx.size());
-
-    for (size_t idx = 0; idx < gradUx.size(); ++idx)
-    {
-        // Compute strain rate tensor using helper function
-        StrainTensor S = computeStrainTensor(gradUx[idx], gradUy[idx], gradUz[idx]);
-
-        // Strain rate magnitude = sqrt(2 * S_ij * S_ij)
-        strainRateMag[idx] = std::sqrt(2.0 * S.normSquared());
-    }
-
-    return strainRateMag;
-}
-
-// *********************** Public API: VTK File Export ************************
-
-void writeVtkUnstructuredGrid
-(
-    const std::string& filename,
-    const std::vector<Vector>& allNodes,
-    const std::vector<Cell>& allCells,
-    const std::vector<Face>& allFaces,
-    const std::map<std::string,
-    const ScalarField*>& scalarCellFields,
-    const std::map<std::string,
-    const VectorField*>& vectorCellFields,
-    bool debug
-)
-{
-    // Create vtkUnstructuredGrid
-    vtkSmartPointer<vtkUnstructuredGrid>
-    unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
-
-    // Create vtkPoints from nodes
-    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-    points->SetNumberOfPoints(allNodes.size());
-
-    for (size_t i = 0; i < allNodes.size(); ++i)
-    {
-        points->SetPoint(i, allNodes[i].x(), allNodes[i].y(), allNodes[i].z());
-    }
-
-    unstructuredGrid->SetPoints(points);
-
-    // Add cells to unstructured grid with proper topology preservation
-    // Build a node connectivity graph to determine proper VTK node ordering
-
-    // Cell type statistics for diagnostics
-    size_t numTets = 0, numHexes = 0, numWedges = 0,
-           numPyramids = 0, numConvex = 0;
-    size_t numWedgeOrderingFailures = 0;
-
-    for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
-    {
-        const Cell& cell = allCells[cellIdx];
-        const auto& faceIndices = cell.faceIndices();
-
-        // Collect all unique nodes and build connectivity
-        std::set<size_t> uniqueNodeSet;
-        std::vector<std::vector<size_t>> faceNodeLists;
-
-        for (size_t faceIdx : faceIndices)
-        {
-            const Face& face = allFaces[faceIdx];
-            const auto& nodeIndices = face.nodeIndices();
-            uniqueNodeSet.insert(nodeIndices.begin(), nodeIndices.end());
-            faceNodeLists.push_back(nodeIndices);
-        }
-
-        size_t numNodes = uniqueNodeSet.size();
-        size_t numFaces = faceIndices.size();
-
-        // Determine cell type
-        int cellType = VTK_CONVEX_POINT_SET; // Fallback
-        std::vector<vtkIdType> orderedNodes;
-
-        if (numNodes == 4 && numFaces == 4)
-        {
-            // Tetrahedron - VTK ordering:
-            // any vertex, then 3 neighbors forming base
-            cellType = VTK_TETRA;
-            numTets++;
-            orderedNodes.reserve(4);
-            for (size_t nodeIdx : uniqueNodeSet)
-            {
-                orderedNodes.push_back(static_cast<vtkIdType>(nodeIdx));
-            }
-        }
-        else if (numNodes == 8 && numFaces == 6)
-        {
-            // Hexahedron - need to find proper ordering
-            cellType = VTK_HEXAHEDRON;
-            numHexes++;
-            orderedNodes =
-                orderHexahedronNodes(faceNodeLists, uniqueNodeSet, allNodes);
-        }
-        else if (numNodes == 6 && numFaces == 5)
-        {
-            // Wedge (prism)
-            cellType = VTK_WEDGE;
-            numWedges++;
-            orderedNodes =
-                orderWedgeNodes(faceNodeLists, uniqueNodeSet, allNodes);
-
-            if (orderedNodes.empty())
-            {
-                numWedgeOrderingFailures++;
-                // Fallback to convex point set
-                cellType = VTK_CONVEX_POINT_SET;
-                for (size_t nodeIdx : uniqueNodeSet)
-                {
-                    orderedNodes.push_back(static_cast<vtkIdType>(nodeIdx));
-                }
-            }
-        }
-        else if (numNodes == 5 && numFaces == 5)
-        {
-            // Pyramid
-            cellType = VTK_PYRAMID;
-            numPyramids++;
-            orderedNodes =
-                orderPyramidNodes(faceNodeLists, uniqueNodeSet, allNodes);
-        }
-        else
-        {
-            // Use convex point set for unknown topology
-            numConvex++;
-            orderedNodes.reserve(numNodes);
-            for (size_t nodeId : uniqueNodeSet)
-            {
-                orderedNodes.push_back(static_cast<vtkIdType>(nodeId));
-            }
-        }
-
-        // Insert cell with ordered nodes
-        if (orderedNodes.empty())
-        {
-            // Fallback: use arbitrary ordering
-            vtkSmartPointer<vtkIdList> cellPointIds =
-                vtkSmartPointer<vtkIdList>::New();
-
-            for (size_t nodeIdx : uniqueNodeSet)
-            {
-                cellPointIds->InsertNextId(static_cast<vtkIdType>(nodeIdx));
-            }
-            unstructuredGrid->InsertNextCell
-            (
-                VTK_CONVEX_POINT_SET,
-                cellPointIds
-            );
-        }
-        else
-        {
-            unstructuredGrid->InsertNextCell
-            (
-                cellType,
-                static_cast<vtkIdType>(orderedNodes.size()),
-                orderedNodes.data()
-            );
-        }
-    }
-
-    // Add scalar cell fields
-    for (const auto& [fieldName, scalarField] : scalarCellFields)
-    {
-        if (!scalarField) continue;
-
-        vtkSmartPointer<vtkDoubleArray> 
-        dataArray = vtkSmartPointer<vtkDoubleArray>::New();
-
-        dataArray->SetName(fieldName.c_str());
-        dataArray->SetNumberOfComponents(1);
-        dataArray->SetNumberOfTuples(allCells.size());
-
-        for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
-        {
-            if (cellIdx < scalarField->size())
-            {
-                dataArray->SetValue(cellIdx, (*scalarField)[cellIdx]);
-            }
-            else
-            {
-                dataArray->SetValue(cellIdx, 0.0);
-            }
-        }
-
-        unstructuredGrid->GetCellData()->AddArray(dataArray);
-    }
-
-    // Add vector cell fields
-    for (const auto& [fieldName, vectorField] : vectorCellFields)
-    {
-        if (!vectorField) continue;
-
-        vtkSmartPointer<vtkDoubleArray> dataArray =
-            vtkSmartPointer<vtkDoubleArray>::New();
-
-        dataArray->SetName(fieldName.c_str());
-        dataArray->SetNumberOfComponents(3);
-        dataArray->SetNumberOfTuples(allCells.size());
-
-        for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
-        {
-            if (cellIdx < vectorField->size())
-            {
-                const Vector& vec = (*vectorField)[cellIdx];
-                double vecData[3] = {vec.x(), vec.y(), vec.z()};
-                dataArray->SetTuple(cellIdx, vecData);
-            }
-            else
-            {
-                double zeroVec[3] = {0.0, 0.0, 0.0};
-                dataArray->SetTuple(cellIdx, zeroVec);
-            }
-        }
-
-        unstructuredGrid->GetCellData()->AddArray(dataArray);
-    }
-
-    // Write the unstructured grid to file
-    vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer =
-        vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
-
-    writer->SetFileName(filename.c_str());
-    writer->SetInputData(unstructuredGrid);
-    writer->SetDataModeToBinary();
-    writer->SetCompressorTypeToZLib();
-    writer->Write();
-
-    std::cout
-        << "VTK UnstructuredGrid file written: "
-        << filename << std::endl;
-
-    if (debug)
-    {
-        std::cout
-            << "  - Number of points: "
-            << allNodes.size() << std::endl;
-
-        std::cout
-            << "  - Number of cells: "
-            << allCells.size() << std::endl;
-
-        std::cout
-            << "  - Cell types:" << std::endl;
-
-        if (numTets > 0)
-        {
-            std::cout
-                << "    - Tetrahedra: "
-                << numTets << std::endl;
-        }
-
-        if (numHexes > 0)
-        {
-            std::cout
-                << "    - Hexahedra: "
-                << numHexes << std::endl;
-        }
-
-        if (numWedges > 0)
-        {
-            std::cout
-                << "    - Wedges (prisms): "
-                << numWedges << std::endl;
-        }
-
-        if (numPyramids > 0)
-        {
-            std::cout
-                << "    - Pyramids: "
-                << numPyramids << std::endl;
-        }
-
-        if (numConvex > 0)
-        {
-            std::cout
-                << "    - Convex point sets: "
-                << numConvex << std::endl;
-        }
-
-        if (numWedgeOrderingFailures > 0)
-        {
-            std::cout
-                << "  - WARNING: "
-                << numWedgeOrderingFailures
-                << " wedge cells failed proper ordering"
-                << std::endl;
-        }
-
-        std::cout
-            << "  - Number of scalar fields: "
-            << scalarCellFields.size()
-            << std::endl;
-
-        std::cout
-            << "  - Number of vector fields: "
-            << vectorCellFields.size()
-            << std::endl;
-    }
-}
-
-// *********************** Public API: PVD Time Series ************************
-
-void writePVDTimeSeriesHeader
-(
-    const std::string& pvdFilename
-)
-{
-    std::ofstream pvdFile(pvdFilename);
-
-    if (!pvdFile.is_open())
-    {
-        throw   std::runtime_error
-                (
-                    "Failed to open PVD file: " + pvdFilename
-                );
-    }
-
-    pvdFile << "<?xml version=\"1.0\"?>\n";
-    pvdFile << "<VTKFile type=\"Collection\" version=\"0.1\" "
-            << "byte_order=\"LittleEndian\">\n";
-    pvdFile << "  <Collection>\n";
-    pvdFile << "  </Collection>\n";
-    pvdFile << "</VTKFile>\n";
-
-    pvdFile.close();
-
-    std::cout
-        << "PVD time series header written: "
-        << pvdFilename << std::endl;
-}
-
-void appendPVDTimeStep
-(
-    const std::string& pvdFilename,
-    const std::string& vtuFilename,
-    Scalar timeValue
-)
-{
-    // Read existing PVD file
-    std::ifstream pvdFileIn(pvdFilename);
-    if (!pvdFileIn.is_open())
-    {
-        throw   std::runtime_error
-                (
-                    "Failed to open PVD file for reading: " + pvdFilename
-                );
-    }
-
-    std::vector<std::string> lines;
-    std::string line;
-    while (std::getline(pvdFileIn, line))
-    {
-        lines.push_back(line);
-    }
-    pvdFileIn.close();
-
-    // Find the </Collection> line and insert before it
-    std::ofstream pvdFileOut(pvdFilename);
-    if (!pvdFileOut.is_open())
-    {
-        throw   std::runtime_error
-                (
-                    "Failed to open PVD file for writing: " + pvdFilename
-                );
-    }
-
-    for (const auto& existingLine : lines)
-    {
-        if (existingLine.find("</Collection>") != std::string::npos)
-        {
-            // Insert the new timestep before closing collection
-            pvdFileOut << "    <DataSet timestep=\"" << timeValue
-                      << "\" file=\"" << vtuFilename << "\"/>\n";
-        }
-        pvdFileOut << existingLine << "\n";
-    }
-
-    pvdFileOut.close();
-
-    std::cout
-        << "Added timestep " << timeValue << " to PVD file"
-        << std::endl;
-}
-
-// *********************** Public API: Geometry Export ************************
-
-void writeCellGeometryData
-(
-    const std::string& filename,
-    const std::vector<Cell>& allCells
-)
-{
-    std::ofstream outFile(filename);
-    if (!outFile.is_open())
-    {
-        throw   std::runtime_error
-                (
-                    "Failed to open file: " + filename
-                );
-    }
-
-    // Header line
-    outFile << "# cellIndex volume centroid_x centroid_y centroid_z\n";
-    outFile << std::scientific << std::setprecision(12);
-
-    for (size_t i = 0; i < allCells.size(); ++i)
-    {
-        const Cell& cell = allCells[i];
-        const Vector& c = cell.centroid();
-
-        outFile << i << " "
-                << cell.volume() << " "
-                << c.x() << " "
-                << c.y() << " "
-                << c.z() << "\n";
-    }
-
-    outFile.close();
-    std::cout
-        << "Cell geometry data written to: " << filename << std::endl;
-
-    std::cout
-        << "  - Number of cells: " << allCells.size() << std::endl;
-}
 } // namespace VtkWriter

@@ -2,9 +2,10 @@
  * @file LinearInterpolation.hpp
  * @brief Linear interpolation functions for face value reconstruction
  *
- * Provides distance-weighted linear interpolation from cell centers to face
- * centers. Supports both Scalar and Vector fields with optional BC handling.
- * Uses phi_f = phi_P * w_P + phi_N * w_N with geometric weighting.
+ * @details Provides distance-weighted linear interpolation from cell centers 
+ * to face centers. Supports both Scalar and Vector fields with optional 
+ * BC handling.
+ * Uses phif = phiP * wP + phiN * wN with geometric weighting.
  *****************************************************************************/
 
 #ifndef LINEAR_INTERPOLATION_HPP
@@ -21,8 +22,6 @@
  * @param face Face for interpolation
  * @param field Cell-centered scalar field
  * @return Interpolated scalar value at face
- *
- * For boundary faces, returns owner cell value (zero-gradient assumption).
  */
 Scalar interpolateToFace
 (

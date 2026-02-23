@@ -2,8 +2,8 @@
  * @file GradientScheme.hpp
  * @brief Gradient computation schemes for finite volume discretization
  *
- * This header defines the GradientScheme class, which provides robust
- * gradient reconstruction methods for scalar and vector fields on
+ * @details This header defines the GradientScheme class, which provides 
+ * robust gradient reconstruction methods for scalar and vector fields on
  * unstructured finite volume meshes. The implementation uses a weighted
  * least-squares approach with inverse distance squared weighting.
  *
@@ -66,12 +66,13 @@ public:
 
     /**
      * @brief Interpolate gradient at a single face
-     *
+     * 
+     * @details
      * For internal faces, computes a corrected face gradient using
      * distance-weighted interpolation of cell gradients with an
      * orthogonal correction to ensure consistency with the direct
      * cell-to-cell difference.
-     *
+     * 
      * @param fieldName Name of the field for BC lookup
      * @param phi Cell-centered scalar field
      * @param gradPhi_P Gradient at the owner cell
@@ -122,10 +123,10 @@ private:
      */
     Vector calculateBoundaryFaceGradient
     (
-        const Face& face,
         const std::string& fieldName,
         const ScalarField& phi,
         const Vector& cellGradient,
+        const Face& face,
         const FaceData<Scalar>* boundaryFaceValues = nullptr
     ) const;
 

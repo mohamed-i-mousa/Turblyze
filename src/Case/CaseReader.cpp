@@ -15,17 +15,79 @@ CaseReader::CaseReader(const std::string& filename)
     parseFile(filename);
 }
 
-// ******************************* File Parsing *******************************
+
+// ***************************** Accessor Methods *****************************
+
+CaseReader CaseReader::section(const std::string& name) const
+{
+    auto it = sections_.find(name);
+    if (it == sections_.end())
+    {
+        throw
+            std::runtime_error
+            (
+                "Section '" + name + "' not found"
+            );
+    }
+
+    return it->second;
+}
+
+bool CaseReader::hasSection(const std::string& name) const
+{
+    return sections_.find(name) != sections_.end();
+}
+
+std::vector<std::string> CaseReader::sectionNames() const
+{
+    std::vector<std::string> names;
+    for (const auto& section : sections_)
+    {
+        names.push_back(section.first);
+    }
+    return names;
+}
+
+
+// ***************************** Utility Methods ******************************
+
+void CaseReader::print(int indent) const
+{
+    std::string indentStr(indent * 4, ' ');
+
+    // Print entries
+    for (const auto& [key, value] : entries_)
+    {
+        std::cout
+            << indentStr << key << ": " << value << std::endl;
+    }
+
+    // Print sections
+    for (const auto& [name, section] : sections_)
+    {
+        std::cout
+            << indentStr << name << " {" << std::endl;
+
+        section.print(indent + 1); // recursion
+
+        std::cout
+            << indentStr << "}" << std::endl;
+    }
+}
+
+
+// ****************************** Private Methods ******************************
 
 void CaseReader::parseFile(const std::string& filename)
 {
     std::ifstream file(filename);
     if (!file.is_open())
     {
-        throw   std::runtime_error
-                (
-                    "Cannot open case file: " + filename
-                );
+        throw
+            std::runtime_error
+            (
+                "Cannot open case file: " + filename
+            );
     }
 
     currentLine_ = 1;
@@ -34,8 +96,8 @@ void CaseReader::parseFile(const std::string& filename)
 
 void CaseReader::parseSection
 (
-    std::istream& is, 
-    CaseReader& reader, 
+    std::istream& is,
+    CaseReader& sec,
     char terminator
 )
 {
@@ -43,10 +105,10 @@ void CaseReader::parseSection
 
     while ((token = readToken(is)) != "")
     {
-        if 
+        if
         (
-            terminator != '\0' 
-         && token.length() == 1 
+            terminator != '\0'
+         && token.length() == 1
          && token[0] == terminator
         )
         {
@@ -58,11 +120,12 @@ void CaseReader::parseSection
         {
             if (terminator == '\0')
             {
-                throw   std::runtime_error
-                        (
-                            "Unexpected '}' at line "
-                          + std::to_string(currentLine_)
-                        );
+                throw
+                    std::runtime_error
+                    (
+                        "Unexpected '}' at line "
+                      + std::to_string(currentLine_)
+                    );
             }
             return;
         }
@@ -75,28 +138,27 @@ void CaseReader::parseSection
             // It's a section
             CaseReader section;
             parseSection(is, section, '}');
-            reader.sections_[token] = section;
+            sec.sections_[token] = section;
         }
         else
         {
             // It's a key-value pair
             std::string value = parseValue(is, next);
-            reader.entries_[token] = value;
+            sec.entries_[token] = value;
         }
     }
 
     // Check if we expected a terminator but hit EOF
     if (terminator != '\0')
     {
-        throw   std::runtime_error
-                (
-                    "Unexpected end of file, expected '"
-                  + std::string(1, terminator) + "'"
-                );
+        throw
+            std::runtime_error
+            (
+                "Unexpected end of file, expected '"
+              + std::string(1, terminator) + "'"
+            );
     }
 }
-
-// ****************************** Token Parsing *******************************
 
 void CaseReader::skipCommentsAndWhitespace(std::istream& is) const
 {
@@ -160,36 +222,36 @@ std::string CaseReader::readToken(std::istream& is) const
     char c;
 
     // Check for special single-character tokens
-    if 
+    if
     (
-        is.peek() == '{' 
-     || is.peek() == '}' 
-     || is.peek() == ';' 
+        is.peek() == '{'
+     || is.peek() == '}'
+     || is.peek() == ';'
      || is.peek() == '('
-    ) 
+    )
     {
         is.get(c);
         return std::string(1, c);
     }
 
     // Read regular token
-    while (is.get(c)) 
+    while (is.get(c))
     {
-        if 
+        if
         (
             std::isspace(c)
-         || c == '{' 
-         || c == '}' 
-         || c == ';' 
-         || c == '(' 
+         || c == '{'
+         || c == '}'
+         || c == ';'
+         || c == '('
          || c == ')'
         )
         {
-            if (c == '\n') 
+            if (c == '\n')
             {
                 const_cast<int&>(currentLine_)++;
             }
-            if (!std::isspace(c)) 
+            if (!std::isspace(c))
             {
                 is.putback(c);
             }
@@ -210,14 +272,14 @@ std::string CaseReader::parseValue
     std::string value = firstToken;
 
     // Check if it's a vector/list (starts with '(')
-    if (firstToken == "(") 
+    if (firstToken == "(")
     {
         value = "(";
         char c;
         int parenDepth = 1;
-        while (is.get(c) && parenDepth > 0) 
+        while (is.get(c) && parenDepth > 0)
         {
-            if (c == '\n') 
+            if (c == '\n')
             {
                 const_cast<int&>(currentLine_)++;
             }
@@ -225,27 +287,27 @@ std::string CaseReader::parseValue
             if (c == '(') parenDepth++;
             if (c == ')') parenDepth--;
         }
-    } 
-    else 
+    }
+    else
     {
         // Read until semicolon
         skipCommentsAndWhitespace(is);
         char c;
-        while (is.get(c)) 
+        while (is.get(c))
         {
-            if (c == '\n') 
+            if (c == '\n')
             {
                 const_cast<int&>(currentLine_)++;
             }
-            if (c == ';') 
+            if (c == ';')
             {
                 break;
             }
-            if (!std::isspace(c)) 
+            if (!std::isspace(c))
             {
                 value += c;
-            } 
-            else if (!value.empty() && value.back() != ' ') 
+            }
+            else if (!value.empty() && value.back() != ' ')
             {
                 value += ' ';
             }
@@ -259,61 +321,4 @@ std::string CaseReader::parseValue
     }
 
     return value;
-}
-
-// ***************************** Accessor Methods *****************************
-
-CaseReader CaseReader::section(const std::string& name) const
-{
-    auto it = sections_.find(name);
-    if (it == sections_.end())
-    {
-        throw   std::runtime_error
-                (
-                    "Section '" + name + "' not found"
-                );
-    }
-
-    return it->second;
-}
-
-bool CaseReader::hasSection(const std::string& name) const
-{
-    return sections_.find(name) != sections_.end();
-}
-
-std::vector<std::string> CaseReader::sectionNames() const
-{
-    std::vector<std::string> names;
-    for (const auto& section : sections_) 
-    {
-        names.push_back(section.first);
-    }
-    return names;
-}
-
-// ***************************** Utility Methods ******************************
-
-void CaseReader::print(int indent) const
-{
-    std::string indentStr(indent * 4, ' ');
-
-    // Print entries
-    for (const auto& [key, value] : entries_) 
-    {
-        std::cout
-            << indentStr << key << ": " << value << std::endl;
-    }
-
-    // Print sections
-    for (const auto& [name, section] : sections_) 
-    {
-        std::cout
-            << indentStr << name << " {" << std::endl;
-
-        section.print(indent + 1); // recursion
-
-        std::cout
-            << indentStr << "}" << std::endl;
-    }
 }

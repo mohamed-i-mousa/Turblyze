@@ -82,33 +82,65 @@ SIMPLE::SIMPLE
 {}
 
 
-// ****************************** Private Helpers ******************************
+// ******************************* Public Methods ******************************
 
-ScalarField SIMPLE::extractComponent
-(
-    const std::string& name,
-    const VectorField& V,
-    int component
-)
+void SIMPLE::solve()
 {
-    size_t numCells = V.size();
+    std::cout
+        << "\n=== Starting SIMPLE Loop ===" << std::endl
+        << std::endl;
 
-    ScalarField result(name, numCells);
+    int iteration = 0;
 
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    bool converged = false;
+
+    while (!converged && iteration < maxIterations_)
     {
-        switch (component)
+        std::cout
+            << " Iteration " << iteration + 1;
+
+        UPrev_ = U_;
+        UAvgPrevf_ = UAvgf_;
+        RhieChowFlowRatePrev_ = RhieChowFlowRate_;
+
+        size_t numCells = allCells_.size();
+        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
-            case 0: result[cellIdx] = V[cellIdx].x(); break;
-            case 1: result[cellIdx] = V[cellIdx].y(); break;
-            case 2: result[cellIdx] = V[cellIdx].z(); break;
+            gradP_[cellIdx] = gradientScheme_.cellGradient("p", p_, cellIdx);
         }
+
+        solveMomentumEquations();
+
+        calculateRhieChowFlowRate();
+
+        solvePressureCorrection();
+
+        correctVelocity();
+
+        correctFlowRate();
+
+        correctPressure();
+
+        solveTurbulence();
+
+        converged = checkConvergence();
+
+        iteration++;
     }
 
-    return result;
+    if (!converged)
+    {
+        std::cout
+            << "WARNING: SIMPLE algorithm did not converge after "
+            << maxIterations_ << " iterations." << std::endl;
+    }
+    else
+    {
+        std::cout
+            << "SIMPLE algorithm converged in " << iteration
+            << " iterations." << std::endl;
+    }
 }
-
-// ******************************* Public Methods ******************************
 
 void SIMPLE::initialize
 (
@@ -119,9 +151,9 @@ void SIMPLE::initialize
     bool enableTurbulence
 )
 {
-    matrixConstruct_ = 
+    matrixConstruct_ =
         std::make_unique<Matrix>(allFaces_, allCells_, bcManager_);
-        
+
     // Initialize constraint system
     constraintSystem_ = std::make_unique<Constraint>(U_, p_);
 
@@ -178,64 +210,6 @@ void SIMPLE::initialize
     }
 }
 
-void SIMPLE::solve()
-{
-    std::cout
-        << "\n=== Starting SIMPLE Loop ===" << std::endl
-        << std::endl;
-    
-    int iteration = 0;
-
-    bool converged = false;
-    
-    while (!converged && iteration < maxIterations_)
-    {
-        std::cout
-            << " Iteration " << iteration + 1;
-
-        UPrev_ = U_;
-        UAvgPrevf_ = UAvgf_;
-        RhieChowFlowRatePrev_ = RhieChowFlowRate_;
-
-        size_t numCells = allCells_.size();
-        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-        {
-            gradP_[cellIdx] = gradientScheme_.cellGradient("p", p_, cellIdx);
-        }
-
-        solveMomentumEquations();
-
-        calculateRhieChowFlowRate();
-
-        solvePressureCorrection();
-        
-        correctVelocity();
-
-        correctFlowRate();
-
-        correctPressure();
-
-        solveTurbulence();
-        
-        converged = checkConvergence();
-        
-        iteration++;
-    }
-    
-    if (!converged)
-    {
-        std::cout
-            << "WARNING: SIMPLE algorithm did not converge after "
-            << maxIterations_ << " iterations." << std::endl;
-    }
-    else
-    {
-        std::cout
-            << "SIMPLE algorithm converged in " << iteration
-            << " iterations." << std::endl;
-    }
-}
-
 void SIMPLE::solveMomentumEquations()
 {
     size_t numCells = allCells_.size();
@@ -264,7 +238,7 @@ void SIMPLE::solveMomentumEquations()
     {
         if (turbulenceModel_)
         {
-            const ScalarField& nut = turbulenceModel_->getTurbulentViscosity();
+            const ScalarField& nut = turbulenceModel_->turbulentViscosity();
             nuEff[cellIdx] = nu_ + nut[cellIdx];
         }
         else
@@ -392,52 +366,6 @@ void SIMPLE::solveMomentumEquations()
     }
 }
 
-void SIMPLE::solveMomentumComponent
-(
-    char component,
-    TransportEquation& eq,
-    const ScalarField& componentPrev
-)
-{
-    matrixConstruct_->buildMatrix(eq);
-
-    auto& matrixA = matrixConstruct_->getMatrixA();
-    auto& vectorB = matrixConstruct_->getVectorB();
-
-    matrixConstruct_->relax(alphaU_, componentPrev);
-
-    // Store DU_
-    size_t numCells = allCells_.size();
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-    {
-        DU_[cellIdx] =
-            allCells_[cellIdx].volume()
-          / (matrixA.coeff(cellIdx, cellIdx) + vSmallValue);
-    }
-
-    // Map phi directly as Eigen vector (zero-copy solve)
-    Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
-    solutionMap(eq.phi.data(), numCells);
-
-    momentumSolver_.solveWithBiCGSTAB
-    (
-        solutionMap,
-        matrixA,
-        vectorB
-    );
-
-    // Write solved component back to velocity VectorField
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-    {
-        switch (component)
-        {
-            case 'x': U_[cellIdx].setX(eq.phi[cellIdx]); break;
-            case 'y': U_[cellIdx].setY(eq.phi[cellIdx]); break;
-            case 'z': U_[cellIdx].setZ(eq.phi[cellIdx]); break;
-        }
-    }
-}
-
 void SIMPLE::calculateRhieChowFlowRate()
 {
     size_t numFaces = allFaces_.size();
@@ -448,7 +376,7 @@ void SIMPLE::calculateRhieChowFlowRate()
         if (face.isBoundary())
         {
             UAvgf_[faceIdx] =
-                bcManager_.calculateBoundaryVectorFaceValue(face, U_, "U");
+                bcManager_.calculateBoundaryVectorFaceValue("U", U_, face);
 
             RhieChowFlowRate_[faceIdx] =
                 dot(UAvgf_[faceIdx], face.normal() * face.projectedArea());
@@ -534,8 +462,8 @@ void SIMPLE::solvePressureCorrection()
     matrixConstruct_->buildMatrix(equationPCorr);
 
     // Get references to the assembled matrix
-    auto& matrixA = matrixConstruct_->getMatrixA();
-    auto& vectorB = matrixConstruct_->getVectorB();
+    auto& matrixA = matrixConstruct_->matrixA();
+    auto& vectorB = matrixConstruct_->vectorB();
 
     // Map pCorr field storage as Eigen vector (zero-copy)
     pCorr_.setAll(S(0.0));
@@ -595,7 +523,7 @@ void SIMPLE::correctVelocity()
         if (face.isBoundary())
         {
             UAvgf_[faceIdx] =
-                bcManager_.calculateBoundaryVectorFaceValue(face, U_, "U");
+                bcManager_.calculateBoundaryVectorFaceValue("U", U_, face);
         }
         else
         {
@@ -702,8 +630,8 @@ void SIMPLE::solveTurbulence()
                 << std::endl;
         }
 
-        const auto& kField = turbulenceModel_->getk();
-        const auto& omegaField = turbulenceModel_->getOmega();
+        const auto& kField = turbulenceModel_->k();
+        const auto& omegaField = turbulenceModel_->omega();
         size_t numCells = allCells_.size();
 
         std::vector<Scalar> kPrev(numCells);
@@ -807,6 +735,30 @@ bool SIMPLE::checkConvergence()
 
 
 // ****************************** Private Methods ******************************
+
+ScalarField SIMPLE::extractComponent
+(
+    const std::string& name,
+    const VectorField& V,
+    int component
+)
+{
+    size_t numCells = V.size();
+
+    ScalarField result(name, numCells);
+
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    {
+        switch (component)
+        {
+            case 0: result[cellIdx] = V[cellIdx].x(); break;
+            case 1: result[cellIdx] = V[cellIdx].y(); break;
+            case 2: result[cellIdx] = V[cellIdx].z(); break;
+        }
+    }
+
+    return result;
+}
 
 Scalar SIMPLE::calculateMassImbalance() const
 {
@@ -958,6 +910,52 @@ void SIMPLE::calculateTransposeGradientSource
             transposeSourceX[neighborIdx] -= fluxX;
             transposeSourceY[neighborIdx] -= fluxY;
             transposeSourceZ[neighborIdx] -= fluxZ;
+        }
+    }
+}
+
+void SIMPLE::solveMomentumComponent
+(
+    char component,
+    TransportEquation& eq,
+    const ScalarField& componentPrev
+)
+{
+    matrixConstruct_->buildMatrix(eq);
+
+    auto& matrixA = matrixConstruct_->matrixA();
+    auto& vectorB = matrixConstruct_->vectorB();
+
+    matrixConstruct_->relax(alphaU_, componentPrev);
+
+    // Store DU_
+    size_t numCells = allCells_.size();
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    {
+        DU_[cellIdx] =
+            allCells_[cellIdx].volume()
+          / (matrixA.coeff(cellIdx, cellIdx) + vSmallValue);
+    }
+
+    // Map phi directly as Eigen vector (zero-copy solve)
+    Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
+    solutionMap(eq.phi.data(), numCells);
+
+    momentumSolver_.solveWithBiCGSTAB
+    (
+        solutionMap,
+        matrixA,
+        vectorB
+    );
+
+    // Write solved component back to velocity VectorField
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    {
+        switch (component)
+        {
+            case 'x': U_[cellIdx].setX(eq.phi[cellIdx]); break;
+            case 'y': U_[cellIdx].setY(eq.phi[cellIdx]); break;
+            case 'z': U_[cellIdx].setZ(eq.phi[cellIdx]); break;
         }
     }
 }

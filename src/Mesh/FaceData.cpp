@@ -32,10 +32,12 @@ T& FaceData<T>::operator[](size_t faceIndex)
 {
     if (faceIndex >= allFacesValues_.size())
     {
-        throw   std::out_of_range
-                (
-                    "Face index out of range in FaceField '" + name_ + "'"
-                );
+        throw
+            std::out_of_range
+            (
+                "Face index out of range in FaceField '"
+              + name_ + "'"
+            );
     }
 
     return allFacesValues_[faceIndex];
@@ -46,10 +48,12 @@ const T& FaceData<T>::operator[](size_t faceIndex) const
 {
     if (faceIndex >= allFacesValues_.size())
     {
-        throw   std::out_of_range
-                (
-                    "Face index out of range in FaceField '" + name_ + "'"
-                );
+        throw
+            std::out_of_range
+            (
+                "Face index out of range in FaceField '"
+              + name_ + "'"
+            );
     }
 
     return allFacesValues_[faceIndex];

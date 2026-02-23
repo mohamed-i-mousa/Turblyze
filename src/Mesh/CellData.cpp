@@ -32,10 +32,12 @@ T& CellData<T>::operator[](size_t cellIndex)
 {
     if (cellIndex >= internalField_.size())
     {
-        throw   std::out_of_range
-                (
-                    "Cell index out of range in CellData '" + name_ + "'"
-                );
+        throw
+            std::out_of_range
+            (
+                "Cell index out of range in CellData '"
+              + name_ + "'"
+            );
     }
 
     return internalField_[cellIndex];
@@ -46,10 +48,12 @@ const T& CellData<T>::operator[](size_t cellIndex) const
 {
     if (cellIndex >= internalField_.size())
     {
-        throw   std::out_of_range
-                (
-                    "Cell index out of range in CellData '" + name_ + "'"
-                );
+        throw
+            std::out_of_range
+            (
+                "Cell index out of range in CellData '"
+              + name_ + "'"
+            );
     }
 
     return internalField_[cellIndex];

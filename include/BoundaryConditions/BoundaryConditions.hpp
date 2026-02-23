@@ -2,9 +2,9 @@
  * @file BoundaryConditions.hpp
  * @brief Manages boundary conditions for the CFD solver
  * 
- * This class provides functionality to set up, store, and apply boundary
- * conditions for different fields on mesh patches. It supports various
- * boundary condition types including fixed values, gradients, and
+ * @details This class provides functionality to set up, store, and apply 
+ * boundary conditions for different fields on mesh patches. It supports 
+ * various boundary condition types including fixed values, gradients, and
  * special conditions like no-slip.
  *
  * @class BoundaryConditions
@@ -139,21 +139,37 @@ public:
         const std::string& fieldName
     );
 
-    /// Set OpenFOAM-like kqR wall function boundary condition
+    /**
+     * @brief Set k wall function boundary condition
+     * @param patchName Name of the boundary patch
+     * @param fieldName Name of the field
+     * @return True if successfully set
+     */
     bool setKWallFunction
     (
         const std::string& patchName,
         const std::string& fieldName
     );
 
-    /// Set OpenFOAM-like omega wall function boundary condition
+    
+    /**
+     * @brief Set omega wall function boundary condition
+     * @param patchName Name of the boundary patch
+     * @param fieldName Name of the field
+     * @return True if successfully set
+     */
     bool setOmegaWallFunction
     (
         const std::string& patchName,
         const std::string& fieldName
     );
 
-    /// Set OpenFOAM-like nutk wall function boundary condition
+    /**
+     * @brief Set nut wall function boundary condition
+     * @param patchName Name of the boundary patch
+     * @param fieldName Name of the field
+     * @return True if successfully set
+     */    
     bool setNutWallFunction
     (
         const std::string& patchName,
@@ -196,32 +212,32 @@ public:
 
     /**
      * @brief Calculate boundary face value for scalar field
-     * @param face Boundary face
-     * @param phi Scalar field
      * @param fieldName Name of the field
+     * @param phi Scalar field
+     * @param face Boundary face
      * @return Boundary value based on boundary condition
      * @throws std::runtime_error if face not found in boundary patches
      */
     Scalar calculateBoundaryFaceValue
     (
-        const Face& face,
+        const std::string& fieldName,
         const ScalarField& phi,
-        const std::string& fieldName
+        const Face& face
     ) const;
 
     /**
      * @brief Calculate boundary face value for vector field
-     * @param face Boundary face
-     * @param phi Vector field
      * @param fieldName Name of the field (e.g., "U")
+     * @param phi Vector field
+     * @param face Boundary face
      * @return Boundary vector value based on boundary condition
      * @throws std::runtime_error if face not found in boundary patches
      */
     Vector calculateBoundaryVectorFaceValue
     (
-        const Face& face,
+        const std::string& fieldName,
         const VectorField& phi,
-        const std::string& fieldName
+        const Face& face
     ) const;
 
     /**
@@ -239,9 +255,7 @@ public:
      */
     std::string bcTypeToString(BCType bctype) const;
 
-    /**
-     * @brief Print summary of all boundary conditions
-     */
+    /// Print summary of all boundary conditions
     void printSummary() const;
 
 private:

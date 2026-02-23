@@ -1,5 +1,6 @@
 /******************************************************************************
  * @file CFDApplication.cpp
+ * @version 
  * @brief Top-level application driver for the CFD solver
  *****************************************************************************/
 
@@ -129,8 +130,7 @@ void CFDApplication::loadCase()
         {
             auto velConstraint = constraintsDict.section("velocity");
 
-            velocityConstraintEnabled_ =
-                velConstraint.lookup<bool>("enabled");
+            velocityConstraintEnabled_ = velConstraint.lookup<bool>("enabled");
 
             maxVelocityConstraint_ =
                 velConstraint.lookup<Scalar>("maxVelocity");
@@ -313,11 +313,13 @@ void CFDApplication::setupBoundaryConditions()
     {
         if (face.isBoundary() && !face.patch())
         {
-            throw   std::runtime_error
-                    (
-                        "Boundary face " + std::to_string(face.idx())
-                      + " has no patch after linking."
-                    );
+            throw
+                std::runtime_error
+                (
+                    "Boundary face "
+                  + std::to_string(face.idx())
+                  + " has no patch after linking."
+                );
         }
     }
 
@@ -400,24 +402,6 @@ void CFDApplication::setupBoundaryConditions()
             else if (bcType == "zeroGradient")
             {
                 bcManager_.setZeroGradient(patchName, "pCorr");
-            }
-        }
-    }
-
-    // Process wall distance field boundary conditions
-    if (BCs.hasSection("phi_wall"))
-    {
-        auto phiWallBCs = BCs.section("phi_wall");
-
-        for (const auto& patchName : phiWallBCs.sectionNames())
-        {
-            auto patchBC = phiWallBCs.section(patchName);
-            std::string bcType = patchBC.lookup<std::string>("type");
-
-            if (bcType == "fixedValue")
-            {
-                Scalar value = patchBC.lookup<Scalar>("value");
-                bcManager_.setFixedValue(patchName, "phi_wall", value);
             }
         }
     }
@@ -604,7 +588,7 @@ void CFDApplication::setupBoundaryConditions()
             {
                 bcManager_.setZeroGradient(patchName, "nut");
             }
-            else if (bcType == "nutkWallFunction")
+            else if (bcType == "nutWallFunction")
             {
                 bcManager_.setNutWallFunction(patchName, "nut");
             }
@@ -794,7 +778,7 @@ void CFDApplication::configureSolver()
     }
 
     // Configure field constraints
-    Constraint* constraintSystem = solver_->getConstraintSystem();
+    Constraint* constraintSystem = solver_->constraintSystem();
 
     if (constraintSystem)
     {
@@ -859,8 +843,8 @@ void CFDApplication::postProcess()
     std::cout
          << std::endl << "--- 5. Extracting Solution Fields ---" << std::endl;
 
-    const VectorField& velocity = solver_->getVelocity();
-    const ScalarField& pressure = solver_->getPressure();
+    const VectorField& velocity = solver_->velocity();
+    const ScalarField& pressure = solver_->pressure();
 
     if (debug_)
     {
@@ -913,14 +897,14 @@ void CFDApplication::exportResults()
     std::cout
          << std::endl << "--- 7. Exporting Results to VTK ---" << std::endl;
 
-    const VectorField& velocity = solver_->getVelocity();
-    const ScalarField& pressure = solver_->getPressure();
+    const VectorField& velocity = solver_->velocity();
+    const ScalarField& pressure = solver_->pressure();
 
     // Extract turbulence fields if available
-    const ScalarField* kField = solver_->getTurbulentKineticEnergy();
-    const ScalarField* omegaField = solver_->getSpecificDissipationRate();
-    const ScalarField* nutField = solver_->getTurbulentViscosity();
-    const ScalarField* wallDistField = solver_->getWallDistance();
+    const ScalarField* kField = solver_->turbulentKineticEnergy();
+    const ScalarField* omegaField = solver_->specificDissipationRate();
+    const ScalarField* nutField = solver_->turbulentViscosity();
+    const ScalarField* wallDistField = solver_->wallDistance();
 
     // Calculate velocity magnitude
     ScalarField velocityMagnitude =
@@ -1017,10 +1001,11 @@ CFDApplication::createConvectionScheme(const std::string& name)
     }
     else
     {
-        throw   std::runtime_error
-                (
-                    "Unknown convection scheme: " + name
-                );
+        throw
+            std::runtime_error
+            (
+                "Unknown convection scheme: " + name
+            );
     }
 }
 
@@ -1100,11 +1085,12 @@ ConvectionSchemes CFDApplication::parseConvectionSchemes()
     }
     else
     {
-        throw   std::runtime_error
-                (
-                    "Missing 'convection' sub-section "
-                    "in numericalSchemes"
-                );
+        throw
+            std::runtime_error
+            (
+                "Missing 'convection' sub-section "
+                "in numericalSchemes"
+            );
     }
 
     return schemes;

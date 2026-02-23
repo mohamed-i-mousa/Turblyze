@@ -2,8 +2,8 @@
  * @file MeshReader.hpp
  * @brief Fluent mesh file reader for ANSYS mesh files
  *
- * This header defines the MeshReader class which reads mesh data from Fluent
- * (.msh) files and converts them into the internal structure
+ * @details This header defines the MeshReader class which reads mesh data 
+ * from Fluent (.msh) files and converts them into the internal structure
  * (Nodes, Faces, Cells). Currently supports 3D unstructured meshes exported
  * from ANSYS Meshing.
  *
@@ -161,6 +161,7 @@ private:
     /**
      * @brief Build cell-face connectivity and neighbor relationships
      *
+     * @details
      * 1. Assigns cell indices and clears existing connectivity
      * 2. Maps faces to their owner and neighbor cells
      * 3. Assigns face signs (+1 owner, -1 neighbor)
@@ -168,14 +169,10 @@ private:
      */
     void buildTopology();
 
-    /**
-     * @brief Validate mesh integrity
-     */
+    /// Validate mesh integrity
     void validateMesh() const;
 
-    /**
-     * @brief Print mesh loading summary to stdout
-     */
+    /// Print mesh loading summary to stdout
     void printSummary() const;
 
 // Static utility methods

@@ -28,8 +28,8 @@ Scalar ConvectionScheme::calculateCorrection
 (
     const Face& /*face*/,
     const ScalarField& /*phi*/,
-    const Vector& /*grad_phi_P*/,
-    const Vector& /*grad_phi_N*/,
+    const Vector& /*gradPhiP*/,
+    const Vector& /*gradPhiN*/,
     Scalar /*flowRate*/
 ) const
 {
@@ -43,8 +43,8 @@ Scalar CentralDifferenceScheme::calculateCorrection
 (
     const Face& face,
     const ScalarField& phi,
-    const Vector& /*grad_phi_P*/,
-    const Vector& /*grad_phi_N*/,
+    const Vector& /*gradPhiP*/,
+    const Vector& /*gradPhiN*/,
     Scalar flowRate
 ) const
 {
@@ -68,8 +68,8 @@ Scalar SecondOrderUpwindScheme::calculateCorrection
 (
     const Face& face,
     const ScalarField& phi,
-    const Vector& grad_phi_P,
-    const Vector& grad_phi_N,
+    const Vector& gradPhiP,
+    const Vector& gradPhiN,
     Scalar flowRate
 ) const
 {
@@ -84,8 +84,8 @@ Scalar SecondOrderUpwindScheme::calculateCorrection
     // Gradient-reconstructed face value: φ_upwind + ∇φ · d
     Scalar phi_face_SOU =
         (upwind_cell == face.ownerCell())
-      ? phi[upwind_cell] + dot(grad_phi_P, face.d_Pf())
-      : phi[upwind_cell] + dot(grad_phi_N, face.d_Nf().value());
+      ? phi[upwind_cell] + dot(gradPhiP, face.dPf())
+      : phi[upwind_cell] + dot(gradPhiN, face.dNf().value());
 
     // Deferred correction: flowRate × (φ_SOU - φ_UDS)
     return flowRate * (phi_face_SOU - phi[upwind_cell]);

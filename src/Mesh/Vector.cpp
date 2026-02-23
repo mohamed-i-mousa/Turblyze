@@ -11,8 +11,8 @@
 
 Vector::Vector() : x_(0.0), y_(0.0), z_(0.0) {}
 
-Vector::Vector(Scalar x_value, Scalar y_value, Scalar z_value)
-    : x_(x_value), y_(y_value), z_(z_value) {}
+Vector::Vector(Scalar xValue, Scalar yValue, Scalar zValue)
+    : x_(xValue), y_(yValue), z_(zValue) {}
 
 // ************************** Operator Overloads **************************
 
@@ -35,10 +35,11 @@ Vector Vector::operator/(Scalar scalar) const
 {
     if (std::abs(scalar) < smallValue) 
     {
-        throw   std::runtime_error
-                (
-                    "Error: Division by zero in Vector::operator/"
-                );
+        throw
+            std::runtime_error
+            (
+                "Error: Division by zero in Vector::operator/"
+            );
     }
 
     return Vector(x_ / scalar, y_ / scalar, z_ / scalar);
@@ -75,10 +76,11 @@ Vector& Vector::operator/=(Scalar scalar)
 {
     if (std::abs(scalar) < vSmallValue) 
     {
-        throw   std::runtime_error
-                (
-                    "Error: Division by zero in Vector::operator/="
-                );
+        throw
+            std::runtime_error
+            (
+                "Error: Division by zero in Vector::operator/="
+            );
     }
 
     x_ /= scalar;
@@ -121,10 +123,11 @@ Vector& Vector::normalize()
     }
     else
     {
-        throw   std::runtime_error
-                (
-                    "Error: Division by zero in Vector::normalize"
-                );
+        throw
+            std::runtime_error
+            (
+                "Error: Division by zero in Vector::normalize"
+            );
     }
 
     return *this;
@@ -166,10 +169,11 @@ Scalar dot(const Vector& p1, const Vector& p2)
 
 Vector cross(const Vector& p1, const Vector& p2) 
 {
-    return  Vector
-            (
-                p1.y() * p2.z() - p1.z() * p2.y(),
-                p1.z() * p2.x() - p1.x() * p2.z(),
-                p1.x() * p2.y() - p1.y() * p2.x()
-            );
+    return
+        Vector
+        (
+            p1.y() * p2.z() - p1.z() * p2.y(),
+            p1.z() * p2.x() - p1.x() * p2.z(),
+            p1.x() * p2.y() - p1.y() * p2.x()
+        );
 }

@@ -2,7 +2,7 @@
  * @file SIMPLE.hpp
  * @brief SIMPLE algorithm for incompressible Navier-Stokes equations
  * 
- * This header implements the Semi-Implicit Method for Pressure-Linked 
+ * @details This header implements the Semi-Implicit Method for Pressure-Linked
  * Equations (SIMPLE) for solving incompressible flow on unstructured finite
  * volume meshes. The algorithm handles velocity-pressure coupling through 
  * pressure correction and includes the k-omega SST turbulence modeling.
@@ -84,13 +84,14 @@ public:
     /**
      * @brief Calculate mass fluxes using Rhie-Chow interpolation
      *
+     * @details
      * Implements the Rhie-Chow interpolation method to prevent checkerboard
      * pressure oscillations in collocated grids.
      *
      * The face velocity is computed as:
      *
-     * U_f = U_f_average + DUf * (∇p_face_average - ∇p_face_accurate)
-     *       + (1 - alpha_U) * (U_f_prev - U_f_prev_linear)
+     * Uf = UAvgf + DUf * (∇pAvgf - ∇pFaceAccurate)
+     *       + (1 - alphaU) * (UPrevf - UPrevLinearf)
      *
      * where D_f is the face diffusion coefficient calculated using the
      * momentum equation diagonals.
@@ -100,31 +101,22 @@ public:
     /**
      * @brief Solve pressure correction equation
      *
+     * @details
      * Assembles and solves the pressure correction equation:
      * ∇·(DUf ∇p') = -∇·(ρU*)
      */
     void solvePressureCorrection();
 
-    /**
-     * @brief Correct velocity field using pressure correction
-     *
-     * Applies velocity correction as:
-     * U_corrected = U* - DU * ∇p'
-     *
-     * where DU = diag(DUx, DUy, DUz) are the cell-centered diffusion
-     * coefficients computed from momentum matrix diagonals: D = V/a_momentum
-     */
+    /// Correct velocity field
     void correctVelocity();
 
-    /// Correct pressure field using pressure correction
+    /// Correct pressure field
     void correctPressure();
 
-    /// Correct mass fluxes using updated velocity field
+    /// Correct mass fluxes
     void correctFlowRate();
 
-    /**
-     * @brief Solve turbulence equations if turbulence modeling is enabled
-     */
+    /// Solve turbulence equations if turbulence modeling is enabled
     void solveTurbulence();
 
     /// Check if solution has converged
@@ -132,11 +124,17 @@ public:
 
 // Accessor methods
 
-    /// Get velocity field
-    const VectorField& getVelocity() const { return U_; }
+    /**
+     * @brief Get velocity field
+     * @return Const reference to velocity vector field
+     */
+    const VectorField& velocity() const { return U_; }
 
-    /// Get pressure field
-    const ScalarField& getPressure() const { return p_; }
+    /**
+     * @brief Get pressure field
+     * @return Const reference to pressure scalar field
+     */
+    const ScalarField& pressure() const { return p_; }
 
 // Setter methods
 
@@ -161,13 +159,19 @@ public:
         alphaOmega_ = alphaOmega;
     }
 
-    /// Set convergence tolerance
+    /**
+     * @brief Set convergence tolerance
+     * @param tol Convergence tolerance for residuals
+     */
     void setConvergenceTolerance(Scalar tol)
     {
         tolerance_ = tol;
     }
 
-    /// Set maximum number of iterations
+    /**
+     * @brief Set maximum number of iterations
+     * @param maxIter Maximum number of SIMPLE iterations
+     */
     void setMaxIterations(int maxIter)
     {
         maxIterations_ = maxIter;
@@ -181,23 +185,29 @@ public:
 
     /**
      * @brief Set physical properties
-     * @param rhoNew Fluid density
-     * @param muNew Dynamic viscosity
+     * @param rho Fluid density
+     * @param mu Dynamic viscosity
      */
-    void setPhysicalProperties(Scalar rhoNew, Scalar muNew)
+    void setPhysicalProperties(Scalar rho, Scalar mu)
     {
-        rho_ = rhoNew;
-        mu_ = muNew;
-        nu_ = muNew / rhoNew;
+        rho_ = rho;
+        mu_ = mu;
+        nu_ = mu / rho;
     }
 
-    /// Set linear solver for momentum equations
+    /**
+     * @brief Set linear solver for momentum equations
+     * @param solver Configured LinearSolver for momentum
+     */
     void setMomentumSolver(const LinearSolver& solver)
     {
         momentumSolver_ = solver;
     }
 
-    /// Set linear solver for pressure correction equation
+    /**
+     * @brief Set linear solver for pressure correction equation
+     * @param solver Configured LinearSolver for pressure
+     */
     void setPressureSolver(const LinearSolver& solver)
     {
         pressureSolver_ = solver;
@@ -221,45 +231,60 @@ public:
         }
     }
 
-    /// Get constraint system pointer
-    Constraint* getConstraintSystem() { return constraintSystem_.get(); }
+    /**
+     * @brief Get constraint system pointer
+     * @return Pointer to constraint system, or nullptr if none
+     */
+    Constraint* constraintSystem() { return constraintSystem_.get(); }
 
-    /// Get turbulent kinetic energy field (null if turbulence disabled)
-    const ScalarField* getTurbulentKineticEnergy() const
+    /**
+     * @brief Get turbulent kinetic energy field
+     * @return Pointer to k field, or nullptr if turbulence disabled
+     */
+    const ScalarField* turbulentKineticEnergy() const
     {
         if (turbulenceModel_)
         {
-            return &(turbulenceModel_->getk());
+            return &(turbulenceModel_->k());
         }
         return nullptr;
     }
 
-    /// Get specific dissipation rate field (null if turbulence disabled)
-    const ScalarField* getSpecificDissipationRate() const
+    /**
+     * @brief Get specific dissipation rate field
+     * @return Pointer to omega field, or nullptr if turbulence disabled
+     */
+    const ScalarField* specificDissipationRate() const
     {
         if (turbulenceModel_)
         {
-            return &(turbulenceModel_->getOmega());
+            return &(turbulenceModel_->omega());
         }
         return nullptr;
     }
 
-    /// Get turbulent viscosity field (null if turbulence disabled)
-    const ScalarField* getTurbulentViscosity() const
+    /**
+     * @brief Get turbulent viscosity field
+     * @return Pointer to nut field, or nullptr if turbulence disabled
+     */
+    const ScalarField* turbulentViscosity() const
     {
         if (turbulenceModel_)
         {
-            return &(turbulenceModel_->getTurbulentViscosity());
+            return &(turbulenceModel_->turbulentViscosity());
         }
         return nullptr;
     }
 
-    /// Get wall distance field (null if turbulence disabled)
-    const ScalarField* getWallDistance() const
+    /**
+     * @brief Get wall distance field
+     * @return Pointer to wall distance field, nullptr if turbulence disabled
+     */
+    const ScalarField* wallDistance() const
     {
         if (turbulenceModel_)
         {
-            return &(turbulenceModel_->getWallDistance());
+            return &(turbulenceModel_->wallDistance());
         }
         return nullptr;
     }

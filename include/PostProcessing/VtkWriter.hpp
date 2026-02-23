@@ -15,7 +15,6 @@
  * - Derived field computation (velocity/vorticity magnitude, Q-criterion,
  *   strain rate magnitude)
  *
- *
  * @see ParaView: https://www.paraview.org/
  * @see VTK Documentation: https://vtk.org/documentation/
  *****************************************************************************/
@@ -46,7 +45,8 @@ namespace VtkWriter
 /**
  * @brief Write simulation results to VTK UnstructuredGrid (.vtu) file
  *
- * @details This function exports 3D volumetric mesh and field data to
+ * @details 
+ * This function exports 3D volumetric mesh and field data to
  * VTK UnstructuredGrid format (.vtu) which enables full 3D visualization
  * including volume rendering, slicing, clipping, and isosurfaces.
  *
@@ -93,7 +93,8 @@ ScalarField computeVorticityMagnitude
 /**
  * @brief Compute Q-criterion for vortex identification
  *
- * @details Q-criterion identifies vortex cores as regions where Q > 0,
+ * @details 
+ * Q-criterion identifies vortex cores as regions where Q > 0,
  * where Q = 0.5 * (||Omega||^2 - ||S||^2), with Omega being the
  * rotation rate tensor and S the strain rate tensor.
  *
@@ -112,7 +113,8 @@ ScalarField computeQCriterion
 /**
  * @brief Compute strain rate magnitude field
  *
- * @details Strain rate magnitude = sqrt(2 * S_ij * S_ij) where
+ * @details 
+ * Strain rate magnitude = sqrt(2 * S_ij * S_ij) where
  * S_ij is the symmetric strain rate tensor.
  *
  * @param gradUx Gradient of x-velocity component
@@ -168,8 +170,9 @@ struct StrainTensor
     /// Compute ||S||^2 = S_ij * S_ij
     Scalar normSquared() const
     {
-        return S_11*S_11 + S_22*S_22 + S_33*S_33
-             + 2.0 * (S_12*S_12 + S_13*S_13 + S_23*S_23);
+        return 
+            S_11*S_11 + S_22*S_22 + S_33*S_33
+          + 2.0 * (S_12*S_12 + S_13*S_13 + S_23*S_23);
     }
 };
 
@@ -238,7 +241,8 @@ Vector computeQuadNormal
 /**
  * @brief Order hexahedron nodes according to VTK convention
  *
- * @details VTK Hexahedron: nodes 0-3 form bottom quad, nodes 4-7 form
+ * @details 
+ * VTK Hexahedron: nodes 0-3 form bottom quad, nodes 4-7 form
  * top quad. Uses face topology for robust ordering without
  * axis-alignment assumptions.
  *
@@ -257,7 +261,8 @@ std::vector<vtkIdType> orderHexahedronNodes
 /**
  * @brief Order wedge (prism) nodes according to VTK convention
  *
- * @details VTK Wedge: nodes 0,1,2 form bottom triangle, nodes 3,4,5
+ * @details 
+ * VTK Wedge: nodes 0,1,2 form bottom triangle, nodes 3,4,5
  * form top triangle. Uses actual face topology to determine correct
  * node ordering.
  *
@@ -276,7 +281,8 @@ std::vector<vtkIdType> orderWedgeNodes
 /**
  * @brief Order pyramid nodes according to VTK convention
  *
- * @details VTK Pyramid: nodes 0,1,2,3 form quad base, node 4 is apex.
+ * @details 
+ * VTK Pyramid: nodes 0,1,2,3 form quad base, node 4 is apex.
  * Uses face topology for robust ordering without axis assumptions.
  *
  * @param faceNodeLists Node lists for all faces of the pyramid

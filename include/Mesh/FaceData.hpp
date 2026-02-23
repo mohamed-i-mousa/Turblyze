@@ -2,9 +2,10 @@
  * @file FaceData.hpp
  * @brief Template container for face-centered field data storage
  * 
- * This header defines a generic template class for storing field variables
- * at face centers in finite volume meshes. The container manages face-based
- * data including mass fluxes, face velocities, and face-centered gradients
+ * @details This header defines a generic template class for storing field 
+ * variables at face centers in finite volume meshes. The container manages 
+ * face-based data including mass fluxes, face velocities, and face-centered 
+ * gradients
  * 
  * @class FaceData<T>
  * @tparam T Type of field value stored at each face (e.g., Scalar, Vector)
@@ -85,16 +86,16 @@ public:
     void setAll(const T& value);
 
     /**
+     * @brief Get field name
+     * @return Const reference to field name
+     */
+    const std::string& name() const { return name_; }
+
+    /**
      * @brief Print field summary for debugging
      * @param itemsToShow Number of items to display
      */
     void printSummary(size_t itemsToShow) const;
-
-    /**
-     * @brief Get field name
-     * @return Const reference to field name
-     */
-    const std::string& getName() const { return name_; }
 
 private:
 

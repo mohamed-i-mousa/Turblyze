@@ -1,5 +1,6 @@
 /******************************************************************************
  * @file BoundaryPatch.cpp
+ * @version 
  * @brief Implementation of boundary patch management
  *****************************************************************************/
 
@@ -52,12 +53,4 @@ BoundaryConditionType mapFluentBCToEnum(const std::string& fluentType)
         << fluentType << std::endl;
                 
     return BoundaryConditionType::UNDEFINED;
-}
-
-
-// ****************************** Public Methods ******************************
-
-size_t BoundaryPatch::numberOfBoundaryFaces() const 
-{
-    return lastFaceIdx_ - firstFaceIdx_ + 1;
 }

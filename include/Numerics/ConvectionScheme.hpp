@@ -2,10 +2,11 @@
  * @file ConvectionScheme.hpp
  * @brief Convection discretization schemes for finite volume method
  *
- * This header defines the convection scheme hierarchy for discretizing
- * convective fluxes in transport equations. The implementation follows a
- * deferred correction approach where all schemes use stable upwind matrix
- * coefficients, with higher-order schemes adding explicit correction terms.
+ * @details This header defines the convection scheme hierarchy for 
+ * discretizing convective fluxes in transport equations. The implementation 
+ * follows a deferred correction approach where all schemes use stable upwind 
+ * matrix coefficients, with higher-order schemes adding explicit correction 
+ * terms.
  *
  * @class ConvectionScheme
  *
@@ -19,6 +20,8 @@
 #ifndef CONVECTION_SCHEME_HPP
 #define CONVECTION_SCHEME_HPP
 
+#include <memory>
+
 #include "Scalar.hpp"
 #include "Vector.hpp"
 #include "Face.hpp"
@@ -27,7 +30,6 @@
 #include "FaceData.hpp"
 #include "BoundaryConditions.hpp"
 #include "BoundaryData.hpp"
-#include <memory>
 
 
 class ConvectionScheme
@@ -41,6 +43,7 @@ public:
     /**
      * @brief Upwind convection flux coefficients for matrix assembly
      *
+     * @details
      * All schemes use upwind coefficients in the matrix for stability:
      * - owner = max(F, 0): takes flow when F >= 0
      * - neighbor = min(F, 0): takes flow when F < 0
@@ -64,8 +67,8 @@ public:
      * @brief Calculate higher-order deferred correction term
      * @param face Face for interpolation
      * @param phi Cell-centered field values
-     * @param grad_phi_P Cell gradient at owner cell
-     * @param grad_phi_N Cell gradient at neighbor cell
+     * @param gradPhiP Cell gradient at owner cell
+     * @param gradPhiN Cell gradient at neighbor cell
      * @param flowRate Volumetric flow rate through face
      * @return Correction flux: flowRate × (φ_highOrder - φ_upwind)
      *
@@ -76,8 +79,8 @@ public:
     (
         const Face& face,
         const ScalarField& phi,
-        const Vector& grad_phi_P,
-        const Vector& grad_phi_N,
+        const Vector& gradPhiP,
+        const Vector& gradPhiN,
         Scalar flowRate
     ) const;
 };
@@ -85,6 +88,7 @@ public:
 /**
  * @brief First-order Upwind Differencing Scheme (UDS)
  *
+ * @details
  * Discretization: φ_f = φ_upwind (flow-direction dependent)
  *   - F >= 0: φ_f = φ_P (owner cell value)
  *   - F < 0:  φ_f = φ_N (neighbor cell value)
@@ -96,6 +100,7 @@ class UpwindScheme final : public ConvectionScheme {};
 /**
  * @brief Central Differencing Scheme (CDS) with deferred correction
  *
+ * @details
  * Discretization: φ_f = w·φ_P + (1-w)·φ_N (distance-weighted interpolation)
  *
  * Implementation uses deferred correction approach:
@@ -114,8 +119,8 @@ public:
      * @brief Calculate deferred correction for CDS
      * @param face Face for interpolation
      * @param phi Cell-centered field values
-     * @param grad_phi_P Cell gradient at owner (unused for CDS)
-     * @param grad_phi_N Cell gradient at neighbor (unused for CDS)
+     * @param gradPhiP Cell gradient at owner (unused for CDS)
+     * @param gradPhiN Cell gradient at neighbor (unused for CDS)
      * @param flowRate Volumetric flow rate through face
      * @return Correction flux: F × (φ_CDS - φ_upwind)
      */
@@ -123,8 +128,8 @@ public:
     (
         const Face& face,
         const ScalarField& phi,
-        const Vector& grad_phi_P,
-        const Vector& grad_phi_N,
+        const Vector& gradPhiP,
+        const Vector& gradPhiN,
         Scalar flowRate
     ) const override;
 };
@@ -132,6 +137,7 @@ public:
 /**
  * @brief Second-order Upwind Scheme (SOU) with gradient reconstruction
  *
+ * @details
  * Discretization: φ_f = φ_upwind + ∇φ_upwind · d_{upwind→face}
  *
  * Implementation uses deferred correction approach:
@@ -151,8 +157,8 @@ public:
      * @brief Calculate deferred correction for SOU
      * @param face Face for interpolation
      * @param phi Cell-centered field values
-     * @param grad_phi_P Cell gradient at owner cell
-     * @param grad_phi_N Cell gradient at neighbor cell
+     * @param gradPhiP Cell gradient at owner cell
+     * @param gradPhiN Cell gradient at neighbor cell
      * @param flowRate Volumetric flow rate (determines upwind direction)
      * @return Correction flux: F × (φ_SOU - φ_upwind)
      */
@@ -160,8 +166,8 @@ public:
     (
         const Face& face,
         const ScalarField& phi,
-        const Vector& grad_phi_P,
-        const Vector& grad_phi_N,
+        const Vector& gradPhiP,
+        const Vector& gradPhiN,
         Scalar flowRate
     ) const override;
 };
@@ -169,6 +175,7 @@ public:
 /**
  * @brief Container for equation-specific convection schemes
  *
+ * @details
  * Manages convection schemes for different transport equations:
  * - momentum: Ux, Uy, Uz momentum equations
  * - k: Turbulent kinetic energy transport

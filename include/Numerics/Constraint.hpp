@@ -2,8 +2,8 @@
  * @file Constraint.hpp
  * @brief Field constraint system for CFD solution stability
  *
- * This header defines the Constraint class to apply constraints on velocity
- * and pressure fields to prevent overshooting and divergence.
+ * @details This header defines the Constraint class to apply constraints on 
+ * velocity and pressure fields to prevent overshooting and divergence.
  *
  * @class Constraint
  *
@@ -11,7 +11,6 @@
  * - Velocity magnitude clipping (preventing unrealistically high speeds)
  * - Pressure bounds (preventing excessive pressures)
  * - Reporting of constraint activity (number of cells clipped)
- *
  *****************************************************************************/
 
 #ifndef CONSTRAINT_HPP

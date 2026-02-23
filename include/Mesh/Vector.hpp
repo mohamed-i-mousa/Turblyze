@@ -2,9 +2,9 @@
  * @file Vector.hpp
  * @brief 3D vector class for geometric and mathematical operations in CFD
  * 
- * This header defines a 3D vector class that serves as the foundation for 
- * all vector-based calculations in the CFD solver. The Vector class provides
- * essential mathematical operations required in the finite volume
+ * @details This header defines a 3D vector class that serves as the foundation
+ * for all vector-based calculations in the CFD solver. The Vector class 
+ * provides essential mathematical operations required in the finite volume
  * discretization and mesh operations.
  * 
  * @class Vector
@@ -33,31 +33,31 @@ public:
     
     /**
      * @brief Constructs vector with specified components
-     * @param x_value X component
-     * @param y_value Y component 
-     * @param z_value Z component
+     * @param xValue X component
+     * @param yValue Y component 
+     * @param zValue Z component
      */
-    Vector(Scalar x_value, Scalar y_value, Scalar z_value);
+    Vector(Scalar xValue, Scalar yValue, Scalar zValue);
 
 // Setter methods
 
     /** 
      * @brief Set X component 
-     * @param x_value New X component value 
+     * @param xValue New X component value 
      */
-    void setX(Scalar x_value) { x_ = x_value; }
+    void setX(Scalar xValue) { x_ = xValue; }
     
     /** 
      * @brief Set Y component 
-     * @param y_value New Y component value 
+     * @param yValue New Y component value 
      */
-    void setY(Scalar y_value) { y_ = y_value; }
+    void setY(Scalar yValue) { y_ = yValue; }
     
     /** 
      * @brief Set Z component 
-     * @param z_value New Z component value 
+     * @param zValue New Z component value 
      */
-    void setZ(Scalar z_value) { z_ = z_value; }
+    void setZ(Scalar zValue) { z_ = zValue; }
 
 // Accessor methods
 

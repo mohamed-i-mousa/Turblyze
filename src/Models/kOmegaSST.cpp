@@ -171,7 +171,7 @@ void kOmegaSST::solve
     logFieldDiagnostics();
 }
 
-ScalarField kOmegaSST::getEffectiveViscosity() const
+ScalarField kOmegaSST::effectiveViscosity() const
 {
     size_t numCells = allCells_.size();
     ScalarField nuEff("nuEff", numCells);
@@ -340,7 +340,7 @@ void kOmegaSST::solveOmegaEquation
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         Scalar sigmaOmega =
-            blend(F1_[cellIdx], constants_.sigmaOmega1, constants_.sigmaOmega2);
+            blend(F1_[cellIdx], const_.sigmaOmega1, const_.sigmaOmega2);
 
         GammaOmega[cellIdx] = nu_ + sigmaOmega * nut_[cellIdx];
     }
@@ -364,8 +364,8 @@ void kOmegaSST::solveOmegaEquation
 
     matrixConstruct_->buildMatrix(equationOmega);
 
-    auto& matrixA = matrixConstruct_->getMatrixA();
-    auto& vectorB = matrixConstruct_->getVectorB();
+    auto& matrixA = matrixConstruct_->matrixA();
+    auto& vectorB = matrixConstruct_->vectorB();
 
     // Add source terms and modify diffusion
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -373,7 +373,7 @@ void kOmegaSST::solveOmegaEquation
         Scalar cellVolume = allCells_[cellIdx].volume();
 
         const Scalar beta = 
-            blend(F1_[cellIdx], constants_.beta1, constants_.beta2);
+            blend(F1_[cellIdx], const_.beta1, const_.beta2);
 
         // Production: productionOmega_ already contains gamma * S^2
         // from calculateProductionTerms()
@@ -392,7 +392,7 @@ void kOmegaSST::solveOmegaEquation
         Scalar dotKOmega = dot(gradK_[cellIdx], gradOmega_[cellIdx]);
 
         Scalar CDkOmega =
-            std::max(2.0 * constants_.sigmaOmega2 * dotKOmega, S(1e-10));
+            std::max(2.0 * const_.sigmaOmega2 * dotKOmega, S(1e-10));
 
         Scalar susp =
             (F1_[cellIdx] - S(1.0)) * CDkOmega
@@ -520,16 +520,16 @@ void kOmegaSST::updateOmegaWallFunctionBoundaryValues()
         // Use wall-normal distance, not |dPf|, to avoid severe underprediction
         // on skewed faces where tangential offset dominates dPf magnitude.
         const Scalar y =
-            std::max(std::abs(dot(face.d_Pf(), face.normal())), S(1e-20));
+            std::max(std::abs(dot(face.dPf(), face.normal())), S(1e-20));
 
         // Viscous sublayer contribution
-        Scalar omegaVis = 6.0 * nu_ / (constants_.beta1 * y * y);
+        Scalar omegaVis = 6.0 * nu_ / (const_.beta1 * y * y);
 
         // Log-layer contribution
-        Scalar Cmu25 = std::pow(constants_.Cmu, 0.25);
+        Scalar Cmu25 = std::pow(const_.Cmu, 0.25);
         Scalar omegaLog =
             std::sqrt(std::max(k_[cellIdx], S(0.0)))
-          / (Cmu25 * constants_.kappa * y + vSmallValue);
+          / (Cmu25 * const_.kappa * y + vSmallValue);
 
         // Binomial2 blending
         Scalar omegaWallValue =
@@ -561,7 +561,7 @@ void kOmegaSST::solveKEquation
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         Scalar sigmaK =
-            blend(F1_[cellIdx], constants_.sigmaK1, constants_.sigmaK2);
+            blend(F1_[cellIdx], const_.sigmaK1, const_.sigmaK2);
 
         GammaK[cellIdx] = nu_ + sigmaK * nut_[cellIdx];
     }
@@ -583,8 +583,8 @@ void kOmegaSST::solveKEquation
 
     matrixConstruct_->buildMatrix(equationK);
 
-    auto& A_matrix = matrixConstruct_->getMatrixA();
-    auto& b_vector = matrixConstruct_->getVectorB();
+    auto& A_matrix = matrixConstruct_->matrixA();
+    auto& b_vector = matrixConstruct_->vectorB();
 
     // Add k-specific source terms
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -595,7 +595,7 @@ void kOmegaSST::solveKEquation
         b_vector(cellIdx) += productionK_[cellIdx] * cellVolume;
 
         // Destruction term: -β*·kω (kinematic formulation)
-        const Scalar destruction = constants_.betaStar * omega_[cellIdx];
+        const Scalar destruction = const_.betaStar * omega_[cellIdx];
         A_matrix.coeffRef(cellIdx, cellIdx) += destruction * cellVolume;
     }
 
@@ -641,12 +641,12 @@ void kOmegaSST::calculateTurbulentViscosity()
         Scalar denominator =
             std::max
             (
-                constants_.a1 * omega_[cellIdx],
-                constants_.b1 * F23(cellIdx) * S
+                const_.a1 * omega_[cellIdx],
+                const_.b1 * F23(cellIdx) * S
             );
 
         nut_[cellIdx] =
-            constants_.a1 * k_[cellIdx] / (denominator + vSmallValue);
+            const_.a1 * k_[cellIdx] / (denominator + vSmallValue);
 
         nut_[cellIdx] = std::max(nut_[cellIdx], 0.0);
     }
@@ -710,7 +710,7 @@ void kOmegaSST::calculateBlendingFunctions()
         omega_[cellIdx] = std::max(omega_[cellIdx], omegaMin_);
 
         // Arguments for blending functions
-        Scalar arg11 = sqrt_k / (constants_.betaStar * omega_[cellIdx] * y);
+        Scalar arg11 = sqrt_k / (const_.betaStar * omega_[cellIdx] * y);
         Scalar arg12 = 500.0 * nu_ / (omega_[cellIdx] * y * y);
 
         // Calculate CDkw for arg1_3 (cross-diffusion for blending function)
@@ -719,12 +719,12 @@ void kOmegaSST::calculateBlendingFunctions()
         Scalar CDkw =
             std::max
             (
-                2.0 * constants_.sigmaOmega2 / omega_[cellIdx] * dot_product,
+                2.0 * const_.sigmaOmega2 / omega_[cellIdx] * dot_product,
                 S(1e-10)
             );
 
         Scalar arg13 =
-            4.0 * constants_.sigmaOmega2 * k_[cellIdx] / (CDkw * y * y);
+            4.0 * const_.sigmaOmega2 * k_[cellIdx] / (CDkw * y * y);
 
         Scalar arg1 =
             std::min(std::min(std::max(arg11, arg12), arg13), 10.0);
@@ -736,7 +736,7 @@ void kOmegaSST::calculateBlendingFunctions()
                 std::max
                 (
                     2.0 * sqrt_k
-                  / (constants_.betaStar * omega_[cellIdx] * y),
+                  / (const_.betaStar * omega_[cellIdx] * y),
                     arg12
                 ),
                 100.0
@@ -757,12 +757,12 @@ void kOmegaSST::calculateProductionTerms()
 
         // SST GbyNu limiter
         Scalar GbyNuLimit =
-            (constants_.c1 / constants_.a1)
-          * constants_.betaStar * omega_[cellIdx]
+            (const_.c1 / const_.a1)
+          * const_.betaStar * omega_[cellIdx]
           * std::max
             (
-                constants_.a1 * omega_[cellIdx],
-                constants_.b1 * F23(cellIdx) * S
+                const_.a1 * omega_[cellIdx],
+                const_.b1 * F23(cellIdx) * S
             );
 
         Scalar GbyNu = std::min(S2, GbyNuLimit);
@@ -772,7 +772,7 @@ void kOmegaSST::calculateProductionTerms()
 
         // Production of omega: P_omega = gamma * GbyNu
         Scalar gamma =
-            blend(F1_[cellIdx], constants_.gamma1, constants_.gamma2);
+            blend(F1_[cellIdx], const_.gamma1, const_.gamma2);
 
         productionOmega_[cellIdx] = gamma * GbyNu;
     }
@@ -783,7 +783,7 @@ void kOmegaSST::overrideWallCellProduction
     const VectorField& U
 )
 {
-    const Scalar Cmu25 = std::pow(constants_.Cmu, 0.25);
+    const Scalar Cmu25 = std::pow(const_.Cmu, 0.25);
     const size_t numCells = allCells_.size();
 
     std::vector<Scalar> GwallAccum(numCells, S(0.0));
@@ -819,7 +819,7 @@ void kOmegaSST::overrideWallCellProduction
         const Scalar y =
             std::max
             (
-                std::abs(dot(face.d_Pf(), face.normal())),
+                std::abs(dot(face.dPf(), face.normal())),
                 S(1e-20)
             );
 
@@ -840,7 +840,7 @@ void kOmegaSST::overrideWallCellProduction
           * Cmu25
           * std::sqrt(std::max(k_[cellIdx], S(0.0)))
           * magGradUw
-          / (constants_.kappa * y);
+          / (const_.kappa * y);
 
         GwallAccum[cellIdx] += cellWeight * Gwall;
         hasWallOverride[cellIdx] = 1;
@@ -916,7 +916,7 @@ void kOmegaSST::calculateCrossDiffusion()
         Scalar dot_product = dot(gradK_[cellIdx], gradOmega_[cellIdx]);
 
         crossDiffusion_[cellIdx] =
-            2.0 * (1.0 - F1_[cellIdx]) * constants_.sigmaOmega2
+            2.0 * (1.0 - F1_[cellIdx]) * const_.sigmaOmega2
           / (omega_[cellIdx] + vSmallValue) * dot_product;
     }
 }
@@ -952,7 +952,7 @@ Scalar kOmegaSST::calculateYPlus(size_t cellIdx) const
 Scalar kOmegaSST::limitProduction(Scalar Pk, size_t cellIdx) const
 {
     Scalar limit =
-        10.0 * constants_.betaStar * k_[cellIdx] * omega_[cellIdx];
+        10.0 * const_.betaStar * k_[cellIdx] * omega_[cellIdx];
 
     return std::min(Pk, limit);
 }

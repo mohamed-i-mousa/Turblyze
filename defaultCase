@@ -30,7 +30,7 @@ initialConditions
 // ============================================================================
 boundaryConditions
 {
-    U   // Velocity field
+    U
     {
         inlet
         {
@@ -53,14 +53,28 @@ boundaryConditions
             type        noSlip;
         }
 
-        // Walls
-        wall1           { type noSlip; }
-        wall2           { type noSlip; }
-        wall3           { type noSlip; }
-        wall4           { type noSlip; }
+        wall1           
+        { 
+            type        noSlip; 
+        }
+
+        wall2           
+        { 
+            type        noSlip; 
+        }
+        
+        wall3           
+        { 
+            type        noSlip; 
+        }
+        
+        wall4           
+        { 
+            type        noSlip; 
+        }
     }
 
-    p   // Pressure field
+    p   // kinematic Pressure [m2/s2]
     {
         inlet
         {
@@ -73,21 +87,35 @@ boundaryConditions
             value       0;
         }
 
-        // All walls and symmetry planes
-        cylinder        { type zeroGradient; }
-        sphere          { type zeroGradient; }
-        wall1           { type zeroGradient; }
-        wall2           { type zeroGradient; }
-        wall3           { type zeroGradient; }
-        wall4           { type zeroGradient; }
-    }
-
-    phi_wall    // Wall distance field (for turbulence)
-    {
-        wall1           { type fixedValue; value 0; }
-        wall2           { type fixedValue; value 0; }
-        wall3           { type fixedValue; value 0; }
-        wall4           { type fixedValue; value 0; }
+        cylinder        
+        { 
+            type        zeroGradient; 
+        }
+       
+        sphere          
+        { 
+            type        zeroGradient; 
+        }
+       
+        wall1           
+        { 
+            type        zeroGradient; 
+        }
+       
+        wall2           
+        { 
+            type        zeroGradient; 
+        }
+        
+        wall3           
+        { 
+            type        zeroGradient; 
+        }
+      
+        wall4           
+        { 
+            type        zeroGradient; 
+        }
     }
 
     k   // Turbulent kinetic energy [m^2/s^2]
@@ -103,12 +131,35 @@ boundaryConditions
             type        zeroGradient;
         }
 
-        cylinder        { type kWallFunction; }
-        sphere          { type kWallFunction; }
-        wall1           { type kWallFunction; }
-        wall2           { type kWallFunction; }
-        wall3           { type kWallFunction; }
-        wall4           { type kWallFunction; }
+        cylinder        
+        { 
+            type        kWallFunction; 
+        }
+        
+        sphere          
+        { 
+            type        kWallFunction; 
+        }
+        
+        wall1           
+        { 
+            type        kWallFunction; 
+        }
+        
+        wall2           
+        { 
+            type        kWallFunction; 
+        }
+        
+        wall3           
+        { 
+            type        kWallFunction; 
+        }
+        
+        wall4          
+        { 
+            type        kWallFunction; 
+        }
     }
 
     omega   // Specific dissipation rate [1/s]
@@ -124,12 +175,35 @@ boundaryConditions
             type        zeroGradient;
         }
 
-        cylinder        { type omegaWallFunction; }
-        sphere          { type omegaWallFunction; }
-        wall1           { type omegaWallFunction; }
-        wall2           { type omegaWallFunction; }
-        wall3           { type omegaWallFunction; }
-        wall4           { type omegaWallFunction; }
+        cylinder        
+        { 
+            type        omegaWallFunction; 
+        }
+        
+        sphere          
+        { 
+            type        omegaWallFunction; 
+        }
+        
+        wall1           
+        { 
+            type        omegaWallFunction; 
+        }
+        
+        wall2           
+        { 
+            type        omegaWallFunction; 
+        }
+        
+        wall3           
+        { 
+            type        omegaWallFunction; 
+        }
+        
+        wall4           
+        { 
+            type        omegaWallFunction; 
+        }
     }
 
     nut // Turbulent kinematic viscosity [m^2/s]
@@ -144,12 +218,35 @@ boundaryConditions
             type        zeroGradient;
         }
 
-        cylinder        { type nutWallFunction; }
-        sphere          { type nutWallFunction; }
-        wall1           { type nutWallFunction; }
-        wall2           { type nutWallFunction; }
-        wall3           { type nutWallFunction; }
-        wall4           { type nutWallFunction; }
+        cylinder        
+        { 
+            type        nutWallFunction; 
+        }
+        
+        sphere          
+        { 
+            type        nutWallFunction; 
+        }
+        
+        wall1           
+        { 
+            type        nutWallFunction; 
+        }
+        
+        wall2           
+        { 
+            type        nutWallFunction; 
+        }
+        
+        wall3           
+        { 
+            type        nutWallFunction; 
+        }
+        
+        wall4           
+        { 
+            type        nutWallFunction; 
+        }
     }
 }
 
@@ -174,7 +271,7 @@ numericalSchemes
 SIMPLE
 {
     numIterations           50;         // Maximum iterations
-    convergenceTolerance    1e-6;       // Convergence criterion
+    convergenceTolerance    1e-3;       // Convergence criterion (scaled residuals)
 
     relaxationFactors
     {
@@ -194,21 +291,17 @@ linearSolvers
     {
         solver          BiCGSTAB;       // Bi-Conjugate Gradient Stabilized
         preconditioner  ILUT;           // Incomplete LU with Threshold
-        tolerance       1e-8;           // Absolute tolerance
-        relTol          0.1;            // Relative tolerance
+        tolerance       1e-8;           // Eigen |r|/|b| tolerance
         maxIter         1000;           // Maximum iterations
-        computeResiduals true;          // Exact B-A*x check
     }
 
     p   // Pressure correction equation
     {
         solver          PCG;            // Preconditioned Conjugate Gradient
         preconditioner  IncompleteCholesky;
-        tolerance       1e-6;
-        relTol          0.05;
+        tolerance       1e-8;
         maxIter         1000;
         initialShift    1e-2;           // Conditioning factor
-        computeResiduals true;
     }
 
     k   // Turbulent kinetic energy
@@ -216,9 +309,7 @@ linearSolvers
         solver          BiCGSTAB;
         preconditioner  ILUT;
         tolerance       1e-16;
-        relTol          0.0;
         maxIter         1000;
-        computeResiduals true;
     }
 
     omega   // Specific dissipation rate
@@ -226,9 +317,7 @@ linearSolvers
         solver          BiCGSTAB;
         preconditioner  ILUT;
         tolerance       1e-16;
-        relTol          0.0;
         maxIter         1000;
-        computeResiduals true;
     }
 }
 
@@ -267,7 +356,8 @@ constraints
 // ============================================================================
 output
 {
-    filename        ../outputFiles.nosync/pipe_320k__.vtu;
+    filename        ../outputFiles.nosync/pipe_320k.vtu;
+    debug           false;      // Enable verbose console output
 }
 
 // ============================================================================

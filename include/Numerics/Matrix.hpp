@@ -2,7 +2,7 @@
  * @file Matrix.hpp
  * @brief Matrix assembly for finite volume discretization
  *
- * This header defines the TransportEquation struct and the Matrix class.
+ * @details This header defines: TransportEquation struct and the Matrix class.
  * TransportEquation bundles all data describing a scalar transport equation
  * (field, convection, diffusion, source, gradients). The Matrix class
  * handles assembly of sparse linear systems (Ax=b) for any transport
@@ -48,11 +48,13 @@ using OptionalRef = std::optional<std::reference_wrapper<const T>>;
 /**
  * @brief Data describing a scalar transport equation
  *
- * @details Bundles the field value, convection, diffusion, source,
- * and gradient data needed by Matrix::buildMatrix().
- * Organised by physics terms:
- *   field, transient (placeholder), convection, diffusion,
- *   source, gradient reconstruction, boundary overrides.
+ * @details 
+ * - Combines the field value, convection, diffusion, source,
+ *   and gradient data needed by Matrix::buildMatrix().
+ * 
+ * - Organised by physics terms:
+ *     field, transient (placeholder), convection, diffusion,
+ *     source, gradient reconstruction, boundary overrides.
  */
 struct TransportEquation
 {
@@ -132,7 +134,7 @@ public:
      * @brief Get assembled sparse matrix A (const)
      * @return Const reference to coefficient matrix
      */
-    const Eigen::SparseMatrix<Scalar>& getMatrixA() const
+    const Eigen::SparseMatrix<Scalar>& matrixA() const
     {
         return matrixA_;
     }
@@ -141,7 +143,7 @@ public:
      * @brief Get assembled sparse matrix A (non-const)
      * @return Mutable reference to coefficient matrix
      */
-    Eigen::SparseMatrix<Scalar>& getMatrixA()
+    Eigen::SparseMatrix<Scalar>& matrixA()
     {
         return matrixA_;
     }
@@ -151,7 +153,7 @@ public:
      * @return Const reference to RHS vector
      */
     const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&
-    getVectorB() const
+    vectorB() const
     {
         return vectorB_;
     }
@@ -160,7 +162,8 @@ public:
      * @brief Get right-hand side vector b (non-const)
      * @return Mutable reference to RHS vector
      */
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& getVectorB()
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& 
+    vectorB()
     {
         return vectorB_;
     }
@@ -170,7 +173,8 @@ public:
      * @param alpha Relaxation factor (0 < alpha <= 1)
      * @param phiPrev Previous iteration field values
      *
-     * @details Modifies the assembled system (Ax=b):
+     * @details 
+     * Modifies the assembled system (Ax=b):
      * - Diagonal: a_P <- a_P / alpha
      * - RHS: b <- b + ((1-alpha)/alpha) * aPOriginal * phiPrev
      */
