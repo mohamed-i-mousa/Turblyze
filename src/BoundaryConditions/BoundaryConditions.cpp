@@ -1,6 +1,5 @@
 /******************************************************************************
  * @file BoundaryConditions.cpp
- * @version 
  * @brief Implementation of boundary conditions management system
  *****************************************************************************/
 
@@ -10,6 +9,7 @@
 #include <iostream>
 #include <algorithm>
 #include <utility>
+#include <set>
 
 
 // ****************************** Setter Methods ******************************
@@ -349,6 +349,41 @@ std::string BoundaryConditions::bcTypeToString(BCType bctype) const
                     "Unknown BC type: "
                   + std::to_string(static_cast<int>(bctype))
                 );
+    }
+}
+
+void BoundaryConditions::validatePatchNames() const
+{
+    std::set<std::string> validNames;
+
+    for (const auto& patch : patches_)
+    {
+        validNames.insert(patch.patchName());
+    }
+
+    for (const auto& entry : patchBoundaryData_)
+    {
+        if (validNames.find(entry.first) == validNames.end())
+        {
+            std::string validList;
+            for (const auto& name : validNames)
+            {
+                if (!validList.empty())
+                {
+                    validList += ", ";
+                }
+                validList += "'" + name + "'";
+            }
+
+            throw
+                std::runtime_error
+                (
+                    "Boundary condition patch '"
+                  + entry.first
+                  + "' does not match any mesh patch. "
+                    "Valid patch names: " + validList
+                );
+        }
     }
 }
 

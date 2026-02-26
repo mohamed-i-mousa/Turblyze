@@ -255,6 +255,13 @@ public:
      */
     std::string bcTypeToString(BCType bctype) const;
 
+    /**
+     * @brief Validate that all patch names in boundary data
+     *        exist in the mesh patches
+     * @throws std::runtime_error if an unknown patch name is found
+     */
+    void validatePatchNames() const;
+
     /// Print summary of all boundary conditions
     void printSummary() const;
 

@@ -1,6 +1,5 @@
 /******************************************************************************
  * @file CFDApplication.cpp
- * @version 
  * @brief Top-level application driver for the CFD solver
  *****************************************************************************/
 
@@ -85,13 +84,24 @@ void CFDApplication::loadCase()
     turbulenceEnabled_ = turbulence.lookup<bool>("enabled");
     turbulenceModel_ = turbulence.lookup<std::string>("model");
 
+    if (turbulenceEnabled_ && turbulenceModel_ != "kOmegaSST")
+    {
+        throw
+            std::runtime_error
+            (
+                "Unsupported turbulence model: '"
+              + turbulenceModel_
+              + "'. Only 'kOmegaSST' is supported."
+            );
+    }
+
     // Compute turbulence initial conditions
     turbIntensity_ =
         turbulence.lookupOrDefault<Scalar>("turbulenceIntensity", S(0.05));
     hydrDiameter_ =
         turbulence.lookupOrDefault<Scalar>("hydraulicDiameter", S(0.01));
 
-    Scalar lTurb = S(0.07) * hydrDiameter_;
+    Scalar lTurb = std::max(S(0.07) * hydrDiameter_, smallValue);
     Scalar Cmu = S(0.09);
     Scalar UMag = initialVelocity_.magnitude();
 
@@ -364,10 +374,25 @@ void CFDApplication::setupBoundaryConditions()
                 bcManager_.setZeroGradient(patchName, "Uy");
                 bcManager_.setZeroGradient(patchName, "Uz");
             }
+            else
+            {
+                throw
+                    std::runtime_error
+                    (
+                        "Unknown boundary condition type '"
+                      + bcType
+                      + "' for field 'U' on patch '"
+                      + patchName
+                      + "'. Valid types: "
+                        "fixedValue, noSlip, zeroGradient"
+                    );
+            }
         }
     }
 
     // Process pressure boundary conditions
+    bool hasFixedPressure = false;
+
     if (BCs.hasSection("p"))
     {
         auto pressureBCs = BCs.section("p");
@@ -381,10 +406,24 @@ void CFDApplication::setupBoundaryConditions()
             {
                 Scalar value = patchBC.lookup<Scalar>("value");
                 bcManager_.setFixedValue(patchName, "p", value);
+                hasFixedPressure = true;
             }
             else if (bcType == "zeroGradient")
             {
                 bcManager_.setZeroGradient(patchName, "p");
+            }
+            else
+            {
+                throw
+                    std::runtime_error
+                    (
+                        "Unknown boundary condition type '"
+                      + bcType
+                      + "' for field 'p' on patch '"
+                      + patchName
+                      + "'. Valid types: "
+                        "fixedValue, zeroGradient"
+                    );
             }
         }
 
@@ -404,6 +443,16 @@ void CFDApplication::setupBoundaryConditions()
                 bcManager_.setZeroGradient(patchName, "pCorr");
             }
         }
+    }
+
+    if (!hasFixedPressure)
+    {
+        std::cerr
+            << "WARNING: No fixedValue pressure boundary "
+            << "condition found. The pressure field has no "
+            << "reference value, which may cause a singular "
+            << "pressure matrix." 
+            << std::endl;
     }
 
     // Process turbulent kinetic energy BCs
@@ -474,6 +523,19 @@ void CFDApplication::setupBoundaryConditions()
             else if (bcType == "zeroGradient")
             {
                 bcManager_.setZeroGradient(patchName, "k");
+            }
+            else
+            {
+                throw
+                    std::runtime_error
+                    (
+                        "Unknown boundary condition type '"
+                      + bcType
+                      + "' for field 'k' on patch '"
+                      + patchName
+                      + "'. Valid types: "
+                        "fixedValue, kWallFunction, zeroGradient"
+                    );
             }
         }
     }
@@ -566,6 +628,19 @@ void CFDApplication::setupBoundaryConditions()
             {
                 bcManager_.setZeroGradient(patchName, "omega");
             }
+            else
+            {
+                throw
+                    std::runtime_error
+                    (
+                        "Unknown boundary condition type '"
+                      + bcType
+                      + "' for field 'omega' on patch '"
+                      + patchName
+                      + "'. Valid types: "
+                        "fixedValue, omegaWallFunction, zeroGradient"
+                    );
+            }
         }
     }
 
@@ -592,8 +667,24 @@ void CFDApplication::setupBoundaryConditions()
             {
                 bcManager_.setNutWallFunction(patchName, "nut");
             }
+            else
+            {
+                throw
+                    std::runtime_error
+                    (
+                        "Unknown boundary condition type '"
+                      + bcType
+                      + "' for field 'nut' on patch '"
+                      + patchName
+                      + "'. Valid types: "
+                        "fixedValue, zeroGradient, nutWallFunction"
+                    );
+            }
         }
     }
+
+    // Validate patch names against mesh patches
+    bcManager_.validatePatchNames();
 
     if (debug_)
     {
@@ -858,6 +949,14 @@ void CFDApplication::postProcess()
     // Calculate velocity magnitude
     ScalarField velocityMagnitude =
         VtkWriter::computeVelocityMagnitude(velocity);
+
+    if (velocity.size() == 0)
+    {
+        std::cerr
+            << "WARNING: Solution fields are empty. "
+            << "Skipping statistics." << std::endl;
+        return;
+    }
 
     // Print statistics
     Scalar maximumVelocity = 0.0;
