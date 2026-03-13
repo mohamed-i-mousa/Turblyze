@@ -78,8 +78,6 @@ public:
      * @param gradPhi_P Gradient at the owner cell
      * @param gradPhi_N Gradient at the neighbor cell
      * @param faceIndex Index of the face
-     * @param boundaryFaceValues Optional pre-computed boundary face
-     *        values that override BC lookup when provided
      * @return Gradient vector at the specified face
      */
     Vector faceGradient
@@ -88,8 +86,23 @@ public:
         const ScalarField& phi,
         const Vector& gradPhi_P,
         const Vector& gradPhi_N,
-        const size_t faceIndex,
-        const FaceData<Scalar>* boundaryFaceValues = nullptr
+        const size_t faceIndex
+    ) const;
+
+    /**
+     * @brief Apply Barth-Jespersen cell-based gradient limiter
+     *
+     * @details Scales each cell's gradient so that face-extrapolated
+     * values do not exceed the range of neighboring cell values.
+     * Prevents overshoot from steep gradients (e.g. near wall cells).
+     *
+     * @param phi Cell-centered scalar field
+     * @param gradPhi Cell-centered gradient field (modified in place)
+     */
+    void limitGradient
+    (
+        const ScalarField& phi,
+        VectorField& gradPhi
     ) const;
 
 
@@ -117,8 +130,6 @@ private:
      * @param fieldName Name of the field for BC lookup
      * @param phi Scalar field values
      * @param cellGradient Gradient at the owner cell
-     * @param boundaryFaceValues Optional pre-computed boundary face
-     *        values that override BC lookup when provided
      * @return Gradient vector at the boundary face
      */
     Vector calculateBoundaryFaceGradient
@@ -126,8 +137,7 @@ private:
         const std::string& fieldName,
         const ScalarField& phi,
         const Vector& cellGradient,
-        const Face& face,
-        const FaceData<Scalar>* boundaryFaceValues = nullptr
+        const Face& face
     ) const;
 
 // Private members

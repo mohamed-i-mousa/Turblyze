@@ -145,14 +145,68 @@ Vector GradientScheme::cellGradient
     }
 }
 
+void GradientScheme::limitGradient
+(
+    const ScalarField& phi,
+    VectorField& gradPhi
+) const
+{
+    for (size_t cellIdx = 0; cellIdx < allCells_.size(); ++cellIdx)
+    {
+        const Cell& cell = allCells_[cellIdx];
+        Scalar phiP = phi[cellIdx];
+
+        // Find min/max among cell P and all its neighbors
+        Scalar phiMin = phiP;
+        Scalar phiMax = phiP;
+
+        for (size_t neighborIdx : cell.neighborCellIndices())
+        {
+            phiMin = std::min(phiMin, phi[neighborIdx]);
+            phiMax = std::max(phiMax, phi[neighborIdx]);
+        }
+
+        // Compute Barth-Jespersen limiter: min alpha over all faces
+        Scalar alpha = S(1.0);
+
+        for (size_t faceIdx : cell.faceIndices())
+        {
+            const Face& face = allFaces_[faceIdx];
+            Vector r = face.centroid() - cell.centroid();
+            Scalar phiFace = phiP + dot(gradPhi[cellIdx], r);
+            Scalar delta = phiFace - phiP;
+
+            if (delta > vSmallValue)
+            {
+                alpha = std::min
+                (
+                    alpha,
+                    (phiMax - phiP) / delta
+                );
+            }
+            else if (delta < -vSmallValue)
+            {
+                alpha = std::min
+                (
+                    alpha,
+                    (phiMin - phiP) / delta
+                );
+            }
+        }
+
+        alpha = std::clamp(alpha, S(0.0), S(1.0));
+
+        gradPhi[cellIdx] = alpha * gradPhi[cellIdx];
+    }
+}
+
 Vector GradientScheme::faceGradient
 (
     const std::string& fieldName,
     const ScalarField& phi,
     const Vector& gradPhiP,
     const Vector& gradPhiN,
-    const size_t faceIndex,
-    const FaceData<Scalar>* boundaryFaceValues
+    const size_t faceIndex
 ) const
 {
     const Face& face = allFaces_[faceIndex];
@@ -166,8 +220,7 @@ Vector GradientScheme::faceGradient
                 fieldName,
                 phi,
                 gradPhiP,
-                face,
-                boundaryFaceValues
+                face
             );
     }
     else
@@ -224,8 +277,7 @@ Vector GradientScheme::calculateBoundaryFaceGradient
     const std::string& fieldName,
     const ScalarField& phi,
     const Vector& cellGradient,
-    const Face& face,
-    const FaceData<Scalar>* boundaryFaceValues
+    const Face& face
 ) const
 {
     const BoundaryPatch* patch = face.patch();
@@ -323,6 +375,7 @@ Vector GradientScheme::calculateBoundaryFaceGradient
 
         case BCType::K_WALL_FUNCTION:
         case BCType::NUT_WALL_FUNCTION:
+        case BCType::OMEGA_WALL_FUNCTION:
         case BCType::ZERO_GRADIENT:
         {
             // Zero normal gradient: retain only tangential
@@ -332,42 +385,6 @@ Vector GradientScheme::calculateBoundaryFaceGradient
               * face.normal();
 
             return tangentialGradient;
-        }
-
-        case BCType::OMEGA_WALL_FUNCTION:
-        {
-            bool useOverride =
-                boundaryFaceValues
-             && face.idx() < boundaryFaceValues->size()
-             && std::isfinite((*boundaryFaceValues)[face.idx()]);
-
-            if (!useOverride)
-            {
-                // Fallback to tangential-only if no dynamic wall value exists
-                Vector tangentialGradient =
-                    cellGradient
-                  - dot(cellGradient, face.normal())
-                  * face.normal();
-                return tangentialGradient;
-            }
-
-            Scalar boundaryValue = (*boundaryFaceValues)[face.idx()];
-            Scalar cellValue = phi[face.ownerCell()];
-
-            Scalar d_n =
-                dot(face.dPf(), face.normal());
-
-            // Keep strict wall-normal spacing for omega wall-function gradients.
-            Scalar dnStabilized = std::max(std::abs(d_n), S(1e-20));
-
-            Scalar normalGradient =
-                (boundaryValue - cellValue) / dnStabilized;
-
-            Vector tangentialGradient =
-                cellGradient
-              - dot(cellGradient, face.normal()) * face.normal();
-
-            return tangentialGradient + normalGradient * face.normal();
         }
 
         case BCType::FIXED_GRADIENT:
