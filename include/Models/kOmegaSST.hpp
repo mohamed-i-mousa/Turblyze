@@ -127,16 +127,28 @@ public:
     const ScalarField& wallDistance() const { return wallDistance_; }
 
     /**
+     * @brief Get yPlus field
+     * @return Const reference to yPlus field
+     */
+    const FaceData<Scalar>& yPlus() const { return yPlus_; }
+
+    /**
      * @brief Get wall shear stress field
      * @return Const reference to wall shear stress field
      */
-    const ScalarField& wallShearStress() const { return wallShearStress_; }
+    const FaceData<Scalar>& wallShearStress() const { return wallShearStress_; }
 
     /**
      * @brief Get effective viscosity (laminar + turbulent)
      * @return Effective viscosity field ν_eff = ν_lam + ν_t
      */
     ScalarField effectiveViscosity() const;
+
+    /**
+     * @brief Get wall-function nut values on wall faces
+     * @return Const reference to nutWallFace field
+     */
+    const FaceData<Scalar>& nutWall() const { return nutWall_; }
 
     /**
      * @brief Access k-equation linear solver for external configuration
@@ -173,7 +185,10 @@ private:
     ScalarField wallDistance_;
 
     /// Wall shear stress magnitude
-    ScalarField wallShearStress_;
+    FaceData<Scalar> wallShearStress_;
+
+    /// y+ 
+    FaceData<Scalar> yPlus_;
 
 // Gradient fields
 
@@ -205,11 +220,20 @@ private:
 
 // Auxiliary fields
 
+    /// Cached velocity divergence (computed once per solve() call)
+    std::vector<Scalar> divU_;
+
     /// Blending function 1 (k-ω to k-ε)
     ScalarField F1_;
 
     /// Blending function 2 (viscous sublayer)
     ScalarField F2_;
+
+    /// Blending function 23 
+    ScalarField F23_;
+
+    /// Blending function 3 
+    ScalarField F3_;
 
     /// Production of k
     ScalarField productionK_;
@@ -217,55 +241,67 @@ private:
     /// Production of ω
     ScalarField productionOmega_;
 
-    /// Cross-diffusion term in ω equation
-    ScalarField crossDiffusion_;
-
     /// Strain rate magnitude (shared between production and viscosity)
     ScalarField strainRate_;
+
+    /// Cross-diffusion term: 2·σω2·(∇k·∇ω)/ω
+    ScalarField CDkOmega_;
+
+    /// Wall-function nut values on wall faces (nutkWallFunction)
+    FaceData<Scalar> nutWall_;
 
     /// Dynamic omega wall-function values on faces
     FaceData<Scalar> omegaWallFunctionFaceValues_;
 
-    /// Number of omega-wall-function faces touching each owner cell
-    std::vector<size_t> omegaWallFaceCountPerCell_;
+    /// Number of wall-function faces touching each owner cell
+    std::vector<size_t> wallFaceCountPerCell_;
 
-    /// Corner weight per cell (1 / omegaWallFaceCountPerCell)
-    std::vector<Scalar> omegaWallCellWeight_;
+    /// Area-based weight per wall face (face area / total wall area of cell)
+    FaceData<Scalar> wallFaceWeight_;
 
-    /// Number of cells that touch more than one omega-wall face
-    size_t omegaMultiWallCellCount_ = 0;
+    /// Indices into allFaces_ for faces with wall-function BCs
+    std::vector<size_t> wallFunctionFaceIndices_;
+
+    /// Unique cell indices adjacent to wall-function faces
+    std::vector<size_t> wallCellIndices_;
+
+    /// Wall-to-total boundary area fraction per wall cell
+    std::vector<Scalar> wallCellFraction_;
+
+    /// Area-weighted wall-function omega per wall cell
+    std::vector<Scalar> wallCellOmega_;
 
 // Model constants
     
     /// Structure containing all model constants
     struct ModelConstants
     {
-    // k-omega model constants (inner region)
+    // k-omega model constants (near-wall region)
 
-        /// k diffusion coefficient (inner)
+        /// k diffusion coefficient
         Scalar sigmaK1 = 0.85;
 
-        /// omega diffusion coefficient (inner)
+        /// omega diffusion coefficient
         Scalar sigmaOmega1 = 0.5;
 
-        /// Destruction coefficient (inner)
+        /// Destruction coefficient
         Scalar beta1 = 0.075;
 
-        /// Production coefficient (inner)
+        /// Production coefficient
         Scalar gamma1 = 5.0/9.0;
 
     // k-epsilon model constants (outer region)
 
-        /// k diffusion coefficient (outer)
+        /// k diffusion coefficient
         Scalar sigmaK2 = 1.0;
 
-        /// omega diffusion coefficient (outer)
+        /// omega diffusion coefficient
         Scalar sigmaOmega2 = 0.856;
 
-        /// Destruction coefficient (outer)
+        /// Destruction coefficient
         Scalar beta2 = 0.0828;
 
-        /// Production coefficient (outer)
+        /// Production coefficient
         Scalar gamma2 = 0.44;
 
     // Common constants
@@ -314,6 +350,12 @@ private:
     /// Positive floor for omega
     Scalar omegaMin_;
 
+    /// Maximum turbulent-to-laminar viscosity ratio for omega bound
+    Scalar nutMaxCoeff_ = S(1e5);
+
+    /// y+ crossover between viscous and log layers
+    Scalar yPlusLam_ = S(11.225);
+
     /// Under-relaxation factor for k equation
     Scalar alphaK_;
 
@@ -336,11 +378,14 @@ private:
 
 // Private helper methods
 
+    /// Compute y+ crossover via fixed-point iteration
+    void calcYPlusLam();
+
     /// Calculate wall distance field using (Dijkstra's shortest path)
     void calculateWallDistance();
 
-    /// Build per-cell corner weights for omega wall-function faces
-    void buildOmegaWallCellWeights();
+    /// Build per-cell corner weights for wall-function faces
+    void buildWallFunctionWeights();
 
     /**
      * @brief Solve the omega transport equation
@@ -351,11 +396,17 @@ private:
     /// Update dynamic omega wall-function boundary values per face
     void updateOmegaWallFunctionBoundaryValues();
 
+    /// Pre-set wall-cell omega to area-weighted wall-function values
+    void applyOmegaWallCellValues();
+
     /**
      * @brief Solve the k transport equation
      * @param flowRateFace Face volume flow rates
      */
     void solveKEquation(const FaceFluxField& flowRateFace);
+
+    /// Update wall-function nut on wall faces (nutkWallFunction)
+    void updateNutWallFace();
 
     /// Calculate SST turbulent viscosity with limiter
     void calculateTurbulentViscosity();
@@ -371,25 +422,14 @@ private:
      */
     void calculateWallShearStress(const VectorField& U);
 
-    /**
-     * @brief Calculate blending functions F1 and F2
-     */
+    /// Calculate blending functions F1 and F2
     void calculateBlendingFunctions();
 
-    /**
-     * @brief Calculate production terms for k and omega equations
-     *
-     * @details
-     * Computes Pk = μₜ(∇U:∇U) and Pω = γ/νₜ * Pk
-     */
+    /// Calculate production terms for k and omega equations
     void calculateProductionTerms();
 
     /**
      * @brief Override k production at wall-adjacent cells
-     * 
-     * @details
-     *   G = (ν + νₜ) Cμ^0.25 √k |U∥| / (κ y²)
-     *
      * @param U Current velocity field
      */
     void overrideWallCellProduction(const VectorField& U);
@@ -407,37 +447,20 @@ private:
      */
     void calculateGradients(bool computeGradK, bool computeGradOmega);
 
-    /// Calculate cross-diffusion term for omega equation
+    /// Compute cross-diffusion term CDkOmega_ from k and omega gradients
     void calculateCrossDiffusion();
 
-    /**
-     * @brief F3 blending switch function (optional)
-     * @param cellIdx Cell index
-     * @return F3 value in [0, 1]
-     */
-    Scalar F3(size_t cellIdx) const;
+    /// Compute cell velocity divergence from face mass fluxes into divU_
+    void computeDivU(const FaceFluxField& flowRateFace);
 
-    /**
-     * @brief F23 blending selector
-     * @param cellIdx Cell index
-     * @return F23 = F2 (default) or F2*F3 if F3 switch is enabled
-     */
-    Scalar F23(size_t cellIdx) const;
+    /// F3 blending switch function (optional)
+    void F3();
 
-    /**
-     * @brief Calculate y+ value for wall treatment
-     * @param cellIdx Cell index
-     * @return y+ value (dimensionless wall distance)
-     */
-    Scalar calculateYPlus(size_t cellIdx) const;
+    /// F23 blending selector
+    void F23();
 
-    /**
-     * @brief Limit production to prevent unrealistic values
-     * @param Pk Production of k
-     * @param cellIdx Cell index
-     * @return Limited production value
-     */
-    Scalar limitProduction(Scalar Pk, size_t cellIdx) const;
+    /// Calculate y+ value for wall treatment
+    void calculateYPlus();
 
     /// Blend two constants using SST blending function
     inline Scalar blend(Scalar F1, Scalar c1, Scalar c2) const
@@ -447,6 +470,12 @@ private:
 
     /// Bound k and omega to physically meaningful positive values
     void boundTurbulenceFields();
+
+    /// Bound omega with viscosity-ratio limit
+    void boundOmega();
+
+    /// Bound k to minimum value
+    void boundK();
 
     /// Log min/max/mean for k, omega, nut fields
     void logFieldDiagnostics() const;
