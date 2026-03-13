@@ -15,6 +15,9 @@
 #include <vtkWedge.h>
 #include <vtkPyramid.h>
 #include <vtkIdList.h>
+#include <vtkPolyData.h>
+#include <vtkXMLPolyDataWriter.h>
+#include <vtkCellArray.h>
 
 // STL includes
 #include <stdexcept>
@@ -30,6 +33,7 @@
 // Header includes
 #include "VtkWriter.hpp"
 #include "Cell.hpp"
+#include "BoundaryPatch.hpp"
 
 
 namespace VtkWriter
@@ -320,6 +324,152 @@ void writeVtkUnstructuredGrid
             << "  - Number of vector fields: "
             << vectorCellFields.size()
             << std::endl;
+    }
+}
+
+// **************** Public API: Wall Boundary Data Export ******************
+
+void writeWallBoundaryData
+(
+    const std::string& filename,
+    const std::vector<Vector>& allNodes,
+    const std::vector<Face>& allFaces,
+    const std::map<std::string,
+    const FaceData<Scalar>*>& scalarFaceFields,
+    bool debug
+)
+{
+    // Collect wall boundary faces
+    std::vector<size_t> wallFaceIndices;
+
+    for (size_t i = 0; i < allFaces.size(); ++i)
+    {
+        const auto& face = allFaces[i];
+        if (!face.isBoundary()) continue;
+
+        const BoundaryPatch* patch = face.patch();
+
+        if (patch && patch->type() == BoundaryConditionType::WALL)
+        {
+            wallFaceIndices.push_back(i);
+        }
+    }
+
+    if (wallFaceIndices.empty())
+    {
+        std::cout
+            << "No wall boundary faces found. "
+            << "Skipping wall export." << std::endl;
+        return;
+    }
+
+    // Build node remapping (global -> local)
+    std::map<size_t, vtkIdType> nodeMap;
+    vtkIdType localId = 0;
+
+    for (size_t fi : wallFaceIndices)
+    {
+        for (size_t nodeIdx : allFaces[fi].nodeIndices())
+        {
+            if (nodeMap.find(nodeIdx) == nodeMap.end())
+            {
+                nodeMap[nodeIdx] = localId++;
+            }
+        }
+    }
+
+    // Create VTK PolyData
+    vtkSmartPointer<vtkPolyData> polyData =
+        vtkSmartPointer<vtkPolyData>::New();
+
+    vtkSmartPointer<vtkPoints> points =
+        vtkSmartPointer<vtkPoints>::New();
+
+    points->SetNumberOfPoints(nodeMap.size());
+
+    for (const auto& [globalIdx, localIdx] : nodeMap)
+    {
+        points->SetPoint
+        (
+            localIdx,
+            allNodes[globalIdx].x(),
+            allNodes[globalIdx].y(),
+            allNodes[globalIdx].z()
+        );
+    }
+
+    polyData->SetPoints(points);
+
+    // Add wall face polygons
+    vtkSmartPointer<vtkCellArray> cells =
+        vtkSmartPointer<vtkCellArray>::New();
+
+    for (size_t fi : wallFaceIndices)
+    {
+        const auto& nodeIndices = allFaces[fi].nodeIndices();
+        vtkIdType npts =
+            static_cast<vtkIdType>(nodeIndices.size());
+
+        std::vector<vtkIdType> pts(npts);
+
+        for (vtkIdType j = 0; j < npts; ++j)
+        {
+            pts[j] = nodeMap[nodeIndices[j]];
+        }
+
+        cells->InsertNextCell(npts, pts.data());
+    }
+
+    polyData->SetPolys(cells);
+
+    // Attach face-centered scalar fields
+    for (const auto& [fieldName, faceField] : scalarFaceFields)
+    {
+        if (!faceField) continue;
+
+        vtkSmartPointer<vtkDoubleArray> dataArray =
+            vtkSmartPointer<vtkDoubleArray>::New();
+
+        dataArray->SetName(fieldName.c_str());
+        dataArray->SetNumberOfComponents(1);
+        dataArray->SetNumberOfTuples(wallFaceIndices.size());
+
+        for (size_t i = 0; i < wallFaceIndices.size(); ++i)
+        {
+            size_t fi = wallFaceIndices[i];
+            dataArray->SetValue(i, (*faceField)[fi]);
+        }
+
+        polyData->GetCellData()->AddArray(dataArray);
+    }
+
+    // Write .vtp file
+    vtkSmartPointer<vtkXMLPolyDataWriter> writer =
+        vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+
+    writer->SetFileName(filename.c_str());
+    writer->SetInputData(polyData);
+    writer->SetDataModeToBinary();
+    writer->SetCompressorTypeToZLib();
+    writer->Write();
+
+    std::cout
+        << "VTK PolyData wall boundary file written: "
+        << filename << std::endl;
+
+    if (debug)
+    {
+        std::cout
+            << "  - Wall faces: "
+            << wallFaceIndices.size() << std::endl;
+
+        std::cout
+            << "  - Wall nodes: "
+            << nodeMap.size() << std::endl;
+
+        std::cout
+            << "  - Scalar fields: "
+            << scalarFaceFields.size() << std::endl;
     }
 }
 

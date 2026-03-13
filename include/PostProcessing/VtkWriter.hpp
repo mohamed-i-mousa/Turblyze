@@ -32,6 +32,7 @@
 #include "Face.hpp"
 #include "Cell.hpp"
 #include "CellData.hpp"
+#include "FaceData.hpp"
 
 // VTK library integration requirement
 typedef long long vtkIdType;
@@ -70,6 +71,29 @@ void writeVtkUnstructuredGrid
     const ScalarField*>& scalarCellFields = {},
     const std::map<std::string,
     const VectorField*>& vectorCellFields = {},
+    bool debug = false
+);
+
+/**
+ * @brief Write wall boundary face data to VTK PolyData (.vtp) file
+ *
+ * @details
+ * Exports wall boundary faces with face-centered scalar fields (e.g.
+ * yPlus, wallShearStress) as VTK PolyData for surface visualization.
+ *
+ * @param filename Output VTK file path (should end with .vtp extension)
+ * @param allNodes Vector of 3D node coordinates
+ * @param allFaces Vector of mesh faces (wall faces are extracted)
+ * @param scalarFaceFields Map of scalar field names to face-centered data
+ * @param debug Enable verbose output
+ */
+void writeWallBoundaryData
+(
+    const std::string& filename,
+    const std::vector<Vector>& allNodes,
+    const std::vector<Face>& allFaces,
+    const std::map<std::string,
+    const FaceData<Scalar>*>& scalarFaceFields = {},
     bool debug = false
 );
 
