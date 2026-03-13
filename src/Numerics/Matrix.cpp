@@ -4,12 +4,10 @@
  *****************************************************************************/
 
 #include <iostream>
-#include <algorithm>
 #include <cmath>
 
 #include "Matrix.hpp"
 #include "CellData.hpp"
-#include "LinearInterpolation.hpp"
 
 
 // ************************* Constructor & Destructor *************************
@@ -93,6 +91,10 @@ void Matrix::relax(Scalar alpha, const ScalarField& phiPrev)
             );
     }
 
+    // Store relaxation factor for setValues to recover
+    // the pre-relaxation diagonal
+    lastRelaxationFactor_ = alpha;
+
     // Cache original diagonal
     std::vector<Scalar> originalDiag(static_cast<size_t>(numCells));
 
@@ -104,7 +106,7 @@ void Matrix::relax(Scalar alpha, const ScalarField& phiPrev)
     // Scale diagonal: a_P <- a_P / alpha
     for (int idx = 0; idx < numCells; ++idx)
     {
-        matrixA_.coeffRef(idx, idx) = 
+        matrixA_.coeffRef(idx, idx) =
             originalDiag[static_cast<size_t>(idx)] / alpha;
     }
 
@@ -133,6 +135,8 @@ void Matrix::clear()
 
     vectorB_.resize(numCells);
     vectorB_.setZero();
+
+    lastRelaxationFactor_ = S(0.0);
 }
 
 void Matrix::reserveTripletList()
@@ -306,8 +310,7 @@ void Matrix::assembleBoundaryFace
 
     Scalar aDiff = Gammaf * Ef.magnitude() / (dPfMag + vSmallValue);
 
-    // Convert OptionalRef to raw pointer for GradientScheme compatibility
-    const FaceData<Scalar>* bfv =
+    const FaceData<Scalar>* boundaryValue =
         equation.boundaryFaceValues ? 
         &equation.boundaryFaceValues->get() 
       : nullptr;
@@ -316,7 +319,6 @@ void Matrix::assembleBoundaryFace
     (
         bc->type() == BCType::FIXED_VALUE
      || bc->type() == BCType::NO_SLIP
-     || bc->type() == BCType::OMEGA_WALL_FUNCTION
     )
     {
         // Dirichlet BC: phi_b is prescribed
@@ -328,19 +330,15 @@ void Matrix::assembleBoundaryFace
         }
         else if (bc->type() == BCType::OMEGA_WALL_FUNCTION)
         {
-            bool hasDynamicValue =
-                bfv
-             && face.idx() < bfv->size()
-             && std::isfinite((*bfv)[face.idx()]);
+            const bool hasDynamicValue =
+                boundaryValue
+             && face.idx() < boundaryValue->size()
+             && std::isfinite((*boundaryValue)[face.idx()]);
 
-            if (hasDynamicValue)
-            {
-                phiB = (*bfv)[face.idx()];
-            }
-            else
-            {
-                phiB = equation.phi[ownerIdx];
-            }
+            phiB =
+                hasDynamicValue
+              ? (*boundaryValue)[face.idx()]
+              : equation.phi[ownerIdx];
         }
         else
         {
@@ -368,8 +366,7 @@ void Matrix::assembleBoundaryFace
                 equation.phi,
                 equation.gradPhi[ownerIdx],
                 Vector(),
-                face.idx(),
-                bfv
+                face.idx()
             );
 
         Scalar nonOrthogonalFlux =
@@ -382,6 +379,7 @@ void Matrix::assembleBoundaryFace
         bc->type() == BCType::ZERO_GRADIENT
      || bc->type() == BCType::K_WALL_FUNCTION
      || bc->type() == BCType::NUT_WALL_FUNCTION
+     || bc->type() == BCType::OMEGA_WALL_FUNCTION
     )
     {
         // Zero normal gradient: only convection
@@ -420,6 +418,66 @@ void Matrix::assembleBoundaryFace
         {
             Scalar a_conv = equation.flowRate->get()[face.idx()];
             tripletList_.emplace_back(ownerIdx, ownerIdx, a_conv);
+        }
+    }
+}
+
+void Matrix::setValues
+(
+    const std::vector<size_t>& cellIndices,
+    const std::vector<Scalar>& values,
+    const std::vector<Scalar>& fractions
+)
+{
+    const bool hasFractions = !fractions.empty();
+
+    for (size_t  i = 0; i < cellIndices.size(); ++i)
+    {
+        const size_t cellIdx = cellIndices[i];
+        const Scalar f = hasFractions ? fractions[i] : S(1.0);
+
+        if (f < vSmallValue)
+        {
+            continue;
+        }
+
+        const Scalar diag = matrixA_.coeff(cellIdx, cellIdx);
+
+        if (f > S(1.0) - vSmallValue)
+        {
+            for 
+            (
+                Eigen::SparseMatrix<Scalar>::InnerIterator it(matrixA_, cellIdx);
+                it; 
+                ++it
+            )
+            {
+                const size_t row = static_cast<size_t>(it.row());
+                if (row == cellIdx) continue;
+
+                // Transfer coupling to neighbor source
+                vectorB_(row) -= it.value() * values[i];
+                it.valueRef() = S(0.0);
+            }
+
+            for (size_t neighborIdx : allCells_[cellIdx].neighborCellIndices())
+            {
+                matrixA_.coeffRef(cellIdx, neighborIdx) = S(0.0);
+            }
+
+            vectorB_(cellIdx) = diag * values[i];
+        }
+        else
+        {
+            Scalar diagPre = diag;
+            if (lastRelaxationFactor_ > S(0.0))
+            {
+                diagPre = lastRelaxationFactor_ * diag;
+            }
+
+            Scalar coeff = f / (S(1.0) - f) * diagPre;
+            matrixA_.coeffRef(cellIdx, cellIdx) += coeff;
+            vectorB_(cellIdx) += coeff * values[i];
         }
     }
 }

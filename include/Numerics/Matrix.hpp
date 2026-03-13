@@ -180,6 +180,25 @@ public:
      */
     void relax(Scalar alpha, const ScalarField& phiPrev);
 
+    /**
+     * @brief Fix matrix rows to impose known cell values
+     *
+     * @details
+     * Replaces the equation for each constrained cell with
+     * diag * phi[i] = diag * value[i], and transfers the
+     * known-value coupling to unconstrained neighbors' RHS.
+     * Call after relax() but before solve().
+     *
+     * @param cellIndices Indices of cells to constrain
+     * @param values Prescribed values for those cells
+     */
+    void setValues
+    (
+        const std::vector<size_t>& cellIndices,
+        const std::vector<Scalar>& values,
+        const std::vector<Scalar>& fractions = {}
+    );
+
 private:
 
 // Private members
@@ -199,6 +218,9 @@ private:
     /// Cached face counts for triplet list reservation
     size_t numInternalFaces_;
     size_t numBoundaryFaces_;
+
+    /// Relaxation factor from last relax() call (0 = not relaxed)
+    Scalar lastRelaxationFactor_ = S(0.0);
 
 // Private methods
 
