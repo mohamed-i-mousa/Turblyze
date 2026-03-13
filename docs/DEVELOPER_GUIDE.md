@@ -64,13 +64,13 @@ This document explains the internal architecture and implementation details of t
   - Topology: `nodeIndices`, `ownerCell`, optional `neighbourCell` (boundary if empty).
   - Geometry computed in `calculateGeometricProperties(allNodes)`:
     - Triangles via cross product; polygons triangulated about the face center.
-    - Fields: `centroid`, `normal` (unit), `area`, and integrals (`x2_integral`, ...).
+    - Fields: `centroid`, `normal` (unit), `area`, and integrals (`x2Integral`, ...).
   - Metric distances `calculateDistanceProperties(allCells)`:
-    - `d_Pf`, `d_Nf` vectors and magnitudes; `e_Pf`, `e_Nf` unit vectors.
+    - `dPf`, `dNf` vectors and magnitudes; `ePf`, `eNf` unit vectors.
 - `Cell`
   - Topology: lists of `faceIndices`, `neighbourCellIndices`, and `faceSigns` (outward normal convention).
   - `calculateGeometricProperties(allFaces)`:
-    - Volume via divergence theorem: `V = (1/3) Σ (r_f · S_f)` using face integrals.
+    - Volume via divergence theorem: `V = (1/3) Σ (rf · Sf)` using face integrals.
     - Centroid via second-moment accumulation.
 
 
@@ -124,7 +124,7 @@ Notes:
 
 **Vector Component Handling**:
 ```cpp
-// Smart component extraction
+// Component extraction
 if (fieldName == "Ux") val = bc->vectorValue().x();
 else if (fieldName == "Uy") val = bc->vectorValue().y();
 else if (fieldName == "Uz") val = bc->vectorValue().z();
@@ -132,18 +132,18 @@ else if (fieldName == "Uz") val = bc->vectorValue().z();
 
 ### BC Evaluation Logic
 **Scalar Boundary Values**:
-- **FIXED_VALUE**: `φ_f = φ_boundary`
-- **ZERO_GRADIENT**: `φ_f = φ_owner`  
-- **FIXED_GRADIENT**: `φ_f = φ_owner + gradient × d_n`
-  where `d_n = dot(d_Pf, face_normal)`
+- **FIXED_VALUE**: `φf = φBoundary`
+- **ZERO_GRADIENT**: `φf = φOwner`  
+- **FIXED_GRADIENT**: `φf = φOwner + gradient × dn`
+  where `dn = dot(dPf, faceNormal)`
 
 **Vector Boundary Values**:
-- **FIXED_VALUE**: `U_f = U_boundary`
-- **NO_SLIP**: `U_f = (0, 0, 0)`
-- **ZERO_GRADIENT**: `U_f = U_owner`
-- **FIXED_GRADIENT**: `U_f = U_owner + gradient × d_n`
+- **FIXED_VALUE**: `Uf = UBoundary`
+- **NO_SLIP**: `Uf = (0, 0, 0)`
+- **ZERO_GRADIENT**: `Uf = UOwner`
+- **FIXED_GRADIENT**: `Uf = UOwner + gradient × dn`
 
-**Graceful Fallbacks**:
+**Fallbacks**:
 - Missing BC specifications default to zero-gradient
 - Unknown field names default to cell gradient
 - Invalid patches use cell values
@@ -163,14 +163,7 @@ else if (fieldName == "Uz") val = bc->vectorValue().z();
    - `ATA = Σ w·(r ⊗ r)` (3×3 matrix)
    - `ATb = Σ w·Δφ·r` (3×1 vector)
 4. **Regularization**: Add small diagonal term to prevent singularity
-5. **Solution**: Eigen LLT decomposition with LU fallback
-6. **Gradient Limiting**: Barth-Jesperson limiter prevents unphysical gradients
-
-**Robustness Features**:
-- **Dual solver**: LLT primary, LU fallback for poorly conditioned systems
-- **Regularization**: `totalWeight × 1e-12` prevents singular matrices
-- **Gradient limiting**: Prevents overshoots in high-gradient regions
-- **Error handling**: Comprehensive validation and graceful failures
+5. **Solution**: Eigen LLT decomposition
 
 #### Face Gradient Computation (`FaceGradient`)
 **Method**: Corrected interpolation of cell gradients
@@ -557,7 +550,7 @@ flowchart TD
   B --> C[compute face geometry]
   C --> D[compute face distances]
   D --> E[compute cell geometry]
-  E --> F[BoundaryConditions + linkFaces]
+  E --> F[BoundaryConditions]
   F --> G[SIMPLE constructor]
   G --> H[SIMPLE.solve]
   H --> I[compute gradP]
