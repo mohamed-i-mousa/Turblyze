@@ -500,6 +500,10 @@ void CFDApplication::setupBoundaryConditions()
 
                     const Scalar uPrime = turbIntensity_ * UMag;
                     value = std::max(S(1.5) * uPrime * uPrime, S(1e-8));
+
+                    std::cout
+                        << "Inlet turbulence kinetic energy : " << value
+                        << std::endl;
                 }
                 else
                 {
@@ -608,6 +612,10 @@ void CFDApplication::setupBoundaryConditions()
                       / (std::pow(Cmu, S(0.25)) * lengthScale);
 
                     value = std::max(omegaValue, S(1e-4));
+                    
+                    std::cout
+                        << "Inlet specific dissipation : " << value
+                        << std::endl;
                 }
                 else
                 {
@@ -1004,6 +1012,9 @@ void CFDApplication::exportResults()
     const ScalarField* omegaField = solver_->specificDissipationRate();
     const ScalarField* nutField = solver_->turbulentViscosity();
     const ScalarField* wallDistField = solver_->wallDistance();
+    const FaceData<Scalar>* yPlusFace = solver_->yPlus();
+    const FaceData<Scalar>* wallShearStressFace =
+        solver_->wallShearStress();
 
     // Calculate velocity magnitude
     ScalarField velocityMagnitude =
@@ -1072,6 +1083,42 @@ void CFDApplication::exportResults()
         vectorFieldsToVtk,
         debug_
     );
+
+    // Export wall boundary data (yPlus, wallShearStress) as VTP
+    if (turbulenceEnabled_ && yPlusFace)
+    {
+        std::string vtpFilename = vtuFilename;
+        size_t dotPos = vtpFilename.rfind(".vtu");
+
+        if (dotPos != std::string::npos)
+        {
+            vtpFilename.replace(dotPos, 4, "_wall.vtp");
+        }
+        else
+        {
+            vtpFilename += "_wall.vtp";
+        }
+
+        std::map<std::string, const FaceData<Scalar>*>
+        wallScalarFields;
+
+        wallScalarFields["yPlus"] = yPlusFace;
+
+        if (wallShearStressFace)
+        {
+            wallScalarFields["wallShearStress"] =
+                wallShearStressFace;
+        }
+
+        VtkWriter::writeWallBoundaryData
+        (
+            vtpFilename,
+            nodes_,
+            faces_,
+            wallScalarFields,
+            debug_
+        );
+    }
 
     std::cout
         << std::endl << "=== CFD Results Exported Successfully ==="
