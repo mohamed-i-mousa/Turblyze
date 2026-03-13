@@ -213,6 +213,7 @@ void SIMPLE::initialize
 void SIMPLE::solveMomentumEquations()
 {
     size_t numCells = allCells_.size();
+    size_t numFaces = allFaces_.size();
 
     ScalarField nuEff("nuEff", numCells);
 
@@ -252,6 +253,43 @@ void SIMPLE::solveMomentumEquations()
         UzSource[cellIdx] = -gradP_[cellIdx].z() * allCells_[cellIdx].volume();
     }
 
+    // Build face-based effective viscosity
+    FaceData<Scalar> nuEffFace("nuEffFace", numFaces, nu_);
+
+    for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
+    {
+        const Face& face = allFaces_[faceIdx];
+
+        if (face.isBoundary())
+        {
+            size_t ownerIdx = face.ownerCell();
+
+            // Check for NUT_WALL_FUNCTION BC on wall faces
+            if (turbulenceModel_)
+            {
+                const BoundaryPatch* patch = face.patch();
+                const BoundaryData* bc =
+                    bcManager_.fieldBC(patch->patchName(), "nut");
+
+                if (bc && bc->type() == BCType::NUT_WALL_FUNCTION)
+                {
+                    // Use wall-function nut instead of cell-center nut
+                    nuEffFace[faceIdx] =
+                        nu_ + turbulenceModel_->nutWall()[faceIdx];
+                    continue;
+                }
+            }
+
+            // Other boundary faces: use owner cell value
+            nuEffFace[faceIdx] = nuEff[ownerIdx];
+        }
+        else
+        {
+            // Internal faces: linear interpolation
+            nuEffFace[faceIdx] = interpolateToFace(face, nuEff);
+        }
+    }
+
     // Reset interpolated diagonals accumulator
     DUf_.setAll(0.0);
 
@@ -278,7 +316,7 @@ void SIMPLE::solveMomentumEquations()
 
         calculateTransposeGradientSource
         (
-            nuEff,
+            nuEffFace,
             transposeSourceX,
             transposeSourceY,
             transposeSourceZ
@@ -300,8 +338,8 @@ void SIMPLE::solveMomentumEquations()
         Ux,                                         // phi
         std::cref(RhieChowFlowRatePrev_),           // flowRate
         std::cref(convectionScheme_.momentum()),    // convScheme
-        std::cref(nuEff),                           // Gamma
-        std::nullopt,                               // GammaFace
+        std::nullopt,                               // Gamma
+        std::cref(nuEffFace),                       // GammaFace
         UxSource,                                   // source
         gradUx,                                     // gradPhi
         gradientScheme_                             // gradScheme
@@ -314,8 +352,8 @@ void SIMPLE::solveMomentumEquations()
         Uy,                                         // phi
         std::cref(RhieChowFlowRatePrev_),           // flowRate
         std::cref(convectionScheme_.momentum()),    // convScheme
-        std::cref(nuEff),                           // Gamma
-        std::nullopt,                               // GammaFace
+        std::nullopt,                               // Gamma
+        std::cref(nuEffFace),                       // GammaFace
         UySource,                                   // source
         gradUy,                                     // gradPhi
         gradientScheme_                             // gradScheme
@@ -328,8 +366,8 @@ void SIMPLE::solveMomentumEquations()
         Uz,                                         // phi
         std::cref(RhieChowFlowRatePrev_),           // flowRate
         std::cref(convectionScheme_.momentum()),    // convScheme
-        std::cref(nuEff),                           // Gamma
-        std::nullopt,                               // GammaFace
+        std::nullopt,                               // Gamma
+        std::cref(nuEffFace),                       // GammaFace
         UzSource,                                   // source
         gradUz,                                     // gradPhi
         gradientScheme_                             // gradScheme
@@ -337,7 +375,6 @@ void SIMPLE::solveMomentumEquations()
     solveMomentumComponent('z', equationUz, UzPrev);
 
     // Calculate DUf_ field using complete DU_
-    size_t numFaces = allFaces_.size();
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = allFaces_[faceIdx];
@@ -630,9 +667,28 @@ void SIMPLE::solveTurbulence()
                 << std::endl;
         }
 
+        // Recompute velocity gradients from corrected velocity
+        size_t numCells = allCells_.size();
+
+        ScalarField Ux = extractComponent("Ux", U_, 0);
+        ScalarField Uy = extractComponent("Uy", U_, 1);
+        ScalarField Uz = extractComponent("Uz", U_, 2);
+
+        VectorField gradUx("gradUx", numCells, Vector(0, 0, 0));
+        VectorField gradUy("gradUy", numCells, Vector(0, 0, 0));
+        VectorField gradUz("gradUz", numCells, Vector(0, 0, 0));
+
+        for (size_t i = 0; i < numCells; ++i)
+        {
+            gradUx[i] = gradientScheme_.cellGradient("Ux", Ux, i);
+            gradUy[i] = gradientScheme_.cellGradient("Uy", Uy, i);
+            gradUz[i] = gradientScheme_.cellGradient("Uz", Uz, i);
+        }
+
+        gradU_ = {gradUx, gradUy, gradUz};
+
         const auto& kField = turbulenceModel_->k();
         const auto& omegaField = turbulenceModel_->omega();
-        size_t numCells = allCells_.size();
 
         std::vector<Scalar> kPrev(numCells);
         std::vector<Scalar> omegaPrev(numCells);
@@ -823,7 +879,7 @@ Scalar SIMPLE::calculatePressureResidual() const
 
 void SIMPLE::calculateTransposeGradientSource
 (
-    const ScalarField& nuEff,
+    const FaceData<Scalar>& nuEffFace,
     ScalarField& transposeSourceX,
     ScalarField& transposeSourceY,
     ScalarField& transposeSourceZ
@@ -839,12 +895,11 @@ void SIMPLE::calculateTransposeGradientSource
         const size_t ownerIdx = face.ownerCell();
         Vector Sf = face.normal() * face.projectedArea();
 
+        Scalar nuEfff = nuEffFace[faceIdx];
+
         if (face.isBoundary())
         {
             // For boundary faces, use owner cell gradients
-            Scalar nuEfff = nuEff[ownerIdx];
-
-            // Build transpose gradient columns
             Vector gradTx =
                 buildGradientTransposeColumn
                 (
@@ -882,20 +937,18 @@ void SIMPLE::calculateTransposeGradientSource
             // Internal face: interpolate gradients to face
             const size_t neighborIdx = face.neighborCell().value();
 
-            // Interpolate effective viscosity and gradients to face
-            Scalar nuEfff = interpolateToFace(face, nuEff);
             Vector gradUxf = interpolateToFace(face, gradU_[0]);
             Vector gradUyf = interpolateToFace(face, gradU_[1]);
             Vector gradUzf = interpolateToFace(face, gradU_[2]);
 
             // Build transpose gradient columns
-            Vector gradTx =    
+            Vector gradTx =
                 buildGradientTransposeColumn(gradUxf, gradUyf, gradUzf, 0);
 
-            Vector gradTy = 
+            Vector gradTy =
                 buildGradientTransposeColumn(gradUxf, gradUyf, gradUzf, 1);
 
-            Vector gradTz = 
+            Vector gradTz =
                 buildGradientTransposeColumn(gradUxf, gradUyf, gradUzf, 2);
 
             // Flux contribution: ν_eff_f * (∇U)^T · Sf

@@ -289,6 +289,28 @@ public:
         return nullptr;
     }
 
+    /**
+     * @brief Get y+ field
+     * @return Pointer to y+ field, nullptr if turbulence disabled
+     */
+    const FaceData<Scalar>* yPlus() const
+    {
+        if (turbulenceModel_)
+        {
+            return &(turbulenceModel_->yPlus());
+        }
+        return nullptr;
+    }
+
+    const FaceData<Scalar>* wallShearStress() const
+    {
+        if (turbulenceModel_)
+        {
+            return &(turbulenceModel_->wallShearStress());
+        }
+        return nullptr;
+    }
+
 private:
 
 // Private members
@@ -433,14 +455,14 @@ private:
      * Implemented as face-based divergence:
      * Σ_f (ν_eff)_f · (∇U)_f^T · S_f
      *
-     * @param nu_eff Effective viscosity field (ν + ν_t)
+     * @param nuEffFace Face-based effective viscosity (ν + ν_t)
      * @param transposeSourceX Output: x-momentum source term
      * @param transposeSourceY Output: y-momentum source term
      * @param transposeSourceZ Output: z-momentum source term
      */
     void calculateTransposeGradientSource
     (
-        const ScalarField& nu_eff,
+        const FaceData<Scalar>& nuEffFace,
         ScalarField& transposeSourceX,
         ScalarField& transposeSourceY,
         ScalarField& transposeSourceZ
