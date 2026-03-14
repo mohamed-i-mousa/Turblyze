@@ -9,31 +9,29 @@
 #include <iomanip>
 #include <cmath>
 
-Vector::Vector() : x_(0.0), y_(0.0), z_(0.0) {}
-
-Vector::Vector(Scalar xValue, Scalar yValue, Scalar zValue)
+Vector::Vector(Scalar xValue, Scalar yValue, Scalar zValue) noexcept
     : x_(xValue), y_(yValue), z_(zValue) {}
 
 // ************************** Operator Overloads **************************
 
-Vector Vector::operator+(const Vector& other) const
+Vector Vector::operator+(const Vector& other) const noexcept
 {
     return Vector(x_ + other.x_, y_ + other.y_, z_ + other.z_);
 }
 
-Vector Vector::operator-(const Vector& other) const
+Vector Vector::operator-(const Vector& other) const noexcept
 {
     return Vector(x_ - other.x_, y_ - other.y_, z_ - other.z_);
 }
 
-Vector Vector::operator*(Scalar scalar) const
+Vector Vector::operator*(Scalar scalar) const noexcept
 {
     return Vector(x_ * scalar, y_ * scalar, z_ * scalar);
 }
 
 Vector Vector::operator/(Scalar scalar) const
 {
-    if (std::abs(scalar) < smallValue) 
+    if (std::abs(scalar) < vSmallValue)
     {
         throw
             std::runtime_error
@@ -45,7 +43,7 @@ Vector Vector::operator/(Scalar scalar) const
     return Vector(x_ / scalar, y_ / scalar, z_ / scalar);
 }
 
-Vector& Vector::operator+=(const Vector& other)
+Vector& Vector::operator+=(const Vector& other) noexcept
 {
     x_ += other.x_;
     y_ += other.y_;
@@ -54,7 +52,7 @@ Vector& Vector::operator+=(const Vector& other)
     return *this;
 }
 
-Vector& Vector::operator-=(const Vector& other)
+Vector& Vector::operator-=(const Vector& other) noexcept
 {
     x_ -= other.x_;
     y_ -= other.y_;
@@ -63,7 +61,7 @@ Vector& Vector::operator-=(const Vector& other)
     return *this;
 }
 
-Vector& Vector::operator*=(Scalar scalar)
+Vector& Vector::operator*=(Scalar scalar) noexcept
 {
     x_ *= scalar;
     y_ *= scalar;
@@ -74,7 +72,7 @@ Vector& Vector::operator*=(Scalar scalar)
 
 Vector& Vector::operator/=(Scalar scalar)
 {
-    if (std::abs(scalar) < vSmallValue) 
+    if (std::abs(scalar) < vSmallValue)
     {
         throw
             std::runtime_error
@@ -90,61 +88,48 @@ Vector& Vector::operator/=(Scalar scalar)
     return *this;
 }
 
-bool Vector::operator==(const Vector& other) const
+bool Vector::operator==(const Vector& other) const noexcept
 {
     return (std::abs(x_ - other.x_) < smallValue)
         && (std::abs(y_ - other.y_) < smallValue)
         && (std::abs(z_ - other.z_) < smallValue);
 }
 
-bool Vector::operator!=(const Vector& other) const
+bool Vector::operator!=(const Vector& other) const noexcept
 {
     return !(*this == other);
 }
 
-Scalar Vector::magnitudeSquared() const
+Scalar Vector::magnitudeSquared() const noexcept
 {
     return x_ * x_ + y_ * y_ + z_ * z_;
 }
 
-Scalar Vector::magnitude() const
+Scalar Vector::magnitude() const noexcept
 {
     return std::sqrt(magnitudeSquared());
 }
 
-Vector& Vector::normalize()
+Vector Vector::normalized() const
 {
     Scalar mag = magnitude();
-    if (std::abs(mag) > smallValue)
-    {
-        x_ /= mag;
-        y_ /= mag;
-        z_ /= mag;
-    }
-    else
+    if (mag < vSmallValue)
     {
         throw
             std::runtime_error
             (
-                "Error: Division by zero in Vector::normalize"
+                "Error: Division by zero in Vector::normalized"
             );
     }
 
-    return *this;
-}
-
-Vector Vector::normalized() const
-{
-    Vector result = *this;
-
-    return result.normalize();
+    return Vector(x_ / mag, y_ / mag, z_ / mag);
 }
 
 // ************************* Non-Member Functions *************************
 
-Vector operator*(Scalar scalar, const Vector& p)
+Vector operator*(Scalar scalar, const Vector& p) noexcept
 {
-    return Vector(scalar * p.x(), scalar * p.y(), scalar * p.z());
+    return p * scalar;
 }
 
 std::ostream& operator<<(std::ostream& os, const Vector& p)
@@ -154,7 +139,7 @@ std::ostream& operator<<(std::ostream& os, const Vector& p)
 
     os  << std::fixed << std::setprecision(6);
 
-    os  << "(" << p.x_ << ", " << p.y_ << ", " << p.z_ << ")";
+    os  << "(" << p.x() << ", " << p.y() << ", " << p.z() << ")";
 
     os.flags(flags);
     os.precision(prec);
@@ -162,12 +147,12 @@ std::ostream& operator<<(std::ostream& os, const Vector& p)
     return os;
 }
 
-Scalar dot(const Vector& p1, const Vector& p2)
+Scalar dot(const Vector& p1, const Vector& p2) noexcept
 {
     return p1.x() * p2.x() + p1.y() * p2.y() + p1.z() * p2.z();
 }
 
-Vector cross(const Vector& p1, const Vector& p2) 
+Vector cross(const Vector& p1, const Vector& p2) noexcept
 {
     return
         Vector

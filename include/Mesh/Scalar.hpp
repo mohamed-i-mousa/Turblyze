@@ -7,10 +7,9 @@
  * Precision is controlled via CMake configuration.
  *****************************************************************************/
 
-#ifndef SCALAR_HPP
-#define SCALAR_HPP
+#pragma once
 
-#include <string>
+#include <string_view>
 #include <limits>
 
 /// Floating-point precision type (configured via CMakeLists.txt)
@@ -23,14 +22,16 @@
     constexpr std::string_view SCALAR_MODE = "float (FP32)";
 #endif
 
-// Numerical tolerances 
+// Numerical tolerances
 
-inline const Scalar smallValue =
+inline constexpr Scalar smallValue =
     std::numeric_limits<Scalar>::epsilon();
 
-inline const Scalar vSmallValue =
+inline constexpr Scalar vSmallValue =
     std::numeric_limits<Scalar>::min();
-    
+
+inline constexpr Scalar largeValue = Scalar(1.0)/smallValue;  
+
 /**
  * @brief Type-safe scalar literal conversion function
  * @tparam T Input type to convert
@@ -46,5 +47,3 @@ inline constexpr Scalar S(T value)
 {    
     return static_cast<Scalar>(value);
 }
-
-#endif // SCALAR_HPP
