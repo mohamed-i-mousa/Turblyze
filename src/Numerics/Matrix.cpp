@@ -4,8 +4,6 @@
  *****************************************************************************/
 
 #include <iostream>
-#include <cmath>
-
 #include "Matrix.hpp"
 #include "CellData.hpp"
 
@@ -310,11 +308,6 @@ void Matrix::assembleBoundaryFace
 
     Scalar aDiff = Gammaf * Ef.magnitude() / (dPfMag + vSmallValue);
 
-    const FaceData<Scalar>* boundaryValue =
-        equation.boundaryFaceValues ? 
-        &equation.boundaryFaceValues->get() 
-      : nullptr;
-
     if
     (
         bc->type() == BCType::FIXED_VALUE
@@ -327,18 +320,6 @@ void Matrix::assembleBoundaryFace
         if (bc->type() == BCType::NO_SLIP)
         {
             phiB = S(0.0);
-        }
-        else if (bc->type() == BCType::OMEGA_WALL_FUNCTION)
-        {
-            const bool hasDynamicValue =
-                boundaryValue
-             && face.idx() < boundaryValue->size()
-             && std::isfinite((*boundaryValue)[face.idx()]);
-
-            phiB =
-                hasDynamicValue
-              ? (*boundaryValue)[face.idx()]
-              : equation.phi[ownerIdx];
         }
         else
         {
