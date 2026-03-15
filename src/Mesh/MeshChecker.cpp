@@ -18,7 +18,7 @@ MeshChecker::MeshChecker
     const std::vector<Vector>& nodes,
     const std::vector<Face>& faces,
     const std::vector<Cell>& cells
-)
+) noexcept
 :
     allNodes_(nodes),
     allFaces_(faces),
@@ -41,8 +41,9 @@ void MeshChecker::check() const
     }
 
     // Face area statistics
-    Scalar minFaceArea = allFaces_[0].projectedArea();
-    Scalar maxFaceArea = allFaces_[0].projectedArea();
+    const Scalar firstArea = allFaces_[0].projectedArea();
+    Scalar minFaceArea = firstArea;
+    Scalar maxFaceArea = firstArea;
     size_t minFaceId = allFaces_[0].idx();
     size_t maxFaceId = allFaces_[0].idx();
 
@@ -50,33 +51,36 @@ void MeshChecker::check() const
 
     // Non-orthogonality statistics
     Scalar maxNonOrthogonality = 0.0;
-    Scalar totalNonOrthogonality = 0.0;
+    Scalar totalCosAngle = 0.0;
     size_t nonOrthCount = 0;
     size_t maxNonOrthFaceId = 0;
-    std::vector<size_t> severeNonOrthFaces; // > 70 degrees
+    std::vector<size_t> severeNonOrthFaces;
 
     // Skewness statistics
     Scalar maxSkewness = 0.0;
     size_t maxSkewFaceId = 0;
-    std::vector<size_t> highSkewFaces; // > 4.0
+    std::vector<size_t> highSkewFaces;
 
     for (const auto& face : allFaces_)
     {
+        const Scalar area = face.projectedArea();
+        const size_t faceIdx = face.idx();
+
         // Area statistics
-        if (face.projectedArea() < minFaceArea)
+        if (area < minFaceArea)
         {
-            minFaceArea = face.projectedArea();
-            minFaceId = face.idx();
+            minFaceArea = area;
+            minFaceId = faceIdx;
         }
-        if (face.projectedArea() > maxFaceArea)
+        if (area > maxFaceArea)
         {
-            maxFaceArea = face.projectedArea();
-            maxFaceId = face.idx();
+            maxFaceArea = area;
+            maxFaceId = faceIdx;
         }
 
-        if (face.projectedArea() < minArea_)
+        if (area < minArea_)
         {
-            smallAreaFaces.push_back(face.idx());
+            smallAreaFaces.push_back(faceIdx);
         }
 
         // Calculate non-orthogonality and skewness
@@ -91,11 +95,12 @@ void MeshChecker::check() const
                         "Owner cell index "
                       + std::to_string(face.ownerCell())
                       + " out of range for face "
-                      + std::to_string(face.idx())
+                      + std::to_string(faceIdx)
                     );
             }
 
             const Cell& ownerCell = allCells_[face.ownerCell()];
+
             Scalar skew =
                 calculateBoundarySkewness
                 (
@@ -108,11 +113,11 @@ void MeshChecker::check() const
             if (skew > maxSkewness)
             {
                 maxSkewness = skew;
-                maxSkewFaceId = face.idx();
+                maxSkewFaceId = faceIdx;
             }
-            if (skew > S(4.0))
+            if (skew > maxSkewThreshold_)
             {
-                highSkewFaces.push_back(face.idx());
+                highSkewFaces.push_back(faceIdx);
             }
         }
         else
@@ -126,7 +131,7 @@ void MeshChecker::check() const
                         "Owner cell index "
                       + std::to_string(face.ownerCell())
                       + " out of range for face "
-                      + std::to_string(face.idx())
+                      + std::to_string(faceIdx)
                     );
             }
 
@@ -140,7 +145,7 @@ void MeshChecker::check() const
                             face.neighborCell().value()
                         )
                       + " out of range for face "
-                      + std::to_string(face.idx())
+                      + std::to_string(faceIdx)
                     );
             }
 
@@ -159,24 +164,22 @@ void MeshChecker::check() const
                     face.normal()
                 );
 
-            // Convert to angle in degrees (with safety check)
             Scalar angleRad = std::acos(ortho);
             Scalar angleDeg =
                 angleRad * S(180.0) / S(M_PI);
 
-            totalNonOrthogonality += ortho;
-
+            totalCosAngle += ortho;
             nonOrthCount++;
 
             if (angleDeg > maxNonOrthogonality)
             {
                 maxNonOrthogonality = angleDeg;
-                maxNonOrthFaceId = face.idx();
+                maxNonOrthFaceId = faceIdx;
             }
 
-            if (angleDeg > S(70.0))
+            if (angleDeg > maxNonOrthThreshold_)
             {
-                severeNonOrthFaces.push_back(face.idx());
+                severeNonOrthFaces.push_back(faceIdx);
             }
 
             // Skewness
@@ -193,24 +196,21 @@ void MeshChecker::check() const
             if (skew > maxSkewness)
             {
                 maxSkewness = skew;
-                maxSkewFaceId = face.idx();
+                maxSkewFaceId = faceIdx;
             }
 
-            if (skew > S(4.0))
+            if (skew > maxSkewThreshold_)
             {
-                highSkewFaces.push_back(face.idx());
+                highSkewFaces.push_back(faceIdx);
             }
         }
     }
 
     // Calculate average non-orthogonality
     Scalar avgNonOrthogonality =
-        std::acos(
-            totalNonOrthogonality / S(nonOrthCount)
-        );
+        std::acos(totalCosAngle / S(nonOrthCount));
 
-    avgNonOrthogonality =
-        avgNonOrthogonality * S(180.0) / S(M_PI);
+    avgNonOrthogonality = avgNonOrthogonality * S(180.0) / S(M_PI);
 
     // Cell volume and aspect ratio statistics
     Scalar minCellVolume = allCells_[0].volume();
@@ -253,15 +253,15 @@ void MeshChecker::check() const
         }
 
         // High aspect ratio threshold
-        if (aspectRatio > S(100.0))
+        if (aspectRatio > maxAspectThreshold_)
         {
             highAspectCells.push_back(cell.idx());
         }
     }
 
     // Store current format flags and precision
-    std::ios_base::fmtflags oldFlags = std::cout.flags();
-    std::streamsize oldPrecision = std::cout.precision();
+    const auto oldFlags = std::cout.flags();
+    const auto oldPrecision = std::cout.precision();
 
     std::cout
         << "\nFace Area Statistics:" << std::endl;
@@ -313,30 +313,11 @@ void MeshChecker::check() const
     {
         std::cout
             << "  WARNING: " << severeNonOrthFaces.size()
-            << " faces with non-orthogonality > 70°"
+            << " faces with non-orthogonality > "
+            << maxNonOrthThreshold_ << "°"
             << std::endl;
 
-        if (severeNonOrthFaces.size() <= 10)
-        {
-            std::cout
-                << "  Face IDs: ";
-
-            for (size_t i = 0;
-                 i < severeNonOrthFaces.size(); ++i)
-            {
-                std::cout
-                    << severeNonOrthFaces[i];
-
-                if (i < severeNonOrthFaces.size() - 1)
-                {
-                    std::cout
-                        << ", ";
-                }
-            }
-
-            std::cout
-                << std::endl;
-        }
+        printIndicesList(severeNonOrthFaces, "Face");
     }
 
     // Skewness statistics
@@ -354,30 +335,11 @@ void MeshChecker::check() const
     {
         std::cout
             << "  WARNING: " << highSkewFaces.size()
-            << " faces with skewness > 4.0"
+            << " faces with skewness > "
+            << maxSkewThreshold_
             << std::endl;
 
-        if (highSkewFaces.size() <= 10)
-        {
-            std::cout
-                << "  Face IDs: ";
-
-            for (size_t i = 0;
-                 i < highSkewFaces.size(); ++i)
-            {
-                std::cout
-                    << highSkewFaces[i];
-
-                if (i < highSkewFaces.size() - 1)
-                {
-                    std::cout
-                        << ", ";
-                }
-            }
-
-            std::cout
-                << std::endl;
-        }
+        printIndicesList(highSkewFaces, "Face");
     }
 
     // Aspect ratio statistics
@@ -395,35 +357,12 @@ void MeshChecker::check() const
     {
         std::cout
             << "  WARNING: " << highAspectCells.size()
-            << " cells with aspect ratio > 100"
+            << " cells with aspect ratio > "
+            << maxAspectThreshold_
             << std::endl;
 
-        if (highAspectCells.size() <= 10)
-        {
-            std::cout
-                << "  Cell IDs: ";
-
-            for (size_t i = 0;
-                 i < highAspectCells.size(); ++i)
-            {
-                std::cout
-                    << highAspectCells[i];
-
-                if (i < highAspectCells.size() - 1)
-                {
-                    std::cout
-                        << ", ";
-                }
-            }
-
-            std::cout
-                << std::endl;
-        }
+        printIndicesList(highAspectCells, "Cell");
     }
-
-    // Restore original format flags and precision
-    std::cout.flags(oldFlags);
-    std::cout.precision(oldPrecision);
 
     // Quality warnings for small areas/volumes
     if (!smallAreaFaces.empty())
@@ -443,48 +382,7 @@ void MeshChecker::check() const
         std::cout
             << minArea_ << " m²" << std::endl;
 
-        if (smallAreaFaces.size() <= 10)
-        {
-            std::cout
-                << "  Face IDs: ";
-
-            for (size_t i = 0;
-                 i < smallAreaFaces.size(); ++i)
-            {
-                std::cout
-                    << smallAreaFaces[i];
-
-                if (i < smallAreaFaces.size() - 1)
-                {
-                    std::cout
-                        << ", ";
-                }
-            }
-
-            std::cout
-                << std::endl;
-        }
-        else
-        {
-            std::cout
-                << "  First 10 face IDs: ";
-
-            for (size_t i = 0; i < 10; ++i)
-            {
-                std::cout
-                    << smallAreaFaces[i];
-
-                if (i < 9)
-                {
-                    std::cout
-                        << ", ";
-                }
-            }
-
-            std::cout
-                << " ..."
-                << std::endl;
-        }
+        printIndicesList(smallAreaFaces, "Face");
     }
 
     if (!smallVolumeCells.empty())
@@ -503,47 +401,7 @@ void MeshChecker::check() const
         std::cout
             << minVolume_ << " m³" << std::endl;
 
-        if (smallVolumeCells.size() <= 10)
-        {
-            std::cout
-                << "  Cell IDs: ";
-
-            for (size_t i = 0;
-                 i < smallVolumeCells.size(); ++i)
-            {
-                std::cout
-                    << smallVolumeCells[i];
-
-                if (i < smallVolumeCells.size() - 1)
-                {
-                    std::cout
-                        << ", ";
-                }
-            }
-
-            std::cout
-                << std::endl;
-        }
-        else
-        {
-            std::cout
-                << "  First 10 cell IDs: ";
-
-            for (size_t i = 0; i < 10; ++i)
-            {
-                std::cout
-                    << smallVolumeCells[i];
-
-                if (i < 9)
-                {
-                    std::cout
-                        << ", ";
-                }
-            }
-
-            std::cout
-                << " ..." << std::endl;
-        }
+        printIndicesList(smallVolumeCells, "Cell");
     }
 
     // Overall mesh quality summary
@@ -552,29 +410,32 @@ void MeshChecker::check() const
 
     bool goodQuality = true;
 
-    if (maxNonOrthogonality > S(70.0))
+    if (maxNonOrthogonality > maxNonOrthThreshold_)
     {
         std::cout
-            << "⚠ Non-orthogonality exceeds 70°"
+            << "⚠ Non-orthogonality exceeds "
+            << maxNonOrthThreshold_
+            << "° threshold" << std::endl;
+
+        goodQuality = false;
+    }
+
+    if (maxSkewness > maxSkewThreshold_)
+    {
+        std::cout
+            << "⚠ Skewness exceeds "
+            << maxSkewThreshold_
             << " threshold" << std::endl;
 
         goodQuality = false;
     }
 
-    if (maxSkewness > S(4.0))
+    if (maxAspectRatio > maxAspectThreshold_)
     {
         std::cout
-            << "⚠ Skewness exceeds 4.0 threshold"
-            << std::endl;
-
-        goodQuality = false;
-    }
-
-    if (maxAspectRatio > S(100.0))
-    {
-        std::cout
-            << "⚠ Aspect ratio exceeds 100 threshold"
-            << std::endl;
+            << "⚠ Aspect ratio exceeds "
+            << maxAspectThreshold_
+            << " threshold" << std::endl;
 
         goodQuality = false;
     }
@@ -588,25 +449,75 @@ void MeshChecker::check() const
             << " acceptable ranges"
             << std::endl;
     }
+
+    // Restore original format flags and precision
+    std::cout.flags(oldFlags);
+    std::cout.precision(oldPrecision);
 }
 
 
 // ***************************** Private Methods ******************************
+
+// Print up to 10 IDs from a list, with truncation indicator
+void MeshChecker::printIndicesList
+(
+    const std::vector<size_t>& indices,
+    std::string_view entityName
+)
+{
+    constexpr size_t maxDisplay = 10;
+    const size_t count =
+        std::min(indices.size(), maxDisplay);
+
+    if (indices.size() <= maxDisplay)
+    {
+        std::cout
+            << "  " << entityName << " IDs: ";
+    }
+    else
+    {
+        std::cout
+            << "  First " << maxDisplay << " "
+            << entityName << " IDs: ";
+    }
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        if (i > 0)
+        {
+            std::cout
+                << ", ";
+        }
+
+        std::cout
+            << indices[i];
+    }
+
+    if (indices.size() > maxDisplay)
+    {
+        std::cout
+            << " ...";
+    }
+
+    std::cout
+        << std::endl;
+}
+
 
 Scalar MeshChecker::calculateFaceOrthogonality
 (
     const Vector& ownerCellCentroid,
     const Vector& neighborCellCentroid,
     const Vector& faceNormal
-) const
+) const noexcept
 {
-    Vector d_PN = neighborCellCentroid - ownerCellCentroid;
-    Scalar d_PN_mag = d_PN.magnitude();
-    Scalar faceNormal_mag = faceNormal.magnitude();
+    const Vector dPN = neighborCellCentroid - ownerCellCentroid;
+    const Scalar dPNMag = dPN.magnitude();
+    const Scalar faceNormalMag = faceNormal.magnitude();
 
-    Scalar cosAngle =
-        dot(d_PN, faceNormal)
-      / (d_PN_mag * faceNormal_mag + vSmallValue);
+    const Scalar cosAngle =
+        dot(dPN, faceNormal)
+      / (dPNMag * faceNormalMag + vSmallValue);
 
     return std::clamp(cosAngle, S(-1.0), S(1.0));
 }
@@ -621,30 +532,27 @@ Scalar MeshChecker::calculateFaceSkewness
     const Vector& faceNormal
 ) const
 {
-    Vector d_Pf = faceCentroid - ownerCellCentroid;
-    Vector d_PN = neighborCellCentroid - ownerCellCentroid;
+    const Vector dPf = faceCentroid - ownerCellCentroid;
+    const Vector dPN = neighborCellCentroid - ownerCellCentroid;
 
-    Vector skewnessVector =
-        d_Pf
-      - ((dot(faceNormal, d_Pf))
-      / (dot(faceNormal, d_PN) + vSmallValue))
-      * d_PN;
+    const Vector skewnessVector =
+        dPf
+      - ((dot(faceNormal, dPf))
+      / (dot(faceNormal, dPN) + vSmallValue))
+      * dPN;
 
-    Scalar skewnessMag = skewnessVector.magnitude();
+    const Scalar skewnessMag = skewnessVector.magnitude();
 
-    Vector skewnessDirection =
+    const Vector skewnessDirection =
         skewnessVector / (skewnessMag + smallValue);
 
     // Characteristic face dimension: empirical approximation
-    Scalar faceCharacteristicLength =
-        S(0.2) * d_PN.magnitude() + vSmallValue;
+    Scalar faceCharacteristicLength = S(0.2) * dPN.magnitude() + vSmallValue;
 
     // Refine by finding max vertex extent in skewness dir
-    const std::vector<size_t>& nodeIndices =
-        face.nodeIndices();
+    const std::vector<size_t>& nodeIndices = face.nodeIndices();
 
-    for (size_t nodeIdx = 0;
-         nodeIdx < nodeIndices.size(); ++nodeIdx)
+    for (size_t nodeIdx = 0; nodeIdx < nodeIndices.size(); ++nodeIdx)
     {
         if (nodeIndices[nodeIdx] >= allNodes_.size())
         {
@@ -652,28 +560,21 @@ Scalar MeshChecker::calculateFaceSkewness
                 std::out_of_range
                 (
                     "Node index "
-                  + std::to_string(
-                        nodeIndices[nodeIdx]
-                    )
+                  + std::to_string(nodeIndices[nodeIdx])
                   + " out of range in skewness"
                   + " calculation for face "
                   + std::to_string(face.idx())
                 );
         }
 
-        Vector vertexToCentroid =
-            allNodes_[nodeIndices[nodeIdx]]
-          - faceCentroid;
+        Vector vertexToCentroid = 
+            allNodes_[nodeIndices[nodeIdx]] - faceCentroid;
 
         Scalar projection =
-            std::abs(
-                dot(skewnessDirection, vertexToCentroid)
-            );
+            std::abs(dot(skewnessDirection, vertexToCentroid));
 
         faceCharacteristicLength =
-            std::max(
-                faceCharacteristicLength, projection
-            );
+            std::max(faceCharacteristicLength, projection);
     }
 
     // Return normalized skewness
@@ -689,27 +590,23 @@ Scalar MeshChecker::calculateBoundarySkewness
     const Vector& faceNormal
 ) const
 {
-    Vector d_Pf = faceCentroid - ownerCellCentroid;
+    const Vector dPf = faceCentroid - ownerCellCentroid;
 
-    // Virtual d_PN for boundary faces
-    Vector d_PN =
-        S(2.0) * dot(faceNormal, d_Pf) * faceNormal;
+    // Virtual dPN for boundary faces
+    const Vector dPN = S(2.0) * dot(faceNormal, dPf) * faceNormal;
 
-    Vector skewnessVector =
-        d_Pf - dot(faceNormal, d_Pf) * faceNormal;
+    const Vector skewnessVector = dPf - dot(faceNormal, dPf) * faceNormal;
 
-    Scalar skewnessMag = skewnessVector.magnitude();
+    const Scalar skewnessMag = skewnessVector.magnitude();
 
-    Vector skewnessDirection =
+    const Vector skewnessDirection =
         skewnessVector / (skewnessMag + smallValue);
 
     // Characteristic face dimension: empirical approximation
-    Scalar faceCharacteristicLength =
-        S(0.4) * d_PN.magnitude() + vSmallValue;
+    Scalar faceCharacteristicLength = S(0.4) * dPN.magnitude() + vSmallValue;
 
     // Refine by finding max vertex extent in skewness dir
-    const std::vector<size_t>& nodeIndices =
-        face.nodeIndices();
+    const std::vector<size_t>& nodeIndices = face.nodeIndices();
 
     for (size_t i = 0; i < nodeIndices.size(); ++i)
     {
@@ -727,18 +624,12 @@ Scalar MeshChecker::calculateBoundarySkewness
                 );
         }
 
-        Vector vertexToCentroid =
-            allNodes_[nodeIndices[i]] - faceCentroid;
+        Vector vertexToCentroid = allNodes_[nodeIndices[i]] - faceCentroid;
 
-        Scalar projection =
-            std::abs(
-                dot(skewnessDirection, vertexToCentroid)
-            );
+        Scalar projection = std::abs(dot(skewnessDirection, vertexToCentroid));
 
         faceCharacteristicLength =
-            std::max(
-                faceCharacteristicLength, projection
-            );
+            std::max(faceCharacteristicLength, projection);
     }
 
     return skewnessMag / faceCharacteristicLength;
@@ -748,48 +639,37 @@ Scalar MeshChecker::calculateBoundarySkewness
 Scalar MeshChecker::calculateCellAspectRatio
 (
     const Cell& cell
-) const
+) const noexcept
 {
-    // Accumulate face area components in each direction
+    // Accumulate absolute face area components per direction
     Vector sumMagAreaComponents(0.0, 0.0, 0.0);
 
     const auto& faceIndices = cell.faceIndices();
-    const auto& faceSigns = cell.faceSigns();
 
     for (size_t i = 0; i < faceIndices.size(); ++i)
     {
         const Face& face = allFaces_[faceIndices[i]];
-        Vector areaVec =
-            face.normal() * face.projectedArea();
+        const Vector areaVec = face.normal() * face.projectedArea();
 
-        // Account for face orientation relative to cell
-        if (faceSigns[i] < 0)
-        {
-            areaVec = areaVec * S(-1.0);
-        }
-
-        // Accumulate absolute components
+        // Absolute components (sign irrelevant)
         sumMagAreaComponents.setX
         (
-            sumMagAreaComponents.x()
-          + std::abs(areaVec.x())
+            sumMagAreaComponents.x() + std::abs(areaVec.x())
         );
 
         sumMagAreaComponents.setY
         (
-            sumMagAreaComponents.y()
-          + std::abs(areaVec.y())
+            sumMagAreaComponents.y() + std::abs(areaVec.y())
         );
 
         sumMagAreaComponents.setZ
         (
-            sumMagAreaComponents.z()
-          + std::abs(areaVec.z())
+            sumMagAreaComponents.z() + std::abs(areaVec.z())
         );
     }
 
     // Find min and max projected areas
-    Scalar minComponent =
+    const Scalar minComponent =
         std::min
         (
             {
@@ -799,7 +679,7 @@ Scalar MeshChecker::calculateCellAspectRatio
             }
         );
 
-    Scalar maxComponent =
+    const Scalar maxComponent =
         std::max
         (
             {
@@ -809,26 +689,24 @@ Scalar MeshChecker::calculateCellAspectRatio
             }
         );
 
-    Scalar directionalAspect =
-        maxComponent / (minComponent + vSmallValue);
+    Scalar directionalAspect = maxComponent / (minComponent + vSmallValue);
 
     // Add hydraulic aspect ratio for 3D cells
-    Scalar totalSurfaceArea =
+    const Scalar totalSurfaceArea =
         sumMagAreaComponents.x()
       + sumMagAreaComponents.y()
       + sumMagAreaComponents.z();
 
-    Scalar volume = cell.volume();
+    const Scalar volume = cell.volume();
 
     if (volume > vSmallValue)
     {
         // Hydraulic aspect ratio: (1/6) * A / V^(2/3)
-        Scalar hydraulicAspect =
+        const Scalar hydraulicAspect =
             (S(1.0)/S(6.0)) * totalSurfaceArea
           / std::pow(volume, S(2.0)/S(3.0));
 
-        directionalAspect =
-            std::max(directionalAspect, hydraulicAspect);
+        directionalAspect = std::max(directionalAspect, hydraulicAspect);
     }
 
     return directionalAspect;

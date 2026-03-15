@@ -47,6 +47,13 @@ public:
 
 private:
 
+    /// Print up to 10 IDs from a list, with truncation
+    static void printIndicesList
+    (
+        const std::vector<size_t>& indices,
+        std::string_view entityName
+    );
+
 // Mesh quality thresholds
 
     /// Minimum face area before warning
@@ -54,6 +61,15 @@ private:
 
     /// Minimum cell volume before warning
     static constexpr Scalar minVolume_ = 1e-30;
+
+    /// Non-orthogonality warning threshold (degrees)
+    static constexpr Scalar maxNonOrthThreshold_ = 70.0;
+
+    /// Skewness warning threshold
+    static constexpr Scalar maxSkewThreshold_ = 4.0;
+
+    /// Aspect ratio warning threshold
+    static constexpr Scalar maxAspectThreshold_ = 100.0;
 
 // Private members
 
