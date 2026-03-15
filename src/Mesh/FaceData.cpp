@@ -3,10 +3,11 @@
  * @brief Implementation of face-centered data containers
  *****************************************************************************/
 
-#include "FaceData.hpp"
-#include <stdexcept>
-#include <iostream>
 #include <algorithm>
+#include <iostream>
+#include <stdexcept>
+
+#include "FaceData.hpp"
 
 // ****************************** Constructor *******************************
 
@@ -64,10 +65,7 @@ const T& FaceData<T>::operator[](size_t faceIndex) const
 template<typename T>
 void FaceData<T>::setAll(const T& value)
 {
-    for (size_t i = 0; i < allFacesValues_.size(); i++)
-    {
-        allFacesValues_[i] = value;
-    }
+    std::fill(allFacesValues_.begin(), allFacesValues_.end(), value);
 }
 
 // ***************************** Utility Methods ****************************
@@ -76,7 +74,7 @@ template<typename T>
 void FaceData<T>::printSummary(size_t itemsToShow) const
 {
     std::cout
-        << "FaceField: " << name_ << " (Size: " << allFacesValues_.size() 
+        << "FaceField: " << name_ << " (Size: " << allFacesValues_.size()
         << ")" << std::endl;
 
     for (size_t i = 0; i < std::min(allFacesValues_.size(), itemsToShow); ++i)

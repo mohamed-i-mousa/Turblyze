@@ -4,9 +4,10 @@
  *****************************************************************************/
 
 #include "CellData.hpp"
-#include <stdexcept>
-#include <iostream>
+
 #include <algorithm>
+#include <iostream>
+#include <stdexcept>
 
 // ****************************** Constructor *******************************
 
@@ -64,10 +65,7 @@ const T& CellData<T>::operator[](size_t cellIndex) const
 template<typename T>
 void CellData<T>::setAll(const T& value)
 {
-    for (size_t i = 0; i < internalField_.size(); i++)
-    {
-        internalField_[i] = value;
-    }
+    std::fill(internalField_.begin(), internalField_.end(), value);
 }
 
 // ***************************** Utility Methods ****************************
@@ -76,7 +74,7 @@ template<typename T>
 void CellData<T>::printSummary(size_t itemsToShow) const
 {
     std::cout
-        << "CellData: " << name_ << " (Size: " << internalField_.size() 
+        << "CellData: " << name_ << " (Size: " << internalField_.size()
         << ")" << std::endl;
 
     for (size_t i = 0; i < std::min(internalField_.size(), itemsToShow); ++i)

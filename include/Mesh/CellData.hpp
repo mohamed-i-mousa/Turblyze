@@ -16,13 +16,11 @@
  * - Debugging output for face field analysis
  *****************************************************************************/
 
-#ifndef CELL_DATA_HPP
-#define CELL_DATA_HPP
+#pragma once
 
-#include <vector>
+#include <cstddef>
 #include <string>
-#include <stdexcept>
-#include <iostream>
+#include <vector>
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
@@ -77,7 +75,7 @@ public:
      * @brief Get number of cells in the field
      * @return Number of cells
      */
-    size_t size() const { return internalField_.size(); }
+    size_t size() const noexcept { return internalField_.size(); }
 
     /**
      * @brief Set all field values to a given value
@@ -89,19 +87,26 @@ public:
      * @brief Get pointer to field storage
      * @return Pointer to first element
      */
-    T* data() { return internalField_.data(); }
+    T* data() noexcept { return internalField_.data(); }
 
     /**
      * @brief Get const pointer to field storage
      * @return Const pointer to first element
      */
-    const T* data() const { return internalField_.data(); }
+    const T* data() const noexcept { return internalField_.data(); }
+
+// Iterator access (enables range-based for loops and STL algorithms)
+
+    auto begin() noexcept { return internalField_.begin(); }
+    auto end() noexcept { return internalField_.end(); }
+    auto begin() const noexcept { return internalField_.begin(); }
+    auto end() const noexcept { return internalField_.end(); }
 
     /**
      * @brief Get field name
      * @return Const reference to field name
      */
-    const std::string& name() const { return name_; }
+    const std::string& name() const noexcept { return name_; }
 
     /**
      * @brief Print field summary for debugging
@@ -129,5 +134,3 @@ using ScalarField = CellData<Scalar>;
 
 /// Type alias for general vector fields
 using VectorField = CellData<Vector>;
-
-#endif // CELL_DATA_HPP

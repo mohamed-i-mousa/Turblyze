@@ -1,28 +1,26 @@
 /******************************************************************************
  * @file FaceData.hpp
  * @brief Template container for face-centered field data storage
- * 
- * @details This header defines a generic template class for storing field 
- * variables at face centers in finite volume meshes. The container manages 
- * face-based data including mass fluxes, face velocities, and face-centered 
+ *
+ * @details This header defines a generic template class for storing field
+ * variables at face centers in finite volume meshes. The container manages
+ * face-based data including mass fluxes, face velocities, and face-centered
  * gradients
- * 
+ *
  * @class FaceData<T>
  * @tparam T Type of field value stored at each face (e.g., Scalar, Vector)
  *
  * The FaceData template provides:
  * - Type-safe storage for face-centered field variables
- * - Face-specific initialization and assignment operations  
+ * - Face-specific initialization and assignment operations
  * - Debugging output for face field analysis
  *****************************************************************************/
 
-#ifndef FACE_DATA_HPP
-#define FACE_DATA_HPP
+#pragma once
 
-#include <vector>
+#include <cstddef>
 #include <string>
-#include <stdexcept>
-#include <iostream>
+#include <vector>
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
@@ -77,7 +75,7 @@ public:
      * @brief Get number of faces in the field
      * @return Number of faces
      */
-    size_t size() const { return allFacesValues_.size(); }
+    size_t size() const noexcept { return allFacesValues_.size(); }
 
     /**
      * @brief Set all field values to a given value
@@ -86,10 +84,29 @@ public:
     void setAll(const T& value);
 
     /**
+     * @brief Get pointer to field storage
+     * @return Pointer to first element
+     */
+    T* data() noexcept { return allFacesValues_.data(); }
+
+    /**
+     * @brief Get const pointer to field storage
+     * @return Const pointer to first element
+     */
+    const T* data() const noexcept { return allFacesValues_.data(); }
+
+// Iterator access (enables range-based for loops and STL algorithms)
+
+    auto begin() noexcept { return allFacesValues_.begin(); }
+    auto end() noexcept { return allFacesValues_.end(); }
+    auto begin() const noexcept { return allFacesValues_.begin(); }
+    auto end() const noexcept { return allFacesValues_.end(); }
+
+    /**
      * @brief Get field name
      * @return Const reference to field name
      */
-    const std::string& name() const { return name_; }
+    const std::string& name() const noexcept { return name_; }
 
     /**
      * @brief Print field summary for debugging
@@ -111,5 +128,3 @@ using FaceFluxField = FaceData<Scalar>;
 
 /// Type alias for vector face fields (e.g., gradients)
 using FaceVectorField = FaceData<Vector>;
-
-#endif // FACE_DATA_HPP
