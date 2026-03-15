@@ -3,13 +3,13 @@
  * @brief Implementation of face geometric properties and operations
  *****************************************************************************/
 
-#include "Face.hpp"
-#include "Cell.hpp"
-
 #include <stdexcept>
 #include <cmath>
-#include <iostream>
+#include <ostream>
 #include <iomanip>
+
+#include "Face.hpp"
+#include "Cell.hpp"
 
 // ********************** Geometric Property Methods **********************
 
@@ -59,21 +59,21 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
         normal_ = crossProd / (crossProdMag + vSmallValue);
 
         // Second moment integrals weighted by normal component
-        Scalar x2_formula =
+        Scalar x2Formula =
             p1.x()*p1.x() + p2.x()*p2.x() + p3.x()*p3.x()
           + p1.x()*p2.x() + p1.x()*p3.x() + p2.x()*p3.x();
 
-        Scalar y2_formula =
+        Scalar y2Formula =
             p1.y()*p1.y() + p2.y()*p2.y() + p3.y()*p3.y()
           + p1.y()*p2.y() + p1.y()*p3.y() + p2.y()*p3.y();
 
-        Scalar z2_formula =
+        Scalar z2Formula =
             p1.z()*p1.z() + p2.z()*p2.z() + p3.z()*p3.z()
           + p1.z()*p2.z() + p1.z()*p3.z() + p2.z()*p3.z();
 
-        x2Integral_ = crossProd.x() * x2_formula / S(12.0);
-        y2Integral_ = crossProd.y() * y2_formula / S(12.0);
-        z2Integral_ = crossProd.z() * z2_formula / S(12.0);
+        x2Integral_ = crossProd.x() * x2Formula / S(12.0);
+        y2Integral_ = crossProd.y() * y2Formula / S(12.0);
+        z2Integral_ = crossProd.z() * z2Formula / S(12.0);
 
         volumeContribution_ = dot(centroid_, crossProd) / S(2.0);
 
@@ -89,10 +89,7 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
             faceCenter += allNodes[nodeIndices_[i]];
         }
 
-        if (numNodes > 0)
-        {
-            faceCenter /= S(numNodes);
-        }
+        faceCenter /= S(numNodes);
 
         Vector weightedCentroidSum(0.0, 0.0, 0.0);
         Vector normalSum(0.0, 0.0, 0.0);
@@ -106,46 +103,46 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
 
         for (size_t i = 0; i < numNodes; ++i)
         {
-            const Vector& p_i = allNodes[nodeIndices_[i]];
-            const Vector& p_next = allNodes[nodeIndices_[(i + 1) % numNodes]];
+            const Vector& pCurr = allNodes[nodeIndices_[i]];
+            const Vector& pNext = allNodes[nodeIndices_[(i + 1) % numNodes]];
 
-            const Vector& p1_tri = faceCenter;
-            const Vector& p2_tri = p_i;
-            const Vector& p3_tri = p_next;
+            const Vector& p1Tri = faceCenter;
+            const Vector& p2Tri = pCurr;
+            const Vector& p3Tri = pNext;
 
-            Vector vecA_tri = p2_tri - p1_tri;
-            Vector vecB_tri = p3_tri - p1_tri;
+            Vector vecATri = p2Tri - p1Tri;
+            Vector vecBTri = p3Tri - p1Tri;
 
-            Vector crossProd_tri = cross(vecB_tri, vecA_tri);
-            Scalar triangleArea = S(0.5) * crossProd_tri.magnitude();
-            normalSum += crossProd_tri;
+            Vector crossProdTri = cross(vecBTri, vecATri);
+            Scalar triangleArea = S(0.5) * crossProdTri.magnitude();
+            normalSum += crossProdTri;
 
             // Weighted integrals using each sub-triangle's normal
-            // For divergence theorem: contribution = N_x * x2_formula / 12
-            Scalar x2_formula =
-                p1_tri.x() * p1_tri.x() + p2_tri.x() * p2_tri.x()
-              + p3_tri.x() * p3_tri.x() + p1_tri.x() * p2_tri.x()
-              + p1_tri.x() * p3_tri.x() + p2_tri.x() * p3_tri.x();
+            // For divergence theorem: contribution = N_x * x2Formula / 12
+            Scalar x2Formula =
+                p1Tri.x() * p1Tri.x() + p2Tri.x() * p2Tri.x()
+              + p3Tri.x() * p3Tri.x() + p1Tri.x() * p2Tri.x()
+              + p1Tri.x() * p3Tri.x() + p2Tri.x() * p3Tri.x();
 
-            Scalar y2_formula =
-                p1_tri.y() * p1_tri.y() + p2_tri.y() * p2_tri.y()
-              + p3_tri.y() * p3_tri.y() + p1_tri.y() * p2_tri.y()
-              + p1_tri.y() * p3_tri.y() + p2_tri.y() * p3_tri.y();
+            Scalar y2Formula =
+                p1Tri.y() * p1Tri.y() + p2Tri.y() * p2Tri.y()
+              + p3Tri.y() * p3Tri.y() + p1Tri.y() * p2Tri.y()
+              + p1Tri.y() * p3Tri.y() + p2Tri.y() * p3Tri.y();
 
-            Scalar z2_formula =
-                p1_tri.z() * p1_tri.z() + p2_tri.z() * p2_tri.z()
-              + p3_tri.z() * p3_tri.z() + p1_tri.z() * p2_tri.z()
-              + p1_tri.z() * p3_tri.z() + p2_tri.z() * p3_tri.z();
+            Scalar z2Formula =
+                p1Tri.z() * p1Tri.z() + p2Tri.z() * p2Tri.z()
+              + p3Tri.z() * p3Tri.z() + p1Tri.z() * p2Tri.z()
+              + p1Tri.z() * p3Tri.z() + p2Tri.z() * p3Tri.z();
 
-            x2Integral_ += crossProd_tri.x() * x2_formula / S(12.0);
-            y2Integral_ += crossProd_tri.y() * y2_formula / S(12.0);
-            z2Integral_ += crossProd_tri.z() * z2_formula / S(12.0);
+            x2Integral_ += crossProdTri.x() * x2Formula / S(12.0);
+            y2Integral_ += crossProdTri.y() * y2Formula / S(12.0);
+            z2Integral_ += crossProdTri.z() * z2Formula / S(12.0);
 
-            Vector triangleCentroid = (p1_tri + p2_tri + p3_tri) / S(3.0);
+            Vector triangleCentroid = (p1Tri + p2Tri + p3Tri) / S(3.0);
 
             // Volume contribution for this sub-triangle:
             volumeContribution_ +=
-                dot(triangleCentroid, crossProd_tri) / S(2.0);
+                dot(triangleCentroid, crossProdTri) / S(2.0);
 
             weightedAreaSum += triangleArea;
             weightedCentroidSum += triangleCentroid * triangleArea;
@@ -166,39 +163,37 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
 
 std::ostream& operator<<(std::ostream& os, const Face& f)
 {
-    os  << "Face(ID: " << f.idx_ << ", Nodes: [";
+    os  << "Face(ID: " << f.idx() << ", Nodes: [";
 
-    for (size_t i = 0; i < f.nodeIndices_.size(); ++i)
+    const auto& nodes = f.nodeIndices();
+    for (size_t i = 0; i < nodes.size(); ++i)
     {
-        os  << f.nodeIndices_[i]
-            << (i == f.nodeIndices_.size() - 1 ? "" : ", ");
+        os  << nodes[i]
+            << (i == nodes.size() - 1 ? "" : ", ");
     }
 
-    os  <<  "], Owner: " << f.ownerCell_ << ", Neighbor: "
+    os  <<  "], Owner: " << f.ownerCell() << ", Neighbor: "
         <<  (
                 f.isBoundary() ? "Boundary"
-              : std::to_string(f.neighborCell_.value_or(0))
+              : std::to_string(f.neighborCell().value_or(0))
             );
 
-    if (f.geometricPropertiesCalculated_)
+    if (f.geometricPropertiesCalculated())
     {
         std::ios_base::fmtflags flags = os.flags();
         int prec = os.precision();
 
         os  << std::fixed << std::setprecision(6);
 
-        os  << ", Centroid: " << f.centroid_ 
-            << ", Area: "   << f.projectedArea_
-            << ", Normal: " << f.normal_;
+        os  << ", Centroid: " << f.centroid()
+            << ", Area: "   << f.projectedArea()
+            << ", Normal: " << f.normal();
 
-        if (f.distancePropertiesCalculated_)
+        os  << ", dPfMag: " << f.dPfMag();
+
+        if (f.dNfMag().has_value())
         {
-            os  << ", dPfMag: " << f.dPfMag_;
-
-            if (f.dNfMag_.has_value())
-            {
-                os  << ", dNfMag: " << f.dNfMag_.value();
-            }
+            os  << ", dNfMag: " << f.dNfMag().value();
         }
 
         os.flags(flags);
@@ -218,7 +213,7 @@ std::ostream& operator<<(std::ostream& os, const Face& f)
 
 template<typename CellContainer>
 void Face::calculateDistanceProperties(const CellContainer& allCells)
-{ 
+{
     dPf_ = centroid_ - allCells[ownerCell_].centroid();
     dPfMag_ = dPf_.magnitude();
 

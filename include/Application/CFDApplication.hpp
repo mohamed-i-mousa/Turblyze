@@ -14,8 +14,7 @@
  * - Single entry point via run() method
  *****************************************************************************/
 
-#ifndef CFD_APPLICATION_HPP
-#define CFD_APPLICATION_HPP
+#pragma once
 
 #include <string>
 #include <vector>
@@ -152,5 +151,3 @@ private:
     ConvectionSchemes convectionSchemes_;
     std::unique_ptr<SIMPLE> solver_;
 };
-
-#endif // CFD_APPLICATION_HPP

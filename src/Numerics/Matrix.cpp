@@ -191,13 +191,13 @@ void Matrix::assembleInternalFace
     {
         // Cell-based: harmonic interpolation
         const auto& G = equation.Gamma->get();
-        Scalar d_Pf = face.dPfMag();
-        Scalar d_Nf = face.dNfMag().value();
+        Scalar dPf = face.dPfMag();
+        Scalar dNf = face.dNfMag().value();
 
         Gammaf =
             dPNMag
-          / ((d_Pf / (G[ownerIdx] + vSmallValue))
-           + (d_Nf / (G[neighborIdx] + vSmallValue)));
+          / ((dPf / (G[ownerIdx] + vSmallValue))
+           + (dNf / (G[neighborIdx] + vSmallValue)));
     }
     else
     {
@@ -205,7 +205,7 @@ void Matrix::assembleInternalFace
         Gammaf = equation.GammaFace->get()[face.idx()];
     }
 
-    Scalar a_diff =
+    Scalar aDiff =
         Gammaf * Ef.magnitude() / (dPNMag + vSmallValue);
 
     // Convection coefficients
@@ -224,13 +224,13 @@ void Matrix::assembleInternalFace
     }
 
     // Matrix coefficients for owner and neighbor cells
-    tripletList_.emplace_back(ownerIdx, ownerIdx, a_diff + aPConv);
+    tripletList_.emplace_back(ownerIdx, ownerIdx, aDiff + aPConv);
 
-    tripletList_.emplace_back(ownerIdx, neighborIdx, -a_diff + aNConv);
+    tripletList_.emplace_back(ownerIdx, neighborIdx, -aDiff + aNConv);
 
-    tripletList_.emplace_back(neighborIdx, neighborIdx, a_diff - aNConv);
+    tripletList_.emplace_back(neighborIdx, neighborIdx, aDiff - aNConv);
 
-    tripletList_.emplace_back(neighborIdx, ownerIdx, -a_diff - aPConv);
+    tripletList_.emplace_back(neighborIdx, ownerIdx, -aDiff - aPConv);
 
     // Non-orthogonal correction (explicit)
     Vector Tf = Sf - Ef;
@@ -333,8 +333,8 @@ void Matrix::assembleBoundaryFace
         // Convection contribution
         if (equation.flowRate)
         {
-            Scalar a_conv = equation.flowRate->get()[face.idx()];
-            vectorB_(ownerIdx) -= a_conv * phiB;
+            Scalar aConv = equation.flowRate->get()[face.idx()];
+            vectorB_(ownerIdx) -= aConv * phiB;
         }
 
         // Non-orthogonal correction
@@ -366,20 +366,20 @@ void Matrix::assembleBoundaryFace
         // Zero normal gradient: only convection
         if (equation.flowRate)
         {
-            Scalar a_conv = equation.flowRate->get()[face.idx()];
+            Scalar aConv = equation.flowRate->get()[face.idx()];
 
-            tripletList_.emplace_back(ownerIdx, ownerIdx, a_conv);
+            tripletList_.emplace_back(ownerIdx, ownerIdx, aConv);
 
             // Tangential gradient correction
             const Vector& gradPhiP = equation.gradPhi[ownerIdx];
 
             Vector eb = face.normal();
-            Scalar normal_component = dot(gradPhiP, eb);
-            Vector gradPhib = gradPhiP - normal_component * eb;
+            Scalar normalComponent = dot(gradPhiP, eb);
+            Vector gradPhib = gradPhiP - normalComponent * eb;
 
             Vector dCb = face.centroid() - allCells_[ownerIdx].centroid();
 
-            Scalar correction = a_conv * dot(gradPhib, dCb);
+            Scalar correction = aConv * dot(gradPhib, dCb);
             vectorB_(ownerIdx) -= correction;
         }
         // No convection + zero gradient = no contribution
@@ -397,8 +397,8 @@ void Matrix::assembleBoundaryFace
 
         if (equation.flowRate)
         {
-            Scalar a_conv = equation.flowRate->get()[face.idx()];
-            tripletList_.emplace_back(ownerIdx, ownerIdx, a_conv);
+            Scalar aConv = equation.flowRate->get()[face.idx()];
+            tripletList_.emplace_back(ownerIdx, ownerIdx, aConv);
         }
     }
 }

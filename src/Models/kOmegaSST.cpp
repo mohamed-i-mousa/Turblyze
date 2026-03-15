@@ -788,14 +788,14 @@ void kOmegaSST::calculateBlendingFunctions()
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         Scalar y = wallDistance_[cellIdx];
-        Scalar sqrt_k = std::sqrt(k_[cellIdx]);
+        Scalar sqrtK = std::sqrt(k_[cellIdx]);
 
         // Avoid division by zero
         y = std::max(y, vSmallValue);
         omega_[cellIdx] = std::max(omega_[cellIdx], omegaMin_);
 
         // Arguments for blending functions
-        Scalar arg11 = sqrt_k / (const_.betaStar * omega_[cellIdx] * y);
+        Scalar arg11 = sqrtK / (const_.betaStar * omega_[cellIdx] * y);
         Scalar arg12 = 500.0 * nu_ / (omega_[cellIdx] * y * y);
 
         // Cross-diffusion for blending function (clipped to positive)
@@ -813,7 +813,7 @@ void kOmegaSST::calculateBlendingFunctions()
             (
                 std::max
                 (
-                    2.0 * sqrt_k
+                    2.0 * sqrtK
                   / (const_.betaStar * omega_[cellIdx] * y),
                     arg12
                 ),

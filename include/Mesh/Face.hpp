@@ -1,24 +1,23 @@
 /******************************************************************************
  * @file Face.hpp
  * @brief Represents a face in the computational mesh
- * 
- * @details This header defines the Face class , which is a fundamental in 
- * the finite volume discretization. 
+ *
+ * @details This header defines the Face class, which is fundamental in
+ * the finite volume discretization.
  * A face represents a surface defined by a sequence of nodes (vertices)
  * and serves as the boundary between two control volumes (cells) or between a
- * cell and the domain boundary. 
- * 
+ * cell and the domain boundary.
+ *
  * @class Face
- * 
+ *
  * The face class provides:
  * - Connectivity (nodes, owner cell, neighbor cell)
  * - Face properties (centroid, area, normal vector)
- * - Destance vectors for interpolations and gradient calculations
+ * - Distance vectors for interpolations and gradient calculations
  * - Boundary handling (internal and boundary faces)
  *****************************************************************************/
 
-#ifndef FACE_HPP
-#define FACE_HPP
+#pragma once
 
 #include <vector>
 #include <string>
@@ -34,7 +33,7 @@ class Face
 {
 public:
 
-    /// Default constructor 
+    /// Default constructor
     Face() = default;
 
     /**
@@ -46,15 +45,15 @@ public:
      */
     Face
     (
-        size_t faceIdx, 
-        const std::vector<size_t>& nodes, 
+        size_t faceIdx,
+        std::vector<size_t> nodes,
         size_t owner,
         size_t neighbor
-    ) : idx_(faceIdx), 
-        nodeIndices_(nodes), 
-        ownerCell_(owner), 
+    ) : idx_(faceIdx),
+        nodeIndices_(std::move(nodes)),
+        ownerCell_(owner),
         neighborCell_(neighbor) {}
-    
+
     /**
      * @brief Constructor for boundary faces
      * @param faceIdx Unique face identifier
@@ -63,176 +62,176 @@ public:
      */
     Face
     (
-        size_t faceIdx, 
-        const std::vector<size_t>& nodes, 
+        size_t faceIdx,
+        std::vector<size_t> nodes,
         size_t owner
     ) : idx_(faceIdx),
-        nodeIndices_(nodes), 
+        nodeIndices_(std::move(nodes)),
         ownerCell_(owner),
         neighborCell_(std::nullopt) {}
 
 // Setter methods
-    
-    /** 
+
+    /**
      * @brief Set face identifier
      * @param faceIdx Unique face ID
      */
-    void setIdx(size_t faceIdx) { idx_ = faceIdx; }
-    
-    /** 
+    void setIdx(size_t faceIdx) noexcept { idx_ = faceIdx; }
+
+    /**
      * @brief Set owner cell index
      * @param owner Index of owner cell
      */
-    void setOwnerCell(size_t owner) { ownerCell_ = owner; }
-    
-    /** 
+    void setOwnerCell(size_t owner) noexcept { ownerCell_ = owner; }
+
+    /**
      * @brief Set neighbor cell index
      * @param neighbor Index of neighbor cell
      */
-    void setNeighborCell(size_t neighbor) { neighborCell_ = neighbor; }
-    
-    /** 
+    void setNeighborCell(size_t neighbor) noexcept { neighborCell_ = neighbor; }
+
+    /**
      * @brief Set neighbor cell to null (boundary face)
      */
-    void setNeighborCell(std::nullopt_t) { neighborCell_ = std::nullopt; }
-    
-    /** 
+    void setNeighborCell(std::nullopt_t) noexcept { neighborCell_ = std::nullopt; }
+
+    /**
      * @brief Add node index to face connectivity
      * @param nodeIdx Index of node to add
      */
     void addNodeIndex(size_t nodeIdx) { nodeIndices_.push_back(nodeIdx); }
-    
+
     /**
      * @brief Clear all node indices
      */
-    void clearNodeIndices() { nodeIndices_.clear(); }
+    void clearNodeIndices() noexcept { nodeIndices_.clear(); }
 
     /**
      * @brief Set the boundary patch this face belongs to
      * @param p Pointer to the owning boundary patch
      */
-    void setPatch(const BoundaryPatch* p) { patch_ = p; }
+    void setPatch(const BoundaryPatch* p) noexcept { patch_ = p; }
 
 // Accessor methods
 
-    /** 
-     * @brief Get face identifier 
-     * @return Unique face ID 
+    /**
+     * @brief Get face identifier
+     * @return Unique face ID
      */
-    size_t idx() const { return idx_; }
-    
-    /** 
-     * @brief Get node connectivity 
-     * @return Vector of node indices 
-     */
-    const std::vector<size_t>& nodeIndices() const { return nodeIndices_; }
-    
-    /** 
-     * @brief Get owner cell index 
-     * @return Index of owner cell 
-     */
-    size_t ownerCell() const { return ownerCell_; }
-    
-    /** 
-     * @brief Get neighbor cell index 
-     * @return Optional neighbor cell index 
-     */
-    const std::optional<size_t>& neighborCell() const { return neighborCell_; }
+    size_t idx() const noexcept { return idx_; }
 
-    /** 
-     * @brief Get face centroid 
-     * @return Face center coordinates 
+    /**
+     * @brief Get node connectivity
+     * @return Vector of node indices
      */
-    const Vector& centroid() const { return centroid_; }
-    
-    /** 
-     * @brief Get face normal vector 
-     * @return Unit normal vector 
+    const std::vector<size_t>& nodeIndices() const noexcept { return nodeIndices_; }
+
+    /**
+     * @brief Get owner cell index
+     * @return Index of owner cell
      */
-    const Vector& normal() const { return normal_; }
-    
+    size_t ownerCell() const noexcept { return ownerCell_; }
+
+    /**
+     * @brief Get neighbor cell index
+     * @return Optional neighbor cell index
+     */
+    const std::optional<size_t>& neighborCell() const noexcept { return neighborCell_; }
+
+    /**
+     * @brief Get face centroid
+     * @return Face center coordinates
+     */
+    const Vector& centroid() const noexcept { return centroid_; }
+
+    /**
+     * @brief Get face normal vector
+     * @return Unit normal vector
+     */
+    const Vector& normal() const noexcept { return normal_; }
+
     /**
      * @brief Get face area (projected area) for flux calculations
      * @return Face area magnitude (projected area for non-planar faces)
      */
-    Scalar projectedArea() const { return projectedArea_; }
+    Scalar projectedArea() const noexcept { return projectedArea_; }
 
     /**
      * @brief Get face contact area (actual wetted surface area)
      * @return Contact area (sum of sub-triangle areas for non-planar faces)
      * @note Used for wall shear stress, heat transfer, and friction drag
      */
-    Scalar contactArea() const { return contactArea_; }
+    Scalar contactArea() const noexcept { return contactArea_; }
 
     /**
      * @brief Get second moment integrals for centroid calculation
      * @return second moment integrals in each direction
      */
-    Scalar x2Integral() const { return x2Integral_; }
-    Scalar y2Integral() const { return y2Integral_; }
-    Scalar z2Integral() const { return z2Integral_; }
+    Scalar x2Integral() const noexcept { return x2Integral_; }
+    Scalar y2Integral() const noexcept { return y2Integral_; }
+    Scalar z2Integral() const noexcept { return z2Integral_; }
 
     /**
      * @brief Get volume contribution integral for cell volume calculation
      * @return The integral ∫∫_face (r · n) dS
      */
-    Scalar volumeContribution() const { return volumeContribution_; }
+    Scalar volumeContribution() const noexcept { return volumeContribution_; }
 
-    /** 
-     * @brief Get owner cell distance vector 
-     * @return Vector from owner to face 
+    /**
+     * @brief Get owner cell distance vector
+     * @return Vector from owner to face
      */
-    const Vector& dPf() const { return dPf_; }
-    
-    /** 
-     * @brief Get neighbor cell distance vector 
+    const Vector& dPf() const noexcept { return dPf_; }
+
+    /**
+     * @brief Get neighbor cell distance vector
      * @return Optional vector from neighbor to face
      */
-    const std::optional<Vector>& dNf() const { return dNf_; }
-    
-    /** 
-     * @brief Get owner cell distance magnitude 
-     * @return Distance from owner to face 
+    const std::optional<Vector>& dNf() const noexcept { return dNf_; }
+
+    /**
+     * @brief Get owner cell distance magnitude
+     * @return Distance from owner to face
      */
-    Scalar dPfMag() const { return dPfMag_; }
-    
-    /** 
-     * @brief Get neighbor cell distance magnitude 
+    Scalar dPfMag() const noexcept { return dPfMag_; }
+
+    /**
+     * @brief Get neighbor cell distance magnitude
      * @return Optional distance from neighbor to face
      */
-    const std::optional<Scalar>& dNfMag() const { return dNfMag_; }
-    
-    /** 
-     * @brief Get owner cell unit vector 
+    const std::optional<Scalar>& dNfMag() const noexcept { return dNfMag_; }
+
+    /**
+     * @brief Get owner cell unit vector
      * @return Unit vector from owner to face
      */
-    const Vector& ePf() const { return ePf_; }
-    
-    /** 
-     * @brief Get neighbor cell unit vector 
-     * @return Optional unit vector from neighbor to face 
-     */
-    const std::optional<Vector>& eNf() const { return eNf_; }
+    const Vector& ePf() const noexcept { return ePf_; }
 
-    /** 
-     * @brief Check if geometric properties calculated 
-     * @return True if geometry computed 
+    /**
+     * @brief Get neighbor cell unit vector
+     * @return Optional unit vector from neighbor to face
      */
-    bool geometricPropertiesCalculated() const 
+    const std::optional<Vector>& eNf() const noexcept { return eNf_; }
+
+    /**
+     * @brief Check if geometric properties calculated
+     * @return True if geometry computed
+     */
+    bool geometricPropertiesCalculated() const noexcept
     {
-        return geometricPropertiesCalculated_; 
+        return geometricPropertiesCalculated_;
     }
 
     /**
      * @brief Calculate geometric properties of the face
-     * 
-     * @details 
+     *
+     * @details
      * - Calculates face area, centroid, normal vector, and second moment
      *   integrals.
      * - For triangles, uses direct cross product. For polygons, decomposes
      *   into triangles.
      * - Sets geometricPropertiesCalculated flag when success.
-     * 
+     *
      * @param allNodes Vector of all mesh nodes
      * @throws std::out_of_range if node index is invalid
      * @throws std::runtime_error if face is degenerate
@@ -241,12 +240,12 @@ public:
 
     /**
      * @brief Calculate distance properties of the face
-     * 
+     *
      * @details
      * - Calculates distance vectors, magnitudes, and unit vectors
      *   from cell centers to face center. For boundary faces,
      *   only owner cell distances are calculated.
-     * 
+     *
      * @param allCells Container of all mesh cells
      */
     template<typename CellContainer>
@@ -256,7 +255,7 @@ public:
      * @brief Check if this is a boundary face
      * @return True if face is on domain boundary
      */
-    bool isBoundary() const
+    bool isBoundary() const noexcept
     {
         return !neighborCell_.has_value();
     }
@@ -265,26 +264,26 @@ public:
      * @brief Get the boundary patch this face belongs to
      * @return Pointer to owning patch, nullptr for internal faces
      */
-    const BoundaryPatch* patch() const { return patch_; }
+    const BoundaryPatch* patch() const noexcept { return patch_; }
 
     /**
      * @brief Flip the face normal direction
      */
-    void flipNormal()
+    void flipNormal() noexcept
     {
-        normal_ = normal_ * S(-1.0);
+        normal_ *= S(-1.0);
     }
 
 private:
     /// Unique face identifier
     size_t idx_ = 0;
-    
+
     /// Indices of nodes that define this face
     std::vector<size_t> nodeIndices_;
-    
+
     /// Index of the owner cell
     size_t ownerCell_ = 0;
-    
+
     /// Index of neighbor cell (nullopt for boundary faces)
     std::optional<size_t> neighborCell_;
 
@@ -298,7 +297,7 @@ private:
 
     /// Face geometric centroid
     Vector centroid_;
-    
+
     /// Face normal vector (unit vector)
     Vector normal_;
 
@@ -310,19 +309,19 @@ private:
 
     /// Distance vector from owner cell center to face center
     Vector dPf_;
-    
+
     /// Distance vector from neighbor cell center to face center
     std::optional<Vector> dNf_;
-    
+
     /// Magnitude of d_Pf
     Scalar dPfMag_ = 0.0;
-    
+
     /// Magnitude of d_Nf
     std::optional<Scalar> dNfMag_;
-    
+
     /// Unit vector in d_Pf direction
     Vector ePf_;
-    
+
     /// Unit vector in d_Nf direction
     std::optional<Vector> eNf_;
 
@@ -335,8 +334,6 @@ private:
     /// Owning boundary patch (nullptr for internal faces)
     const BoundaryPatch* patch_ = nullptr;
 
-    /// friend function for operator <<
-    friend std::ostream& operator<<(std::ostream& os, const Face& f);
 };
 
 /**
@@ -346,5 +343,3 @@ private:
  * @return Reference to output stream
  */
 std::ostream& operator<<(std::ostream& os, const Face& f);
-
-#endif // FACE_HPP

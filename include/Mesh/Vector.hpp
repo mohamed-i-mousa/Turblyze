@@ -22,7 +22,6 @@
 #include <iosfwd>
 #include "Scalar.hpp"
 
-
 class Vector
 {
 public:

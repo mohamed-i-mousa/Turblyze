@@ -75,8 +75,8 @@ public:
      * 
      * @param fieldName Name of the field for BC lookup
      * @param phi Cell-centered scalar field
-     * @param gradPhi_P Gradient at the owner cell
-     * @param gradPhi_N Gradient at the neighbor cell
+     * @param gradPhiP Gradient at the owner cell
+     * @param gradPhiN Gradient at the neighbor cell
      * @param faceIndex Index of the face
      * @return Gradient vector at the specified face
      */
@@ -84,8 +84,8 @@ public:
     (
         const std::string& fieldName,
         const ScalarField& phi,
-        const Vector& gradPhi_P,
-        const Vector& gradPhi_N,
+        const Vector& gradPhiP,
+        const Vector& gradPhiN,
         const size_t faceIndex
     ) const;
 
@@ -113,8 +113,8 @@ private:
     /**
      * @brief Distance-weighted linear interpolation of gradients
      * @param face Internal face for interpolation
-     * @param gradPhi_P Gradient at the owner cell
-     * @param gradPhi_N Gradient at the neighbor cell
+     * @param gradPhiP Gradient at the owner cell
+     * @param gradPhiN Gradient at the neighbor cell
      * @return Linearly interpolated gradient vector at the face
      */
     Vector averageFaceGradient

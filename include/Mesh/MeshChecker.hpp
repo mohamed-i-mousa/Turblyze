@@ -2,8 +2,8 @@
  * @file MeshChecker.hpp
  * @brief Mesh quality assessment and diagnostic utilities
  *
- * @details This header provides mesh quality checking functions that analyze 
- * geometric properties and report statistics to help identify potential 
+ * @details This header provides mesh quality checking functions that analyze
+ * geometric properties and report statistics to help identify potential
  * numerical issues.
  *
  * @class MeshChecker
@@ -16,8 +16,7 @@
  * - Aspect Ratio
  *****************************************************************************/
 
-#ifndef MESH_CHECKER_HPP
-#define MESH_CHECKER_HPP
+#pragma once
 
 #include <vector>
 #include "Face.hpp"
@@ -41,7 +40,7 @@ public:
         const std::vector<Vector>& nodes,
         const std::vector<Face>& faces,
         const std::vector<Cell>& cells
-    );
+    ) noexcept;
 
     /// Perform mesh quality checks and report statistics
     void check() const;
@@ -81,7 +80,7 @@ private:
         const Vector& ownerCellCentroid,
         const Vector& neighborCellCentroid,
         const Vector& faceNormal
-    ) const;
+    ) const noexcept;
 
     /**
      * @brief Calculate face skewness (OpenFOAM method)
@@ -122,7 +121,5 @@ private:
      * @param cell Cell object
      * @return Aspect ratio (1.0 = perfect cube, higher = elongated)
      */
-    Scalar calculateCellAspectRatio(const Cell& cell) const;
+    Scalar calculateCellAspectRatio(const Cell& cell) const noexcept;
 };
-
-#endif // MESH_CHECKER_HPP

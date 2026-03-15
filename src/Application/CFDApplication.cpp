@@ -244,9 +244,9 @@ void CFDApplication::prepareMesh()
                 const Vector& neighborCell = 
                     approxCentroids[face.neighborCell().value()];
 
-                Vector d_PN = neighborCell - ownerCell;
+                Vector dPN = neighborCell - ownerCell;
 
-                if (dot(d_PN, face.normal()) < 0)
+                if (dot(dPN, face.normal()) < 0)
                 {
                     face.flipNormal();
                     flippedCount++;

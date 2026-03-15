@@ -3,11 +3,13 @@
  * @brief Implementation of 3D vector operations and utilities
  *****************************************************************************/
 
-#include "Vector.hpp"
 #include <stdexcept>
-#include <iostream>
+#include <ostream>
 #include <iomanip>
 #include <cmath>
+
+#include "Vector.hpp"
+
 
 Vector::Vector(Scalar xValue, Scalar yValue, Scalar zValue) noexcept
     : x_(xValue), y_(yValue), z_(zValue) {}

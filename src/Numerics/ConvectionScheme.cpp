@@ -50,15 +50,15 @@ Scalar CentralDifferenceScheme::calculateCorrection
 {
     if (face.isBoundary()) return S(0.0);
 
-    Scalar phi_face_central = interpolateToFace(face, phi);
+    Scalar phiFaceCentral = interpolateToFace(face, phi);
 
-    size_t upwind_cell =
+    size_t upwindCell =
         (flowRate >= S(0.0)) ? face.ownerCell() : face.neighborCell().value();
 
-    Scalar phi_face_UDS = phi[upwind_cell];
+    Scalar phiFaceUDS = phi[upwindCell];
 
     // Deferred correction: flowRate × (φ_central - φ_upwind)
-    return flowRate * (phi_face_central - phi_face_UDS);
+    return flowRate * (phiFaceCentral - phiFaceUDS);
 }
 
 
@@ -76,17 +76,17 @@ Scalar SecondOrderUpwindScheme::calculateCorrection
     if (face.isBoundary()) return S(0.0);
 
     // Determine upwind cell based on flow direction
-    size_t upwind_cell =
+    size_t upwindCell =
         (flowRate >= S(0.0))
       ? face.ownerCell()
       : face.neighborCell().value();
 
     // Gradient-reconstructed face value: φ_upwind + ∇φ · d
-    Scalar phi_face_SOU =
-        (upwind_cell == face.ownerCell())
-      ? phi[upwind_cell] + dot(gradPhiP, face.dPf())
-      : phi[upwind_cell] + dot(gradPhiN, face.dNf().value());
+    Scalar phiFaceSOU =
+        (upwindCell == face.ownerCell())
+      ? phi[upwindCell] + dot(gradPhiP, face.dPf())
+      : phi[upwindCell] + dot(gradPhiN, face.dNf().value());
 
     // Deferred correction: flowRate × (φ_SOU - φ_UDS)
-    return flowRate * (phi_face_SOU - phi[upwind_cell]);
+    return flowRate * (phiFaceSOU - phi[upwindCell]);
 }

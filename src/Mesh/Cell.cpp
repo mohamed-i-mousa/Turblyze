@@ -7,7 +7,7 @@
 
 #include <stdexcept>
 #include <cmath>
-#include <iostream>
+#include <ostream>
 #include <iomanip>
 
 // *********************** Geometric Property Methods ***********************
@@ -41,19 +41,11 @@ void Cell::calculateGeometricProperties(const std::vector<Face>& allFaces)
 
         volume_ += faceSign * face.volumeContribution();
 
-        centroidSum.setX
+        centroidSum += Vector
         (
-            centroidSum.x() + faceSign * face.x2Integral()
-        );
-
-        centroidSum.setY
-        (
-            centroidSum.y() + faceSign * face.y2Integral()
-        );
-
-        centroidSum.setZ
-        (
-            centroidSum.z() + faceSign * face.z2Integral()
+            faceSign * face.x2Integral(),
+            faceSign * face.y2Integral(),
+            faceSign * face.z2Integral()
         );
     }
 
@@ -92,25 +84,27 @@ void Cell::calculateGeometricProperties(const std::vector<Face>& allFaces)
 
 std::ostream& operator<<(std::ostream& os, const Cell& c)
 {
-    os  << "Cell(ID: " << c.idx_ << ", Faces: [";
+    os  << "Cell(ID: " << c.idx() << ", Faces: [";
 
-    for (size_t i = 0; i < c.faceIndices_.size(); ++i)
+    const auto& faces = c.faceIndices();
+    for (size_t i = 0; i < faces.size(); ++i)
     {
-        os  << c.faceIndices_[i]
-            << (i == c.faceIndices_.size() - 1 ? "" : ", ");
+        os  << faces[i]
+            << (i == faces.size() - 1 ? "" : ", ");
     }
 
     os  << "], Neighbors: [";
 
-    for (size_t i = 0; i < c.neighborCellIndices_.size(); ++i)
+    const auto& neighbors = c.neighborCellIndices();
+    for (size_t i = 0; i < neighbors.size(); ++i)
     {
-        os  << c.neighborCellIndices_[i]
-            << (i == c.neighborCellIndices_.size() - 1 ? "" : ", ");
+        os  << neighbors[i]
+            << (i == neighbors.size() - 1 ? "" : ", ");
     }
 
     os  << "]";
 
-    if (c.geometricPropertiesCalculated_)
+    if (c.geometricPropertiesCalculated())
     {
         std::ios_base::fmtflags flags = os.flags();
         int prec = os.precision();
@@ -118,7 +112,7 @@ std::ostream& operator<<(std::ostream& os, const Cell& c)
         os  << std::fixed
             << std::setprecision(6);
 
-        os  << ", Volume: " << c.volume_ << ", Centroid: " << c.centroid_;
+        os  << ", Volume: " << c.volume() << ", Centroid: " << c.centroid();
 
         os.flags(flags);
         os.precision(prec);

@@ -5,6 +5,8 @@
 
 #include "LinearInterpolation.hpp"
 
+#include <iostream>
+
 Scalar interpolateToFace
 (
     const Face& face,
@@ -25,14 +27,14 @@ Scalar interpolateToFace
     const size_t P = face.ownerCell();
     const size_t N = face.neighborCell().value();
 
-    const Scalar d_P = face.dPfMag();
-    const Scalar d_N = face.dNfMag().value();
-    const Scalar total = d_P + d_N + vSmallValue;
+    const Scalar dP = face.dPfMag();
+    const Scalar dN = face.dNfMag().value();
+    const Scalar total = dP + dN + vSmallValue;
 
-    const Scalar w_P = d_N / total;
-    const Scalar w_N = d_P / total;
+    const Scalar wP = dN / total;
+    const Scalar wN = dP / total;
 
-    return w_P * field[P] + w_N * field[N];
+    return wP * field[P] + wN * field[N];
 }
 
 Scalar interpolateToFace
@@ -51,14 +53,14 @@ Scalar interpolateToFace
     const size_t P = face.ownerCell();
     const size_t N = face.neighborCell().value();
 
-    const Scalar d_P = face.dPfMag();
-    const Scalar d_N = face.dNfMag().value();
-    const Scalar total = d_P + d_N + vSmallValue;
+    const Scalar dP = face.dPfMag();
+    const Scalar dN = face.dNfMag().value();
+    const Scalar total = dP + dN + vSmallValue;
 
-    const Scalar w_P = d_N / total;
-    const Scalar w_N = d_P / total;
+    const Scalar wP = dN / total;
+    const Scalar wN = dP / total;
 
-    return w_P * field[P] + w_N * field[N];
+    return wP * field[P] + wN * field[N];
 }
 
 Vector interpolateToFace
@@ -81,14 +83,14 @@ Vector interpolateToFace
     const size_t P = face.ownerCell();
     const size_t N = face.neighborCell().value();
 
-    const Scalar d_P = face.dPfMag();
-    const Scalar d_N = face.dNfMag().value();
-    const Scalar total = d_P + d_N + vSmallValue;
+    const Scalar dP = face.dPfMag();
+    const Scalar dN = face.dNfMag().value();
+    const Scalar total = dP + dN + vSmallValue;
 
-    const Scalar w_P = d_N / total;
-    const Scalar w_N = d_P / total;
+    const Scalar wP = dN / total;
+    const Scalar wN = dP / total;
 
-    return w_P * field[P] + w_N * field[N];
+    return wP * field[P] + wN * field[N];
 }
 
 Vector interpolateToFace
@@ -110,12 +112,12 @@ Vector interpolateToFace
     const size_t P = face.ownerCell();
     const size_t N = face.neighborCell().value();
 
-    const Scalar d_P = face.dPfMag();
-    const Scalar d_N = face.dNfMag().value();
-    const Scalar total = d_P + d_N + vSmallValue;
+    const Scalar dP = face.dPfMag();
+    const Scalar dN = face.dNfMag().value();
+    const Scalar total = dP + dN + vSmallValue;
 
-    const Scalar w_P = d_N / total;
-    const Scalar w_N = d_P / total;
+    const Scalar wP = dN / total;
+    const Scalar wN = dP / total;
 
-    return w_P * field[P] + w_N * field[N];
+    return wP * field[P] + wN * field[N];
 }

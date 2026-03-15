@@ -178,19 +178,11 @@ void GradientScheme::limitGradient
 
             if (delta > vSmallValue)
             {
-                alpha = std::min
-                (
-                    alpha,
-                    (phiMax - phiP) / delta
-                );
+                alpha = std::min(alpha, (phiMax - phiP) / delta);
             }
             else if (delta < -vSmallValue)
             {
-                alpha = std::min
-                (
-                    alpha,
-                    (phiMin - phiP) / delta
-                );
+                alpha = std::min(alpha, (phiMin - phiP) / delta);
             }
         }
 
@@ -227,11 +219,11 @@ Vector GradientScheme::faceGradient
     {
         size_t N = face.neighborCell().value();
 
-        Vector d_PN = allCells_[N].centroid() - allCells_[P].centroid();
+        Vector dPN = allCells_[N].centroid() - allCells_[P].centroid();
 
-        Scalar dPNMag = d_PN.magnitude();
+        Scalar dPNMag = dPN.magnitude();
 
-        Vector e_PN = d_PN / (dPNMag + vSmallValue);
+        Vector ePN = dPN / (dPNMag + vSmallValue);
 
         Vector gradAvg = averageFaceGradient(face, gradPhiP, gradPhiN);
 
@@ -239,17 +231,17 @@ Vector GradientScheme::faceGradient
 
         Scalar correction =
             (phiDiff / (dPNMag + vSmallValue))
-          - dot(gradAvg, e_PN);
+          - dot(gradAvg, ePN);
 
-        return gradAvg + correction * e_PN;
+        return gradAvg + correction * ePN;
     }
 }
 
 Vector GradientScheme::averageFaceGradient
 (
     const Face& face,
-    const Vector& gradPhi_P,
-    const Vector& gradPhi_N
+    const Vector& gradPhiP,
+    const Vector& gradPhiN
 ) const
 {
     if (face.isBoundary())
@@ -262,14 +254,14 @@ Vector GradientScheme::averageFaceGradient
             );
     }
 
-    Scalar d_Pf = face.dPfMag();
-    Scalar d_Nf = face.dNfMag().value();
-    Scalar totalDist = d_Pf + d_Nf;
+    Scalar dPf = face.dPfMag();
+    Scalar dNf = face.dNfMag().value();
+    Scalar totalDist = dPf + dNf;
 
-    Scalar g_P = d_Nf / (totalDist + vSmallValue);
-    Scalar g_N = d_Pf / (totalDist + vSmallValue);
+    Scalar gP = dNf / (totalDist + vSmallValue);
+    Scalar gN = dPf / (totalDist + vSmallValue);
 
-    return g_P * gradPhi_P + g_N * gradPhi_N;
+    return gP * gradPhiP + gN * gradPhiN;
 }
 
 Vector GradientScheme::calculateBoundaryFaceGradient
@@ -293,25 +285,21 @@ Vector GradientScheme::calculateBoundaryFaceGradient
         {
             Scalar cellValue = phi[face.ownerCell()];
 
-            Scalar d_n =
-                dot(face.dPf(), face.normal());
+            Scalar dn = dot(face.dPf(), face.normal());
 
             Scalar dPfMag = face.dPfMag();
 
-            // Stabilization: limit d_n to 5% minimum
-            Scalar dnStabilized =
-                std::max(d_n, S(0.05) * dPfMag);
+            // Stabilization: limit dn to 5% minimum
+            Scalar dnStabilized = std::max(dn, S(0.05) * dPfMag);
 
-            Scalar normalGradient =
-                (S(0.0) - cellValue) / dnStabilized;
+            Scalar normalGradient = (S(0.0) - cellValue) / dnStabilized;
 
             Vector tangentialGradient =
                 cellGradient
               - dot(cellGradient, face.normal())
               * face.normal();
 
-            return tangentialGradient
-                 + normalGradient * face.normal();
+            return tangentialGradient + normalGradient * face.normal();
         }
 
         case BCType::FIXED_VALUE:
@@ -325,18 +313,15 @@ Vector GradientScheme::calculateBoundaryFaceGradient
             {
                 if (fieldName == "Ux")
                 {
-                    boundaryValue =
-                        bc->vectorValue().x();
+                    boundaryValue = bc->vectorValue().x();
                 }
                 else if (fieldName == "Uy")
                 {
-                    boundaryValue =
-                        bc->vectorValue().y();
+                    boundaryValue = bc->vectorValue().y();
                 }
                 else if (fieldName == "Uz")
                 {
-                    boundaryValue =
-                        bc->vectorValue().z();
+                    boundaryValue = bc->vectorValue().z();
                 }
                 else
                 {
@@ -350,14 +335,12 @@ Vector GradientScheme::calculateBoundaryFaceGradient
 
             Scalar cellValue = phi[face.ownerCell()];
 
-            Scalar d_n =
-                dot(face.dPf(), face.normal());
+            Scalar dn = dot(face.dPf(), face.normal());
 
             Scalar dPfMag = face.dPfMag();
 
-            // Stabilization: limit d_n to 5% minimum
-            Scalar dnStabilized =
-                std::max(d_n, S(0.05) * dPfMag);
+            // Stabilization: limit dn to 5% minimum
+            Scalar dnStabilized = std::max(dn, S(0.05) * dPfMag);
 
             // ∂φ/∂n = (φ_boundary - φ_cell) / dnStabilized
             Scalar normalGradient =
@@ -369,8 +352,7 @@ Vector GradientScheme::calculateBoundaryFaceGradient
               - dot(cellGradient, face.normal())
               * face.normal();
 
-            return tangentialGradient
-                 + normalGradient * face.normal();
+            return tangentialGradient + normalGradient * face.normal();
         }
 
         case BCType::K_WALL_FUNCTION:
@@ -389,8 +371,7 @@ Vector GradientScheme::calculateBoundaryFaceGradient
 
         case BCType::FIXED_GRADIENT:
         {
-            Scalar specifiedGradient =
-                bc->fixedScalarGradient();
+            Scalar specifiedGradient = bc->fixedScalarGradient();
 
             // Project cell gradient onto tangential directions
             // and combine with specified normal gradient
@@ -399,8 +380,7 @@ Vector GradientScheme::calculateBoundaryFaceGradient
               - dot(cellGradient, face.normal())
               * face.normal();
 
-            return tangentialGradient
-                 + specifiedGradient * face.normal();
+            return tangentialGradient + specifiedGradient * face.normal();
         }
 
         default:
