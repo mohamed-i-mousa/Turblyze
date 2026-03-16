@@ -1,13 +1,13 @@
 /******************************************************************************
  * @file BoundaryData.hpp
  * @brief Boundary condition data storage and type management
- * 
- * @details This header defines the BoundaryData class, which acts as a data 
+ *
+ * @details This header defines the BoundaryData class, which acts as a data
  * transfer object holding the specific parameters for boundary conditions
  * (e.g., "velocity on inlet patch").
- * 
+ *
  * @class BoundaryData
- * 
+ *
  * The BoundaryData class provides:
  * - Type-safe storage for BC parameters (scalar/vector values, gradients)
  * - Enumerations for supported BC types (FIXED_VALUE, ZERO_GRADIENT, etc.)
@@ -15,16 +15,13 @@
  * - Conditional accessors based on the active configuration
  *****************************************************************************/
 
-#ifndef BOUNDARY_DATA_HPP
-#define BOUNDARY_DATA_HPP
-
-#include <string>
+#pragma once
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
 
 /**
- * @enum BCType 
+ * @enum BCType
  * @brief Enumeration of boundary condition types
  */
 enum class BCType
@@ -40,7 +37,7 @@ enum class BCType
 };
 
 /**
- * @enum BCValueType 
+ * @enum BCValueType
  * @brief Enumeration of boundary condition value types
  */
 enum class BCValueType
@@ -50,12 +47,12 @@ enum class BCValueType
     UNDEFINED               ///< Undefined value type
 };
 
-class BoundaryData 
+class BoundaryData
 {
 public:
 
     /// Default constructor
-    BoundaryData() = default;
+    BoundaryData() noexcept = default;
 
 // Setter methods
 
@@ -63,84 +60,84 @@ public:
      * @brief Set fixed scalar value boundary condition
      * @param scalarValue Scalar value to fix at boundary
      */
-    void setFixedValue(Scalar scalarValue);
-    
+    void setFixedValue(Scalar scalarValue) noexcept;
+
     /**
      * @brief Set fixed vector value boundary condition
      * @param vectorValue Vector value to fix at boundary
      */
-    void setFixedValue(const Vector& vectorValue);
-    
+    void setFixedValue(const Vector& vectorValue) noexcept;
+
     /**
      * @brief Set fixed scalar gradient boundary condition
      * @param scalarGradient Scalar gradient (normal component) at boundary
      */
-    void setFixedGradient(Scalar scalarGradient);
-    
+    void setFixedGradient(Scalar scalarGradient) noexcept;
+
     /**
      * @brief Set fixed vector gradient boundary condition
      * @param vectorGradient Vector gradient (normal component) at boundary
      */
-    void setFixedGradient(const Vector& vectorGradient);
-    
+    void setFixedGradient(const Vector& vectorGradient) noexcept;
+
     /// Set zero gradient boundary condition
-    void setZeroGradient();
-    
+    void setZeroGradient() noexcept;
+
     /// Set no-slip boundary condition (for velocity)
-    void setNoSlip();
+    void setNoSlip() noexcept;
 
     /// Set k wall function boundary condition
-    void setKWallFunction();
+    void setKWallFunction() noexcept;
 
     /// Set omega wall function boundary condition
-    void setOmegaWallFunction();
+    void setOmegaWallFunction() noexcept;
 
-    /// nut wall function boundary condition
-    void setNutWallFunction();
+    /// Set nut wall function boundary condition
+    void setNutWallFunction() noexcept;
 
 // Accessor methods
-    
-    /** 
-     * @brief Get boundary condition type 
-     * @return Current BC type 
+
+    /**
+     * @brief Get boundary condition type
+     * @return Current BC type
      */
-    BCType type() const { return type_; }
-    
-    /** 
-     * @brief Get value type 
-     * @return Type of boundary value (scalar/vector) 
+    BCType type() const noexcept { return type_; }
+
+    /**
+     * @brief Get value type
+     * @return Type of boundary value (scalar/vector)
      */
-    BCValueType valueType() const { return valueType_; }
-    
-    /** 
-     * @brief Get gradient type 
-     * @return Type of boundary gradient (scalar/vector) 
+    BCValueType valueType() const noexcept { return valueType_; }
+
+    /**
+     * @brief Get gradient type
+     * @return Type of boundary gradient (scalar/vector)
      */
-    BCValueType gradientType() const { return gradientType_; }
-    
-    /** 
-     * @brief Get scalar value 
-     * @return Current scalar boundary value 
+    BCValueType gradientType() const noexcept { return gradientType_; }
+
+    /**
+     * @brief Get scalar value
+     * @return Current scalar boundary value
      */
-    Scalar scalarValue() const { return scalarValue_; }
-    
-    /** 
-     * @brief Get vector value 
-     * @return Current vector boundary value 
+    Scalar scalarValue() const noexcept { return scalarValue_; }
+
+    /**
+     * @brief Get vector value
+     * @return Current vector boundary value
      */
-    const Vector& vectorValue() const { return vectorValue_; }
-    
-    /** 
-     * @brief Get scalar gradient 
-     * @return Current scalar boundary gradient 
+    const Vector& vectorValue() const noexcept { return vectorValue_; }
+
+    /**
+     * @brief Get scalar gradient
+     * @return Current scalar boundary gradient
      */
-    Scalar scalarGradient() const { return scalarGradient_; }
-    
-    /** 
-     * @brief Get vector gradient 
-     * @return Current vector boundary gradient 
+    Scalar scalarGradient() const noexcept { return scalarGradient_; }
+
+    /**
+     * @brief Get vector gradient
+     * @return Current vector boundary gradient
      */
-    const Vector& vectorGradient() const { return vectorGradient_; }
+    const Vector& vectorGradient() const noexcept { return vectorGradient_; }
 
     /**
      * @brief Get fixed scalar value
@@ -148,14 +145,14 @@ public:
      * @throws std::runtime_error if not a fixed scalar value BC
      */
     Scalar fixedScalarValue() const;
-    
+
     /**
      * @brief Get fixed vector value
      * @return Fixed vector value
      * @throws std::runtime_error if not a fixed vector value BC
      */
     const Vector& fixedVectorValue() const;
-    
+
     /**
      * @brief Get fixed scalar gradient
      * @return Fixed scalar gradient (normal component)
@@ -179,21 +176,19 @@ private:
 
     /// Type of boundary value (scalar or vector)
     BCValueType valueType_ = BCValueType::UNDEFINED;
-    
+
     /// Scalar boundary value
     Scalar scalarValue_ = S(0.0);
-    
+
     /// Vector boundary value
-    Vector vectorValue_; 
+    Vector vectorValue_;
 
     /// Type of boundary gradient (scalar or vector)
     BCValueType gradientType_ = BCValueType::UNDEFINED;
-    
+
     /// Scalar boundary gradient (normal component)
     Scalar scalarGradient_ = S(0.0);
-    
+
     /// Vector boundary gradient (normal component)
     Vector vectorGradient_;
 };
-
-#endif // BOUNDARY_DATA_HPP

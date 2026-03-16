@@ -1,9 +1,9 @@
 /******************************************************************************
  * @file BoundaryConditions.hpp
  * @brief Manages boundary conditions for the CFD solver
- * 
- * @details This class provides functionality to set up, store, and apply 
- * boundary conditions for different fields on mesh patches. It supports 
+ *
+ * @details This class provides functionality to set up, store, and apply
+ * boundary conditions for different fields on mesh patches. It supports
  * various boundary condition types including fixed values, gradients, and
  * special conditions like no-slip.
  *
@@ -11,12 +11,11 @@
  *
  * @example: usage hierarchy:
  * - Patch "inlet": U → fixed value, p → zero gradient
- * - Patch "outlet": U → zero gradient, p → fixed value  
+ * - Patch "outlet": U → zero gradient, p → fixed value
  * - Patch "wall": U → no-slip, p → zero gradient
  *****************************************************************************/
 
-#ifndef BOUNDARY_CONDITIONS_HPP
-#define BOUNDARY_CONDITIONS_HPP
+#pragma once
 
 #include <vector>
 #include <string>
@@ -25,12 +24,11 @@
 #include "Scalar.hpp"
 #include "Vector.hpp"
 #include "Face.hpp"
-#include "Cell.hpp"
 #include "BoundaryPatch.hpp"
 #include "BoundaryData.hpp"
 #include "CellData.hpp"
 
-class BoundaryConditions 
+class BoundaryConditions
 {
 public:
 
@@ -43,7 +41,7 @@ public:
      * @brief Add a boundary patch from mesh reader
      * @param patch Boundary patch to add
      */
-    void addPatch(const BoundaryPatch& patch);
+    void addPatch(BoundaryPatch patch);
 
     /**
      * @brief Set generic boundary condition
@@ -68,11 +66,11 @@ public:
      */
     bool setFixedValue
     (
-        const std::string& patchName, 
-        const std::string& fieldName, 
+        const std::string& patchName,
+        const std::string& fieldName,
         Scalar value
     );
-    
+
     /**
      * @brief Set fixed vector value boundary condition
      * @param patchName Name of the boundary patch
@@ -82,8 +80,8 @@ public:
      */
     bool setFixedValue
     (
-        const std::string& patchName, 
-        const std::string& fieldName, 
+        const std::string& patchName,
+        const std::string& fieldName,
         const Vector& value
     );
 
@@ -96,11 +94,11 @@ public:
      */
     bool setFixedGradient
     (
-        const std::string& patchName, 
-        const std::string& fieldName, 
+        const std::string& patchName,
+        const std::string& fieldName,
         Scalar gradient
     );
-    
+
     /**
      * @brief Set fixed vector gradient boundary condition
      * @param patchName Name of the boundary patch
@@ -110,8 +108,8 @@ public:
      */
     bool setFixedGradient
     (
-        const std::string& patchName, 
-        const std::string& fieldName, 
+        const std::string& patchName,
+        const std::string& fieldName,
         const Vector& gradient
     );
 
@@ -123,10 +121,10 @@ public:
      */
     bool setZeroGradient
     (
-        const std::string& patchName, 
+        const std::string& patchName,
         const std::string& fieldName
     );
-    
+
     /**
      * @brief Set no-slip boundary condition (for velocity)
      * @param patchName Name of the boundary patch
@@ -151,7 +149,7 @@ public:
         const std::string& fieldName
     );
 
-    
+
     /**
      * @brief Set omega wall function boundary condition
      * @param patchName Name of the boundary patch
@@ -169,7 +167,7 @@ public:
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field
      * @return True if successfully set
-     */    
+     */
     bool setNutWallFunction
     (
         const std::string& patchName,
@@ -181,20 +179,20 @@ public:
     /**
      * @brief Get boundary patch by name
      * @param name Name of the patch to retrieve
-     * @return Pointer to patch, or nullptr if not found
+     * @return Pointer to the found patch
      * @throws std::runtime_error if patch not found
      */
     const BoundaryPatch* patch(const std::string& name) const;
 
-    /** 
-     * @brief Get all boundary patches 
-     * @return Const reference to vector of boundary patches 
+    /**
+     * @brief Get all boundary patches
+     * @return Const reference to vector of boundary patches
      */
     const std::vector<BoundaryPatch>& patches() const { return patches_; }
 
-    /** 
-     * @brief Get number of patches 
-     * @return Number of boundary patches 
+    /**
+     * @brief Get number of patches
+     * @return Number of boundary patches
      */
     size_t numPatches() const { return patches_.size(); }
 
@@ -206,7 +204,7 @@ public:
      */
     const BoundaryData* fieldBC
     (
-        const std::string& patchName, 
+        const std::string& patchName,
         const std::string& fieldName
     ) const;
 
@@ -253,7 +251,7 @@ public:
      * @throws std::runtime_error if unknown BC type
      * @note It's used in printSummary
      */
-    std::string bcTypeToString(BCType bctype) const;
+    static std::string bcTypeToString(BCType bctype);
 
     /**
      * @brief Validate that all patch names in boundary data
@@ -272,9 +270,7 @@ private:
     /// Nested map: patch name → field name → boundary data
     std::map<std::string, std::map<std::string, BoundaryData>>
     patchBoundaryData_;
-    
+
     /// Vector of all boundary patches
     std::vector<BoundaryPatch> patches_;
 };
-
-#endif // BOUNDARY_CONDITIONS_HPP

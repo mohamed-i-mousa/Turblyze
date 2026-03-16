@@ -9,47 +9,47 @@
 
 // ****************************** Setter Methods ******************************
 
-void BoundaryData::setFixedValue(Scalar scalarValue) 
+void BoundaryData::setFixedValue(Scalar scalarValue) noexcept
 {
     type_ = BCType::FIXED_VALUE;
-    scalarValue_ = scalarValue; 
+    scalarValue_ = scalarValue;
     valueType_ = BCValueType::SCALAR;
 
     vectorValue_ = Vector();
     gradientType_ = BCValueType::UNDEFINED;
 }
 
-void BoundaryData::setFixedValue(const Vector& vectorValue) 
+void BoundaryData::setFixedValue(const Vector& vectorValue) noexcept
 {
     type_ = BCType::FIXED_VALUE;
-    vectorValue_ = vectorValue; 
+    vectorValue_ = vectorValue;
     valueType_ = BCValueType::VECTOR;
 
     scalarValue_ = S(0.0);
     gradientType_ = BCValueType::UNDEFINED;
 }
 
-void BoundaryData::setFixedGradient(Scalar scalarGradient) 
+void BoundaryData::setFixedGradient(Scalar scalarGradient) noexcept
 {
     type_ = BCType::FIXED_GRADIENT;
-    scalarGradient_ = scalarGradient; 
+    scalarGradient_ = scalarGradient;
     gradientType_ = BCValueType::SCALAR;
 
     vectorValue_ = Vector();
     valueType_ = BCValueType::UNDEFINED;
 }
 
-void BoundaryData::setFixedGradient(const Vector& vectorGradient) 
+void BoundaryData::setFixedGradient(const Vector& vectorGradient) noexcept
 {
     type_ = BCType::FIXED_GRADIENT;
-    vectorGradient_ = vectorGradient; 
+    vectorGradient_ = vectorGradient;
     gradientType_ = BCValueType::VECTOR;
 
     scalarValue_ = S(0.0);
     valueType_ = BCValueType::UNDEFINED;
 }
 
-void BoundaryData::setZeroGradient() 
+void BoundaryData::setZeroGradient() noexcept
 {
     type_ = BCType::ZERO_GRADIENT;
     scalarGradient_ = S(0.0);
@@ -59,7 +59,7 @@ void BoundaryData::setZeroGradient()
     gradientType_ = BCValueType::UNDEFINED;
 }
 
-void BoundaryData::setNoSlip()
+void BoundaryData::setNoSlip() noexcept
 {
     type_ = BCType::NO_SLIP;
     vectorValue_ = Vector(S(0.0), S(0.0), S(0.0));
@@ -69,7 +69,7 @@ void BoundaryData::setNoSlip()
     gradientType_ = BCValueType::UNDEFINED;
 }
 
-void BoundaryData::setKWallFunction()
+void BoundaryData::setKWallFunction() noexcept
 {
     type_ = BCType::K_WALL_FUNCTION;
     scalarGradient_ = S(0.0);
@@ -79,7 +79,7 @@ void BoundaryData::setKWallFunction()
     gradientType_ = BCValueType::UNDEFINED;
 }
 
-void BoundaryData::setOmegaWallFunction()
+void BoundaryData::setOmegaWallFunction() noexcept
 {
     type_ = BCType::OMEGA_WALL_FUNCTION;
     scalarGradient_ = S(0.0);
@@ -89,7 +89,7 @@ void BoundaryData::setOmegaWallFunction()
     gradientType_ = BCValueType::UNDEFINED;
 }
 
-void BoundaryData::setNutWallFunction()
+void BoundaryData::setNutWallFunction() noexcept
 {
     type_ = BCType::NUT_WALL_FUNCTION;
     scalarGradient_ = S(0.0);
@@ -120,12 +120,11 @@ Scalar BoundaryData::fixedScalarValue() const
 
 const Vector& BoundaryData::fixedVectorValue() const
 {
-    if (type_ == BCType::FIXED_VALUE && valueType_ == BCValueType::VECTOR)
-    {
-        return vectorValue_;
-    }
-
-    if (type_ == BCType::NO_SLIP && valueType_ == BCValueType::VECTOR)
+    if
+    (
+        (type_ == BCType::FIXED_VALUE || type_ == BCType::NO_SLIP)
+     && valueType_ == BCValueType::VECTOR
+    )
     {
         return vectorValue_;
     }

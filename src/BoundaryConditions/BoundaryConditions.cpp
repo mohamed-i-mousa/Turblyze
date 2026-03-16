@@ -7,16 +7,15 @@
 
 #include <stdexcept>
 #include <iostream>
-#include <algorithm>
 #include <utility>
 #include <set>
 
 
 // ****************************** Setter Methods ******************************
 
-void BoundaryConditions::addPatch(const BoundaryPatch& patch)
+void BoundaryConditions::addPatch(BoundaryPatch patch)
 {
-    patches_.push_back(patch);
+    patches_.push_back(std::move(patch));
 }
 
 bool BoundaryConditions::setBC
@@ -330,7 +329,7 @@ void BoundaryConditions::linkFaces(std::vector<Face>& faces) const
     }
 }
 
-std::string BoundaryConditions::bcTypeToString(BCType bctype) const
+std::string BoundaryConditions::bcTypeToString(BCType bctype)
 {
     switch (bctype)
     {
