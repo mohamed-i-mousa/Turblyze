@@ -410,7 +410,7 @@ void MeshReader::parseBoundariesSection
             boundaryPatches_[i].setFluentType(typeString);
 
             BoundaryConditionType mappedType =
-                mapFluentBCToEnum(typeString);
+                BoundaryPatch::mapFluentBCToEnum(typeString);
 
             boundaryPatches_[i].setType(mappedType);
         }

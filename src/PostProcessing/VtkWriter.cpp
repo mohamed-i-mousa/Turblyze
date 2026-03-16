@@ -33,6 +33,7 @@
 // Header includes
 #include "VtkWriter.hpp"
 #include "Cell.hpp"
+#include "Face.hpp"
 #include "BoundaryPatch.hpp"
 
 
