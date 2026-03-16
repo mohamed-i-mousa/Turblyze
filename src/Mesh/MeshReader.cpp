@@ -12,16 +12,6 @@
 #include "MeshReader.hpp"
 
 
-// ************************ Static member definitions *************************
-
-const std::string MeshReader::MSH_COMMENT    = "(0";
-const std::string MeshReader::MSH_DIMENSION  = "(2";
-const std::string MeshReader::MSH_NODES      = "(10";
-const std::string MeshReader::MSH_CELLS      = "(12";
-const std::string MeshReader::MSH_FACES      = "(13";
-const std::string MeshReader::MSH_BOUNDARIES = "(45";
-
-
 // ******************************* Constructor ********************************
 
 MeshReader::MeshReader(const std::string& filePath)
@@ -89,8 +79,6 @@ void MeshReader::parseFile(const std::string& filePath)
         }
     }
 
-    ifs.close();
-
     buildTopology();
     validateMesh();
     printSummary();
@@ -101,16 +89,16 @@ void MeshReader::parseFile(const std::string& filePath)
 
 void MeshReader::parseCommentSection(std::ifstream& ifs) const
 {
-    int paren_level = 1;
+    int parenLevel = 1;
     char ch;
 
     while (ifs.get(ch))
     {
         if (ch == '(')
-            paren_level++;
+            parenLevel++;
         else if (ch == ')')
-            paren_level--;
-        if (paren_level == 0)
+            parenLevel--;
+        if (parenLevel == 0)
             break;
     }
 }
@@ -169,48 +157,36 @@ void MeshReader::parseNodesSection
         size_t endIdx = hexToDec(endIdxStr);
         size_t dimension = hexToDec(dimensionStr);
 
-        size_t nodeGlobalIdx =
-            safeFluentIndexConvert
-            (
-                startIdx, "node start index"
-            );
-
-        for (size_t i = startIdx; i <= endIdx; ++i)
+        for (size_t idx = startIdx; idx <= endIdx; ++idx)
         {
-            if
-            (
-                nodeGlobalIdx < endIdx
-             && nodeGlobalIdx < nodes_.size()
-            )
-            {
-                Scalar xVal, yVal, zVal = 0.0;
+            size_t globalIdx = idx - 1;
 
-                ifs >> xVal;
-                ifs >> yVal;
-
-                if (dimension == 3)
-                {
-                    ifs >> zVal;
-                }
-
-                nodes_[nodeGlobalIdx].setX(xVal);
-                nodes_[nodeGlobalIdx].setY(yVal);
-                nodes_[nodeGlobalIdx].setZ(zVal);
-
-                nodeGlobalIdx++;
-            }
-            else
+            if (globalIdx >= nodes_.size())
             {
                 throw
                     std::runtime_error
                     (
                         "Error: Node index "
-                      + std::to_string(nodeGlobalIdx)
+                      + std::to_string(globalIdx)
                       + " exceeds allocated node vector"
                       + " size "
                       + std::to_string(nodes_.size())
                     );
             }
+
+            Scalar xVal, yVal, zVal = 0.0;
+
+            ifs >> xVal;
+            ifs >> yVal;
+
+            if (dimension == 3)
+            {
+                ifs >> zVal;
+            }
+
+            nodes_[globalIdx].setX(xVal);
+            nodes_[globalIdx].setY(yVal);
+            nodes_[globalIdx].setZ(zVal);
         }
     }
 }
@@ -291,6 +267,9 @@ void MeshReader::parseFacesSection
         std::string line;
         std::getline(ifs, line);
 
+        std::string itemHex;
+        std::vector<std::string> hexItems;
+
         for
         (
             size_t faceIdx = startIdx;
@@ -339,9 +318,8 @@ void MeshReader::parseFacesSection
                     );
             }
 
-            std::stringstream lineStream(line);
-            std::string itemHex;
-            std::vector<std::string> hexItems;
+            std::istringstream lineStream(line);
+            hexItems.clear();
 
             // Put hex items in a vector
             while (lineStream >> itemHex)
@@ -502,48 +480,25 @@ void MeshReader::buildTopology()
 
     for (size_t i = 0; i < cells_.size(); ++i)
     {
-        if
+        std::vector<size_t> &neighbors =
+            tempCellNeighbors[i];
+
+        std::sort
         (
-            i < cells_.size()
-         && i < tempCellNeighbors.size()
-        )
-        {
-            std::vector<size_t> &neighbors =
-                tempCellNeighbors[i];
+            neighbors.begin(), neighbors.end()
+        );
 
-            std::sort
+        neighbors.erase
+        (
+            std::unique
             (
-                neighbors.begin(), neighbors.end()
-            );
-
-            neighbors.erase
-            (
-                std::unique
-                (
-                    neighbors.begin(),
-                    neighbors.end()
-                ),
+                neighbors.begin(),
                 neighbors.end()
-            );
+            ),
+            neighbors.end()
+        );
 
-            cells_[i].setNeighborCellIndices(neighbors);
-        }
-        else
-        {
-            if (i < cells_.size())
-            {
-                cells_[i].clearNeighborCellIndices();
-            }
-            std::cerr
-                << "Warning: Cell with index " << i
-                << " could not have its neighbors "
-                << "finalized due to indexing mismatch."
-                << " cells_.size(): "
-                << cells_.size()
-                << ", tempCellNeighbors.size(): "
-                << tempCellNeighbors.size()
-                << std::endl;
-        }
+        cells_[i].setNeighborCellIndices(neighbors);
     }
 }
 
@@ -634,12 +589,20 @@ size_t MeshReader::strToDec(const std::string& decStr)
             );
     }
 
-    std::stringstream ss;
-    ss  << decStr;
     size_t decVal;
-    ss  >> decVal;
+    auto result =
+        std::from_chars
+        (
+            decStr.data(),
+            decStr.data() + decStr.size(),
+            decVal
+        );
 
-    if (ss.fail() || !ss.eof())
+    if
+    (
+        result.ec != std::errc()
+     || result.ptr != decStr.data() + decStr.size()
+    )
     {
         throw
             std::runtime_error

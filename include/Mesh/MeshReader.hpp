@@ -2,7 +2,7 @@
  * @file MeshReader.hpp
  * @brief Fluent mesh file reader for ANSYS mesh files
  *
- * @details This header defines the MeshReader class which reads mesh data 
+ * @details This header defines the MeshReader class which reads mesh data
  * from Fluent (.msh) files and converts them into the internal structure
  * (Nodes, Faces, Cells). Currently supports 3D unstructured meshes exported
  * from ANSYS Meshing.
@@ -27,12 +27,13 @@
  * - "4" = quadrilateral, "5" = polygonal
  *****************************************************************************/
 
-#ifndef MESH_READER_HPP
-#define MESH_READER_HPP
+#pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
-#include <fstream>
+#include <iosfwd>
+
 #include "Scalar.hpp"
 #include "Face.hpp"
 #include "Cell.hpp"
@@ -54,25 +55,34 @@ public:
      * @brief Transfer ownership of nodes data
      * @return Moved vector of node coordinates
      */
-    std::vector<Vector> moveNodes() { return std::move(nodes_); }
+    std::vector<Vector> moveNodes() noexcept
+    {
+        return std::move(nodes_);
+    }
 
     /**
      * @brief Transfer ownership of faces data
      * @return Moved vector of mesh faces
      */
-    std::vector<Face> moveFaces() { return std::move(faces_); }
+    std::vector<Face> moveFaces() noexcept
+    {
+        return std::move(faces_);
+    }
 
     /**
      * @brief Transfer ownership of cells data
      * @return Moved vector of mesh cells
      */
-    std::vector<Cell> moveCells() { return std::move(cells_); }
+    std::vector<Cell> moveCells() noexcept
+    {
+        return std::move(cells_);
+    }
 
     /**
      * @brief Transfer ownership of boundary patches data
      * @return Moved vector of boundary patches
      */
-    std::vector<BoundaryPatch> moveBoundaryPatches()
+    std::vector<BoundaryPatch> moveBoundaryPatches() noexcept
     {
         return std::move(boundaryPatches_);
     }
@@ -95,18 +105,12 @@ private:
 
 // Section identifier constants
 
-    /// Comment section "(0"
-    static const std::string MSH_COMMENT;
-    /// Dimension section "(2"
-    static const std::string MSH_DIMENSION;
-    /// Nodes section "(10"
-    static const std::string MSH_NODES;
-    /// Cells section "(12"
-    static const std::string MSH_CELLS;
-    /// Faces section "(13"
-    static const std::string MSH_FACES;
-    /// Boundaries section "(45"
-    static const std::string MSH_BOUNDARIES;
+    static constexpr std::string_view MSH_COMMENT    = "(0";
+    static constexpr std::string_view MSH_DIMENSION  = "(2";
+    static constexpr std::string_view MSH_NODES      = "(10";
+    static constexpr std::string_view MSH_CELLS      = "(12";
+    static constexpr std::string_view MSH_FACES      = "(13";
+    static constexpr std::string_view MSH_BOUNDARIES = "(45";
 
 // Private parsing methods
 
@@ -204,5 +208,3 @@ private:
         const std::string& context
     );
 };
-
-#endif // MESH_READER_HPP
