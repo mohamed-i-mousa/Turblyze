@@ -1,4 +1,4 @@
-# MyCFDCode - 3D Incompressible CFD Solver
+# Turblyze - 3D Incompressible CFD Solver
 
 A 3D incompressible CFD solver implementing the SIMPLE algorithm with k-omega SST turbulence modeling. The solver reads Fluent `.msh` meshes, solves steady-state incompressible flow, and exports results to VTK format for visualization in ParaView.
 
@@ -73,7 +73,7 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 make -j$(nproc)
 ```
 
-The executable `MyCFDCode` will be generated in the `build/` directory.
+The executable `Turblyze` will be generated in the `build/` directory.
 
 ## Running Simulations
 
@@ -81,8 +81,8 @@ The executable `MyCFDCode` will be generated in the `build/` directory.
 Run from the `build.nosync/` directory to ensure correct path resolution:
 ```bash
 cd build.nosync
-./MyCFDCode                    # Uses default defaultCase file
-./MyCFDCode customCase         # Uses custom case file
+./Turblyze                     # Uses default defaultCase file
+./Turblyze customCase          # Uses custom case file
 ```
 
 ### Case File System
@@ -178,7 +178,7 @@ numericalSchemes
 2. Edit parameters in `myCase`
 3. Run with custom case:
    ```bash
-   ./MyCFDCode myCase
+   ./Turblyze myCase
    ```
 
 
@@ -187,7 +187,7 @@ Switch between single and double precision:
 
 **Double Precision (default)**:
 ```cmake
-target_compile_definitions(MyCFDCode PUBLIC PROJECT_USE_DOUBLE_PRECISION)
+target_compile_definitions(Turblyze PUBLIC PROJECT_USE_DOUBLE_PRECISION)
 ```
 
 **Single Precision**:

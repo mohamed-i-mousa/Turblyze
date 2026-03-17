@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(MyCFDCode VERSION "1.0.0" LANGUAGES CXX)
+project(Turblyze VERSION "1.0.0" LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -63,7 +63,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
 
-target_compile_definitions(MyCFDCode PUBLIC PROJECT_USE_DOUBLE_PRECISION)
+target_compile_definitions(${PROJECT_NAME} PUBLIC PROJECT_USE_DOUBLE_PRECISION)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(${PROJECT_NAME} PRIVATE -O3)

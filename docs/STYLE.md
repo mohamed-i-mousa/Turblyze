@@ -1,6 +1,6 @@
 # C++ Code Style Guide
 
-Style conventions for MyCFDCode (C++17). These rules apply to all `.hpp`
+Style conventions for Turblyze (C++17). These rules apply to all `.hpp`
 and `.cpp` files in `include/` and `src/`.
 
 ## File Headers

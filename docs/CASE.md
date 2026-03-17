@@ -1,6 +1,6 @@
 # Case File Reference Guide
 
-This document provides a comprehensive reference for configuring the MyCFDCode solver using case files.
+This document provides a comprehensive reference for configuring the Turblyze solver using case files.
 
 ## Table of Contents
 
@@ -13,8 +13,8 @@ This document provides a comprehensive reference for configuring the MyCFDCode s
 The solver uses case files for configuration. This allows runtime parameter changes without recompilation. The default case file is `defaultCase`, but you can specify any file:
 
 ```bash
-./MyCFDCode                    # Uses default defaultCase
-./MyCFDCode customCase         # Uses custom case file
+./Turblyze                     # Uses default defaultCase
+./Turblyze customCase          # Uses custom case file
 ```
 
 ## File Syntax

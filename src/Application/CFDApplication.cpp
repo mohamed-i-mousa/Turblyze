@@ -279,7 +279,7 @@ void CFDApplication::prepareMesh()
     {
         VtkWriter::writeCellGeometryData
         (
-            "../outputFiles.nosync/cell_geometry_mycfdcode.txt",
+            "../outputFiles.nosync/cell_geometry_turblyze.txt",
             cells_
         );
     }

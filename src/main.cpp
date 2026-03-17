@@ -23,9 +23,20 @@ int main(int argc, char* argv[])
     // Start timing the total execution
     auto startTime = std::chrono::high_resolution_clock::now();
 
-    std::cout
-        << "--- Welcome to the 3D Incompressible CFD Solver ---"
-        << std::endl;
+    std::cout << R"(
+  ~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~··~·~
+
+  ████████╗██╗   ██╗██████╗ ██████╗ ██╗  ██╗   ██╗███████╗███████╗
+  ╚══██╔══╝██║   ██║██╔══██╗██╔══██╗██║  ╚██╗ ██╔╝╚══███╔╝██╔════╝
+     ██║   ██║   ██║██████╔╝██████╔╝██║   ╚████╔╝   ███╔╝ █████╗
+     ██║   ██║   ██║██╔══██╗██╔══██╗██║    ╚██╔╝   ███╔╝  ██╔══╝
+     ██║   ╚██████╔╝██║  ██║██████╔╝███████╗██║   ███████╗███████╗
+     ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝   ╚══════╝╚══════╝
+
+           3D Incompressible Navier-Stokes Solver v1.0
+
+  ~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~··~·~
+)" << std::endl;
 
     std::cout
         << "Running with precision: " << SCALAR_MODE
