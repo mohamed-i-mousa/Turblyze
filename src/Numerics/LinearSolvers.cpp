@@ -26,7 +26,7 @@ LinearSolver::LinearSolver
 
 // ***************************** BiCGSTAB Solver *****************************
 
-bool LinearSolver::solveWithBiCGSTAB
+void LinearSolver::solveWithBiCGSTAB
 (
     Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
     const Eigen::SparseMatrix<Scalar>& A,
@@ -56,17 +56,15 @@ bool LinearSolver::solveWithBiCGSTAB
         std::cerr
             << "  Eigen Info Code: "
             << bicgstab.info() << std::endl;
-        return false;
+        return;
     }
 
     x = bicgstab.solveWithGuess(B, x);
-
-    return true;
 }
 
 // ******************************* PCG Solver *******************************
 
-bool LinearSolver::solveWithPCG
+void LinearSolver::solveWithPCG
 (
     Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
     const Eigen::SparseMatrix<Scalar>& A,
@@ -96,10 +94,8 @@ bool LinearSolver::solveWithPCG
         std::cerr
             << "  Eigen Info Code: "
             << pcg.info() << std::endl;
-        return false;
+        return;
     }
 
     x = pcg.solveWithGuess(B, x);
-
-    return true;
 }

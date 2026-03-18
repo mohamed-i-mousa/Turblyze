@@ -14,8 +14,7 @@
  * - Configurable convergence tolerances and preconditioner parameters
  *****************************************************************************/
 
-#ifndef LINEAR_SOLVER_HPP
-#define LINEAR_SOLVER_HPP
+#pragma once
 
 #include <string>
 
@@ -100,11 +99,10 @@ public:
      * @param x Solution vector
      * @param A Sparse coefficient matrix
      * @param B Right-hand side vector
-     * @return True unless catastrophic failure detected
      *
      * Suitable for non-symmetric systems (momentum, turbulence).
      */
-    [[nodiscard]] bool solveWithBiCGSTAB
+    void solveWithBiCGSTAB
     (
         Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
         const Eigen::SparseMatrix<Scalar>& A,
@@ -116,11 +114,10 @@ public:
      * @param x Solution vector
      * @param A Sparse coefficient matrix (must be SPD)
      * @param B Right-hand side vector
-     * @return True unless catastrophic failure detected
      *
      * Requires symmetric positive definite matrix
      */
-    [[nodiscard]] bool solveWithPCG
+    void solveWithPCG
     (
         Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
         const Eigen::SparseMatrix<Scalar>& A,
@@ -147,5 +144,3 @@ private:
     /// Incomplete Cholesky initial shift parameter
     Scalar icInitialShift_ = S(1e-2);
 };
-
-#endif // LINEAR_SOLVER_HPP
