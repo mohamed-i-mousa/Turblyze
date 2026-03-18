@@ -2,7 +2,7 @@
  * @file CaseReader.hpp
  * @brief Parser for the case file
  *
- * @details This header defines the CaseReader class, which parses the input 
+ * @details This header defines the CaseReader class, which parses the input
  * case file for solver configuration.
  *
  * @class CaseReader
@@ -15,18 +15,14 @@
  * - Comment and whitespace handling
  *****************************************************************************/
 
-#ifndef CASE_READER_HPP
-#define CASE_READER_HPP
+#pragma once
 
 #include <string>
 #include <map>
 #include <vector>
-#include <memory>
 #include <sstream>
-#include <fstream>
 #include <stdexcept>
 #include <algorithm>
-#include <iostream>
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
@@ -43,7 +39,7 @@ public:
     explicit CaseReader(const std::string& filename);
 
     /// Constructor for sections
-    CaseReader() = default;
+    CaseReader() noexcept = default;
 
 // Accessor methods
 
@@ -73,14 +69,14 @@ public:
      * @return Section object
      * @throws std::runtime_error if section not found
      */
-    CaseReader section(const std::string& name) const;
+    const CaseReader& section(const std::string& name) const;
 
     /**
      * @brief Check if section exists
      * @param name Name of section
      * @return true if section exists
      */
-    bool hasSection(const std::string& name) const;
+    bool hasSection(const std::string& name) const noexcept;
 
     /**
      * @brief Get all section names
@@ -121,14 +117,14 @@ private:
      * @brief Skip comments and whitespace
      * @param is Input stream
      */
-    void skipCommentsAndWhitespace(std::istream& is) const;
+    void skipCommentsAndWhitespace(std::istream& is);
 
     /**
      * @brief Read next token from stream
      * @param is Input stream
      * @return Next token or empty string if EOF
      */
-    std::string readToken(std::istream& is) const;
+    std::string readToken(std::istream& is);
 
     /**
      * @brief Parse a value (could be scalar, vector, or list)
@@ -136,7 +132,7 @@ private:
      * @param token First token of value
      * @return String representation of value
      */
-    std::string parseValue(std::istream& is, const std::string& token) const;
+    std::string parseValue(std::istream& is, const std::string& firstToken);
 
     /**
      * @brief Convert string to specified type
@@ -156,8 +152,8 @@ private:
     std::map<std::string, CaseReader> sections_;
 
     /// Current file being parsed (for error messages)
-    mutable std::string currentFile_;
-    mutable int currentLine_ = 1;
+    std::string currentFile_;
+    int currentLine_ = 1;
 };
 
 // Template specializations for common types
@@ -171,7 +167,7 @@ inline Scalar CaseReader::convertTo<Scalar>(const std::string& value) const
     }
     catch (const std::exception& e)
     {
-        throw   
+        throw
             std::runtime_error
             (
                 "Cannot convert '" + value + "' to Scalar"
@@ -188,7 +184,7 @@ inline int CaseReader::convertTo<int>(const std::string& value) const
     }
     catch (const std::exception& e)
     {
-        throw   
+        throw
             std::runtime_error
             (
                 "Cannot convert '" + value + "' to int"
@@ -214,7 +210,7 @@ inline bool CaseReader::convertTo<bool>(const std::string& value) const
         return false;
     }
 
-    throw   
+    throw
         std::runtime_error
         (
             "Cannot convert '" + value + "' to bool"
@@ -252,7 +248,7 @@ inline Vector CaseReader::convertTo<Vector>(const std::string& value) const
 
     if (!(iss >> x >> y >> z))
     {
-        throw   
+        throw
             std::runtime_error
             (
                 "Cannot convert '" + value + "' to Vector"
@@ -270,7 +266,7 @@ T CaseReader::lookup(const std::string& keyword) const
     auto it = entries_.find(keyword);
     if (it == entries_.end())
     {
-        throw   
+        throw
             std::runtime_error
             (
                 "Keyword '" + keyword + "' not found in case file"
@@ -301,5 +297,3 @@ T CaseReader::lookupOrDefault
         return defaultValue;
     }
 }
-
-#endif // CASE_READER_HPP

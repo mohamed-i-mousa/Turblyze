@@ -5,7 +5,8 @@
 
 #include "CaseReader.hpp"
 #include <cctype>
-#include <iomanip>
+#include <fstream>
+#include <iostream>
 
 // ************************** Constructor/Destructor **************************
 
@@ -18,7 +19,7 @@ CaseReader::CaseReader(const std::string& filename)
 
 // ***************************** Accessor Methods *****************************
 
-CaseReader CaseReader::section(const std::string& name) const
+const CaseReader& CaseReader::section(const std::string& name) const
 {
     auto it = sections_.find(name);
     if (it == sections_.end())
@@ -33,7 +34,7 @@ CaseReader CaseReader::section(const std::string& name) const
     return it->second;
 }
 
-bool CaseReader::hasSection(const std::string& name) const
+bool CaseReader::hasSection(const std::string& name) const noexcept
 {
     return sections_.find(name) != sections_.end();
 }
@@ -41,6 +42,7 @@ bool CaseReader::hasSection(const std::string& name) const
 std::vector<std::string> CaseReader::sectionNames() const
 {
     std::vector<std::string> names;
+    names.reserve(sections_.size());
     for (const auto& section : sections_)
     {
         names.push_back(section.first);
@@ -68,7 +70,7 @@ void CaseReader::print(int indent) const
         std::cout
             << indentStr << name << " {" << std::endl;
 
-        section.print(indent + 1); // recursion
+        section.print(indent + 1);
 
         std::cout
             << indentStr << "}" << std::endl;
@@ -136,15 +138,14 @@ void CaseReader::parseSection
         if (next == "{")
         {
             // It's a section
-            CaseReader section;
+            auto& section = sec.sections_[token];
             parseSection(is, section, '}');
-            sec.sections_[token] = section;
         }
         else
         {
             // It's a key-value pair
             std::string value = parseValue(is, next);
-            sec.entries_[token] = value;
+            sec.entries_[token] = std::move(value);
         }
     }
 
@@ -160,14 +161,14 @@ void CaseReader::parseSection
     }
 }
 
-void CaseReader::skipCommentsAndWhitespace(std::istream& is) const
+void CaseReader::skipCommentsAndWhitespace(std::istream& is)
 {
     char c;
     while (is.get(c))
     {
         if (c == '\n')
         {
-            const_cast<int&>(currentLine_)++;
+            currentLine_++;
         }
 
         if (std::isspace(c))
@@ -184,7 +185,7 @@ void CaseReader::skipCommentsAndWhitespace(std::istream& is) const
                 is.get(); // consume second '/'
                 std::string line;
                 std::getline(is, line);
-                const_cast<int&>(currentLine_)++;
+                currentLine_++;
                 continue;
             }
             else if (next == '*')
@@ -196,7 +197,7 @@ void CaseReader::skipCommentsAndWhitespace(std::istream& is) const
                 {
                     if (c == '\n')
                     {
-                        const_cast<int&>(currentLine_)++;
+                        currentLine_++;
                     }
                     if (prev == '*' && c == '/')
                     {
@@ -214,7 +215,7 @@ void CaseReader::skipCommentsAndWhitespace(std::istream& is) const
     }
 }
 
-std::string CaseReader::readToken(std::istream& is) const
+std::string CaseReader::readToken(std::istream& is)
 {
     skipCommentsAndWhitespace(is);
 
@@ -222,12 +223,13 @@ std::string CaseReader::readToken(std::istream& is) const
     char c;
 
     // Check for special single-character tokens
+    int next = is.peek();
     if
     (
-        is.peek() == '{'
-     || is.peek() == '}'
-     || is.peek() == ';'
-     || is.peek() == '('
+        next == '{'
+     || next == '}'
+     || next == ';'
+     || next == '('
     )
     {
         is.get(c);
@@ -249,7 +251,7 @@ std::string CaseReader::readToken(std::istream& is) const
         {
             if (c == '\n')
             {
-                const_cast<int&>(currentLine_)++;
+                currentLine_++;
             }
             if (!std::isspace(c))
             {
@@ -267,7 +269,7 @@ std::string CaseReader::parseValue
 (
     std::istream& is,
     const std::string& firstToken
-) const
+)
 {
     std::string value = firstToken;
 
@@ -281,7 +283,7 @@ std::string CaseReader::parseValue
         {
             if (c == '\n')
             {
-                const_cast<int&>(currentLine_)++;
+                currentLine_++;
             }
             value += c;
             if (c == '(') parenDepth++;
@@ -297,7 +299,7 @@ std::string CaseReader::parseValue
         {
             if (c == '\n')
             {
-                const_cast<int&>(currentLine_)++;
+                currentLine_++;
             }
             if (c == ';')
             {
