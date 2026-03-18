@@ -5,21 +5,19 @@
 
 #include "Constraint.hpp"
 
+#include <cmath>
+
 Constraint::Constraint
 (
     VectorField& velocityField,
     ScalarField& pressureField
-) : U_(velocityField),
-    p_(pressureField),
-    enableVelocityConstraints_(false),
-    enablePressureConstraints_(false),
-    maxVelocityMagnitude_(100.0),
-    minPressure_(-1e6),
-    maxPressure_(1e6)          
+) noexcept
+  : U_(velocityField),
+    p_(pressureField)
 {
 }
 
-void Constraint::setVelocityConstraints(Scalar maxVelocity)
+void Constraint::setVelocityConstraints(Scalar maxVelocity) noexcept
 {
     maxVelocityMagnitude_ = maxVelocity;
 }
@@ -28,31 +26,36 @@ void Constraint::setPressureConstraints
 (
     Scalar minPressure,
     Scalar maxPressure
-)
+) noexcept
 {
     minPressure_ = minPressure;
     maxPressure_ = maxPressure;
 }
 
-void Constraint::enableConstraints(bool enableVel, bool enablePress)
+void Constraint::enableConstraints
+(
+    bool enableVel,
+    bool enablePress
+) noexcept
 {
     enableVelocityConstraints_ = enableVel;
     enablePressureConstraints_ = enablePress;
 }
 
-size_t Constraint::applyVelocityConstraints()
+size_t Constraint::applyVelocityConstraints() noexcept
 {
     if (!enableVelocityConstraints_) return 0;
 
     size_t constraintApplications = 0;
+    Scalar maxMagSq = maxVelocityMagnitude_ * maxVelocityMagnitude_;
 
-    for (size_t CellIdx = 0; CellIdx < U_.size(); ++CellIdx)
+    for (size_t cellIdx = 0; cellIdx < U_.size(); ++cellIdx)
     {
-        Scalar velocityMagnitude = U_[CellIdx].magnitude();
-        if (velocityMagnitude > maxVelocityMagnitude_)
+        Scalar magSq = U_[cellIdx].magnitudeSquared();
+        if (magSq > maxMagSq)
         {
-            U_[CellIdx] = 
-                U_[CellIdx] * (maxVelocityMagnitude_ / velocityMagnitude);
+            Scalar mag = std::sqrt(magSq);
+            U_[cellIdx] *= maxVelocityMagnitude_ / mag;
 
             constraintApplications++;
         }
@@ -61,23 +64,23 @@ size_t Constraint::applyVelocityConstraints()
     return constraintApplications;
 }
 
-size_t Constraint::applyPressureConstraints()
+size_t Constraint::applyPressureConstraints() noexcept
 {
     if (!enablePressureConstraints_) return 0;
 
     size_t constraintApplications = 0;
 
-    for (size_t CellIdx = 0; CellIdx < p_.size(); ++CellIdx)
+    for (size_t cellIdx = 0; cellIdx < p_.size(); ++cellIdx)
     {
         // Apply pressure bounds
-        if (p_[CellIdx] < minPressure_)
+        if (p_[cellIdx] < minPressure_)
         {
-            p_[CellIdx] = minPressure_;
+            p_[cellIdx] = minPressure_;
             constraintApplications++;
         }
-        else if (p_[CellIdx] > maxPressure_)
+        else if (p_[cellIdx] > maxPressure_)
         {
-            p_[CellIdx] = maxPressure_;
+            p_[cellIdx] = maxPressure_;
             constraintApplications++;
         }
     }

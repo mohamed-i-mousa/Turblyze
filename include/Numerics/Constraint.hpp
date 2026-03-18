@@ -2,7 +2,7 @@
  * @file Constraint.hpp
  * @brief Field constraint system for CFD solution stability
  *
- * @details This header defines the Constraint class to apply constraints on 
+ * @details This header defines the Constraint class to apply constraints on
  * velocity and pressure fields to prevent overshooting and divergence.
  *
  * @class Constraint
@@ -13,11 +13,8 @@
  * - Reporting of constraint activity (number of cells clipped)
  *****************************************************************************/
 
-#ifndef CONSTRAINT_HPP
-#define CONSTRAINT_HPP
+#pragma once
 
-#include "Scalar.hpp"
-#include "Vector.hpp"
 #include "CellData.hpp"
 
 
@@ -34,7 +31,7 @@ public:
     (
         VectorField& velocityField,
         ScalarField& pressureField
-    );
+    ) noexcept;
 
 // Setter methods
 
@@ -42,33 +39,41 @@ public:
      * @brief Set velocity field constraints
      * @param maxVelocity Maximum allowed velocity magnitude
      */
-    void setVelocityConstraints(Scalar maxVelocity);
+    void setVelocityConstraints(Scalar maxVelocity) noexcept;
 
     /**
      * @brief Set pressure field constraints
      * @param minPressure Minimum allowed pressure
      * @param maxPressure Maximum allowed pressure
      */
-    void setPressureConstraints(Scalar minPressure, Scalar maxPressure);
+    void setPressureConstraints
+    (
+        Scalar minPressure,
+        Scalar maxPressure
+    ) noexcept;
 
     /**
      * @brief Enable or disable field constraints
      * @param enableVel Enable velocity constraints
      * @param enablePress Enable pressure constraints
      */
-    void enableConstraints(bool enableVel = true, bool enablePress = true);
+    void enableConstraints
+    (
+        bool enableVel = true,
+        bool enablePress = true
+    ) noexcept;
 
     /**
      * @brief Apply velocity field constraints
      * @return Number of cells where constraints were applied
      */
-    size_t applyVelocityConstraints();
+    size_t applyVelocityConstraints() noexcept;
 
     /**
      * @brief Apply pressure field constraints
      * @return Number of cells where constraints were applied
      */
-    size_t applyPressureConstraints();
+    size_t applyPressureConstraints() noexcept;
 
 private:
 
@@ -81,19 +86,17 @@ private:
     ScalarField& p_;
 
     /// Enable velocity field constraints
-    bool enableVelocityConstraints_;
+    bool enableVelocityConstraints_ = false;
 
     /// Enable pressure field constraints
-    bool enablePressureConstraints_;
+    bool enablePressureConstraints_ = false;
 
     /// Maximum allowed velocity magnitude
-    Scalar maxVelocityMagnitude_;
+    Scalar maxVelocityMagnitude_ = S(100);
 
     /// Minimum allowed pressure
-    Scalar minPressure_;
+    Scalar minPressure_ = S(-1e6);
 
     /// Maximum allowed pressure
-    Scalar maxPressure_;
+    Scalar maxPressure_ = S(1e6);
 };
-
-#endif // CONSTRAINT_HPP
