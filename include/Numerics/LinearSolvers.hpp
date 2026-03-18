@@ -20,8 +20,6 @@
 #include <string>
 
 #include <eigen3/Eigen/SparseCore>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/IterativeLinearSolvers>
 
 #include "Scalar.hpp"
 
@@ -37,7 +35,7 @@ public:
      */
     LinearSolver
     (
-        const std::string& fieldName,
+        std::string fieldName,
         Scalar tolerance = S(1e-6),
         int maxIterations = 1000
     );
@@ -49,7 +47,7 @@ public:
      * @param fillFactor Maximum fill-in factor
      * @param dropTol Drop tolerance for small entries during factorization
      */
-    void setILUTParameters(int fillFactor, Scalar dropTol)
+    void setILUTParameters(int fillFactor, Scalar dropTol) noexcept
     {
         ilutFillFactor_ = fillFactor;
         ilutDropTol_ = dropTol;
@@ -59,7 +57,7 @@ public:
      * @brief Configure Incomplete Cholesky preconditioner for PCG solver
      * @param initialShift Initial shift parameter for numerical stability
      */
-    void setICParameters(Scalar initialShift)
+    void setICParameters(Scalar initialShift) noexcept
     {
         icInitialShift_ = initialShift;
     }
@@ -70,24 +68,30 @@ public:
      * @brief Set absolute residual tolerance
      * @param tol Convergence threshold
      */
-    void setTolerance(Scalar tol) { tolerance_ = tol; }
+    void setTolerance(Scalar tol) noexcept { tolerance_ = tol; }
 
     /**
      * @brief Set maximum solver iterations
      * @param maxIter Maximum allowed iterations
      */
-    void setMaxIterations(int maxIter) { maxIterations_ = maxIter; }
+    void setMaxIterations(int maxIter) noexcept { maxIterations_ = maxIter; }
 
 // Accessors
 
     /// Get field name for this solver
-    const std::string& fieldName() const { return fieldName_; }
+    [[nodiscard]] const std::string& fieldName() const noexcept
+    {
+        return fieldName_;
+    }
 
     /// Get absolute tolerance
-    Scalar tolerance() const { return tolerance_; }
+    [[nodiscard]] Scalar tolerance() const noexcept { return tolerance_; }
 
     /// Get maximum iterations
-    int maxIterations() const { return maxIterations_; }
+    [[nodiscard]] int maxIterations() const noexcept
+    {
+        return maxIterations_;
+    }
 
 // Solver methods
 
@@ -100,7 +104,7 @@ public:
      *
      * Suitable for non-symmetric systems (momentum, turbulence).
      */
-    bool solveWithBiCGSTAB
+    [[nodiscard]] bool solveWithBiCGSTAB
     (
         Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
         const Eigen::SparseMatrix<Scalar>& A,
@@ -116,7 +120,7 @@ public:
      *
      * Requires symmetric positive definite matrix
      */
-    bool solveWithPCG
+    [[nodiscard]] bool solveWithPCG
     (
         Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
         const Eigen::SparseMatrix<Scalar>& A,

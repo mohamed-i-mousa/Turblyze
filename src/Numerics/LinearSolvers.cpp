@@ -4,18 +4,21 @@
  *****************************************************************************/
 
 #include "LinearSolvers.hpp"
+
 #include <cassert>
 #include <iostream>
+
+#include <eigen3/Eigen/IterativeLinearSolvers>
 
 // ************************* Constructor & Setters ************************
 
 LinearSolver::LinearSolver
 (
-    const std::string& fieldName,
+    std::string fieldName,
     Scalar tolerance,
     int maxIterations
 )
-:   fieldName_(fieldName),
+:   fieldName_(std::move(fieldName)),
     tolerance_(tolerance),
     maxIterations_(maxIterations)
 {}
