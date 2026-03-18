@@ -9,9 +9,10 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
-#include <string>
 #include <cassert>
-#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/Cholesky>
+#include <eigen3/Eigen/LU>
 
 
 // ****************************** Constructor ******************************
@@ -21,7 +22,8 @@ GradientScheme::GradientScheme
     const std::vector<Face>& faces,
     const std::vector<Cell>& cells,
     const BoundaryConditions& bc
-) : allFaces_(faces),
+) noexcept
+  : allFaces_(faces),
     allCells_(cells),
     bcManager_(bc)
 {}
@@ -119,7 +121,7 @@ Vector GradientScheme::cellGradient
     }
     else
     {
-        std::cout
+        std::cerr
             << "WARNING: LLT failed for cell "
             << cellIndex
             << ", falling back to FullPivLU"
@@ -149,7 +151,7 @@ void GradientScheme::limitGradient
 (
     const ScalarField& phi,
     VectorField& gradPhi
-) const
+) const noexcept
 {
     for (size_t cellIdx = 0; cellIdx < allCells_.size(); ++cellIdx)
     {
@@ -198,7 +200,7 @@ Vector GradientScheme::faceGradient
     const ScalarField& phi,
     const Vector& gradPhiP,
     const Vector& gradPhiN,
-    const size_t faceIndex
+    size_t faceIndex
 ) const
 {
     const Face& face = allFaces_[faceIndex];
@@ -282,55 +284,39 @@ Vector GradientScheme::calculateBoundaryFaceGradient
     switch (bc->type())
     {
         case BCType::NO_SLIP:
-        {
-            Scalar cellValue = phi[face.ownerCell()];
-
-            Scalar dn = dot(face.dPf(), face.normal());
-
-            Scalar dPfMag = face.dPfMag();
-
-            // Stabilization: limit dn to 5% minimum
-            Scalar dnStabilized = std::max(dn, S(0.05) * dPfMag);
-
-            Scalar normalGradient = (S(0.0) - cellValue) / dnStabilized;
-
-            Vector tangentialGradient =
-                cellGradient
-              - dot(cellGradient, face.normal())
-              * face.normal();
-
-            return tangentialGradient + normalGradient * face.normal();
-        }
-
         case BCType::FIXED_VALUE:
         {
-            Scalar boundaryValue = S(0.0);
-            if (bc->valueType() == BCValueType::SCALAR)
+            Scalar boundaryValue = S(0.0);  // Default for NO_SLIP
+
+            if (bc->type() == BCType::FIXED_VALUE)
             {
-                boundaryValue = bc->fixedScalarValue();
-            }
-            else if (bc->valueType() == BCValueType::VECTOR)
-            {
-                if (fieldName == "Ux")
+                if (bc->valueType() == BCValueType::SCALAR)
                 {
-                    boundaryValue = bc->vectorValue().x();
+                    boundaryValue = bc->fixedScalarValue();
                 }
-                else if (fieldName == "Uy")
+                else if (bc->valueType() == BCValueType::VECTOR)
                 {
-                    boundaryValue = bc->vectorValue().y();
-                }
-                else if (fieldName == "Uz")
-                {
-                    boundaryValue = bc->vectorValue().z();
+                    if (fieldName == "Ux")
+                    {
+                        boundaryValue = bc->vectorValue().x();
+                    }
+                    else if (fieldName == "Uy")
+                    {
+                        boundaryValue = bc->vectorValue().y();
+                    }
+                    else if (fieldName == "Uz")
+                    {
+                        boundaryValue = bc->vectorValue().z();
+                    }
+                    else
+                    {
+                        return cellGradient;
+                    }
                 }
                 else
                 {
                     return cellGradient;
                 }
-            }
-            else
-            {
-                return cellGradient;
             }
 
             Scalar cellValue = phi[face.ownerCell()];

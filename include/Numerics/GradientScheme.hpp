@@ -45,7 +45,7 @@ public:
         const std::vector<Face>& faces,
         const std::vector<Cell>& cells,
         const BoundaryConditions& bc
-    );
+    ) noexcept;
 
     /**
      * @brief Calculate gradient at a single cell using least-squares.
@@ -86,7 +86,7 @@ public:
         const ScalarField& phi,
         const Vector& gradPhiP,
         const Vector& gradPhiN,
-        const size_t faceIndex
+        size_t faceIndex
     ) const;
 
     /**
@@ -103,7 +103,7 @@ public:
     (
         const ScalarField& phi,
         VectorField& gradPhi
-    ) const;
+    ) const noexcept;
 
 
 private:
@@ -147,7 +147,7 @@ private:
 
     /// Reference to all mesh cells
     const std::vector<Cell>& allCells_;
-    
+
     /// Reference to boundary conditions manager
     const BoundaryConditions& bcManager_;
 };
