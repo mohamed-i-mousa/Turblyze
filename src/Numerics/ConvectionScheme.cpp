@@ -3,26 +3,11 @@
  * @brief Implementation of convection discretization schemes
  *****************************************************************************/
 
-#include <algorithm>
-
 #include "ConvectionScheme.hpp"
 #include "LinearInterpolation.hpp"
 
 
 // ****************************** Base Class ******************************
-
-ConvectionScheme::FluxCoefficients
-ConvectionScheme::getFluxCoefficients
-(
-    Scalar flowRate
-)
-{
-    return
-    {
-        std::max(flowRate, S(0.0)),
-        std::min(flowRate, S(0.0))
-    };
-}
 
 Scalar ConvectionScheme::calculateCorrection
 (

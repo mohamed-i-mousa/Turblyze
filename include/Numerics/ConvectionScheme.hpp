@@ -20,16 +20,13 @@
 #ifndef CONVECTION_SCHEME_HPP
 #define CONVECTION_SCHEME_HPP
 
+#include <algorithm>
 #include <memory>
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
 #include "Face.hpp"
-#include "Cell.hpp"
 #include "CellData.hpp"
-#include "FaceData.hpp"
-#include "BoundaryConditions.hpp"
-#include "BoundaryData.hpp"
 
 
 class ConvectionScheme
@@ -61,7 +58,17 @@ public:
      * @param flowRate Convective volumetric flow rate through the face
      * @return FluxCoefficients with owner and neighbor coefficients
      */
-    static FluxCoefficients getFluxCoefficients(Scalar flowRate);
+    static constexpr FluxCoefficients getFluxCoefficients
+    (
+        Scalar flowRate
+    ) noexcept
+    {
+        return
+        {
+            std::max(flowRate, S(0.0)),
+            std::min(flowRate, S(0.0))
+        };
+    }
 
     /**
      * @brief Calculate higher-order deferred correction term
