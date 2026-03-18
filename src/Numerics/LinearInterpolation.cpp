@@ -4,6 +4,7 @@
  *****************************************************************************/
 
 #include "LinearInterpolation.hpp"
+#include "BoundaryConditions.hpp"
 
 #include <iostream>
 
@@ -37,32 +38,6 @@ Scalar interpolateToFace
     return wP * field[P] + wN * field[N];
 }
 
-Scalar interpolateToFace
-(
-    const Face& face,
-    const ScalarField& field,
-    const BoundaryConditions& bcManager,
-    const std::string& fieldName
-)
-{
-    if (face.isBoundary())
-    {
-        return bcManager.calculateBoundaryFaceValue(fieldName, field, face);
-    }
-
-    const size_t P = face.ownerCell();
-    const size_t N = face.neighborCell().value();
-
-    const Scalar dP = face.dPfMag();
-    const Scalar dN = face.dNfMag().value();
-    const Scalar total = dP + dN + vSmallValue;
-
-    const Scalar wP = dN / total;
-    const Scalar wN = dP / total;
-
-    return wP * field[P] + wN * field[N];
-}
-
 Vector interpolateToFace
 (
     const Face& face,
@@ -76,7 +51,7 @@ Vector interpolateToFace
             << "face without BoundaryConditions. Use the overload "
             << "with bcManager instead. "
             << "Falling back to owner cell value.\n";
-                            
+
         return field[face.ownerCell()];
     }
 
