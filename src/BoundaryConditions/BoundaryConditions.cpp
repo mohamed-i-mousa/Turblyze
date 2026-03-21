@@ -22,10 +22,10 @@ bool BoundaryConditions::setBC
 (
     const std::string& patchName,
     const std::string& fieldName,
-    BoundaryData bc_setup
+    BoundaryData bcData
 )
 {
-    patchBoundaryData_[patchName][fieldName] = std::move(bc_setup);
+    patchBoundaryData_[patchName][fieldName] = std::move(bcData);
     return true;
 }
 
@@ -36,9 +36,9 @@ bool BoundaryConditions::setFixedValue
     Scalar value
 )
 {
-    BoundaryData bc_setup;
-    bc_setup.setFixedValue(value);
-    return setBC(patchName, fieldName, std::move(bc_setup));
+    BoundaryData bcData;
+    bcData.setFixedValue(value);
+    return setBC(patchName, fieldName, std::move(bcData));
 }
 
 bool BoundaryConditions::setFixedValue
@@ -48,9 +48,9 @@ bool BoundaryConditions::setFixedValue
     const Vector& value
 )
 {
-    BoundaryData bc_setup;
-    bc_setup.setFixedValue(value);
-    return setBC(patchName, fieldName, std::move(bc_setup));
+    BoundaryData bcData;
+    bcData.setFixedValue(value);
+    return setBC(patchName, fieldName, std::move(bcData));
 }
 
 bool BoundaryConditions::setFixedGradient
@@ -60,9 +60,9 @@ bool BoundaryConditions::setFixedGradient
     Scalar gradient
 )
 {
-    BoundaryData bc_setup;
-    bc_setup.setFixedGradient(gradient);
-    return setBC(patchName, fieldName, std::move(bc_setup));
+    BoundaryData bcData;
+    bcData.setFixedGradient(gradient);
+    return setBC(patchName, fieldName, std::move(bcData));
 }
 
 bool BoundaryConditions::setFixedGradient
@@ -72,9 +72,9 @@ bool BoundaryConditions::setFixedGradient
     const Vector& gradient
 )
 {
-    BoundaryData bc_setup;
-    bc_setup.setFixedGradient(gradient);
-    return setBC(patchName, fieldName, std::move(bc_setup));
+    BoundaryData bcData;
+    bcData.setFixedGradient(gradient);
+    return setBC(patchName, fieldName, std::move(bcData));
 }
 
 bool BoundaryConditions::setZeroGradient
@@ -83,9 +83,9 @@ bool BoundaryConditions::setZeroGradient
     const std::string& fieldName
 )
 {
-    BoundaryData bc_setup;
-    bc_setup.setZeroGradient();
-    return setBC(patchName, fieldName, std::move(bc_setup));
+    BoundaryData bcData;
+    bcData.setZeroGradient();
+    return setBC(patchName, fieldName, std::move(bcData));
 }
 
 bool BoundaryConditions::setNoSlip
@@ -94,9 +94,9 @@ bool BoundaryConditions::setNoSlip
     const std::string& fieldName
 )
 {
-    BoundaryData bc_setup;
-    bc_setup.setNoSlip();
-    return setBC(patchName, fieldName, std::move(bc_setup));
+    BoundaryData bcData;
+    bcData.setNoSlip();
+    return setBC(patchName, fieldName, std::move(bcData));
 }
 
 bool BoundaryConditions::setKWallFunction
@@ -105,9 +105,9 @@ bool BoundaryConditions::setKWallFunction
     const std::string& fieldName
 )
 {
-    BoundaryData bc_setup;
-    bc_setup.setKWallFunction();
-    return setBC(patchName, fieldName, std::move(bc_setup));
+    BoundaryData bcData;
+    bcData.setKWallFunction();
+    return setBC(patchName, fieldName, std::move(bcData));
 }
 
 bool BoundaryConditions::setOmegaWallFunction
@@ -116,9 +116,9 @@ bool BoundaryConditions::setOmegaWallFunction
     const std::string& fieldName
 )
 {
-    BoundaryData bc_setup;
-    bc_setup.setOmegaWallFunction();
-    return setBC(patchName, fieldName, std::move(bc_setup));
+    BoundaryData bcData;
+    bcData.setOmegaWallFunction();
+    return setBC(patchName, fieldName, std::move(bcData));
 }
 
 bool BoundaryConditions::setNutWallFunction
@@ -127,9 +127,9 @@ bool BoundaryConditions::setNutWallFunction
     const std::string& fieldName
 )
 {
-    BoundaryData bc_setup;
-    bc_setup.setNutWallFunction();
-    return setBC(patchName, fieldName, std::move(bc_setup));
+    BoundaryData bcData;
+    bcData.setNutWallFunction();
+    return setBC(patchName, fieldName, std::move(bcData));
 }
 
 
@@ -180,7 +180,8 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
 (
     const std::string& fieldName,
     const ScalarField& phi,
-    const Face& face
+    const Face& face,
+    std::optional<int> componentIdx
 ) const
 {
     const BoundaryPatch* patch = face.patch();
@@ -203,6 +204,18 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
         case BCType::NO_SLIP:
         case BCType::FIXED_VALUE:
         {
+            // Extract scalar from vector BC using component index
+            if (componentIdx && bc->valueType() == BCValueType::VECTOR)
+            {
+                const Vector& v = bc->fixedVectorValue();
+                switch (*componentIdx)
+                {
+                    case 0: return v.x();
+                    case 1: return v.y();
+                    case 2: return v.z();
+                }
+            }
+
             // Fixed value: φf = φb
             return bc->fixedScalarValue();
         }
@@ -319,12 +332,12 @@ void BoundaryConditions::linkFaces(std::vector<Face>& faces) const
     {
         for
         (
-            size_t f = patch.firstFaceIdx();
-            f <= patch.lastFaceIdx();
-            ++f
+            size_t faceIdx = patch.firstFaceIdx();
+            faceIdx <= patch.lastFaceIdx();
+            ++faceIdx
         )
         {
-            faces[f].setPatch(&patch);
+            faces[faceIdx].setPatch(&patch);
         }
     }
 }

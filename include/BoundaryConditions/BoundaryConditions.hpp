@@ -20,6 +20,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <optional>
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
@@ -47,14 +48,14 @@ public:
      * @brief Set generic boundary condition
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field (U, p, k, omega, etc.)
-     * @param BCSetup Boundary condition setup
+     * @param bcData Boundary condition data
      * @return True if successfully set
      */
     bool setBC
     (
         const std::string& patchName,
         const std::string& fieldName,
-        BoundaryData BCSetup
+        BoundaryData bcData
     );
 
     /**
@@ -213,14 +214,16 @@ public:
      * @param fieldName Name of the field
      * @param phi Scalar field
      * @param face Boundary face
+     * @param componentIdx Optional vector component index for extracting
+     *        a scalar from a vector BC (0=x, 1=y, 2=z)
      * @return Boundary value based on boundary condition
-     * @throws std::runtime_error if face not found in boundary patches
      */
     Scalar calculateBoundaryFaceValue
     (
         const std::string& fieldName,
         const ScalarField& phi,
-        const Face& face
+        const Face& face,
+        std::optional<int> componentIdx = std::nullopt
     ) const;
 
     /**
@@ -229,7 +232,7 @@ public:
      * @param phi Vector field
      * @param face Boundary face
      * @return Boundary vector value based on boundary condition
-     * @throws std::runtime_error if face not found in boundary patches
+     * @note Defaults to zero-gradient if no BC is specified for the face
      */
     Vector calculateBoundaryVectorFaceValue
     (

@@ -19,8 +19,8 @@
 
 GradientScheme::GradientScheme
 (
-    const std::vector<Face>& faces,
-    const std::vector<Cell>& cells,
+    std::span<const Face> faces,
+    std::span<const Cell> cells,
     const BoundaryConditions& bc
 ) noexcept
   : allFaces_(faces),
@@ -36,7 +36,8 @@ Vector GradientScheme::cellGradient
     const std::string& fieldName,
     const ScalarField& phi,
     size_t cellIndex,
-    const FaceData<Scalar>* boundaryFaceValues
+    const FaceData<Scalar>* boundaryFaceValues,
+    std::optional<int> componentIdx
 ) const
 {
     const Cell& cell = allCells_[cellIndex];
@@ -104,7 +105,8 @@ Vector GradientScheme::cellGradient
                 (
                     fieldName,
                     phi,
-                    face
+                    face,
+                    componentIdx
                 );
         }
 
@@ -200,7 +202,8 @@ Vector GradientScheme::faceGradient
     const ScalarField& phi,
     const Vector& gradPhiP,
     const Vector& gradPhiN,
-    size_t faceIndex
+    size_t faceIndex,
+    std::optional<int> componentIdx
 ) const
 {
     const Face& face = allFaces_[faceIndex];
@@ -214,7 +217,8 @@ Vector GradientScheme::faceGradient
                 fieldName,
                 phi,
                 gradPhiP,
-                face
+                face,
+                componentIdx
             );
     }
     else
@@ -271,7 +275,8 @@ Vector GradientScheme::calculateBoundaryFaceGradient
     const std::string& fieldName,
     const ScalarField& phi,
     const Vector& cellGradient,
-    const Face& face
+    const Face& face,
+    std::optional<int> componentIdx
 ) const
 {
     const BoundaryPatch* patch = face.patch();
@@ -290,32 +295,34 @@ Vector GradientScheme::calculateBoundaryFaceGradient
 
             if (bc->type() == BCType::FIXED_VALUE)
             {
-                if (bc->valueType() == BCValueType::SCALAR)
+                if (componentIdx && bc->valueType() == BCValueType::VECTOR)
+                {
+                    const Vector& v = bc->vectorValue();
+                    switch (*componentIdx)
+                    {
+                        case 0: boundaryValue = v.x(); break;
+                        case 1: boundaryValue = v.y(); break;
+                        case 2: boundaryValue = v.z(); break;
+                    }
+                }
+                else if (bc->valueType() == BCValueType::SCALAR)
                 {
                     boundaryValue = bc->fixedScalarValue();
-                }
-                else if (bc->valueType() == BCValueType::VECTOR)
-                {
-                    if (fieldName == "Ux")
-                    {
-                        boundaryValue = bc->vectorValue().x();
-                    }
-                    else if (fieldName == "Uy")
-                    {
-                        boundaryValue = bc->vectorValue().y();
-                    }
-                    else if (fieldName == "Uz")
-                    {
-                        boundaryValue = bc->vectorValue().z();
-                    }
-                    else
-                    {
-                        return cellGradient;
-                    }
                 }
                 else
                 {
                     return cellGradient;
+                }
+            }
+            else if (componentIdx && bc->valueType() == BCValueType::VECTOR)
+            {
+                // NO_SLIP with component index: extract from (0,0,0)
+                const Vector& v = bc->vectorValue();
+                switch (*componentIdx)
+                {
+                    case 0: boundaryValue = v.x(); break;
+                    case 1: boundaryValue = v.y(); break;
+                    case 2: boundaryValue = v.z(); break;
                 }
             }
 

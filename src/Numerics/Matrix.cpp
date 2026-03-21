@@ -5,17 +5,16 @@
 
 #include <iostream>
 #include "Matrix.hpp"
-#include "CellData.hpp"
-
 
 // ************************* Constructor & Destructor *************************
 
 Matrix::Matrix
 (
-    const std::vector<Face>& faces,
-    const std::vector<Cell>& cells,
+    std::span<const Face> faces,
+    std::span<const Cell> cells,
     const BoundaryConditions& boundaryConds
-) : allFaces_(faces),
+) noexcept
+  : allFaces_(faces),
     allCells_(cells),
     bcManager_(boundaryConds),
     numInternalFaces_(0),
@@ -40,7 +39,8 @@ void Matrix::buildMatrix(const TransportEquation& equation)
 
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        vectorB_(cellIdx) += equation.source[cellIdx];
+        vectorB_(static_cast<Eigen::Index>(cellIdx)) += 
+            equation.source[cellIdx];
     }
 
     for (size_t faceIdx = 0;
@@ -93,29 +93,20 @@ void Matrix::relax(Scalar alpha, const ScalarField& phiPrev)
     // the pre-relaxation diagonal
     lastRelaxationFactor_ = alpha;
 
-    // Cache original diagonal
-    std::vector<Scalar> originalDiag(static_cast<size_t>(numCells));
-
-    for (int idx = 0; idx < numCells; ++idx)
-    {
-        originalDiag[static_cast<size_t>(idx)] = matrixA_.coeff(idx, idx);
-    }
-
-    // Scale diagonal: a_P <- a_P / alpha
-    for (int idx = 0; idx < numCells; ++idx)
-    {
-        matrixA_.coeffRef(idx, idx) =
-            originalDiag[static_cast<size_t>(idx)] / alpha;
-    }
-
-    // Update RHS: b <- b + ((1-alpha)/alpha) * a_P * phiPrev
+    // Relax diagonal and update RHS in a single pass
     const Scalar factor = (S(1.0) - alpha) / alpha;
 
-    for (int idx = 0; idx < numCells; ++idx)
+    for (int cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        vectorB_(idx) +=
-            factor * originalDiag[static_cast<size_t>(idx)]
-          * phiPrev[static_cast<size_t>(idx)];
+        const Scalar origDiag = matrixA_.coeff(cellIdx, cellIdx);
+
+        // Scale diagonal: a_P <- a_P / alpha
+        matrixA_.coeffRef(cellIdx, cellIdx) = origDiag / alpha;
+
+        // Update RHS: b <- b + ((1-alpha)/alpha) * a_P * phiPrev
+        vectorB_(cellIdx) +=
+            factor * origDiag
+          * phiPrev[static_cast<size_t>(cellIdx)];
     }
 }
 
@@ -128,10 +119,14 @@ void Matrix::clear()
 
     size_t numCells = allCells_.size();
 
-    matrixA_.resize(numCells, numCells);
+    matrixA_.resize
+    (
+        static_cast<Eigen::Index>(numCells),
+        static_cast<Eigen::Index>(numCells)
+    );
     matrixA_.setZero();
 
-    vectorB_.resize(numCells);
+    vectorB_.resize(static_cast<Eigen::Index>(numCells));
     vectorB_.setZero();
 
     lastRelaxationFactor_ = S(0.0);
@@ -147,14 +142,18 @@ void Matrix::reserveTripletList()
 Scalar Matrix::extractBoundaryScalar
 (
     const BoundaryData& bc,
-    const std::string& fieldName
-)
+    std::optional<int> component
+) noexcept
 {
-    if (bc.valueType() == BCValueType::VECTOR)
+    if (component && bc.valueType() == BCValueType::VECTOR)
     {
-        if (fieldName == "Ux") return bc.vectorValue().x();
-        if (fieldName == "Uy") return bc.vectorValue().y();
-        if (fieldName == "Uz") return bc.vectorValue().z();
+        const Vector& v = bc.vectorValue();
+        switch (*component)
+        {
+            case 0: return v.x();
+            case 1: return v.y();
+            case 2: return v.z();
+        }
     }
 
     return bc.scalarValue();
@@ -245,13 +244,14 @@ void Matrix::assembleInternalFace
             equation.phi,
             gradPhiP,
             gradPhiN,
-            face.idx()
+            face.idx(),
+            equation.componentIdx
         );
 
     Scalar nonOrthogonalFlux = Gammaf * dot(gradPhif, Tf);
 
-    vectorB_(ownerIdx)    += nonOrthogonalFlux;
-    vectorB_(neighborIdx) -= nonOrthogonalFlux;
+    vectorB_(static_cast<Eigen::Index>(ownerIdx))    += nonOrthogonalFlux;
+    vectorB_(static_cast<Eigen::Index>(neighborIdx)) -= nonOrthogonalFlux;
 
     // Deferred correction (explicit, convection only)
     if (equation.convScheme)
@@ -266,8 +266,8 @@ void Matrix::assembleInternalFace
                 equation.flowRate->get()[face.idx()]
             );
 
-        vectorB_(ownerIdx)    -= deferredCorrection;
-        vectorB_(neighborIdx) += deferredCorrection;
+        vectorB_(static_cast<Eigen::Index>(ownerIdx))    -= deferredCorrection;
+        vectorB_(static_cast<Eigen::Index>(neighborIdx)) += deferredCorrection;
     }
 }
 
@@ -292,7 +292,7 @@ void Matrix::assembleBoundaryFace
     const Vector ePf = face.ePf();
     const Scalar dPfMag = face.dPfMag();
 
-    Vector Ef =(dot(Sf, Sf) / dot(Sf, ePf)) * ePf;
+    Vector Ef = (dot(Sf, Sf) / dot(Sf, ePf)) * ePf;
 
     // Diffusion coefficient at boundary face
     Scalar Gammaf;
@@ -323,18 +323,18 @@ void Matrix::assembleBoundaryFace
         }
         else
         {
-            phiB = extractBoundaryScalar(*bc, equation.fieldName);
+            phiB = extractBoundaryScalar(*bc, equation.componentIdx);
         }
 
         // Diffusion contribution
         tripletList_.emplace_back(ownerIdx, ownerIdx, aDiff);
-        vectorB_(ownerIdx) += aDiff * phiB;
+        vectorB_(static_cast<Eigen::Index>(ownerIdx)) += aDiff * phiB;
 
         // Convection contribution
         if (equation.flowRate)
         {
             Scalar aConv = equation.flowRate->get()[face.idx()];
-            vectorB_(ownerIdx) -= aConv * phiB;
+            vectorB_(static_cast<Eigen::Index>(ownerIdx)) -= aConv * phiB;
         }
 
         // Non-orthogonal correction
@@ -347,13 +347,14 @@ void Matrix::assembleBoundaryFace
                 equation.phi,
                 equation.gradPhi[ownerIdx],
                 Vector(),
-                face.idx()
+                face.idx(),
+                equation.componentIdx
             );
 
         Scalar nonOrthogonalFlux =
             Gammaf * dot(gradPhif, Tf);
 
-        vectorB_(ownerIdx) += nonOrthogonalFlux;
+        vectorB_(static_cast<Eigen::Index>(ownerIdx)) += nonOrthogonalFlux;
     }
     else if
     (
@@ -380,7 +381,7 @@ void Matrix::assembleBoundaryFace
             Vector dCb = face.centroid() - allCells_[ownerIdx].centroid();
 
             Scalar correction = aConv * dot(gradPhib, dCb);
-            vectorB_(ownerIdx) -= correction;
+            vectorB_(static_cast<Eigen::Index>(ownerIdx)) -= correction;
         }
         // No convection + zero gradient = no contribution
     }
@@ -405,14 +406,14 @@ void Matrix::assembleBoundaryFace
 
 void Matrix::setValues
 (
-    const std::vector<size_t>& cellIndices,
-    const std::vector<Scalar>& values,
-    const std::vector<Scalar>& fractions
+    std::span<const size_t> cellIndices,
+    std::span<const Scalar> values,
+    std::span<const Scalar> fractions
 )
 {
     const bool hasFractions = !fractions.empty();
 
-    for (size_t  i = 0; i < cellIndices.size(); ++i)
+    for (size_t i = 0; i < cellIndices.size(); ++i)
     {
         const size_t cellIdx = cellIndices[i];
         const Scalar f = hasFractions ? fractions[i] : S(1.0);
@@ -422,13 +423,19 @@ void Matrix::setValues
             continue;
         }
 
-        const Scalar diag = matrixA_.coeff(cellIdx, cellIdx);
+        const Scalar diag =
+            matrixA_.coeff
+            (
+                static_cast<Eigen::Index>(cellIdx),
+                static_cast<Eigen::Index>(cellIdx)
+            );
 
         if (f > S(1.0) - vSmallValue)
         {
             for 
             (
-                Eigen::SparseMatrix<Scalar>::InnerIterator it(matrixA_, cellIdx);
+                Eigen::SparseMatrix<Scalar>::InnerIterator 
+                it(matrixA_, static_cast<Eigen::Index>(cellIdx));
                 it; 
                 ++it
             )
@@ -437,16 +444,20 @@ void Matrix::setValues
                 if (row == cellIdx) continue;
 
                 // Transfer coupling to neighbor source
-                vectorB_(row) -= it.value() * values[i];
+                vectorB_(static_cast<Eigen::Index>(row)) -= it.value() * values[i];
                 it.valueRef() = S(0.0);
             }
 
             for (size_t neighborIdx : allCells_[cellIdx].neighborCellIndices())
             {
-                matrixA_.coeffRef(cellIdx, neighborIdx) = S(0.0);
+                matrixA_.coeffRef
+                (
+                    static_cast<Eigen::Index>(cellIdx),
+                    static_cast<Eigen::Index>(neighborIdx)
+                ) = S(0.0);
             }
 
-            vectorB_(cellIdx) = diag * values[i];
+            vectorB_(static_cast<Eigen::Index>(cellIdx)) = diag * values[i];
         }
         else
         {
@@ -457,8 +468,14 @@ void Matrix::setValues
             }
 
             Scalar coeff = f / (S(1.0) - f) * diagPre;
-            matrixA_.coeffRef(cellIdx, cellIdx) += coeff;
-            vectorB_(cellIdx) += coeff * values[i];
+
+            matrixA_.coeffRef
+            (
+                static_cast<Eigen::Index>(cellIdx),
+                static_cast<Eigen::Index>(cellIdx)
+            ) += coeff;
+            
+            vectorB_(static_cast<Eigen::Index>(cellIdx)) += coeff * values[i];
         }
     }
 }

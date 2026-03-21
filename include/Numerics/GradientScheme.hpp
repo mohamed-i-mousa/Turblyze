@@ -16,11 +16,11 @@
  * - Distance-weighted averaging for internal face gradients
  *****************************************************************************/
 
-#ifndef GRADIENT_SCHEME_HPP
-#define GRADIENT_SCHEME_HPP
+#pragma once
 
 #include <vector>
 #include <string>
+#include <optional>
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
@@ -42,26 +42,29 @@ public:
      */
     GradientScheme
     (
-        const std::vector<Face>& faces,
-        const std::vector<Cell>& cells,
+        std::span<const Face> faces,
+        std::span<const Cell> cells,
         const BoundaryConditions& bc
     ) noexcept;
 
     /**
      * @brief Calculate gradient at a single cell using least-squares.
-     * @param cellIndex Index of the cell to compute gradient for
      * @param fieldName Name of the field for BC lookup
      * @param phi Scalar field for gradient calculation
+     * @param cellIdx Index of the cell to compute gradient for
      * @param boundaryFaceValues Optional pre-computed boundary face
      *        values that override BC lookup when provided
+     * @param componentIdx For vector field components (0=x, 1=y, 2=z),
+     *        used to extract scalar from vector BCs
      * @return Gradient vector at the specified cell
      */
     Vector cellGradient
     (
         const std::string& fieldName,
         const ScalarField& phi,
-        size_t cellIndex,
-        const FaceData<Scalar>* boundaryFaceValues = nullptr
+        size_t cellIdx,
+        const FaceData<Scalar>* boundaryFaceValues = nullptr,
+        std::optional<int> componentIdx = std::nullopt
     ) const;
 
     /**
@@ -86,7 +89,8 @@ public:
         const ScalarField& phi,
         const Vector& gradPhiP,
         const Vector& gradPhiN,
-        size_t faceIndex
+        size_t faceIndex,
+        std::optional<int> componentIdx = std::nullopt
     ) const;
 
     /**
@@ -137,19 +141,18 @@ private:
         const std::string& fieldName,
         const ScalarField& phi,
         const Vector& cellGradient,
-        const Face& face
+        const Face& face,
+        std::optional<int> componentIdx = std::nullopt
     ) const;
 
 // Private members
 
     /// Reference to all mesh faces
-    const std::vector<Face>& allFaces_;
+    std::span<const Face> allFaces_;
 
     /// Reference to all mesh cells
-    const std::vector<Cell>& allCells_;
+    std::span<const Cell> allCells_;
 
     /// Reference to boundary conditions manager
     const BoundaryConditions& bcManager_;
 };
-
-#endif // GRADIENT_SCHEME_HPP

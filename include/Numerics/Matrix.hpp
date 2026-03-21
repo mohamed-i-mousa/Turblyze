@@ -19,17 +19,14 @@
  * - Boundary condition integration during assembly
  *****************************************************************************/
 
-#ifndef MATRIX_HPP
-#define MATRIX_HPP
+#pragma once
 
 #include <vector>
 #include <string>
-#include <map>
 #include <optional>
 #include <functional>
 
 #include <eigen3/Eigen/SparseCore>
-#include <eigen3/Eigen/Dense>
 
 #include "Cell.hpp"
 #include "Face.hpp"
@@ -98,10 +95,11 @@ struct TransportEquation
     /// Gradient reconstruction scheme
     const GradientScheme& gradScheme;
 
-// Boundary overrides
+// Vector component extraction
 
-    /// Dynamic boundary face values (e.g. omega wall-function values)
-    OptionalRef<FaceData<Scalar>> boundaryFaceValues = std::nullopt;
+    /// Component index for vector field equations (0=x, 1=y, 2=z)
+    std::optional<int> componentIdx = std::nullopt;
+
 };
 
 
@@ -117,10 +115,10 @@ public:
      */
     Matrix
     (
-        const std::vector<Face>& faces,
-        const std::vector<Cell>& cells,
+        const std::span<const Face> faces,
+        const std::span<const Cell> cells,
         const BoundaryConditions& boundaryConds
-    );
+    ) noexcept;
 
     /**
      * @brief Build transport equation matrix
@@ -134,7 +132,8 @@ public:
      * @brief Get assembled sparse matrix A (const)
      * @return Const reference to coefficient matrix
      */
-    const Eigen::SparseMatrix<Scalar>& matrixA() const
+    [[nodiscard]] const Eigen::SparseMatrix<Scalar>& 
+    matrixA() const noexcept
     {
         return matrixA_;
     }
@@ -143,7 +142,7 @@ public:
      * @brief Get assembled sparse matrix A (non-const)
      * @return Mutable reference to coefficient matrix
      */
-    Eigen::SparseMatrix<Scalar>& matrixA()
+    Eigen::SparseMatrix<Scalar>& matrixA() noexcept
     {
         return matrixA_;
     }
@@ -152,8 +151,8 @@ public:
      * @brief Get right-hand side vector b (const)
      * @return Const reference to RHS vector
      */
-    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&
-    vectorB() const
+    [[nodiscard]] const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&
+    vectorB() const noexcept
     {
         return vectorB_;
     }
@@ -162,8 +161,7 @@ public:
      * @brief Get right-hand side vector b (non-const)
      * @return Mutable reference to RHS vector
      */
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& 
-    vectorB()
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& vectorB() noexcept
     {
         return vectorB_;
     }
@@ -194,9 +192,9 @@ public:
      */
     void setValues
     (
-        const std::vector<size_t>& cellIndices,
-        const std::vector<Scalar>& values,
-        const std::vector<Scalar>& fractions = {}
+        std::span<const size_t> cellIndices,
+        std::span<const Scalar> values,
+        std::span<const Scalar> fractions = {}
     );
 
 private:
@@ -204,8 +202,8 @@ private:
 // Private members
 
     /// Mesh and boundary data references
-    const std::vector<Face>& allFaces_;
-    const std::vector<Cell>& allCells_;
+    std::span<const Face> allFaces_;
+    std::span<const Cell> allCells_;
     const BoundaryConditions& bcManager_;
 
     /// Sparse linear system components
@@ -259,14 +257,12 @@ private:
     /**
      * @brief Extract scalar boundary value from BC data
      * @param bc Boundary data for the patch/field
-     * @param fieldName Field name for vector component dispatch
+     * @param component Component index for vector BCs (0=x, 1=y, 2=z)
      * @return Scalar boundary value
      */
     static Scalar extractBoundaryScalar
     (
         const BoundaryData& bc,
-        const std::string& fieldName
-    );
+        std::optional<int> component
+    ) noexcept;
 };
-
-#endif // MATRIX_HPP
