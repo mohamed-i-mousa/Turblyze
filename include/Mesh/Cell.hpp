@@ -19,6 +19,7 @@
 #pragma once
 
 #include <vector>
+#include <span>
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
@@ -77,9 +78,9 @@ public:
      * @brief Set all neighbor cell indices
      * @param neighbors Vector of neighboring cell indices
      */
-    void setNeighborCellIndices(const std::vector<size_t>& neighbors)
+    void setNeighborCellIndices(std::span<const size_t> neighbors)
     {
-        neighborCellIndices_ = neighbors;
+        neighborCellIndices_.assign(neighbors.begin(), neighbors.end());
     }
 
     /// Clear all neighbor cell indices
@@ -97,7 +98,7 @@ public:
      * @brief Get bounding face indices
      * @return Vector of face indices
      */
-    const std::vector<size_t>& faceIndices() const noexcept
+    std::span<const size_t> faceIndices() const noexcept
     {
         return faceIndices_;
     }
@@ -106,7 +107,7 @@ public:
      * @brief Get neighboring cell indices
      * @return Vector of neighbor cell indices
      */
-    const std::vector<size_t>& neighborCellIndices() const noexcept
+    std::span<const size_t> neighborCellIndices() const noexcept
     {
         return neighborCellIndices_;
     }
@@ -115,7 +116,7 @@ public:
      * @brief Get face normal direction signs
      * @return Vector of signs (+1/-1)
      */
-    const std::vector<int>& faceSigns() const noexcept { return faceSigns_; }
+    std::span<const int> faceSigns() const noexcept { return faceSigns_; }
 
     /**
      * @brief Get cell centroid
@@ -149,7 +150,7 @@ public:
      *
      * @param allFaces Vector containing all mesh faces
      */
-    void calculateGeometricProperties(const std::vector<Face>& allFaces);
+    void calculateGeometricProperties(std::span<const Face> allFaces);
 
 private:
     /// Unique cell identifier

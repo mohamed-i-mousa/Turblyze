@@ -19,6 +19,7 @@
 #pragma once
 
 #include <cstddef>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -95,8 +96,19 @@ public:
      */
     const T* data() const noexcept { return internalField_.data(); }
 
-// Iterator access (enables range-based for loops and STL algorithms)
+    /**
+     * @brief Get a mutable view of the field storage
+     * @return Non-owning span over cell values
+     */
+    std::span<T> span() noexcept { return internalField_; }
 
+    /**
+     * @brief Get a read-only view of the field storage
+     * @return Non-owning span over const cell values
+     */
+    std::span<const T> span() const noexcept { return internalField_; }
+
+    /// Iterator access (range-based for loops)
     auto begin() noexcept { return internalField_.begin(); }
     auto end() noexcept { return internalField_.end(); }
     auto begin() const noexcept { return internalField_.begin(); }

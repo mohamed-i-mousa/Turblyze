@@ -12,7 +12,7 @@
 
 // *********************** Geometric Property Methods ***********************
 
-void Cell::calculateGeometricProperties(const std::vector<Face>& allFaces)
+void Cell::calculateGeometricProperties(std::span<const Face> allFaces)
 {
     geometricPropertiesCalculated_ = false;
     volume_ = 0.0;
@@ -107,7 +107,7 @@ std::ostream& operator<<(std::ostream& os, const Cell& c)
     if (c.geometricPropertiesCalculated())
     {
         std::ios_base::fmtflags flags = os.flags();
-        int prec = os.precision();
+        auto prec = os.precision();
 
         os  << std::fixed
             << std::setprecision(6);

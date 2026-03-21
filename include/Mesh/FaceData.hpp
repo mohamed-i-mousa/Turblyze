@@ -19,6 +19,7 @@
 #pragma once
 
 #include <cstddef>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -95,8 +96,19 @@ public:
      */
     const T* data() const noexcept { return allFacesValues_.data(); }
 
-// Iterator access (enables range-based for loops and STL algorithms)
+    /**
+     * @brief Get a mutable view of the field storage
+     * @return Non-owning span over face values
+     */
+    std::span<T> span() noexcept { return allFacesValues_; }
 
+    /**
+     * @brief Get a read-only view of the field storage
+     * @return Non-owning span over const face values
+     */
+    std::span<const T> span() const noexcept { return allFacesValues_; }
+
+    /// Iterator access (range-based for loops)
     auto begin() noexcept { return allFacesValues_.begin(); }
     auto end() noexcept { return allFacesValues_.end(); }
     auto begin() const noexcept { return allFacesValues_.begin(); }

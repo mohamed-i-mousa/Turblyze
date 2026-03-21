@@ -137,7 +137,7 @@ Vector operator*(Scalar scalar, const Vector& p) noexcept
 std::ostream& operator<<(std::ostream& os, const Vector& p)
 {
     std::ios_base::fmtflags flags = os.flags();
-    int prec = os.precision();
+    auto prec = os.precision();
 
     os  << std::fixed << std::setprecision(6);
 

@@ -15,9 +15,9 @@
 
 MeshChecker::MeshChecker
 (
-    const std::vector<Vector>& nodes,
-    const std::vector<Face>& faces,
-    const std::vector<Cell>& cells
+    std::span<const Vector> nodes,
+    std::span<const Face> faces,
+    std::span<const Cell> cells
 ) noexcept
 :
     allNodes_(nodes),
@@ -461,7 +461,7 @@ void MeshChecker::check() const
 // Print up to 10 IDs from a list, with truncation indicator
 void MeshChecker::printIndicesList
 (
-    const std::vector<size_t>& indices,
+    std::span<const size_t> indices,
     std::string_view entityName
 )
 {
@@ -550,25 +550,25 @@ Scalar MeshChecker::calculateFaceSkewness
     Scalar faceCharacteristicLength = S(0.2) * dPN.magnitude() + vSmallValue;
 
     // Refine by finding max vertex extent in skewness dir
-    const std::vector<size_t>& nodeIndices = face.nodeIndices();
+    std::span<const size_t> nodeIndices = face.nodeIndices();
 
-    for (size_t nodeIdx = 0; nodeIdx < nodeIndices.size(); ++nodeIdx)
+    for (size_t nodeIdx : nodeIndices)
     {
-        if (nodeIndices[nodeIdx] >= allNodes_.size())
+        if (nodeIdx >= allNodes_.size())
         {
             throw
                 std::out_of_range
                 (
                     "Node index "
-                  + std::to_string(nodeIndices[nodeIdx])
+                  + std::to_string(nodeIdx)
                   + " out of range in skewness"
                   + " calculation for face "
                   + std::to_string(face.idx())
                 );
         }
 
-        Vector vertexToCentroid = 
-            allNodes_[nodeIndices[nodeIdx]] - faceCentroid;
+        Vector vertexToCentroid =
+            allNodes_[nodeIdx] - faceCentroid;
 
         Scalar projection =
             std::abs(dot(skewnessDirection, vertexToCentroid));
@@ -606,17 +606,17 @@ Scalar MeshChecker::calculateBoundarySkewness
     Scalar faceCharacteristicLength = S(0.4) * dPN.magnitude() + vSmallValue;
 
     // Refine by finding max vertex extent in skewness dir
-    const std::vector<size_t>& nodeIndices = face.nodeIndices();
+    std::span<const size_t> nodeIndices = face.nodeIndices();
 
-    for (size_t i = 0; i < nodeIndices.size(); ++i)
+    for (size_t nodeIdx : nodeIndices)
     {
-        if (nodeIndices[i] >= allNodes_.size())
+        if (nodeIdx >= allNodes_.size())
         {
             throw
                 std::out_of_range
                 (
                     "Node index "
-                  + std::to_string(nodeIndices[i])
+                  + std::to_string(nodeIdx)
                   + " out of range in boundary"
                   + " skewness calculation"
                   + " for face "
@@ -624,7 +624,7 @@ Scalar MeshChecker::calculateBoundarySkewness
                 );
         }
 
-        Vector vertexToCentroid = allNodes_[nodeIndices[i]] - faceCentroid;
+        Vector vertexToCentroid = allNodes_[nodeIdx] - faceCentroid;
 
         Scalar projection = std::abs(dot(skewnessDirection, vertexToCentroid));
 
@@ -646,9 +646,9 @@ Scalar MeshChecker::calculateCellAspectRatio
 
     const auto& faceIndices = cell.faceIndices();
 
-    for (size_t i = 0; i < faceIndices.size(); ++i)
+    for (size_t faceIdx : faceIndices)
     {
-        const Face& face = allFaces_[faceIndices[i]];
+        const Face& face = allFaces_[faceIdx];
         const Vector areaVec = face.normal() * face.projectedArea();
 
         // Absolute components (sign irrelevant)

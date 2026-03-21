@@ -13,21 +13,21 @@
 
 // ********************** Geometric Property Methods **********************
 
-void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
+void Face::calculateGeometricProperties(std::span<const Vector> allNodes)
 {
     geometricPropertiesCalculated_ = false;
     const size_t numNodes = nodeIndices_.size();
 
-    for (size_t i = 0; i < numNodes; ++i)
+    for (size_t nodeIdx : nodeIndices_)
     {
-        if (nodeIndices_[i] >= allNodes.size())
+        if (nodeIdx >= allNodes.size())
         {
             throw
                 std::out_of_range
                 (
                     "Error calculating properties for Face "
                   + std::to_string(idx_) + ": Node index "
-                  + std::to_string(nodeIndices_[i])
+                  + std::to_string(nodeIdx)
                   + " out of range ("
                   + "Node list size: "
                   + std::to_string(allNodes.size())
@@ -84,9 +84,9 @@ void Face::calculateGeometricProperties(const std::vector<Vector>& allNodes)
     {
         Vector faceCenter(0.0, 0.0, 0.0);
 
-        for (size_t i = 0; i < numNodes; ++i)
+        for (size_t nodeIdx : nodeIndices_)
         {
-            faceCenter += allNodes[nodeIndices_[i]];
+            faceCenter += allNodes[nodeIdx];
         }
 
         faceCenter /= S(numNodes);
@@ -181,7 +181,7 @@ std::ostream& operator<<(std::ostream& os, const Face& f)
     if (f.geometricPropertiesCalculated())
     {
         std::ios_base::fmtflags flags = os.flags();
-        int prec = os.precision();
+        auto prec = os.precision();
 
         os  << std::fixed << std::setprecision(6);
 

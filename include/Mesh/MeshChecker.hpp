@@ -37,9 +37,9 @@ public:
      */
     MeshChecker
     (
-        const std::vector<Vector>& nodes,
-        const std::vector<Face>& faces,
-        const std::vector<Cell>& cells
+        std::span<const Vector> nodes,
+        std::span<const Face> faces,
+        std::span<const Cell> cells
     ) noexcept;
 
     /// Perform mesh quality checks and report statistics
@@ -50,7 +50,7 @@ private:
     /// Print up to 10 IDs from a list, with truncation
     static void printIndicesList
     (
-        const std::vector<size_t>& indices,
+        std::span<const size_t> indices,
         std::string_view entityName
     );
 
@@ -74,13 +74,13 @@ private:
 // Private members
 
     /// Reference to all mesh nodes
-    const std::vector<Vector>& allNodes_;
+    std::span<const Vector> allNodes_;
 
     /// Reference to all mesh faces
-    const std::vector<Face>& allFaces_;
+    std::span<const Face> allFaces_;
 
     /// Reference to all mesh cells
-    const std::vector<Cell>& allCells_;
+    std::span<const Cell> allCells_;
 
 // Private methods
 

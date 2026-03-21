@@ -22,6 +22,7 @@
 #include <vector>
 #include <string>
 #include <optional>
+#include <span>
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
@@ -124,7 +125,10 @@ public:
      * @brief Get node connectivity
      * @return Vector of node indices
      */
-    const std::vector<size_t>& nodeIndices() const noexcept { return nodeIndices_; }
+    std::span<const size_t> nodeIndices() const noexcept
+    {
+        return nodeIndices_;
+    }
 
     /**
      * @brief Get owner cell index
@@ -236,7 +240,7 @@ public:
      * @throws std::out_of_range if node index is invalid
      * @throws std::runtime_error if face is degenerate
      */
-    void calculateGeometricProperties(const std::vector<Vector>& allNodes);
+    void calculateGeometricProperties(std::span<const Vector> allNodes);
 
     /**
      * @brief Calculate distance properties of the face
