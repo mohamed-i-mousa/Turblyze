@@ -276,7 +276,7 @@ turbulence
 - `turbulenceIntensity` and `hydraulicDiameter` are used to auto-compute
   initial values for `k` and `omega` when they are not explicitly
   specified in `initialConditions` (see [initialConditions](#3-initialconditions))
-- k-omega SST model constants are hardcoded in `KOmegaSST.hpp`
+- k-omega SST model constants are hardcoded in `kOmegaSST.hpp`
   and cannot be changed via case file
 - Wall distance is computed using meshWave iterative propagation method
   (not configurable)

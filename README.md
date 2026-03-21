@@ -29,7 +29,7 @@ A 3D incompressible CFD solver implementing the SIMPLE algorithm with k-omega SS
 ## Prerequisites
 
 ### System Requirements
-- **C++17** compatible compiler (GCC 7+, Clang 5+, MSVC 2017+)
+- **C++20** compatible compiler (GCC 11+, Clang 15+, MSVC 2022+)
 - **CMake** 3.10 or later
 - **Linux/Unix** environment
 

@@ -118,16 +118,20 @@ Notes:
 
 **Key Features**:
 1. **Direct Patch Lookup**: `Face::patch()` returns `const BoundaryPatch*` directly, linked at startup via `BoundaryConditions::linkFaces()`
-2. **Smart Field Mapping**: Automatic fallback from `Ux`/`Uy`/`Uz` to parent field `U`
+2. **Index-Based Component Extraction**: `calculateBoundaryFaceValue()` accepts an optional `componentIndex` (0=x, 1=y, 2=z) to extract scalar components from vector BCs
 3. **Robust Retrieval**: `fieldBC()` with comprehensive error handling
 4. **Boundary Value Calculation**: `calculateBoundaryFaceValue()` for scalars, `calculateBoundaryVectorFaceValue()` for vectors
 
 **Vector Component Handling**:
 ```cpp
-// Component extraction
-if (fieldName == "Ux") val = bc->vectorValue().x();
-else if (fieldName == "Uy") val = bc->vectorValue().y();
-else if (fieldName == "Uz") val = bc->vectorValue().z();
+// Index-based component extraction from vector BC
+const Vector& v = bc->fixedVectorValue();
+switch (*componentIndex)
+{
+    case 0: return v.x();
+    case 1: return v.y();
+    case 2: return v.z();
+}
 ```
 
 ### BC Evaluation Logic
@@ -254,16 +258,16 @@ Uses a unified `TransportEquation` struct to bundle all data for any transport e
 ```cpp
 struct TransportEquation
 {
-    const ScalarField& phi;             // Current field values
-    std::string fieldName;              // "Ux", "k", "pCorr", etc.
-    OptionalRef<FaceFluxField> flowRate;    // Face flow rates (nullopt = no convection)
-    OptionalRef<ConvectionScheme> convScheme;
-    OptionalRef<ScalarField> Gamma;         // Cell-based diffusion coefficient
-    OptionalRef<FaceFluxField> GammaFace;   // Face-based diffusion coefficient
+    std::string fieldName;              // "U", "k", "pCorr", etc.
+    ScalarField& phi;                   // Current field values (mutable for zero-copy solve)
+    OptionalRef<FaceFluxField> flowRate = std::nullopt;    // Face flow rates (nullopt = no convection)
+    OptionalRef<ConvectionScheme> convScheme = std::nullopt;
+    OptionalRef<ScalarField> Gamma = std::nullopt;         // Cell-based diffusion coefficient
+    OptionalRef<FaceFluxField> GammaFace = std::nullopt;   // Face-based diffusion coefficient
     const ScalarField& source;          // Explicit source term
     const VectorField& gradPhi;         // Pre-computed cell gradients
     const GradientScheme& gradScheme;
-    OptionalRef<FaceData<Scalar>> boundaryFaceValues;
+    std::optional<int> componentIndex = std::nullopt;  // Vector component (0=x, 1=y, 2=z)
 };
 ```
 
@@ -351,9 +355,8 @@ Class `kOmegaSST`:
 3) Pre-compute cell gradients `gradPhi` via `GradientScheme::cellGradient()`.
 4) Create a `TransportEquation` struct with all required fields:
    ```cpp
-   TransportEquation eq{phi, "phi", flowRate, convScheme,
-       Gamma, std::nullopt, source, gradPhi, gradScheme,
-       std::nullopt};
+   TransportEquation eq{"phi", phi, flowRate, convScheme,
+       Gamma, std::nullopt, source, gradPhi, gradScheme};
    ```
 5) Call `matrix.buildMatrix(eq)`, then solve with `LinearSolver::solveWithBiCGSTAB()`.
 6) Apply under-relaxation via `matrix.relax(alpha, phiPrev)` if needed.
