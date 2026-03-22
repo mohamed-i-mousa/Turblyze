@@ -1,25 +1,24 @@
 /******************************************************************************
  * @file SIMPLE.hpp
  * @brief SIMPLE algorithm for incompressible Navier-Stokes equations
- * 
+ *
  * @details This header implements the Semi-Implicit Method for Pressure-Linked
  * Equations (SIMPLE) for solving incompressible flow on unstructured finite
- * volume meshes. The algorithm handles velocity-pressure coupling through 
+ * volume meshes. The algorithm handles velocity-pressure coupling through
  * pressure correction and includes the k-omega SST turbulence modeling.
- * 
+ *
  * @class SIMPLE
- * 
+ *
  * The SIMPLE class provides:
  * - Pressure-velocity coupling via SIMPLE algorithm
- * - Rhie-Chow interpolation for collocated grid arrangement  
+ * - Rhie-Chow interpolation for collocated grid arrangement
  * - Momentum equations with implicit under-relaxation
  * - Pressure correction with mass conservation enforcement
  * - k-omega SST turbulence model with wall distance calculation
  * - Field constraints for numerical stability
  *****************************************************************************/
 
-#ifndef SIMPLE_HPP
-#define SIMPLE_HPP
+#pragma once
 
 #include <vector>
 #include <memory>
@@ -33,11 +32,13 @@
 #include "ConvectionScheme.hpp"
 #include "Matrix.hpp"
 #include "LinearSolvers.hpp"
-#include "kOmegaSST.hpp"
-#include "Constraint.hpp"
+
+// Forward declarations
+class kOmegaSST;
+class Constraint;
 
 
-class SIMPLE 
+class SIMPLE
 {
 public:
 
@@ -51,12 +52,15 @@ public:
      */
     SIMPLE
     (
-        const std::vector<Face>& faces,
-        const std::vector<Cell>& cells,
+        std::span<const Face> faces,
+        std::span<const Cell> cells,
         const BoundaryConditions& bc,
         const GradientScheme& gradScheme,
         const ConvectionSchemes& convSchemes
     );
+
+    /// Destructor (defined for forward-declared types)
+    ~SIMPLE();
 
     /// Main SIMPLE algorithm execution
     void solve();
@@ -107,13 +111,36 @@ public:
      */
     void solvePressureCorrection();
 
-    /// Correct velocity field
+    /**
+     * @brief Correct velocity field
+     *
+     * @details
+     * Applies the SIMPLE velocity correction:
+     * U = U* - D ∇p'
+     * then re-interpolates face velocities from the corrected field.
+     */
     void correctVelocity();
 
-    /// Correct pressure field
+    /**
+     * @brief Correct pressure field
+     *
+     * @details
+     * Computes RMS of p' for convergence monitoring, then applies
+     * under-relaxed pressure correction:
+     * p = p + αp p'
+     * Resets p' to zero for the next iteration.
+     */
     void correctPressure();
 
-    /// Correct mass fluxes
+    /**
+     * @brief Correct mass fluxes
+     *
+     * @details
+     * Corrects Rhie-Chow face mass fluxes using:
+     * ṁf = ṁf* - Df (∇p')f · Sf
+     * Internal faces use interpolated face gradients;
+     * boundary faces use one-sided owner-cell gradients.
+     */
     void correctFlowRate();
 
     /// Solve turbulence equations if turbulence modeling is enabled
@@ -128,13 +155,19 @@ public:
      * @brief Get velocity field
      * @return Const reference to velocity vector field
      */
-    const VectorField& velocity() const { return U_; }
+    [[nodiscard]] const VectorField& velocity() const noexcept
+    {
+        return U_;
+    }
 
     /**
      * @brief Get pressure field
      * @return Const reference to pressure scalar field
      */
-    const ScalarField& pressure() const { return p_; }
+    [[nodiscard]] const ScalarField& pressure() const noexcept
+    {
+        return p_;
+    }
 
 // Setter methods
 
@@ -151,7 +184,7 @@ public:
         Scalar alphaP,
         Scalar alphaK = 0.5,
         Scalar alphaOmega = 0.5
-    )
+    ) noexcept
     {
         alphaU_ = alphaU;
         alphaP_ = alphaP;
@@ -163,7 +196,7 @@ public:
      * @brief Set convergence tolerance
      * @param tol Convergence tolerance for residuals
      */
-    void setConvergenceTolerance(Scalar tol)
+    void setConvergenceTolerance(Scalar tol) noexcept
     {
         tolerance_ = tol;
     }
@@ -172,7 +205,7 @@ public:
      * @brief Set maximum number of iterations
      * @param maxIter Maximum number of SIMPLE iterations
      */
-    void setMaxIterations(int maxIter)
+    void setMaxIterations(int maxIter) noexcept
     {
         maxIterations_ = maxIter;
     }
@@ -181,14 +214,14 @@ public:
      * @brief Enable or disable verbose console output
      * @param d True to enable debug output
      */
-    void setDebug(bool d) { debug_ = d; }
+    void setDebug(bool d) noexcept { debug_ = d; }
 
     /**
      * @brief Set physical properties
      * @param rho Fluid density
      * @param mu Dynamic viscosity
      */
-    void setPhysicalProperties(Scalar rho, Scalar mu)
+    void setPhysicalProperties(Scalar rho, Scalar mu) noexcept
     {
         rho_ = rho;
         mu_ = mu;
@@ -222,102 +255,63 @@ public:
     (
         const LinearSolver& kSolver,
         const LinearSolver& omegaSolver
-    )
-    {
-        if (turbulenceModel_)
-        {
-            turbulenceModel_->kSolverSettings() = kSolver;
-            turbulenceModel_->omegaSolverSettings() = omegaSolver;
-        }
-    }
+    );
+
+// Getter methods
 
     /**
      * @brief Get constraint system pointer
      * @return Pointer to constraint system, or nullptr if none
      */
-    Constraint* constraintSystem() { return constraintSystem_.get(); }
+    [[nodiscard]] Constraint* constraintSystem() noexcept
+    {
+        return constraintSystem_.get();
+    }
 
     /**
      * @brief Get turbulent kinetic energy field
      * @return Pointer to k field, or nullptr if turbulence disabled
      */
-    const ScalarField* turbulentKineticEnergy() const
-    {
-        if (turbulenceModel_)
-        {
-            return &(turbulenceModel_->k());
-        }
-        return nullptr;
-    }
+    [[nodiscard]] const ScalarField* turbulentKineticEnergy() const noexcept;
 
     /**
      * @brief Get specific dissipation rate field
      * @return Pointer to omega field, or nullptr if turbulence disabled
      */
-    const ScalarField* specificDissipationRate() const
-    {
-        if (turbulenceModel_)
-        {
-            return &(turbulenceModel_->omega());
-        }
-        return nullptr;
-    }
+    [[nodiscard]] const ScalarField* specificDissipationRate() const noexcept;
 
     /**
      * @brief Get turbulent viscosity field
      * @return Pointer to nut field, or nullptr if turbulence disabled
      */
-    const ScalarField* turbulentViscosity() const
-    {
-        if (turbulenceModel_)
-        {
-            return &(turbulenceModel_->turbulentViscosity());
-        }
-        return nullptr;
-    }
+    [[nodiscard]] const ScalarField* turbulentViscosity() const noexcept;
 
     /**
      * @brief Get wall distance field
      * @return Pointer to wall distance field, nullptr if turbulence disabled
      */
-    const ScalarField* wallDistance() const
-    {
-        if (turbulenceModel_)
-        {
-            return &(turbulenceModel_->wallDistance());
-        }
-        return nullptr;
-    }
+    [[nodiscard]] const ScalarField* wallDistance() const noexcept;
 
     /**
      * @brief Get y+ field
      * @return Pointer to y+ field, nullptr if turbulence disabled
      */
-    const FaceData<Scalar>* yPlus() const
-    {
-        if (turbulenceModel_)
-        {
-            return &(turbulenceModel_->yPlus());
-        }
-        return nullptr;
-    }
+    [[nodiscard]] const FaceData<Scalar>* yPlus() const noexcept;
 
-    const FaceData<Scalar>* wallShearStress() const
-    {
-        if (turbulenceModel_)
-        {
-            return &(turbulenceModel_->wallShearStress());
-        }
-        return nullptr;
-    }
+    /**
+     * @brief Get wall shear stress field
+     * @return Pointer to wall shear stress field, nullptr if turbulence
+     *         disabled
+     */
+    [[nodiscard]] const FaceData<Scalar>* wallShearStress() const noexcept;
 
 private:
 
 // Private members
 
     /// Mesh references
-    const std::vector<Face>& allFaces_;
-    const std::vector<Cell>& allCells_;
+    std::span<const Face> allFaces_;
+    std::span<const Cell> allCells_;
     const BoundaryConditions& bcManager_;
     const GradientScheme& gradientScheme_;
     const ConvectionSchemes& convectionScheme_;
@@ -506,7 +500,5 @@ private:
         const Vector& gradUy,
         const Vector& gradUz,
         int component
-    ) const;
+    ) const noexcept;
 };
-
-#endif // SIMPLE_HPP

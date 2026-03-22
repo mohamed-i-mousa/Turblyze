@@ -1,4 +1,3 @@
-
 /******************************************************************************
  * @file SIMPLE.cpp
  * @brief Implementation of the SIMPLE algorithm for pressure-velocity coupling
@@ -7,20 +6,20 @@
 #include <cmath>
 #include <iostream>
 #include <algorithm>
-#include <limits>
-#include <map>
 
 #include "LinearInterpolation.hpp"
 #include "SIMPLE.hpp"
 #include "Scalar.hpp"
+#include "kOmegaSST.hpp"
+#include "Constraint.hpp"
 
 
 // ************************ Constructor & Destructor ************************
 
 SIMPLE::SIMPLE
 (
-    const std::vector<Face>& faces,
-    const std::vector<Cell>& cells,
+    std::span<const Face> faces,
+    std::span<const Cell> cells,
     const BoundaryConditions& bc,
     const GradientScheme& gradScheme,
     const ConvectionSchemes& convSchemes
@@ -46,7 +45,7 @@ SIMPLE::SIMPLE
 
     // Turbulence model
     turbulenceModel_(nullptr),
-    
+
     // Field constraint system
     constraintSystem_(nullptr),
 
@@ -80,6 +79,82 @@ SIMPLE::SIMPLE
     momentumSolver_("momentum", S(1e-6), 1000),
     pressureSolver_("pCorr", S(1e-6), 1000)
 {}
+
+
+SIMPLE::~SIMPLE() = default;
+
+
+// ******************************* Setter Methods ****************************
+
+void SIMPLE::setTurbulenceSolvers
+(
+    const LinearSolver& kSolver,
+    const LinearSolver& omegaSolver
+)
+{
+    if (turbulenceModel_)
+    {
+        turbulenceModel_->kSolverSettings() = kSolver;
+        turbulenceModel_->omegaSolverSettings() = omegaSolver;
+    }
+}
+
+
+// ******************************* Accessor Methods ****************************
+
+const ScalarField* SIMPLE::turbulentKineticEnergy() const noexcept
+{
+    if (turbulenceModel_)
+    {
+        return &(turbulenceModel_->k());
+    }
+    return nullptr;
+}
+
+const ScalarField* SIMPLE::specificDissipationRate() const noexcept
+{
+    if (turbulenceModel_)
+    {
+        return &(turbulenceModel_->omega());
+    }
+    return nullptr;
+}
+
+const ScalarField* SIMPLE::turbulentViscosity() const noexcept
+{
+    if (turbulenceModel_)
+    {
+        return &(turbulenceModel_->turbulentViscosity());
+    }
+    return nullptr;
+}
+
+const ScalarField* SIMPLE::wallDistance() const noexcept
+{
+    if (turbulenceModel_)
+    {
+        return &(turbulenceModel_->wallDistance());
+    }
+    return nullptr;
+}
+
+const FaceData<Scalar>* SIMPLE::yPlus() const noexcept
+{
+    if (turbulenceModel_)
+    {
+        return &(turbulenceModel_->yPlus());
+    }
+    return nullptr;
+}
+
+const FaceData<Scalar>* SIMPLE::wallShearStress() const noexcept
+{
+    if (turbulenceModel_)
+    {
+        return &(turbulenceModel_->wallShearStress());
+    }
+    return nullptr;
+}
 
 
 // ******************************* Public Methods ******************************
@@ -156,6 +231,13 @@ void SIMPLE::initialize
 
     // Initialize constraint system
     constraintSystem_ = std::make_unique<Constraint>(U_, p_);
+
+    // Pre-allocate velocity gradient fields
+    size_t numCells = allCells_.size();
+    gradU_.reserve(3);
+    gradU_.emplace_back("gradUx", numCells, Vector(0, 0, 0));
+    gradU_.emplace_back("gradUy", numCells, Vector(0, 0, 0));
+    gradU_.emplace_back("gradUz", numCells, Vector(0, 0, 0));
 
     U_.setAll(initialVelocity);
     p_.setAll(initialPressure);
@@ -293,19 +375,16 @@ void SIMPLE::solveMomentumEquations()
     // Reset interpolated diagonals accumulator
     DUf_.setAll(0.0);
 
-    VectorField gradUx("gradUx", numCells, Vector(0.0, 0.0, 0.0));
-    VectorField gradUy("gradUy", numCells, Vector(0.0, 0.0, 0.0));
-    VectorField gradUz("gradUz", numCells, Vector(0.0, 0.0, 0.0));
-
-    for (size_t cellIdx = 0; cellIdx < allCells_.size(); ++cellIdx)
+    // Compute velocity gradients directly into pre-allocated fields
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        gradUx[cellIdx] = gradientScheme_.cellGradient("Ux", Ux, cellIdx);
-        gradUy[cellIdx] = gradientScheme_.cellGradient("Uy", Uy, cellIdx);
-        gradUz[cellIdx] = gradientScheme_.cellGradient("Uz", Uz, cellIdx);
+        gradU_[0][cellIdx] =
+            gradientScheme_.cellGradient("U", Ux, cellIdx, nullptr, 0);
+        gradU_[1][cellIdx] =
+            gradientScheme_.cellGradient("U", Uy, cellIdx, nullptr, 1);
+        gradU_[2][cellIdx] =
+            gradientScheme_.cellGradient("U", Uz, cellIdx, nullptr, 2);
     }
-
-    // Store velocity gradients for turbulence model
-    gradU_ = {gradUx, gradUy, gradUz};
 
     // Add transpose gradient source term
     if (turbulenceModel_)
@@ -334,43 +413,46 @@ void SIMPLE::solveMomentumEquations()
     // Solve momentum equations for each component
     TransportEquation equationUx
     {
-        "Ux",                                       // fieldName
+        "U",                                        // fieldName
         Ux,                                         // phi
         std::cref(RhieChowFlowRatePrev_),           // flowRate
         std::cref(convectionScheme_.momentum()),    // convScheme
         std::nullopt,                               // Gamma
         std::cref(nuEffFace),                       // GammaFace
         UxSource,                                   // source
-        gradUx,                                     // gradPhi
-        gradientScheme_                             // gradScheme
+        gradU_[0],                                  // gradPhi
+        gradientScheme_,                            // gradScheme
+        0                                           // componentIndex
     };
     solveMomentumComponent('x', equationUx, UxPrev);
 
     TransportEquation equationUy
     {
-        "Uy",                                       // fieldName
+        "U",                                        // fieldName
         Uy,                                         // phi
         std::cref(RhieChowFlowRatePrev_),           // flowRate
         std::cref(convectionScheme_.momentum()),    // convScheme
         std::nullopt,                               // Gamma
         std::cref(nuEffFace),                       // GammaFace
         UySource,                                   // source
-        gradUy,                                     // gradPhi
-        gradientScheme_                             // gradScheme
+        gradU_[1],                                  // gradPhi
+        gradientScheme_,                            // gradScheme
+        1                                           // componentIndex
     };
     solveMomentumComponent('y', equationUy, UyPrev);
 
     TransportEquation equationUz
     {
-        "Uz",                                       // fieldName
+        "U",                                        // fieldName
         Uz,                                         // phi
         std::cref(RhieChowFlowRatePrev_),           // flowRate
         std::cref(convectionScheme_.momentum()),    // convScheme
         std::nullopt,                               // Gamma
         std::cref(nuEffFace),                       // GammaFace
         UzSource,                                   // source
-        gradUz,                                     // gradPhi
-        gradientScheme_                             // gradScheme
+        gradU_[2],                                  // gradPhi
+        gradientScheme_,                            // gradScheme
+        2                                           // componentIndex
     };
     solveMomentumComponent('z', equationUz, UzPrev);
 
@@ -428,9 +510,9 @@ void SIMPLE::calculateRhieChowFlowRate()
         const Vector UfLinear = interpolateToFace(face, U_, bcManager_, "U");
 
         const Vector gradPAvgf = interpolateToFace(face, gradP_);
-                
+
         const Vector Sf = face.normal() * face.projectedArea();
-        
+
         Vector gradPf =
             gradientScheme_.faceGradient
             (
@@ -455,8 +537,8 @@ void SIMPLE::solvePressureCorrection()
 
     VectorField gradPCorrPrecomputed
     (
-        "gradPCorr", 
-        numCells, 
+        "gradPCorr",
+        numCells,
         Vector(0.0, 0.0, 0.0)
     );
 
@@ -504,9 +586,9 @@ void SIMPLE::solvePressureCorrection()
 
     // Map pCorr field storage as Eigen vector (zero-copy)
     pCorr_.setAll(S(0.0));
-    
+
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
-    pCorrSolution(pCorr_.data(), numCells);
+    pCorrSolution(pCorr_.data(), static_cast<Eigen::Index>(numCells));
 
     pressureSolver_.solveWithPCG(pCorrSolution, matrixA, vectorB);
 
@@ -537,10 +619,10 @@ void SIMPLE::correctVelocity()
             U_[cellIdx].z() - DU_[cellIdx] * gradPCorr_[cellIdx].z()
         );
     }
-    
+
     if (constraintSystem_)
     {
-        int velocityConstraints =
+        auto velocityConstraints =
             constraintSystem_->applyVelocityConstraints();
 
         if (debug_ && velocityConstraints > 0)
@@ -574,7 +656,7 @@ void SIMPLE::correctPressure()
     Scalar sumSq = 0.0;
 
     size_t numCells = allCells_.size();
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx) 
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         sumSq += pCorr_[cellIdx] * pCorr_[cellIdx];
     }
@@ -586,11 +668,11 @@ void SIMPLE::correctPressure()
     {
         p_[cellIdx] += alphaP_ * pCorr_[cellIdx];
     }
-    
+
     // Apply pressure bounds constraints
     if (constraintSystem_)
     {
-        int pressureConstraints =
+        auto pressureConstraints =
             constraintSystem_->applyPressureConstraints();
 
         if (debug_ && pressureConstraints > 0)
@@ -607,8 +689,6 @@ void SIMPLE::correctPressure()
 
 void SIMPLE::correctFlowRate()
 {
-    Scalar flowRateCorrection;
-
     // Update mass flux on faces
     size_t numFaces = allFaces_.size();
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
@@ -628,7 +708,7 @@ void SIMPLE::correctFlowRate()
 
             Scalar gradn = dot(gradPCorr_[face.ownerCell()], face.normal());
 
-            flowRateCorrection =
+            Scalar flowRateCorrection =
                 DU_[face.ownerCell()] * gradn * face.projectedArea();
 
             RhieChowFlowRate_[faceIdx] -= flowRateCorrection;
@@ -650,7 +730,7 @@ void SIMPLE::correctFlowRate()
 
         Vector Sf = face.normal() * face.projectedArea();
 
-        flowRateCorrection = DUf_[faceIdx] * dot(gradPCorrf, Sf);
+        Scalar flowRateCorrection = DUf_[faceIdx] * dot(gradPCorrf, Sf);
 
         RhieChowFlowRate_[faceIdx] -= flowRateCorrection;
     }
@@ -674,28 +754,25 @@ void SIMPLE::solveTurbulence()
         ScalarField Uy = extractComponent("Uy", U_, 1);
         ScalarField Uz = extractComponent("Uz", U_, 2);
 
-        VectorField gradUx("gradUx", numCells, Vector(0, 0, 0));
-        VectorField gradUy("gradUy", numCells, Vector(0, 0, 0));
-        VectorField gradUz("gradUz", numCells, Vector(0, 0, 0));
-
-        for (size_t i = 0; i < numCells; ++i)
+        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
-            gradUx[i] = gradientScheme_.cellGradient("Ux", Ux, i);
-            gradUy[i] = gradientScheme_.cellGradient("Uy", Uy, i);
-            gradUz[i] = gradientScheme_.cellGradient("Uz", Uz, i);
+            gradU_[0][cellIdx] =
+                gradientScheme_.cellGradient("U", Ux, cellIdx, nullptr, 0);
+            gradU_[1][cellIdx] =
+                gradientScheme_.cellGradient("U", Uy, cellIdx, nullptr, 1);
+            gradU_[2][cellIdx] =
+                gradientScheme_.cellGradient("U", Uz, cellIdx, nullptr, 2);
         }
-
-        gradU_ = {gradUx, gradUy, gradUz};
 
         const auto& kField = turbulenceModel_->k();
         const auto& omegaField = turbulenceModel_->omega();
 
-        std::vector<Scalar> kPrev(numCells);
-        std::vector<Scalar> omegaPrev(numCells);
-        for (size_t i = 0; i < numCells; ++i)
+        ScalarField kPrev("kPrev", numCells);
+        ScalarField omegaPrev("omegaPrev", numCells);
+        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
-            kPrev[i] = kField[i];
-            omegaPrev[i] = omegaField[i];
+            kPrev[cellIdx] = kField[cellIdx];
+            omegaPrev[cellIdx] = omegaField[cellIdx];
         }
 
         turbulenceModel_->solve(U_, RhieChowFlowRate_, gradU_);
@@ -703,15 +780,15 @@ void SIMPLE::solveTurbulence()
         // Compute normalised change: ||x - x_prev|| / ||x_prev||
         Scalar kDiffSq = 0.0, kPrevSq = 0.0;
         Scalar omDiffSq = 0.0, omPrevSq = 0.0;
-        for (size_t i = 0; i < numCells; ++i)
+        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
-            Scalar dk = kField[i] - kPrev[i];
+            Scalar dk = kField[cellIdx] - kPrev[cellIdx];
             kDiffSq += dk * dk;
-            kPrevSq += kPrev[i] * kPrev[i];
+            kPrevSq += kPrev[cellIdx] * kPrev[cellIdx];
 
-            Scalar dw = omegaField[i] - omegaPrev[i];
+            Scalar dw = omegaField[cellIdx] - omegaPrev[cellIdx];
             omDiffSq += dw * dw;
-            omPrevSq += omegaPrev[i] * omegaPrev[i];
+            omPrevSq += omegaPrev[cellIdx] * omegaPrev[cellIdx];
         }
 
         lastKResidual_ =
@@ -822,15 +899,15 @@ Scalar SIMPLE::calculateMassImbalance() const
     Scalar totalNormImbalance = 0.0;
 
     size_t numCells = allCells_.size();
-    for (size_t i = 0; i < numCells; ++i) 
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         Scalar net = 0.0;
         Scalar sumAbs = 0.0;
 
-        for (size_t j = 0; j < allCells_[i].faceIndices().size(); ++j)
+        for (size_t j = 0; j < allCells_[cellIdx].faceIndices().size(); ++j)
         {
-            const size_t faceIdx = allCells_[i].faceIndices()[j];
-            const int sign = allCells_[i].faceSigns()[j];
+            const size_t faceIdx = allCells_[cellIdx].faceIndices()[j];
+            const int sign = allCells_[cellIdx].faceSigns()[j];
             const Scalar mf = RhieChowFlowRate_[faceIdx];
             net += sign * mf;
             sumAbs += std::abs(mf);
@@ -839,7 +916,7 @@ Scalar SIMPLE::calculateMassImbalance() const
         const Scalar denom = sumAbs + vSmallValue;
         totalNormImbalance += std::abs(net) / denom;
     }
-    
+
     return totalNormImbalance / std::max<size_t>(1, numCells);
 }
 
@@ -849,11 +926,12 @@ Scalar SIMPLE::calculateVelocityResidual() const
     Scalar num = 0.0;
     Scalar den = 0.0;
 
-    for (size_t i = 0; i < allCells_.size(); ++i)
+    size_t numCells = allCells_.size();
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        const Vector d = U_[i] - UPrev_[i];
+        const Vector d = U_[cellIdx] - UPrev_[cellIdx];
         num += d.magnitudeSquared();
-        den += UPrev_[i].magnitudeSquared();
+        den += UPrev_[cellIdx].magnitudeSquared();
     }
 
     num = std::sqrt(num + vSmallValue);
@@ -867,12 +945,13 @@ Scalar SIMPLE::calculatePressureResidual() const
     // Normalize p' RMS by RMS(p)
     Scalar sumP2 = 0.0;
 
-    for (size_t i = 0; i < allCells_.size(); ++i) 
+    size_t numCells = allCells_.size();
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        sumP2 += p_[i] * p_[i];
+        sumP2 += p_[cellIdx] * p_[cellIdx];
     }
 
-    const Scalar pRms = std::sqrt(sumP2 / (allCells_.size()));
+    const Scalar pRms = std::sqrt(sumP2 / numCells);
 
     return lastPressureCorrectionRMS_ / (pRms + vSmallValue);
 }
@@ -981,18 +1060,22 @@ void SIMPLE::solveMomentumComponent
 
     matrixConstruct_->relax(alphaU_, componentPrev);
 
-    // Store DU_
     size_t numCells = allCells_.size();
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+
+    // DU_ is identical for all 3 momentum components — compute only once
+    if (component == 'x')
     {
-        DU_[cellIdx] =
-            allCells_[cellIdx].volume()
-          / (matrixA.coeff(cellIdx, cellIdx) + vSmallValue);
+        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+        {
+            DU_[cellIdx] =
+                allCells_[cellIdx].volume()
+              / (matrixA.coeff(static_cast<Eigen::Index>(cellIdx), static_cast<Eigen::Index>(cellIdx)) + vSmallValue);
+        }
     }
 
     // Map phi directly as Eigen vector (zero-copy solve)
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
-    solutionMap(eq.phi.data(), numCells);
+    solutionMap(eq.phi.data(), static_cast<Eigen::Index>(numCells));
 
     momentumSolver_.solveWithBiCGSTAB
     (
@@ -1019,7 +1102,7 @@ Vector SIMPLE::buildGradientTransposeColumn
     const Vector& gradUy,
     const Vector& gradUz,
     int component
-) const
+) const noexcept
 {
     switch (component)
     {
