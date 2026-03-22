@@ -10,11 +10,7 @@
 #include <vtkSmartPointer.h>
 #include <vtkUnstructuredGrid.h>
 #include <vtkXMLUnstructuredGridWriter.h>
-#include <vtkTetra.h>
-#include <vtkHexahedron.h>
-#include <vtkWedge.h>
-#include <vtkPyramid.h>
-#include <vtkIdList.h>
+#include <vtkCellType.h>
 #include <vtkPolyData.h>
 #include <vtkXMLPolyDataWriter.h>
 #include <vtkCellArray.h>
@@ -22,6 +18,8 @@
 // STL includes
 #include <stdexcept>
 #include <set>
+#include <unordered_set>
+#include <unordered_map>
 #include <algorithm>
 #include <vector>
 #include <map>
@@ -40,14 +38,75 @@
 namespace VtkWriter
 {
 
+// ******************** Internal Types and Forward Declarations *****************
+
+struct StrainTensor
+{
+    Scalar S_11, S_22, S_33;
+    Scalar S_12, S_13, S_23;
+
+    constexpr Scalar normSquared() const noexcept
+    {
+        return
+            S_11*S_11 + S_22*S_22 + S_33*S_33
+          + 2.0 * (S_12*S_12 + S_13*S_13 + S_23*S_23);
+    }
+};
+
+ScalarField computeMagnitude
+(
+    const VectorField& field,
+    const std::string& fieldName
+);
+
+StrainTensor computeStrainTensor
+(
+    const Vector& gradUx,
+    const Vector& gradUy,
+    const Vector& gradUz
+);
+
+Vector computeFaceCentroid
+(
+    std::span<const size_t> faceNodes,
+    std::span<const Vector> allNodes
+);
+
+Vector computeFaceNormal
+(
+    std::span<const size_t> faceNodes,
+    std::span<const Vector> allNodes
+);
+
+std::vector<vtkIdType> orderHexahedronNodes
+(
+    const std::vector<std::vector<size_t>>& faceNodeLists,
+    const std::unordered_set<size_t>& uniqueNodes,
+    std::span<const Vector> allNodes
+);
+
+std::vector<vtkIdType> orderWedgeNodes
+(
+    const std::vector<std::vector<size_t>>& faceNodeLists,
+    const std::unordered_set<size_t>& uniqueNodes,
+    std::span<const Vector> allNodes
+);
+
+std::vector<vtkIdType> orderPyramidNodes
+(
+    const std::vector<std::vector<size_t>>& faceNodeLists,
+    const std::unordered_set<size_t>& uniqueNodes,
+    std::span<const Vector> allNodes
+);
+
 // *********************** Public API: VTK File Export ************************
 
 void writeVtkUnstructuredGrid
 (
     const std::string& filename,
-    const std::vector<Vector>& allNodes,
-    const std::vector<Cell>& allCells,
-    const std::vector<Face>& allFaces,
+    std::span<const Vector> allNodes,
+    std::span<const Cell> allCells,
+    std::span<const Face> allFaces,
     const std::map<std::string,
     const ScalarField*>& scalarCellFields,
     const std::map<std::string,
@@ -61,11 +120,11 @@ void writeVtkUnstructuredGrid
 
     // Create vtkPoints from nodes
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-    points->SetNumberOfPoints(allNodes.size());
+    points->SetNumberOfPoints(static_cast<vtkIdType>(allNodes.size()));
 
-    for (size_t i = 0; i < allNodes.size(); ++i)
+    for (size_t nodeIdx = 0; nodeIdx < allNodes.size(); ++nodeIdx)
     {
-        points->SetPoint(i, allNodes[i].x(), allNodes[i].y(), allNodes[i].z());
+        points->SetPoint(static_cast<vtkIdType>(nodeIdx), allNodes[nodeIdx].x(), allNodes[nodeIdx].y(), allNodes[nodeIdx].z());
     }
 
     unstructuredGrid->SetPoints(points);
@@ -75,8 +134,8 @@ void writeVtkUnstructuredGrid
 
     // Cell type statistics for diagnostics
     size_t numTets = 0, numHexes = 0, numWedges = 0,
-           numPyramids = 0, numConvex = 0;
-    size_t numWedgeOrderingFailures = 0;
+           numPyramids = 0, numConvex = 0,
+           numWedgeOrderingFailures = 0;
 
     for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
     {
@@ -84,19 +143,20 @@ void writeVtkUnstructuredGrid
         const auto& faceIndices = cell.faceIndices();
 
         // Collect all unique nodes and build connectivity
-        std::set<size_t> uniqueNodeSet;
+        std::unordered_set<size_t> uniqueNodeSet;
         std::vector<std::vector<size_t>> faceNodeLists;
+        faceNodeLists.reserve(faceIndices.size());
 
         for (size_t faceIdx : faceIndices)
         {
             const Face& face = allFaces[faceIdx];
             const auto& nodeIndices = face.nodeIndices();
             uniqueNodeSet.insert(nodeIndices.begin(), nodeIndices.end());
-            faceNodeLists.push_back(nodeIndices);
+            faceNodeLists.emplace_back(nodeIndices.begin(), nodeIndices.end());
         }
 
-        size_t numNodes = uniqueNodeSet.size();
-        size_t numFaces = faceIndices.size();
+        const size_t numNodes = uniqueNodeSet.size();
+        const size_t numFaces = faceIndices.size();
 
         // Determine cell type
         int cellType = VTK_CONVEX_POINT_SET; // Fallback
@@ -154,9 +214,9 @@ void writeVtkUnstructuredGrid
             // Use convex point set for unknown topology
             numConvex++;
             orderedNodes.reserve(numNodes);
-            for (size_t nodeId : uniqueNodeSet)
+            for (size_t nodeIdx : uniqueNodeSet)
             {
-                orderedNodes.push_back(static_cast<vtkIdType>(nodeId));
+                orderedNodes.push_back(static_cast<vtkIdType>(nodeIdx));
             }
         }
 
@@ -164,28 +224,20 @@ void writeVtkUnstructuredGrid
         if (orderedNodes.empty())
         {
             // Fallback: use arbitrary ordering
-            vtkSmartPointer<vtkIdList> cellPointIds =
-                vtkSmartPointer<vtkIdList>::New();
-
+            orderedNodes.reserve(numNodes);
             for (size_t nodeIdx : uniqueNodeSet)
             {
-                cellPointIds->InsertNextId(static_cast<vtkIdType>(nodeIdx));
+                orderedNodes.push_back(static_cast<vtkIdType>(nodeIdx));
             }
-            unstructuredGrid->InsertNextCell
-            (
-                VTK_CONVEX_POINT_SET,
-                cellPointIds
-            );
+            cellType = VTK_CONVEX_POINT_SET;
         }
-        else
-        {
-            unstructuredGrid->InsertNextCell
-            (
-                cellType,
-                static_cast<vtkIdType>(orderedNodes.size()),
-                orderedNodes.data()
-            );
-        }
+
+        unstructuredGrid->InsertNextCell
+        (
+            cellType,
+            static_cast<vtkIdType>(orderedNodes.size()),
+            orderedNodes.data()
+        );
     }
 
     // Add scalar cell fields
@@ -198,17 +250,17 @@ void writeVtkUnstructuredGrid
 
         dataArray->SetName(fieldName.c_str());
         dataArray->SetNumberOfComponents(1);
-        dataArray->SetNumberOfTuples(allCells.size());
+        dataArray->SetNumberOfTuples(static_cast<vtkIdType>(allCells.size()));
 
         for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
         {
             if (cellIdx < scalarField->size())
             {
-                dataArray->SetValue(cellIdx, (*scalarField)[cellIdx]);
+                dataArray->SetValue(static_cast<vtkIdType>(cellIdx), (*scalarField)[cellIdx]);
             }
             else
             {
-                dataArray->SetValue(cellIdx, 0.0);
+                dataArray->SetValue(static_cast<vtkIdType>(cellIdx), 0.0);
             }
         }
 
@@ -225,7 +277,7 @@ void writeVtkUnstructuredGrid
 
         dataArray->SetName(fieldName.c_str());
         dataArray->SetNumberOfComponents(3);
-        dataArray->SetNumberOfTuples(allCells.size());
+        dataArray->SetNumberOfTuples(static_cast<vtkIdType>(allCells.size()));
 
         for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
         {
@@ -233,12 +285,12 @@ void writeVtkUnstructuredGrid
             {
                 const Vector& vec = (*vectorField)[cellIdx];
                 double vecData[3] = {vec.x(), vec.y(), vec.z()};
-                dataArray->SetTuple(cellIdx, vecData);
+                dataArray->SetTuple(static_cast<vtkIdType>(cellIdx), vecData);
             }
             else
             {
                 double zeroVec[3] = {0.0, 0.0, 0.0};
-                dataArray->SetTuple(cellIdx, zeroVec);
+                dataArray->SetTuple(static_cast<vtkIdType>(cellIdx), zeroVec);
             }
         }
 
@@ -333,8 +385,8 @@ void writeVtkUnstructuredGrid
 void writeWallBoundaryData
 (
     const std::string& filename,
-    const std::vector<Vector>& allNodes,
-    const std::vector<Face>& allFaces,
+    std::span<const Vector> allNodes,
+    std::span<const Face> allFaces,
     const std::map<std::string,
     const FaceData<Scalar>*>& scalarFaceFields,
     bool debug
@@ -343,16 +395,16 @@ void writeWallBoundaryData
     // Collect wall boundary faces
     std::vector<size_t> wallFaceIndices;
 
-    for (size_t i = 0; i < allFaces.size(); ++i)
+    for (size_t faceIdx = 0; faceIdx < allFaces.size(); ++faceIdx)
     {
-        const auto& face = allFaces[i];
+        const auto& face = allFaces[faceIdx];
         if (!face.isBoundary()) continue;
 
         const BoundaryPatch* patch = face.patch();
 
         if (patch && patch->type() == BoundaryConditionType::WALL)
         {
-            wallFaceIndices.push_back(i);
+            wallFaceIndices.push_back(faceIdx);
         }
     }
 
@@ -365,12 +417,12 @@ void writeWallBoundaryData
     }
 
     // Build node remapping (global -> local)
-    std::map<size_t, vtkIdType> nodeMap;
+    std::unordered_map<size_t, vtkIdType> nodeMap;
     vtkIdType localId = 0;
 
-    for (size_t fi : wallFaceIndices)
+    for (size_t faceIdx : wallFaceIndices)
     {
-        for (size_t nodeIdx : allFaces[fi].nodeIndices())
+        for (size_t nodeIdx : allFaces[faceIdx].nodeIndices())
         {
             if (nodeMap.find(nodeIdx) == nodeMap.end())
             {
@@ -386,7 +438,7 @@ void writeWallBoundaryData
     vtkSmartPointer<vtkPoints> points =
         vtkSmartPointer<vtkPoints>::New();
 
-    points->SetNumberOfPoints(nodeMap.size());
+    points->SetNumberOfPoints(static_cast<vtkIdType>(nodeMap.size()));
 
     for (const auto& [globalIdx, localIdx] : nodeMap)
     {
@@ -405,17 +457,17 @@ void writeWallBoundaryData
     vtkSmartPointer<vtkCellArray> cells =
         vtkSmartPointer<vtkCellArray>::New();
 
-    for (size_t fi : wallFaceIndices)
+    for (size_t faceIdx : wallFaceIndices)
     {
-        const auto& nodeIndices = allFaces[fi].nodeIndices();
-        vtkIdType npts =
+        const auto& nodeIndices = allFaces[faceIdx].nodeIndices();
+        const vtkIdType npts =
             static_cast<vtkIdType>(nodeIndices.size());
 
-        std::vector<vtkIdType> pts(npts);
+        std::vector<vtkIdType> pts(static_cast<size_t>(npts));
 
         for (vtkIdType j = 0; j < npts; ++j)
         {
-            pts[j] = nodeMap[nodeIndices[j]];
+            pts[static_cast<size_t>(j)] = nodeMap[nodeIndices[static_cast<size_t>(j)]];
         }
 
         cells->InsertNextCell(npts, pts.data());
@@ -433,12 +485,12 @@ void writeWallBoundaryData
 
         dataArray->SetName(fieldName.c_str());
         dataArray->SetNumberOfComponents(1);
-        dataArray->SetNumberOfTuples(wallFaceIndices.size());
+        dataArray->SetNumberOfTuples(static_cast<vtkIdType>(wallFaceIndices.size()));
 
         for (size_t i = 0; i < wallFaceIndices.size(); ++i)
         {
-            size_t fi = wallFaceIndices[i];
-            dataArray->SetValue(i, (*faceField)[fi]);
+            size_t faceIdx = wallFaceIndices[i];
+            dataArray->SetValue(static_cast<vtkIdType>(i), (*faceField)[faceIdx]);
         }
 
         polyData->GetCellData()->AddArray(dataArray);
@@ -639,7 +691,7 @@ void appendPVDTimeStep
 void writeCellGeometryData
 (
     const std::string& filename,
-    const std::vector<Cell>& allCells
+    std::span<const Cell> allCells
 )
 {
     std::ofstream outFile(filename);
@@ -729,8 +781,8 @@ StrainTensor computeStrainTensor
 
 Vector computeFaceCentroid
 (
-    const std::vector<size_t>& faceNodes,
-    const std::vector<Vector>& allNodes
+    std::span<const size_t> faceNodes,
+    std::span<const Vector> allNodes
 )
 {
     Vector centroid(0.0, 0.0, 0.0);
@@ -741,29 +793,15 @@ Vector computeFaceCentroid
     return centroid / S(faceNodes.size());
 }
 
-Vector computeTriangleNormal
+Vector computeFaceNormal
 (
-    const std::vector<size_t>& triNodes,
-    const std::vector<Vector>& allNodes
+    std::span<const size_t> faceNodes,
+    std::span<const Vector> allNodes
 )
 {
-    Vector v0 = allNodes[triNodes[0]];
-    Vector v1 = allNodes[triNodes[1]];
-    Vector v2 = allNodes[triNodes[2]];
-    Vector edge1 = v1 - v0;
-    Vector edge2 = v2 - v0;
-    return cross(edge1, edge2);
-}
-
-Vector computeQuadNormal
-(
-    const std::vector<size_t>& quadNodes,
-    const std::vector<Vector>& allNodes
-)
-{
-    Vector v0 = allNodes[quadNodes[0]];
-    Vector v1 = allNodes[quadNodes[1]];
-    Vector v2 = allNodes[quadNodes[2]];
+    Vector v0 = allNodes[faceNodes[0]];
+    Vector v1 = allNodes[faceNodes[1]];
+    Vector v2 = allNodes[faceNodes[2]];
     Vector edge1 = v1 - v0;
     Vector edge2 = v2 - v0;
     return cross(edge1, edge2);
@@ -774,8 +812,8 @@ Vector computeQuadNormal
 std::vector<vtkIdType> orderHexahedronNodes
 (
     const std::vector<std::vector<size_t>>& faceNodeLists,
-    const std::set<size_t>& uniqueNodes,
-    const std::vector<Vector>& allNodes
+    const std::unordered_set<size_t>& uniqueNodes,
+    std::span<const Vector> allNodes
 )
 {
     std::vector<vtkIdType> orderedNodes;
@@ -847,8 +885,8 @@ std::vector<vtkIdType> orderHexahedronNodes
     }
 
     // Determine face orientation using face normals
-    Vector bottomNormal = computeQuadNormal(bottomFace, allNodes);
-    Vector topNormal = computeQuadNormal(topFace, allNodes);
+    Vector bottomNormal = computeFaceNormal(bottomFace, allNodes);
+    Vector topNormal = computeFaceNormal(topFace, allNodes);
     Vector bottomCentroid = computeFaceCentroid(bottomFace, allNodes);
     Vector topCentroid = computeFaceCentroid(topFace, allNodes);
 
@@ -865,7 +903,7 @@ std::vector<vtkIdType> orderHexahedronNodes
     std::vector<size_t> orderedBottomNodes = bottomFace;
 
     // Check winding and reverse if needed
-    Vector testNormal = computeQuadNormal(orderedBottomNodes, allNodes);
+    Vector testNormal = computeFaceNormal(orderedBottomNodes, allNodes);
 
     Vector outwardDir =
         computeFaceCentroid(orderedBottomNodes, allNodes) - centroid;
@@ -879,7 +917,7 @@ std::vector<vtkIdType> orderHexahedronNodes
     // Each side face has 4 nodes forming a quad: 2 from bottom, 2 from top
     // We need to find which bottom node connects to which top node via
     // vertical edges
-    std::map<size_t, size_t> nodeConnections;
+    std::unordered_map<size_t, size_t> nodeConnections;
 
     for (size_t i = 0; i < faceNodeLists.size(); ++i)
     {
@@ -929,22 +967,43 @@ std::vector<vtkIdType> orderHexahedronNodes
     {
         size_t bottomNode = orderedBottomNodes[i];
 
-        if (nodeConnections.find(bottomNode) != nodeConnections.end())
+        auto it = nodeConnections.find(bottomNode);
+        if (it == nodeConnections.end())
         {
-            // Direct one-to-one mapping from bottom to top node
-            size_t topNode = nodeConnections[bottomNode];
-
-            // Verify it's actually in the top face
-            if
-            (
-                std::find(topFace.begin(),
-                topFace.end(),
-                topNode) != topFace.end()
-            )
-            {
-                orderedTopNodes[i] = topNode;
-            }
+            // Failed to find mapping — return empty to trigger fallback
+            return std::vector<vtkIdType>();
         }
+
+        size_t topNode = it->second;
+
+        // Verify it's actually in the top face
+        if
+        (
+            std::find(topFace.begin(),
+            topFace.end(),
+            topNode) != topFace.end()
+        )
+        {
+            orderedTopNodes[i] = topNode;
+        }
+        else
+        {
+            return std::vector<vtkIdType>();
+        }
+    }
+
+    // Verify all top nodes were mapped correctly
+    std::set<size_t> mappedTopNodes
+    (
+        orderedTopNodes.begin(),
+        orderedTopNodes.end()
+    );
+
+    std::set<size_t> expectedTopNodes(topFace.begin(), topFace.end());
+
+    if (mappedTopNodes != expectedTopNodes)
+    {
+        return std::vector<vtkIdType>();
     }
 
     // Build final VTK hex ordering
@@ -964,8 +1023,8 @@ std::vector<vtkIdType> orderHexahedronNodes
 std::vector<vtkIdType> orderWedgeNodes
 (
     const std::vector<std::vector<size_t>>& faceNodeLists,
-    const std::set<size_t>& uniqueNodes,
-    const std::vector<Vector>& allNodes
+    const std::unordered_set<size_t>& uniqueNodes,
+    std::span<const Vector> allNodes
 )
 {
     std::vector<vtkIdType> orderedNodes;
@@ -1010,8 +1069,8 @@ std::vector<vtkIdType> orderWedgeNodes
     Vector tri0Centroid = computeFaceCentroid(triangularFaces[0], allNodes);
     Vector tri1Centroid = computeFaceCentroid(triangularFaces[1], allNodes);
 
-    Vector tri0Normal = computeTriangleNormal(triangularFaces[0], allNodes);
-    Vector tri1Normal = computeTriangleNormal(triangularFaces[1], allNodes);
+    Vector tri0Normal = computeFaceNormal(triangularFaces[0], allNodes);
+    Vector tri1Normal = computeFaceNormal(triangularFaces[1], allNodes);
 
     // Check which triangle is more "inward" pointing relative to centroid
     Vector tri0ToCenter = centroid - tri0Centroid;
@@ -1038,7 +1097,7 @@ std::vector<vtkIdType> orderWedgeNodes
     // Two nodes are from bottom triangle (forming an edge), two from top
     // triangle (forming an edge)
     // The edges are connected by the quad face
-    std::map<size_t, size_t> bottomToTopMap;
+    std::unordered_map<size_t, size_t> bottomToTopMap;
 
     for (const auto& quadNodes : quadFaces)
     {
@@ -1103,7 +1162,7 @@ std::vector<vtkIdType> orderWedgeNodes
     std::vector<size_t> orderedBottomNodes = bottomTri;
 
     // Ensure proper winding by checking normal direction
-    Vector testNormal = computeTriangleNormal(orderedBottomNodes, allNodes);
+    Vector testNormal = computeFaceNormal(orderedBottomNodes, allNodes);
 
     Vector outwardDir =
         computeFaceCentroid(orderedBottomNodes, allNodes) - centroid;
@@ -1164,8 +1223,8 @@ std::vector<vtkIdType> orderWedgeNodes
 std::vector<vtkIdType> orderPyramidNodes
 (
     const std::vector<std::vector<size_t>>& faceNodeLists,
-    const std::set<size_t>& uniqueNodes,
-    const std::vector<Vector>& allNodes
+    const std::unordered_set<size_t>& uniqueNodes,
+    std::span<const Vector> allNodes
 )
 {
     std::vector<vtkIdType> orderedNodes;
@@ -1225,7 +1284,7 @@ std::vector<vtkIdType> orderPyramidNodes
     // (outward-pointing normal when viewed from outside)
     std::vector<size_t> orderedBase = baseFace;
     Vector testNormal =
-        computeQuadNormal(orderedBase, allNodes);
+        computeFaceNormal(orderedBase, allNodes);
 
     Vector outwardDir =
         computeFaceCentroid(orderedBase, allNodes) - centroid;
