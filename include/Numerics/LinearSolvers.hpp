@@ -17,7 +17,6 @@
 #pragma once
 
 #include <string>
-
 #include <eigen3/Eigen/SparseCore>
 
 #include "Scalar.hpp"

@@ -55,7 +55,7 @@ std::vector<std::string> CaseReader::sectionNames() const
 
 void CaseReader::print(int indent) const
 {
-    std::string indentStr(indent * 4, ' ');
+    std::string indentStr(static_cast<size_t>(indent) * 4, ' ');
 
     // Print entries
     for (const auto& [key, value] : entries_)
@@ -178,7 +178,7 @@ void CaseReader::skipCommentsAndWhitespace(std::istream& is)
 
         if (c == '/')
         {
-            char next = is.peek();
+            auto next = is.peek();
             if (next == '/')
             {
                 // Single-line comment

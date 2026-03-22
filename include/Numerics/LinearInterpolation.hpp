@@ -8,8 +8,7 @@
  * Uses phif = phiP * wP + phiN * wN with geometric weighting.
  *****************************************************************************/
 
-#ifndef LINEAR_INTERPOLATION_HPP
-#define LINEAR_INTERPOLATION_HPP
+#pragma once
 
 #include "Face.hpp"
 #include "CellData.hpp"
@@ -57,5 +56,3 @@ class BoundaryConditions;
     const BoundaryConditions& bcManager,
     const std::string& fieldName
 );
-
-#endif // LINEAR_INTERPOLATION_HPP

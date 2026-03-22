@@ -17,8 +17,7 @@
  * - Support for first-order (Upwind), second-order (CDS, SOU) schemes
  *****************************************************************************/
 
-#ifndef CONVECTION_SCHEME_HPP
-#define CONVECTION_SCHEME_HPP
+#pragma once
 
 #include <algorithm>
 #include <memory>
@@ -237,5 +236,3 @@ struct ConvectionSchemes
         return omegaScheme ? *omegaScheme : *defaultScheme;
     }
 };
-
-#endif // CONVECTION_SCHEME_HPP
