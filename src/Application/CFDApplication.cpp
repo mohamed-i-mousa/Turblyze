@@ -6,12 +6,15 @@
 #include "CFDApplication.hpp"
 
 #include <iostream>
-#include <iomanip>
 #include <map>
 #include <set>
 #include <algorithm>
 #include <cmath>
 
+#include "CaseReader.hpp"
+#include "GradientScheme.hpp"
+#include "SIMPLE.hpp"
+#include "kOmegaSST.hpp"
 #include "MeshReader.hpp"
 #include "MeshChecker.hpp"
 #include "VtkWriter.hpp"
@@ -23,6 +26,8 @@
 
 CFDApplication::CFDApplication(const std::string& caseFilePath)
     : caseFilePath_(caseFilePath) {}
+
+CFDApplication::~CFDApplication() = default;
 
 
 // *********************************** run ***********************************
@@ -49,17 +54,16 @@ void CFDApplication::loadCase()
     caseReader_ = std::make_unique<CaseReader>(caseFilePath_);
 
     // Extract mesh configuration
-    auto mesh = caseReader_->section("mesh");
-    std::string meshFilePath = mesh.lookup<std::string>("file");
+    const auto& mesh = caseReader_->section("mesh");
     checkQuality_ = mesh.lookupOrDefault<bool>("checkQuality", true);
 
     // Extract physical properties
-    auto physicalProperties = caseReader_->section("physicalProperties");
+    const auto& physicalProperties = caseReader_->section("physicalProperties");
     rho_ = physicalProperties.lookup<Scalar>("rho");
     mu_ = physicalProperties.lookup<Scalar>("mu");
 
     // Extract initial conditions
-    auto initialConditions = caseReader_->section("initialConditions");
+    const auto& initialConditions = caseReader_->section("initialConditions");
     initialVelocity_ = initialConditions.lookup<Vector>("U");
     initialPressure_ = initialConditions.lookup<Scalar>("p");
 
@@ -67,20 +71,20 @@ void CFDApplication::loadCase()
     convectionSchemes_ = parseConvectionSchemes();
 
     // Extract SIMPLE parameters
-    auto simple = caseReader_->section("SIMPLE");
+    const auto& simple = caseReader_->section("SIMPLE");
 
     maxIterations_ = simple.lookup<int>("numIterations");
 
     convergenceTolerance_ = simple.lookup<Scalar>("convergenceTolerance");
 
-    auto relaxFactors = simple.section("relaxationFactors");
+    const auto& relaxFactors = simple.section("relaxationFactors");
     alphaU_ = relaxFactors.lookup<Scalar>("U");
     alphaP_ = relaxFactors.lookup<Scalar>("p");
     alphaK_ = relaxFactors.lookupOrDefault<Scalar>("k", 0.5);
     alphaOmega_ = relaxFactors.lookupOrDefault<Scalar>("omega", 0.5);
 
     // Extract turbulence parameters
-    auto turbulence = caseReader_->section("turbulence");
+    const auto& turbulence = caseReader_->section("turbulence");
     turbulenceEnabled_ = turbulence.lookup<bool>("enabled");
     turbulenceModel_ = turbulence.lookup<std::string>("model");
 
@@ -102,29 +106,30 @@ void CFDApplication::loadCase()
         turbulence.lookupOrDefault<Scalar>("hydraulicDiameter", S(0.01));
 
     Scalar lTurb = std::max(S(0.07) * hydrDiameter_, smallValue);
-    Scalar Cmu = S(0.09);
     Scalar UMag = initialVelocity_.magnitude();
 
-    defaultK_ = 
+    defaultK_ =
         std::max
         (
             S(1.5) * (turbIntensity_ * UMag) * (turbIntensity_ * UMag),
             S(1e-8)
         );
 
-    defaultOmega_ = 
+    defaultOmega_ =
         std::max
         (
-            std::sqrt(defaultK_) / (std::pow(Cmu, S(0.25)) * lTurb), S(1e-4)
+            std::sqrt(defaultK_)
+          / (std::pow(kOmegaSST::const_.Cmu, S(0.25)) * lTurb),
+            S(1e-4)
         );
 
     initialK_ = initialConditions.lookupOrDefault<Scalar>("k", defaultK_);
 
-    initialOmega_ = 
+    initialOmega_ =
         initialConditions.lookupOrDefault<Scalar>("omega", defaultOmega_);
 
     // Extract output configuration
-    auto outputDict = caseReader_->section("output");
+    const auto& outputDict = caseReader_->section("output");
     vtkOutputFilename_ = outputDict.lookup<std::string>("filename");
     debug_ = outputDict.lookupOrDefault<bool>("debug", false);
 
@@ -134,11 +139,11 @@ void CFDApplication::loadCase()
     // Extract constraints (optional)
     if (caseReader_->hasSection("constraints"))
     {
-        auto constraintsDict = caseReader_->section("constraints");
+        const auto& constraintsDict = caseReader_->section("constraints");
 
         if (constraintsDict.hasSection("velocity"))
         {
-            auto velConstraint = constraintsDict.section("velocity");
+            const auto& velConstraint = constraintsDict.section("velocity");
 
             velocityConstraintEnabled_ = velConstraint.lookup<bool>("enabled");
 
@@ -148,7 +153,7 @@ void CFDApplication::loadCase()
 
         if (constraintsDict.hasSection("pressure"))
         {
-            auto presConstraint = constraintsDict.section("pressure");
+            const auto& presConstraint = constraintsDict.section("pressure");
 
             pressureConstraintEnabled_ =
                 presConstraint.lookup<bool>("enabled");
@@ -170,7 +175,7 @@ void CFDApplication::prepareMesh()
     std::cout
         << std::endl << "--- 1. Reading and Preparing Mesh ---" << std::endl;
 
-    auto mesh = caseReader_->section("mesh");
+    const auto& mesh = caseReader_->section("mesh");
     std::string meshFilePath = mesh.lookup<std::string>("file");
 
     MeshReader meshReader(meshFilePath);
@@ -204,32 +209,32 @@ void CFDApplication::prepareMesh()
         for (const auto& face : faces_)
         {
             size_t owner = face.ownerCell();
-            for (size_t f : face.nodeIndices())
+            for (size_t nodeIdx : face.nodeIndices())
             {
-                cellNodes[owner].insert(f);
+                cellNodes[owner].insert(nodeIdx);
             }
 
             if (!face.isBoundary())
             {
                 size_t neighbor = face.neighborCell().value();
 
-                for (size_t n : face.nodeIndices())
+                for (size_t nodeIdx : face.nodeIndices())
                 {
-                    cellNodes[neighbor].insert(n);
+                    cellNodes[neighbor].insert(nodeIdx);
                 }
             }
         }
 
         // Compute centroid as average of node positions
-        for (size_t i = 0; i < cells_.size(); ++i)
+        for (size_t cellIdx = 0; cellIdx < cells_.size(); ++cellIdx)
         {
-            if (!cellNodes[i].empty())
+            if (!cellNodes[cellIdx].empty())
             {
-                for (size_t n : cellNodes[i])
+                for (size_t nodeIdx : cellNodes[cellIdx])
                 {
-                    approxCentroids[i] += nodes_[n];
+                    approxCentroids[cellIdx] += nodes_[nodeIdx];
                 }
-                approxCentroids[i] /= S(cellNodes[i].size());
+                approxCentroids[cellIdx] /= S(cellNodes[cellIdx].size());
             }
         }
 
@@ -241,7 +246,7 @@ void CFDApplication::prepareMesh()
             {
                 const Vector& ownerCell = approxCentroids[face.ownerCell()];
 
-                const Vector& neighborCell = 
+                const Vector& neighborCell =
                     approxCentroids[face.neighborCell().value()];
 
                 Vector dPN = neighborCell - ownerCell;
@@ -334,45 +339,30 @@ void CFDApplication::setupBoundaryConditions()
     }
 
     // Load boundary conditions from case file
-    auto BCs = caseReader_->section("boundaryConditions");
-
-    std::set<std::string> omegaWallFunctionPatches;
-    std::set<std::string> legacyKFixedZeroPatches;
+    const auto& BCs = caseReader_->section("boundaryConditions");
 
     // Process velocity boundary conditions
     if (BCs.hasSection("U"))
     {
-        auto velocityBCs = BCs.section("U");
+        const auto& velocityBCs = BCs.section("U");
 
         for (const auto& patchName : velocityBCs.sectionNames())
         {
-            auto patchBC = velocityBCs.section(patchName);
+            const auto& patchBC = velocityBCs.section(patchName);
             std::string bcType = patchBC.lookup<std::string>("type");
 
             if (bcType == "fixedValue")
             {
                 Vector value = patchBC.lookup<Vector>("value");
                 bcManager_.setFixedValue(patchName, "U", value);
-                
-                bcManager_.setFixedValue(patchName, "Ux", value.x());
-                bcManager_.setFixedValue(patchName, "Uy", value.y());
-                bcManager_.setFixedValue(patchName, "Uz", value.z());
             }
             else if (bcType == "noSlip")
             {
                 bcManager_.setNoSlip(patchName, "U");
-
-                bcManager_.setFixedValue(patchName, "Ux", Scalar(0));
-                bcManager_.setFixedValue(patchName, "Uy", Scalar(0));
-                bcManager_.setFixedValue(patchName, "Uz", Scalar(0));
             }
             else if (bcType == "zeroGradient")
             {
                 bcManager_.setZeroGradient(patchName, "U");
-
-                bcManager_.setZeroGradient(patchName, "Ux");
-                bcManager_.setZeroGradient(patchName, "Uy");
-                bcManager_.setZeroGradient(patchName, "Uz");
             }
             else
             {
@@ -395,11 +385,11 @@ void CFDApplication::setupBoundaryConditions()
 
     if (BCs.hasSection("p"))
     {
-        auto pressureBCs = BCs.section("p");
+        const auto& pressureBCs = BCs.section("p");
 
         for (const auto& patchName : pressureBCs.sectionNames())
         {
-            auto patchBC = pressureBCs.section(patchName);
+            const auto& patchBC = pressureBCs.section(patchName);
             std::string bcType = patchBC.lookup<std::string>("type");
 
             if (bcType == "fixedValue")
@@ -431,7 +421,7 @@ void CFDApplication::setupBoundaryConditions()
         for (const auto& patchName
             : pressureBCs.sectionNames())
         {
-            auto patchBC = pressureBCs.section(patchName);
+            const auto& patchBC = pressureBCs.section(patchName);
             std::string bcType = patchBC.lookup<std::string>("type");
 
             if (bcType == "fixedValue")
@@ -451,21 +441,20 @@ void CFDApplication::setupBoundaryConditions()
             << "WARNING: No fixedValue pressure boundary "
             << "condition found. The pressure field has no "
             << "reference value, which may cause a singular "
-            << "pressure matrix." 
+            << "pressure matrix."
             << std::endl;
     }
 
     // Process turbulent kinetic energy BCs
-    const Scalar Cmu = S(0.09);
     const Scalar lengthScale = std::max(S(0.07) * hydrDiameter_, S(1e-20));
 
     if (BCs.hasSection("k"))
     {
-        auto kBCs = BCs.section("k");
+        const auto& kBCs = BCs.section("k");
 
         for (const auto& patchName : kBCs.sectionNames())
         {
-            auto patchBC = kBCs.section(patchName);
+            const auto& patchBC = kBCs.section(patchName);
             std::string bcType = patchBC.lookup<std::string>("type");
 
             if (bcType == "fixedValue")
@@ -476,7 +465,7 @@ void CFDApplication::setupBoundaryConditions()
 
                 if (valStr == "calculated")
                 {
-                    const BoundaryData* velocityBC = 
+                    const BoundaryData* velocityBC =
                         bcManager_.fieldBC(patchName, "U");
 
                     Scalar UMag = initialVelocity_.magnitude();
@@ -515,10 +504,6 @@ void CFDApplication::setupBoundaryConditions()
                     patchName, "k", value
                 );
 
-                if (std::abs(value) <= S(1e-14))
-                {
-                    legacyKFixedZeroPatches.insert(patchName);
-                }
             }
             else if (bcType == "kWallFunction")
             {
@@ -547,11 +532,11 @@ void CFDApplication::setupBoundaryConditions()
     // Process specific dissipation rate BCs
     if (BCs.hasSection("omega"))
     {
-        auto omegaBCs = BCs.section("omega");
+        const auto& omegaBCs = BCs.section("omega");
 
         for (const auto& patchName : omegaBCs.sectionNames())
         {
-            auto patchBC = omegaBCs.section(patchName);
+            const auto& patchBC = omegaBCs.section(patchName);
             std::string bcType = patchBC.lookup<std::string>("type");
 
             if (bcType == "fixedValue")
@@ -609,10 +594,11 @@ void CFDApplication::setupBoundaryConditions()
                     // Compute omega from k
                     const Scalar omegaValue =
                         std::sqrt(std::max(kValue, S(0.0)))
-                      / (std::pow(Cmu, S(0.25)) * lengthScale);
+                      / (std::pow(kOmegaSST::const_.Cmu, S(0.25))
+                       * lengthScale);
 
                     value = std::max(omegaValue, S(1e-4));
-                    
+
                     std::cout
                         << "Inlet specific dissipation : " << value
                         << std::endl;
@@ -630,7 +616,6 @@ void CFDApplication::setupBoundaryConditions()
             else if (bcType == "omegaWallFunction")
             {
                 bcManager_.setOmegaWallFunction(patchName, "omega");
-                omegaWallFunctionPatches.insert(patchName);
             }
             else if (bcType == "zeroGradient")
             {
@@ -655,11 +640,11 @@ void CFDApplication::setupBoundaryConditions()
     // Optional turbulent viscosity BC section
     if (BCs.hasSection("nut"))
     {
-        auto nutBCs = BCs.section("nut");
+        const auto& nutBCs = BCs.section("nut");
 
         for (const auto& patchName : nutBCs.sectionNames())
         {
-            auto patchBC = nutBCs.section(patchName);
+            const auto& patchBC = nutBCs.section(patchName);
             std::string bcType = patchBC.lookup<std::string>("type");
 
             if (bcType == "fixedValue")
@@ -712,10 +697,10 @@ void CFDApplication::configureSolver()
     std::cout
         << std::endl << "--- 3. Initializing SIMPLE Solver ---" << std::endl;
 
-    gradScheme_ = 
+    gradScheme_ =
         std::make_unique<GradientScheme>(faces_, cells_, bcManager_);
 
-    solver_ = 
+    solver_ =
         std::make_unique<SIMPLE>
         (
             faces_,
@@ -756,12 +741,12 @@ void CFDApplication::configureSolver()
     // Configure linear solvers from case file
     if (caseReader_->hasSection("linearSolvers"))
     {
-        auto solvers = caseReader_->section("linearSolvers");
+        const auto& solvers = caseReader_->section("linearSolvers");
 
         // Momentum solver (U)
         if (solvers.hasSection("U"))
         {
-            auto USection = solvers.section("U");
+            const auto& USection = solvers.section("U");
             LinearSolver momentumSolver
             (
                 "momentum",
@@ -786,7 +771,7 @@ void CFDApplication::configureSolver()
         // Pressure solver (p)
         if (solvers.hasSection("p"))
         {
-            auto pSection = solvers.section("p");
+            const auto& pSection = solvers.section("p");
             LinearSolver pressureSolver
             (
                 "pCorr",
@@ -972,14 +957,14 @@ void CFDApplication::postProcess()
     Scalar maximumPressure = pressure[0];
     Scalar minimumPressure = pressure[0];
 
-    for (size_t i = 0; i < velocity.size(); ++i)
+    for (size_t cellIdx = 0; cellIdx < velocity.size(); ++cellIdx)
     {
-        Scalar vmag = velocityMagnitude[i];
+        Scalar vmag = velocityMagnitude[cellIdx];
         maximumVelocity = std::max(maximumVelocity, vmag);
         averageVelocity += vmag;
 
-        maximumPressure = std::max(maximumPressure, pressure[i]);
-        minimumPressure = std::min(minimumPressure, pressure[i]);
+        maximumPressure = std::max(maximumPressure, pressure[cellIdx]);
+        minimumPressure = std::min(minimumPressure, pressure[cellIdx]);
     }
     averageVelocity /= velocity.size();
 
@@ -1047,22 +1032,22 @@ void CFDApplication::exportResults()
     // Prepare vector fields for export
     std::map<std::string, const VectorField*>
     vectorFieldsToVtk;
-    
+
     vectorFieldsToVtk["velocity"] = &velocity;
 
     // Determine VTU filename
     std::string vtuFilename = vtkOutputFilename_;
-    size_t pos = vtuFilename.rfind(".vtu");
-    if (pos != std::string::npos)
+    const std::string ext = ".vtu";
+    if
+    (
+        vtuFilename.size() < ext.size()
+     || vtuFilename.compare(
+            vtuFilename.size() - ext.size(),
+            ext.size(),
+            ext) != 0
+    )
     {
-        vtuFilename.replace(pos, 4, ".vtu");
-    }
-    else
-    {
-        if (vtuFilename.find(".vtu") == std::string::npos)
-        {
-            vtuFilename += ".vtu";
-        }
+        vtuFilename += ext;
     }
 
     if (debug_)
@@ -1160,15 +1145,15 @@ CFDApplication::createConvectionScheme(const std::string& name)
 
 ConvectionSchemes CFDApplication::parseConvectionSchemes()
 {
-    auto schemesDict = caseReader_->section("numericalSchemes");
+    const auto& schemesDict = caseReader_->section("numericalSchemes");
 
     ConvectionSchemes schemes;
 
     if (schemesDict.hasSection("convection"))
     {
-        auto convSec = schemesDict.section("convection");
+        const auto& convSec = schemesDict.section("convection");
 
-        std::string defaultSchemeName = 
+        std::string defaultSchemeName =
             convSec.lookupOrDefault<std::string>("default", "Upwind");
 
         schemes.defaultScheme = createConvectionScheme(defaultSchemeName);

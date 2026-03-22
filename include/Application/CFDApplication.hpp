@@ -26,10 +26,11 @@
 #include "Cell.hpp"
 #include "BoundaryPatch.hpp"
 #include "BoundaryConditions.hpp"
-#include "GradientScheme.hpp"
 #include "ConvectionScheme.hpp"
-#include "SIMPLE.hpp"
-#include "CaseReader.hpp"
+
+class GradientScheme;
+class SIMPLE;
+class CaseReader;
 
 class CFDApplication
 {
@@ -41,6 +42,8 @@ public:
      */
     explicit CFDApplication(const std::string& caseFilePath);
 
+    /// Destructor
+    ~CFDApplication();
 
     /// Run the full simulation
     void run();
