@@ -220,7 +220,7 @@ numericalSchemes
 // ============================================================================
 SIMPLE
 {
-    numIterations           300;        // Maximum iterations
+    numIterations           600;        // Maximum iterations
     convergenceTolerance    1e-3;       // Convergence criterion (scaled residuals)
 
     relaxationFactors
@@ -251,7 +251,7 @@ linearSolvers
         preconditioner  IncompleteCholesky;
         tolerance       1e-6;
         maxIter         100;
-        initialShift    1e-2;           // Conditioning factor
+        initialShift    1e-3;           // Conditioning factor
     }
 
     k   // Turbulent kinetic energy

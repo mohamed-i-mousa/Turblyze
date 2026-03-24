@@ -138,8 +138,8 @@ private:
     int ilutFillFactor_ = 5;
 
     /// ILUT drop tolerance for small entries
-    Scalar ilutDropTol_ = S(1e-6);
+    Scalar ilutDropTol_ = S(1e-3);
 
     /// Incomplete Cholesky initial shift parameter
-    Scalar icInitialShift_ = S(1e-2);
+    Scalar icInitialShift_ = S(1e-3);
 };
