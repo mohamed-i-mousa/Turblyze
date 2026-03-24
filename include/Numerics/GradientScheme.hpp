@@ -19,6 +19,7 @@
 #pragma once
 
 #include <vector>
+#include <array>
 #include <string>
 #include <optional>
 
@@ -45,7 +46,7 @@ public:
         std::span<const Face> faces,
         std::span<const Cell> cells,
         const BoundaryConditions& bc
-    ) noexcept;
+    );
 
     /**
      * @brief Calculate gradient at a single cell using least-squares.
@@ -145,6 +146,9 @@ private:
         std::optional<int> componentIdx = std::nullopt
     ) const;
 
+    /// Pre-compute inverse of ATA matrix for each cell
+    void precomputeInverseATA();
+
 // Private members
 
     /// Reference to all mesh faces
@@ -155,4 +159,7 @@ private:
 
     /// Reference to boundary conditions manager
     const BoundaryConditions& bcManager_;
+
+    /// Cached inverse of ATA per cell {xx, xy, xz, yy, yz, zz}
+    std::vector<std::array<Scalar, 6>> invATA_;
 };

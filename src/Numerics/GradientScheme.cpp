@@ -22,11 +22,110 @@ GradientScheme::GradientScheme
     std::span<const Face> faces,
     std::span<const Cell> cells,
     const BoundaryConditions& bc
-) noexcept
+)
   : allFaces_(faces),
     allCells_(cells),
     bcManager_(bc)
-{}
+{
+    precomputeInverseATA();
+}
+
+
+// ****************************** Private Methods ******************************
+
+void GradientScheme::precomputeInverseATA()
+{
+    const size_t numCells = allCells_.size();
+    invATA_.resize(numCells);
+
+    Eigen::Matrix<Scalar,3,3> ATA;
+    Eigen::Matrix<Scalar,3,1> rVector;
+
+    size_t degenerateCells = 0;
+
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    {
+        const Cell& cell = allCells_[cellIdx];
+
+        ATA.setZero();
+
+        // Neighbor cells contribution (purely geometric)
+        for (size_t neighborIdx : cell.neighborCellIndices())
+        {
+            Vector r =
+                allCells_[neighborIdx].centroid()
+              - cell.centroid();
+
+            Scalar rMagSqr = r.magnitudeSquared();
+            Scalar w = S(1.0) / (rMagSqr + vSmallValue);
+
+            rVector << r.x(), r.y(), r.z();
+            ATA.noalias() += w * (rVector * rVector.transpose());
+        }
+
+        // Boundary faces contribution (purely geometric)
+        for (size_t faceIdx : cell.faceIndices())
+        {
+            const Face& face = allFaces_[faceIdx];
+
+            if (!face.isBoundary()) continue;
+
+            Vector r = face.centroid() - cell.centroid();
+            Scalar rMagSqr = r.magnitudeSquared();
+            Scalar w = S(1.0) / (rMagSqr + vSmallValue);
+
+            rVector << r.x(), r.y(), r.z();
+            ATA.noalias() += w * (rVector * rVector.transpose());
+        }
+
+        // Invert ATA and store symmetric result
+        Eigen::Matrix<Scalar,3,3> inv;
+        bool inverted = false;
+
+        Eigen::LLT<Eigen::Matrix<Scalar,3,3>> llt(ATA);
+
+        if (llt.info() == Eigen::Success)
+        {
+            inv = llt.solve(Eigen::Matrix<Scalar,3,3>::Identity());
+            inverted = true;
+        }
+        else
+        {
+            Eigen::FullPivLU<Eigen::Matrix<Scalar,3,3>>lu(ATA);
+
+            if (lu.isInvertible())
+            {
+                inv = lu.inverse();
+                inverted = true;
+            }
+        }
+
+        if (inverted)
+        {
+            // Store upper triangle: {xx, xy, xz, yy, yz, zz}
+            invATA_[cellIdx] =
+            {
+                inv(0,0), inv(0,1), inv(0,2),
+                          inv(1,1), inv(1,2),
+                                    inv(2,2)
+            };
+        }
+        else
+        {
+            invATA_[cellIdx] = {0, 0, 0, 0, 0, 0};
+            ++degenerateCells;
+        }
+    }
+
+    if (degenerateCells > 0)
+    {
+        std::cerr
+            << "WARNING: " << degenerateCells
+            << " cells have degenerate least-squares"
+            << " matrices (gradient will be zero)"
+            << std::endl;
+    }
+}
 
 
 // ****************************** Public Methods ******************************
@@ -42,14 +141,11 @@ Vector GradientScheme::cellGradient
 {
     const Cell& cell = allCells_[cellIndex];
 
-    Eigen::Matrix<Scalar,3,3> ATA;
-    Eigen::Matrix<Scalar,3,1> ATb;
-    Eigen::Matrix<Scalar,3,1> rVector;
+    Scalar b0 = S(0.0);
+    Scalar b1 = S(0.0);
+    Scalar b2 = S(0.0);
 
-    ATA.setZero();
-    ATb.setZero();
-
-    // Part 1: Internal neighbor cells contribution
+    // Part 1: Internal neighbor cells contribution to ATb
     for (size_t neighborIdx : cell.neighborCellIndices())
     {
         assert
@@ -62,44 +158,41 @@ Vector GradientScheme::cellGradient
         Vector r = neighbor.centroid() - cell.centroid();
 
         Scalar rMagSqr = r.magnitudeSquared();
-
         Scalar w = S(1.0) / (rMagSqr + vSmallValue);
 
-        rVector << r.x(), r.y(), r.z();
-        ATA.noalias() += w * (rVector * rVector.transpose());
+        Scalar wDeltaPhi =
+            w * (phi[neighborIdx] - phi[cellIndex]);
 
-        Scalar deltaPhi = phi[neighborIdx] - phi[cellIndex];
-        ATb.noalias() += w * deltaPhi * rVector;
+        b0 += wDeltaPhi * r.x();
+        b1 += wDeltaPhi * r.y();
+        b2 += wDeltaPhi * r.z();
     }
 
-    // Part 2: Boundary faces contribution
+    // Part 2: Boundary faces contribution to ATb
     for (size_t faceIdx : cell.faceIndices())
     {
         const Face& face = allFaces_[faceIdx];
 
-        if (!face.isBoundary()) continue;  // Skip internal faces
+        if (!face.isBoundary()) continue;
 
         Vector r = face.centroid() - cell.centroid();
         Scalar rMagSqr = r.magnitudeSquared();
-
         Scalar w = S(1.0) / (rMagSqr + vSmallValue);
-
-        rVector << r.x(), r.y(), r.z();
-        ATA.noalias() += w * (rVector * rVector.transpose());
 
         Scalar phiBoundary = S(0.0);
         bool useOverride =
             boundaryFaceValues
          && face.idx() < boundaryFaceValues->size()
-         && std::isfinite((*boundaryFaceValues)[face.idx()]);
+         && std::isfinite(
+                (*boundaryFaceValues)[face.idx()]);
 
         if (useOverride)
         {
-            phiBoundary = (*boundaryFaceValues)[face.idx()];
+            phiBoundary =
+                (*boundaryFaceValues)[face.idx()];
         }
         else
         {
-            // Get boundary value from BC
             phiBoundary =
                 bcManager_.calculateBoundaryFaceValue
                 (
@@ -110,43 +203,23 @@ Vector GradientScheme::cellGradient
                 );
         }
 
-        Scalar deltaPhi = phiBoundary - phi[cellIndex];
-        ATb.noalias() += w * deltaPhi * rVector;
+        Scalar wDeltaPhi =
+            w * (phiBoundary - phi[cellIndex]);
+
+        b0 += wDeltaPhi * r.x();
+        b1 += wDeltaPhi * r.y();
+        b2 += wDeltaPhi * r.z();
     }
 
-    Eigen::LLT<Eigen::Matrix<Scalar,3,3>> llt(ATA);
+    // g = inv(ATA) * ATb  (symmetric 3x3 mat-vec multiply)
+    const auto& inv = invATA_[cellIndex];
 
-    if (llt.info() == Eigen::Success)
-    {
-        Eigen::Matrix<Scalar,3,1> g = llt.solve(ATb);
-        return Vector(g(0), g(1), g(2));
-    }
-    else
-    {
-        std::cerr
-            << "WARNING: LLT failed for cell "
-            << cellIndex
-            << ", falling back to FullPivLU"
-            << std::endl;
-
-        Eigen::FullPivLU<Eigen::Matrix<Scalar,3,3>> lu(ATA);
-
-        if (lu.isInvertible())
-        {
-            Eigen::Matrix<Scalar,3,1> g = lu.solve(ATb);
-            return Vector(g(0), g(1), g(2));
-        }
-        else
-        {
-            throw
-                std::runtime_error
-                (
-                    "Gradient computation failed"
-                  + std::string(" for cell ")
-                  + std::to_string(cellIndex)
-                );
-        }
-    }
+    return Vector
+    (
+        inv[0]*b0 + inv[1]*b1 + inv[2]*b2,
+        inv[1]*b0 + inv[3]*b1 + inv[4]*b2,
+        inv[2]*b0 + inv[4]*b1 + inv[5]*b2
+    );
 }
 
 void GradientScheme::limitGradient
