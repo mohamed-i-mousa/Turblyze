@@ -77,9 +77,9 @@ void Matrix::relax(Scalar alpha, const ScalarField& phiPrev)
             );
     }
 
-    const int numCells = static_cast<int>(matrixA_.rows());
+    const Eigen::Index numCells = matrixA_.rows();
 
-    if (phiPrev.size() != static_cast<size_t>(numCells))
+    if (static_cast<Eigen::Index>(phiPrev.size()) != numCells)
     {
         throw
             std::runtime_error
@@ -96,7 +96,7 @@ void Matrix::relax(Scalar alpha, const ScalarField& phiPrev)
     // Relax diagonal and update RHS in a single pass
     const Scalar factor = (S(1.0) - alpha) / alpha;
 
-    for (int cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Eigen::Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Scalar origDiag = matrixA_.coeff(cellIdx, cellIdx);
 
@@ -308,16 +308,17 @@ void Matrix::assembleBoundaryFace
 
     Scalar aDiff = Gammaf * Ef.magnitude() / (dPfMag + vSmallValue);
 
+    using enum BCType;
     if
     (
-        bc->type() == BCType::FIXED_VALUE
-     || bc->type() == BCType::NO_SLIP
+        bc->type() == FIXED_VALUE
+     || bc->type() == NO_SLIP
     )
     {
         // Dirichlet BC: phi_b is prescribed
         Scalar phiB = S(0.0);
 
-        if (bc->type() == BCType::NO_SLIP)
+        if (bc->type() == NO_SLIP)
         {
             phiB = S(0.0);
         }
@@ -358,10 +359,10 @@ void Matrix::assembleBoundaryFace
     }
     else if
     (
-        bc->type() == BCType::ZERO_GRADIENT
-     || bc->type() == BCType::K_WALL_FUNCTION
-     || bc->type() == BCType::NUT_WALL_FUNCTION
-     || bc->type() == BCType::OMEGA_WALL_FUNCTION
+        bc->type() == ZERO_GRADIENT
+     || bc->type() == K_WALL_FUNCTION
+     || bc->type() == NUT_WALL_FUNCTION
+     || bc->type() == OMEGA_WALL_FUNCTION
     )
     {
         // Zero normal gradient: only convection

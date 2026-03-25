@@ -199,10 +199,11 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
         return phi[face.ownerCell()];
     }
 
+    using enum BCType;
     switch (bc->type())
     {
-        case BCType::NO_SLIP:
-        case BCType::FIXED_VALUE:
+        case NO_SLIP:
+        case FIXED_VALUE:
         {
             // Extract scalar from vector BC using component index
             if (componentIdx && bc->valueType() == BCValueType::VECTOR)
@@ -220,16 +221,16 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
             return bc->fixedScalarValue();
         }
 
-        case BCType::K_WALL_FUNCTION:
-        case BCType::OMEGA_WALL_FUNCTION:
-        case BCType::NUT_WALL_FUNCTION:
-        case BCType::ZERO_GRADIENT:
+        case K_WALL_FUNCTION:
+        case OMEGA_WALL_FUNCTION:
+        case NUT_WALL_FUNCTION:
+        case ZERO_GRADIENT:
         {
             // Zero gradient: φf = φP
             return phi[face.ownerCell()];
         }
 
-        case BCType::FIXED_GRADIENT:
+        case FIXED_GRADIENT:
         {
             // Fixed gradient: φf = φP + grad * distance
             Scalar dn = dot(face.dPf(), face.normal());
@@ -273,25 +274,26 @@ Vector BoundaryConditions::calculateBoundaryVectorFaceValue
         return phi[face.ownerCell()];
     }
 
+    using enum BCType;
     switch (bc->type())
     {
-        case BCType::NO_SLIP:
+        case NO_SLIP:
         {
             return Vector(0.0, 0.0, 0.0);
         }
 
-        case BCType::FIXED_VALUE:
+        case FIXED_VALUE:
         {
             // Fixed value: Uf = Ub
             return bc->fixedVectorValue();
         }
 
-        case BCType::ZERO_GRADIENT:
+        case ZERO_GRADIENT:
         {
             return phi[face.ownerCell()];
         }
 
-        case BCType::FIXED_GRADIENT:
+        case FIXED_GRADIENT:
         {
             Scalar dn = dot(face.dPf(), face.normal());
 
@@ -344,16 +346,17 @@ void BoundaryConditions::linkFaces(std::vector<Face>& faces) const
 
 std::string BoundaryConditions::bcTypeToString(BCType bctype)
 {
+    using enum BCType;
     switch (bctype)
     {
-        case BCType::UNDEFINED: return "UNDEFINED";
-        case BCType::FIXED_VALUE: return "FIXED_VALUE";
-        case BCType::FIXED_GRADIENT: return "FIXED_GRADIENT";
-        case BCType::ZERO_GRADIENT: return "ZERO_GRADIENT";
-        case BCType::NO_SLIP: return "NO_SLIP";
-        case BCType::K_WALL_FUNCTION: return "K_WALL_FUNCTION";
-        case BCType::OMEGA_WALL_FUNCTION: return "OMEGA_WALL_FUNCTION";
-        case BCType::NUT_WALL_FUNCTION: return "NUT_WALL_FUNCTION";
+        case UNDEFINED: return "UNDEFINED";
+        case FIXED_VALUE: return "FIXED_VALUE";
+        case FIXED_GRADIENT: return "FIXED_GRADIENT";
+        case ZERO_GRADIENT: return "ZERO_GRADIENT";
+        case NO_SLIP: return "NO_SLIP";
+        case K_WALL_FUNCTION: return "K_WALL_FUNCTION";
+        case OMEGA_WALL_FUNCTION: return "OMEGA_WALL_FUNCTION";
+        case NUT_WALL_FUNCTION: return "NUT_WALL_FUNCTION";
         default:
             throw
                 std::runtime_error
@@ -375,7 +378,7 @@ void BoundaryConditions::validatePatchNames() const
 
     for (const auto& entry : patchBoundaryData_)
     {
-        if (validNames.find(entry.first) == validNames.end())
+        if (!validNames.contains(entry.first))
         {
             std::string validList;
             for (const auto& name : validNames)

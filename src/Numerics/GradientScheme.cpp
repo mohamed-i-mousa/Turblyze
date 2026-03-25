@@ -359,14 +359,15 @@ Vector GradientScheme::calculateBoundaryFaceGradient
 
     if (!bc) return cellGradient;
 
+    using enum BCType;
     switch (bc->type())
     {
-        case BCType::NO_SLIP:
-        case BCType::FIXED_VALUE:
+        case NO_SLIP:
+        case FIXED_VALUE:
         {
             Scalar boundaryValue = S(0.0);  // Default for NO_SLIP
 
-            if (bc->type() == BCType::FIXED_VALUE)
+            if (bc->type() == FIXED_VALUE)
             {
                 if (componentIdx && bc->valueType() == BCValueType::VECTOR)
                 {
@@ -421,10 +422,10 @@ Vector GradientScheme::calculateBoundaryFaceGradient
             return tangentialGradient + normalGradient * face.normal();
         }
 
-        case BCType::K_WALL_FUNCTION:
-        case BCType::NUT_WALL_FUNCTION:
-        case BCType::OMEGA_WALL_FUNCTION:
-        case BCType::ZERO_GRADIENT:
+        case K_WALL_FUNCTION:
+        case NUT_WALL_FUNCTION:
+        case OMEGA_WALL_FUNCTION:
+        case ZERO_GRADIENT:
         {
             // Zero normal gradient: retain only tangential
             Vector tangentialGradient =
@@ -435,7 +436,7 @@ Vector GradientScheme::calculateBoundaryFaceGradient
             return tangentialGradient;
         }
 
-        case BCType::FIXED_GRADIENT:
+        case FIXED_GRADIENT:
         {
             Scalar specifiedGradient = bc->fixedScalarGradient();
 

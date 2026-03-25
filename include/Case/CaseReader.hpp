@@ -196,7 +196,7 @@ template<>
 inline bool CaseReader::convertTo<bool>(const std::string& value) const
 {
     std::string lower = value;
-    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    std::ranges::transform(lower, lower.begin(), ::tolower);
 
     if (lower == "true" || lower == "on" || lower == "yes" || lower == "1")
     {
@@ -232,16 +232,9 @@ inline Vector CaseReader::convertTo<Vector>(const std::string& value) const
     // Expecting format: (x y z)
     std::string trimmed = value;
 
-    // Remove parentheses and whitespace
-    trimmed.erase
-    (
-        std::remove(trimmed.begin(), trimmed.end(), '('), trimmed.end()
-    );
-
-    trimmed.erase
-    (
-        std::remove(trimmed.begin(), trimmed.end(), ')'), trimmed.end()
-    );
+    // Remove parentheses
+    std::erase(trimmed, '(');
+    std::erase(trimmed, ')');
 
     std::istringstream iss(trimmed);
     Scalar x, y, z;

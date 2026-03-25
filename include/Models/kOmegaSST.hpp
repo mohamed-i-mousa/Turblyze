@@ -105,13 +105,15 @@ public:
      * @brief Get turbulent kinetic energy field
      * @return Const reference to k field
      */
-    [[nodiscard]] const ScalarField& k() const noexcept { return k_; }
+    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
+    const ScalarField& k() const noexcept { return k_; }
 
     /**
      * @brief Get specific dissipation rate field
      * @return Const reference to omega field
      */
-    [[nodiscard]] const ScalarField& omega() const noexcept
+    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
+    const ScalarField& omega() const noexcept
     {
         return omega_;
     }
@@ -120,7 +122,8 @@ public:
      * @brief Get turbulent kinematic viscosity field
      * @return Const reference to nut field
      */
-    [[nodiscard]] const ScalarField& turbulentViscosity() const noexcept
+    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
+    const ScalarField& turbulentViscosity() const noexcept
     {
         return nut_;
     }
@@ -129,7 +132,8 @@ public:
      * @brief Get wall distance field
      * @return Const reference to wall distance field
      */
-    [[nodiscard]] const ScalarField& wallDistance() const noexcept
+    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
+    const ScalarField& wallDistance() const noexcept
     {
         return wallDistance_;
     }
@@ -138,7 +142,8 @@ public:
      * @brief Get yPlus field
      * @return Const reference to yPlus field
      */
-    [[nodiscard]] const FaceData<Scalar>& yPlus() const noexcept
+    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
+    const FaceData<Scalar>& yPlus() const noexcept
     {
         return yPlus_;
     }
@@ -147,7 +152,8 @@ public:
      * @brief Get wall shear stress field
      * @return Const reference to wall shear stress field
      */
-    [[nodiscard]] const FaceData<Scalar>& wallShearStress() const noexcept
+    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
+    const FaceData<Scalar>& wallShearStress() const noexcept
     {
         return wallShearStress_;
     }
@@ -156,13 +162,15 @@ public:
      * @brief Get effective viscosity (laminar + turbulent)
      * @return Effective viscosity field nu_eff = nu_lam + nu_t
      */
-    [[nodiscard]] ScalarField effectiveViscosity() const;
+    [[nodiscard("Computed field required for momentum equation diffusion")]]
+    ScalarField effectiveViscosity() const;
 
     /**
      * @brief Get wall-function nut values on wall faces
      * @return Const reference to nutWallFace field
      */
-    [[nodiscard]] const FaceData<Scalar>& nutWall() const noexcept
+    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
+    const FaceData<Scalar>& nutWall() const noexcept
     {
         return nutWall_;
     }
@@ -216,21 +224,21 @@ public:
 
     static constexpr ModelConstants const_
     {
-        S(0.85),             // sigmaK1
-        S(0.5),              // sigmaOmega1
-        S(0.075),            // beta1
-        S(5.0) / S(9.0),     // gamma1
-        S(1.0),              // sigmaK2
-        S(0.856),            // sigmaOmega2
-        S(0.0828),           // beta2
-        S(0.44),             // gamma2
-        S(0.09),             // Cmu
-        S(0.31),             // a1
-        S(1.0),              // b1
-        S(10.0),             // c1
-        S(0.41),             // kappa
-        S(9.8),              // E
-        S(0.09)              // betaStar
+        .sigmaK1     = S(0.85),
+        .sigmaOmega1 = S(0.5),
+        .beta1       = S(0.075),
+        .gamma1      = S(5.0) / S(9.0),
+        .sigmaK2     = S(1.0),
+        .sigmaOmega2 = S(0.856),
+        .beta2       = S(0.0828),
+        .gamma2      = S(0.44),
+        .Cmu         = S(0.09),
+        .a1          = S(0.31),
+        .b1          = S(1.0),
+        .c1          = S(10.0),
+        .kappa       = S(0.41),
+        .E           = S(9.8),
+        .betaStar    = S(0.09)
     };
 
 private:

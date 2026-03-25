@@ -36,7 +36,7 @@ const CaseReader& CaseReader::section(const std::string& name) const
 
 bool CaseReader::hasSection(const std::string& name) const noexcept
 {
-    return sections_.find(name) != sections_.end();
+    return sections_.contains(name);
 }
 
 std::vector<std::string> CaseReader::sectionNames() const

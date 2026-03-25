@@ -155,7 +155,8 @@ public:
      * @brief Get velocity field
      * @return Const reference to velocity vector field
      */
-    [[nodiscard]] const VectorField& velocity() const noexcept
+    [[nodiscard("Flow field result needed for post-processing or convergence check")]]
+    const VectorField& velocity() const noexcept
     {
         return U_;
     }
@@ -164,7 +165,8 @@ public:
      * @brief Get pressure field
      * @return Const reference to pressure scalar field
      */
-    [[nodiscard]] const ScalarField& pressure() const noexcept
+    [[nodiscard("Flow field result needed for post-processing or convergence check")]]
+    const ScalarField& pressure() const noexcept
     {
         return p_;
     }
@@ -263,7 +265,8 @@ public:
      * @brief Get constraint system pointer
      * @return Pointer to constraint system, or nullptr if none
      */
-    [[nodiscard]] Constraint* constraintSystem() noexcept
+    [[nodiscard("Constraint system needed for applying fixed-value cells")]]
+    Constraint* constraintSystem() noexcept
     {
         return constraintSystem_.get();
     }
@@ -272,38 +275,44 @@ public:
      * @brief Get turbulent kinetic energy field
      * @return Pointer to k field, or nullptr if turbulence disabled
      */
-    [[nodiscard]] const ScalarField* turbulentKineticEnergy() const noexcept;
+    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
+    const ScalarField* turbulentKineticEnergy() const noexcept;
 
     /**
      * @brief Get specific dissipation rate field
      * @return Pointer to omega field, or nullptr if turbulence disabled
      */
-    [[nodiscard]] const ScalarField* specificDissipationRate() const noexcept;
+    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
+    const ScalarField* specificDissipationRate() const noexcept;
 
     /**
      * @brief Get turbulent viscosity field
      * @return Pointer to nut field, or nullptr if turbulence disabled
      */
-    [[nodiscard]] const ScalarField* turbulentViscosity() const noexcept;
+    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
+    const ScalarField* turbulentViscosity() const noexcept;
 
     /**
      * @brief Get wall distance field
      * @return Pointer to wall distance field, nullptr if turbulence disabled
      */
-    [[nodiscard]] const ScalarField* wallDistance() const noexcept;
+    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
+    const ScalarField* wallDistance() const noexcept;
 
     /**
      * @brief Get y+ field
      * @return Pointer to y+ field, nullptr if turbulence disabled
      */
-    [[nodiscard]] const FaceData<Scalar>* yPlus() const noexcept;
+    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
+    const FaceData<Scalar>* yPlus() const noexcept;
 
     /**
      * @brief Get wall shear stress field
      * @return Pointer to wall shear stress field, nullptr if turbulence
      *         disabled
      */
-    [[nodiscard]] const FaceData<Scalar>* wallShearStress() const noexcept;
+    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
+    const FaceData<Scalar>* wallShearStress() const noexcept;
 
 private:
 

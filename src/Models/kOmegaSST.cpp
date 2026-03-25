@@ -428,15 +428,15 @@ void kOmegaSST::solveOmegaEquation
 
     TransportEquation equationOmega
     {
-        "omega",                                   // fieldName
-        omega_,                                    // phi
-        std::cref(flowRateFace),                   // flowRate
-        std::cref(omegaConvectionScheme_),         // convScheme
-        std::cref(GammaOmega),                     // Gamma
-        std::nullopt,                              // GammaFace
-        omegaSource,                               // source
-        gradOmega_,                                // gradPhi
-        gradientScheme_                            // gradScheme
+        .fieldName  = "omega",
+        .phi        = omega_,
+        .flowRate   = std::cref(flowRateFace),
+        .convScheme = std::cref(omegaConvectionScheme_),
+        .Gamma      = std::cref(GammaOmega),
+        .GammaFace  = std::nullopt,
+        .source     = omegaSource,
+        .gradPhi    = gradOmega_,
+        .gradScheme = gradientScheme_
     };
 
     matrixConstruct_->buildMatrix(equationOmega);
@@ -578,7 +578,7 @@ void kOmegaSST::applyOmegaWallCellValues()
 
         Scalar f = wallCellFraction_[i];
         omega_[cellIdx] =
-            (S(1.0) - f) * omega_[cellIdx] + f * wallCellOmega_[i];
+            std::lerp(omega_[cellIdx], wallCellOmega_[i], f);
     }
 }
 
@@ -611,15 +611,15 @@ void kOmegaSST::solveKEquation
 
     TransportEquation equationK
     {
-        "k",                           // fieldName
-        k_,                            // phi
-        std::cref(flowRateFace),       // flowRate
-        std::cref(kConvectionScheme_), // convScheme
-        std::cref(GammaK),             // Gamma
-        std::nullopt,                  // GammaFace
-        k_source,                      // source
-        gradK_,                        // gradPhi
-        gradientScheme_                // gradScheme
+        .fieldName  = "k",
+        .phi        = k_,
+        .flowRate   = std::cref(flowRateFace),
+        .convScheme = std::cref(kConvectionScheme_),
+        .Gamma      = std::cref(GammaK),
+        .GammaFace  = std::nullopt,
+        .source     = k_source,
+        .gradPhi    = gradK_,
+        .gradScheme = gradientScheme_
     };
 
     matrixConstruct_->buildMatrix(equationK);
@@ -947,8 +947,7 @@ void kOmegaSST::overrideWallCellProduction
         // wallCellFraction (wall area / total boundary area)
         Scalar f = wallCellFraction_[i];
         productionK_[cellIdx] =
-            (S(1.0) - f) * productionK_[cellIdx]
-          + f * GwallAccum[cellIdx];
+            std::lerp(productionK_[cellIdx], GwallAccum[cellIdx], f);
     }
 }
 

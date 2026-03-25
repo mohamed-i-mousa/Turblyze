@@ -64,8 +64,8 @@ public:
     {
         return
         {
-            std::max(flowRate, S(0.0)),
-            std::min(flowRate, S(0.0))
+            .owner    = std::max(flowRate, S(0.0)),
+            .neighbor = std::min(flowRate, S(0.0))
         };
     }
 

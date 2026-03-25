@@ -77,16 +77,16 @@ public:
 // Accessors
 
     /// Get field name for this solver
-    [[nodiscard]] const std::string& fieldName() const noexcept
+    const std::string& fieldName() const noexcept
     {
         return fieldName_;
     }
 
     /// Get absolute tolerance
-    [[nodiscard]] Scalar tolerance() const noexcept { return tolerance_; }
+    Scalar tolerance() const noexcept { return tolerance_; }
 
     /// Get maximum iterations
-    [[nodiscard]] int maxIterations() const noexcept
+    int maxIterations() const noexcept
     {
         return maxIterations_;
     }

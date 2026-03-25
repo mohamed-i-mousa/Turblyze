@@ -132,8 +132,8 @@ public:
      * @brief Get assembled sparse matrix A (const)
      * @return Const reference to coefficient matrix
      */
-    [[nodiscard]] const Eigen::SparseMatrix<Scalar>& 
-    matrixA() const noexcept
+    [[nodiscard("Matrix components needed for linear system solution")]]
+    const Eigen::SparseMatrix<Scalar>& matrixA() const noexcept
     {
         return matrixA_;
     }
@@ -151,7 +151,8 @@ public:
      * @brief Get right-hand side vector b (const)
      * @return Const reference to RHS vector
      */
-    [[nodiscard]] const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&
+    [[nodiscard("Matrix components needed for linear system solution")]]
+    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&
     vectorB() const noexcept
     {
         return vectorB_;

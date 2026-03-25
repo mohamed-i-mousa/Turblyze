@@ -413,46 +413,46 @@ void SIMPLE::solveMomentumEquations()
     // Solve momentum equations for each component
     TransportEquation equationUx
     {
-        "U",                                        // fieldName
-        Ux,                                         // phi
-        std::cref(RhieChowFlowRatePrev_),           // flowRate
-        std::cref(convectionScheme_.momentum()),    // convScheme
-        std::nullopt,                               // Gamma
-        std::cref(nuEffFace),                       // GammaFace
-        UxSource,                                   // source
-        gradU_[0],                                  // gradPhi
-        gradientScheme_,                            // gradScheme
-        0                                           // componentIndex
+        .fieldName      = "U",
+        .phi            = Ux,
+        .flowRate       = std::cref(RhieChowFlowRatePrev_),
+        .convScheme     = std::cref(convectionScheme_.momentum()),
+        .Gamma          = std::nullopt,
+        .GammaFace      = std::cref(nuEffFace),
+        .source         = UxSource,
+        .gradPhi        = gradU_[0],
+        .gradScheme     = gradientScheme_,
+        .componentIdx   = 0
     };
     solveMomentumComponent('x', equationUx, UxPrev);
 
     TransportEquation equationUy
     {
-        "U",                                        // fieldName
-        Uy,                                         // phi
-        std::cref(RhieChowFlowRatePrev_),           // flowRate
-        std::cref(convectionScheme_.momentum()),    // convScheme
-        std::nullopt,                               // Gamma
-        std::cref(nuEffFace),                       // GammaFace
-        UySource,                                   // source
-        gradU_[1],                                  // gradPhi
-        gradientScheme_,                            // gradScheme
-        1                                           // componentIndex
+        .fieldName      = "U",
+        .phi            = Uy,
+        .flowRate       = std::cref(RhieChowFlowRatePrev_),
+        .convScheme     = std::cref(convectionScheme_.momentum()),
+        .Gamma          = std::nullopt,
+        .GammaFace      = std::cref(nuEffFace),
+        .source         = UySource,
+        .gradPhi        = gradU_[1],
+        .gradScheme     = gradientScheme_,
+        .componentIdx   = 1
     };
     solveMomentumComponent('y', equationUy, UyPrev);
 
     TransportEquation equationUz
     {
-        "U",                                        // fieldName
-        Uz,                                         // phi
-        std::cref(RhieChowFlowRatePrev_),           // flowRate
-        std::cref(convectionScheme_.momentum()),    // convScheme
-        std::nullopt,                               // Gamma
-        std::cref(nuEffFace),                       // GammaFace
-        UzSource,                                   // source
-        gradU_[2],                                  // gradPhi
-        gradientScheme_,                            // gradScheme
-        2                                           // componentIndex
+        .fieldName      = "U",
+        .phi            = Uz,
+        .flowRate       = std::cref(RhieChowFlowRatePrev_),
+        .convScheme     = std::cref(convectionScheme_.momentum()),
+        .Gamma          = std::nullopt,
+        .GammaFace      = std::cref(nuEffFace),
+        .source         = UzSource,
+        .gradPhi        = gradU_[2],
+        .gradScheme     = gradientScheme_,
+        .componentIdx   = 2
     };
     solveMomentumComponent('z', equationUz, UzPrev);
 
@@ -567,15 +567,15 @@ void SIMPLE::solvePressureCorrection()
 
     TransportEquation equationPCorr
     {
-        "pCorr",                 // fieldName
-        pCorr_,                  // phi
-        std::nullopt,            // flowRate
-        std::nullopt,            // convScheme
-        std::nullopt,            // Gamma
-        std::cref(DUf_),         // GammaFace
-        massImbalance,           // source
-        gradPCorrPrecomputed,    // gradPhi
-        gradientScheme_          // gradScheme
+        .fieldName  = "pCorr",
+        .phi        = pCorr_,
+        .flowRate   = std::nullopt,
+        .convScheme = std::nullopt,
+        .Gamma      = std::nullopt,
+        .GammaFace  = std::cref(DUf_),
+        .source     = massImbalance,
+        .gradPhi    = gradPCorrPrecomputed,
+        .gradScheme = gradientScheme_
     };
 
     matrixConstruct_->buildMatrix(equationPCorr);

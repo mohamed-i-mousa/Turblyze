@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 #include <stdexcept>
 
 
@@ -166,7 +167,7 @@ void MeshChecker::check() const
 
             Scalar angleRad = std::acos(ortho);
             Scalar angleDeg =
-                angleRad * S(180.0) / S(M_PI);
+                angleRad * S(180.0) / std::numbers::pi_v<Scalar>;
 
             totalCosAngle += ortho;
             nonOrthCount++;
@@ -210,7 +211,8 @@ void MeshChecker::check() const
     Scalar avgNonOrthogonality =
         std::acos(totalCosAngle / S(nonOrthCount));
 
-    avgNonOrthogonality = avgNonOrthogonality * S(180.0) / S(M_PI);
+    avgNonOrthogonality =
+        avgNonOrthogonality * S(180.0) / std::numbers::pi_v<Scalar>;
 
     // Cell volume and aspect ratio statistics
     Scalar minCellVolume = allCells_[0].volume();

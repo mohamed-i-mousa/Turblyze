@@ -21,7 +21,8 @@ class BoundaryConditions;
  * @param field Cell-centered scalar field
  * @return Interpolated scalar value at face
  */
-[[nodiscard]] Scalar interpolateToFace
+[[nodiscard("Interpolated face value required for flux computation")]]
+Scalar interpolateToFace
 (
     const Face& face,
     const ScalarField& field
@@ -35,7 +36,8 @@ class BoundaryConditions;
  *
  * For boundary faces, returns owner cell value (zero-gradient assumption).
  */
-[[nodiscard]] Vector interpolateToFace
+[[nodiscard("Interpolated face value required for flux computation")]]
+Vector interpolateToFace
 (
     const Face& face,
     const VectorField& field
@@ -49,7 +51,8 @@ class BoundaryConditions;
  * @param fieldName Name of field for BC lookup (e.g., "U")
  * @return Interpolated vector value with proper BC handling
  */
-[[nodiscard]] Vector interpolateToFace
+[[nodiscard("Interpolated face value required for flux computation")]]
+Vector interpolateToFace
 (
     const Face& face,
     const VectorField& field,
