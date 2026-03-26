@@ -237,7 +237,9 @@ inline Vector CaseReader::convertTo<Vector>(const std::string& value) const
     std::erase(trimmed, ')');
 
     std::istringstream iss(trimmed);
-    Scalar x, y, z;
+    Scalar x;
+    Scalar y;
+    Scalar z;
 
     if (!(iss >> x >> y >> z))
     {

@@ -1155,9 +1155,17 @@ void kOmegaSST::logFieldDiagnostics() const
 
     size_t numCells = allCells_.size();
 
-    Scalar kMin = k_[0], kMax = k_[0], kSum = S(0.0);
-    Scalar oMin = omega_[0], oMax = omega_[0], oSum = S(0.0);
-    Scalar nMin = nut_[0], nMax = nut_[0], nSum = S(0.0);
+    Scalar kMin = k_[0];
+    Scalar kMax = k_[0];
+    Scalar kSum = S(0.0);
+
+    Scalar oMin = omega_[0];
+    Scalar oMax = omega_[0];
+    Scalar oSum = S(0.0);
+    
+    Scalar nMin = nut_[0];
+    Scalar nMax = nut_[0];
+    Scalar nSum = S(0.0);
 
     for (size_t i = 0; i < numCells; ++i)
     {

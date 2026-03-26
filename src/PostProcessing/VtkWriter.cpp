@@ -42,8 +42,12 @@ namespace VtkWriter
 
 struct StrainTensor
 {
-    Scalar S_11, S_22, S_33;
-    Scalar S_12, S_13, S_23;
+    Scalar S_11;
+    Scalar S_22;
+    Scalar S_33;
+    Scalar S_12;
+    Scalar S_13;
+    Scalar S_23;
 
     constexpr Scalar normSquared() const noexcept
     {
@@ -133,9 +137,12 @@ void writeVtkUnstructuredGrid
     // Build a node connectivity graph to determine proper VTK node ordering
 
     // Cell type statistics for diagnostics
-    size_t numTets = 0, numHexes = 0, numWedges = 0,
-           numPyramids = 0, numConvex = 0,
-           numWedgeOrderingFailures = 0;
+    size_t numTets = 0;
+    size_t numHexes = 0;
+    size_t numWedges = 0;
+    size_t numPyramids = 0;
+    size_t numConvex = 0;
+    size_t numWedgeOrderingFailures = 0;
 
     for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
     {
@@ -843,7 +850,8 @@ std::vector<vtkIdType> orderHexahedronNodes
     // Find two opposite faces (bottom and top)
     // Opposite faces share no common nodes
     std::vector<size_t> bottomFace, topFace;
-    size_t bottomFaceIdx = 0, topFaceIdx = 0;
+    size_t bottomFaceIdx = 0;
+    size_t topFaceIdx = 0;
 
     for (size_t i = 0; i < faceNodeLists.size(); ++i)
     {

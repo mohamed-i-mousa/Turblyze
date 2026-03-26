@@ -175,7 +175,9 @@ public:
 private:
 
     /// X, Y, Z components of the vector
-    Scalar x_ = 0.0, y_ = 0.0, z_ = 0.0;
+    Scalar x_ = 0.0;
+    Scalar y_ = 0.0;
+    Scalar z_ = 0.0;
 };
 
 // Non-member methods

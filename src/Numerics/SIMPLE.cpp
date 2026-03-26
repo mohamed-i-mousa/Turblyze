@@ -778,8 +778,10 @@ void SIMPLE::solveTurbulence()
         turbulenceModel_->solve(U_, RhieChowFlowRate_, gradU_);
 
         // Compute normalised change: ||x - x_prev|| / ||x_prev||
-        Scalar kDiffSq = 0.0, kPrevSq = 0.0;
-        Scalar omDiffSq = 0.0, omPrevSq = 0.0;
+        Scalar kDiffSq = 0.0;
+        Scalar kPrevSq = 0.0;
+        Scalar omDiffSq = 0.0;
+        Scalar omPrevSq = 0.0;
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
             Scalar dk = kField[cellIdx] - kPrev[cellIdx];
