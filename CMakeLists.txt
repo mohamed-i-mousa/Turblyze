@@ -61,7 +61,23 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 # Set output directory for executable
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
+target_compile_options(${PROJECT_NAME} PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wshadow
+    -Wconversion
+    -Wsign-conversion
+    -Wdouble-promotion
+    -Wformat=2
+    -Wcast-align
+    -Wunused
+    -Wnull-dereference
+    -Wimplicit-fallthrough
+    -Wold-style-cast
+    -Woverloaded-virtual
+    -Wnon-virtual-dtor
+)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC PROJECT_USE_DOUBLE_PRECISION)
 
