@@ -966,7 +966,7 @@ void CFDApplication::postProcess()
         maximumPressure = std::max(maximumPressure, pressure[cellIdx]);
         minimumPressure = std::min(minimumPressure, pressure[cellIdx]);
     }
-    averageVelocity /= velocity.size();
+    averageVelocity /= S(velocity.size());
 
     std::cout
         << "Flow Statistics:" << std::endl;

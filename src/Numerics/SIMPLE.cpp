@@ -661,7 +661,7 @@ void SIMPLE::correctPressure()
         sumSq += pCorr_[cellIdx] * pCorr_[cellIdx];
     }
 
-    lastPressureCorrectionRMS_ = std::sqrt(sumSq / numCells);
+    lastPressureCorrectionRMS_ = std::sqrt(sumSq / S(numCells));
 
     // Apply pressure correction
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -951,7 +951,7 @@ Scalar SIMPLE::calculatePressureResidual() const
         sumP2 += p_[cellIdx] * p_[cellIdx];
     }
 
-    const Scalar pRms = std::sqrt(sumP2 / numCells);
+    const Scalar pRms = std::sqrt(sumP2 / S(numCells));
 
     return lastPressureCorrectionRMS_ / (pRms + vSmallValue);
 }
