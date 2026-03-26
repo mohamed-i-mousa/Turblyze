@@ -919,7 +919,7 @@ Scalar SIMPLE::calculateMassImbalance() const
         totalNormImbalance += std::abs(net) / denom;
     }
 
-    return totalNormImbalance / std::max<size_t>(1, numCells);
+    return totalNormImbalance / S(std::max<size_t>(1, numCells));
 }
 
 Scalar SIMPLE::calculateVelocityResidual() const
