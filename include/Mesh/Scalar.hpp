@@ -13,7 +13,6 @@
 #include <limits>
 
 /// Floating-point precision type (configured via CMakeLists.txt)
-
 #ifdef PROJECT_USE_DOUBLE_PRECISION
     using Scalar = double;
     constexpr std::string_view SCALAR_MODE = "double (FP64)";
@@ -22,15 +21,12 @@
     constexpr std::string_view SCALAR_MODE = "float (FP32)";
 #endif
 
-// Numerical tolerances
+/// Numerical tolerances
+constexpr Scalar smallValue = std::numeric_limits<Scalar>::epsilon();
 
-inline constexpr Scalar smallValue =
-    std::numeric_limits<Scalar>::epsilon();
+constexpr Scalar vSmallValue = std::numeric_limits<Scalar>::min();
 
-inline constexpr Scalar vSmallValue =
-    std::numeric_limits<Scalar>::min();
-
-inline constexpr Scalar largeValue = Scalar(1.0)/smallValue;  
+constexpr Scalar largeValue = Scalar(1.0)/smallValue;
 
 /**
  * @brief Type-safe scalar literal conversion function
@@ -43,7 +39,7 @@ inline constexpr Scalar largeValue = Scalar(1.0)/smallValue;
  * when converting numeric literals to the configured Scalar type.
  */
 template<typename T>
-inline constexpr Scalar S(T value)
+constexpr Scalar S(T value)
 {    
     return static_cast<Scalar>(value);
 }
