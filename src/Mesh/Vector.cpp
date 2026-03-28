@@ -11,7 +11,7 @@
 
 std::ostream& operator<<(std::ostream& os, const Vector& p)
 {
-    std::ios_base::fmtflags flags = os.flags();
+    auto flags = os.flags();
     auto prec = os.precision();
 
     os  << std::fixed << std::setprecision(6);

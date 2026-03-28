@@ -218,7 +218,7 @@ public:
      * @brief Calculates squared magnitude of vector
      * @return Squared magnitude (x² + y² + z²)
      */
-    Scalar magnitudeSquared() const noexcept
+    [[nodiscard]] Scalar magnitudeSquared() const noexcept
     {
         return x_ * x_ + y_ * y_ + z_ * z_;
     }
@@ -227,7 +227,7 @@ public:
      * @brief Calculates magnitude (length) of vector
      * @return Vector magnitude
      */
-    Scalar magnitude() const noexcept
+    [[nodiscard]] Scalar magnitude() const noexcept
     {
         return std::sqrt(magnitudeSquared());
     }
@@ -237,7 +237,7 @@ public:
      * @return Normalized vector
      * @throws std::runtime_error if vector has zero magnitude
      */
-    Vector normalized() const
+    [[nodiscard]] Vector normalized() const
     {
         Scalar mag = magnitude();
         if (mag < vSmallValue)
@@ -269,7 +269,7 @@ private:
  * @param p2 Second vector
  * @return Scalar dot product
  */
-inline Scalar dot(const Vector& p1, const Vector& p2) noexcept
+[[nodiscard]] inline Scalar dot(const Vector& p1, const Vector& p2) noexcept
 {
     return p1.x() * p2.x() + p1.y() * p2.y() + p1.z() * p2.z();
 }
@@ -280,7 +280,7 @@ inline Scalar dot(const Vector& p1, const Vector& p2) noexcept
  * @param p2 Second vector
  * @return Cross product vector
  */
-inline Vector cross(const Vector& p1, const Vector& p2) noexcept
+[[nodiscard]] inline Vector cross(const Vector& p1, const Vector& p2) noexcept
 {
     return
         Vector
