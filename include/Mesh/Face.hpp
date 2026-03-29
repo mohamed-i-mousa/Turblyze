@@ -30,6 +30,21 @@
 // Forward declaration
 class BoundaryPatch;
 
+/**
+ * @brief Integrals computed during face geometry setup
+ *
+ * @details These values are produced by Face::calculateGeometricProperties()
+ * and used once by Cell::calculateGeometricProperties() to compute cell
+ * volumes and centroids via the divergence theorem.
+ */
+struct FaceIntegrals
+{
+    Scalar x2 = 0.0;
+    Scalar y2 = 0.0;
+    Scalar z2 = 0.0;
+    Scalar volume = 0.0;
+};
+
 class Face
 {
 public:
@@ -89,12 +104,18 @@ public:
      * @brief Set neighbor cell index
      * @param neighbor Index of neighbor cell
      */
-    void setNeighborCell(size_t neighbor) noexcept { neighborCell_ = neighbor; }
+    void setNeighborCell(size_t neighbor) noexcept
+    {
+        neighborCell_ = neighbor;
+    }
 
     /**
      * @brief Set neighbor cell to null (boundary face)
      */
-    void setNeighborCell(std::nullopt_t) noexcept { neighborCell_ = std::nullopt; }
+    void setNeighborCell(std::nullopt_t) noexcept
+    {
+        neighborCell_ = std::nullopt;
+    }
 
     /**
      * @brief Add node index to face connectivity
@@ -140,7 +161,10 @@ public:
      * @brief Get neighbor cell index
      * @return Optional neighbor cell index
      */
-    const std::optional<size_t>& neighborCell() const noexcept { return neighborCell_; }
+    const std::optional<size_t>& neighborCell() const noexcept
+    {
+        return neighborCell_;
+    }
 
     /**
      * @brief Get face centroid
@@ -168,20 +192,6 @@ public:
     Scalar contactArea() const noexcept { return contactArea_; }
 
     /**
-     * @brief Get second moment integrals for centroid calculation
-     * @return second moment integrals in each direction
-     */
-    Scalar x2Integral() const noexcept { return x2Integral_; }
-    Scalar y2Integral() const noexcept { return y2Integral_; }
-    Scalar z2Integral() const noexcept { return z2Integral_; }
-
-    /**
-     * @brief Get volume contribution integral for cell volume calculation
-     * @return The integral ∫∫_face (r · n) dS
-     */
-    Scalar volumeContribution() const noexcept { return volumeContribution_; }
-
-    /**
      * @brief Get owner cell distance vector
      * @return Vector from owner to face
      */
@@ -206,24 +216,21 @@ public:
     const std::optional<Scalar>& dNfMag() const noexcept { return dNfMag_; }
 
     /**
-     * @brief Get owner cell unit vector
-     * @return Unit vector from owner to face
-     */
-    const Vector& ePf() const noexcept { return ePf_; }
-
-    /**
-     * @brief Get neighbor cell unit vector
-     * @return Optional unit vector from neighbor to face
-     */
-    const std::optional<Vector>& eNf() const noexcept { return eNf_; }
-
-    /**
      * @brief Check if geometric properties calculated
      * @return True if geometry computed
      */
     bool geometricPropertiesCalculated() const noexcept
     {
         return geometricPropertiesCalculated_;
+    }
+
+    /**
+     * @brief Check if distance properties calculated
+     * @return True if distance vectors and magnitudes computed
+     */
+    bool distancePropertiesCalculated() const noexcept
+    {
+        return distancePropertiesCalculated_;
     }
 
     /**
@@ -238,9 +245,10 @@ public:
      *
      * @param allNodes Vector of all mesh nodes
      * @throws std::out_of_range if node index is invalid
-     * @throws std::runtime_error if face is degenerate
+     * @throws std::runtime_error if face has zero area (collinear nodes)
+     * @return FaceIntegrals for cell volume/centroid computation
      */
-    void calculateGeometricProperties(std::span<const Vector> allNodes);
+    FaceIntegrals calculateGeometricProperties(std::span<const Vector> allNodes);
 
     /**
      * @brief Calculate distance properties of the face
@@ -250,10 +258,9 @@ public:
      *   from cell centers to face center. For boundary faces,
      *   only owner cell distances are calculated.
      *
-     * @param allCells Container of all mesh cells
+     * @param cellCentroids Centroid of every cell indexed by cell index
      */
-    template<typename CellContainer>
-    void calculateDistanceProperties(const CellContainer& allCells);
+    void calculateDistanceProperties(std::span<const Vector> cellCentroids);
 
     /**
      * @brief Check if this is a boundary face
@@ -273,10 +280,7 @@ public:
     /**
      * @brief Flip the face normal direction
      */
-    void flipNormal() noexcept
-    {
-        normal_ *= S(-1.0);
-    }
+    void flipNormal() noexcept { normal_ *= S(-1.0); }
 
 private:
     /// Unique face identifier
@@ -290,14 +294,6 @@ private:
 
     /// Index of neighbor cell (nullopt for boundary faces)
     std::optional<size_t> neighborCell_;
-
-    /// Second moment integrals for centroid calculation (weighted by normal)
-    Scalar x2Integral_ = 0.0;
-    Scalar y2Integral_ = 0.0;
-    Scalar z2Integral_ = 0.0;
-
-    /// Volume contribution integral
-    Scalar volumeContribution_ = 0.0;
 
     /// Face geometric centroid
     Vector centroid_;
@@ -323,12 +319,6 @@ private:
     /// Magnitude of d_Nf
     std::optional<Scalar> dNfMag_;
 
-    /// Unit vector in d_Pf direction
-    Vector ePf_;
-
-    /// Unit vector in d_Nf direction
-    std::optional<Vector> eNf_;
-
     /// Flag indicating if geometric properties calculated
     bool geometricPropertiesCalculated_ = false;
 
@@ -337,6 +327,24 @@ private:
 
     /// Owning boundary patch (nullptr for internal faces)
     const BoundaryPatch* patch_ = nullptr;
+
+    /**
+     * @brief Symmetric second-moment polynomial for triangle integration
+     *
+     * @details Evaluates a² + b² + c² + ab + ac + bc, which appears in the
+     * divergence-theorem integral of x² over a triangle whose vertices have
+     * coordinate values a, b, c along a given axis:
+     * ∫∫_triangle x² dA = (area / 6) × secondMoment(x₁, x₂, x₃)
+     *
+     * @param a First vertex coordinate along one axis
+     * @param b Second vertex coordinate along one axis
+     * @param c Third vertex coordinate along one axis
+     * @return a² + b² + c² + ab + ac + bc
+     */
+    static Scalar secondMoment(Scalar a, Scalar b, Scalar c) noexcept
+    {
+        return a*a + b*b + c*c + a*b + a*c + b*c;
+    }
 
 };
 
