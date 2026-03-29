@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <vector>
 #include <span>
 
@@ -31,7 +32,7 @@ class Cell
 public:
 
     /// Default constructor
-    Cell() = default;
+    Cell() noexcept = default;
 
     /**
      * @brief Constructs cell with connectivity data
@@ -45,7 +46,7 @@ public:
         size_t cellIdx,
         std::vector<size_t> faces,
         std::vector<size_t> neighbors,
-        std::vector<int> signs
+        std::vector<int8_t> signs
     ) : idx_(cellIdx),
         faceIndices_(std::move(faces)),
         neighborCellIndices_(std::move(neighbors)),
@@ -60,19 +61,15 @@ public:
     void setIdx(size_t cellIdx) noexcept { idx_ = cellIdx; }
 
     /**
-     * @brief Add face index to cell connectivity
+     * @brief Add a bounding face with its normal direction sign
      * @param faceIdx Index of bounding face
-     */
-    void addFaceIndex(size_t faceIdx) { faceIndices_.push_back(faceIdx); }
-
-    /**
-     * @brief Add face normal direction sign
      * @param sign Direction sign (+1 outward, -1 inward)
      */
-    void addFaceSign(int sign) { faceSigns_.push_back(sign); }
-
-    /// Clear all face indices
-    void clearFaceIndices() noexcept { faceIndices_.clear(); }
+    void addFace(size_t faceIdx, int8_t sign)
+    {
+        faceIndices_.push_back(faceIdx);
+        faceSigns_.push_back(sign);
+    }
 
     /**
      * @brief Set all neighbor cell indices
@@ -82,9 +79,6 @@ public:
     {
         neighborCellIndices_.assign(neighbors.begin(), neighbors.end());
     }
-
-    /// Clear all neighbor cell indices
-    void clearNeighborCellIndices() noexcept { neighborCellIndices_.clear(); }
 
 // Accessor methods
 
@@ -116,7 +110,7 @@ public:
      * @brief Get face normal direction signs
      * @return Vector of signs (+1/-1)
      */
-    std::span<const int> faceSigns() const noexcept { return faceSigns_; }
+    std::span<const int8_t> faceSigns() const noexcept { return faceSigns_; }
 
     /**
      * @brief Get cell centroid
@@ -134,7 +128,7 @@ public:
      * @brief Check if geometric properties calculated
      * @return True if geometry computed
      */
-    bool geometricPropertiesCalculated() const noexcept
+    [[nodiscard]] bool geometricPropertiesCalculated() const noexcept
     {
         return geometricPropertiesCalculated_;
     }
@@ -149,8 +143,13 @@ public:
      * - Sets geometricPropertiesCalculated flag to true when success.
      *
      * @param allFaces Vector containing all mesh faces
+     * @param allFaceIntegrals Face integrals for volume/centroid computation
      */
-    void calculateGeometricProperties(std::span<const Face> allFaces);
+    void calculateGeometricProperties
+    (
+        std::span<const Face> allFaces,
+        std::span<const FaceIntegrals> allFaceIntegrals
+    );
 
 private:
     /// Unique cell identifier
@@ -163,7 +162,7 @@ private:
     std::vector<size_t> neighborCellIndices_;
 
     /// Face normal direction signs (+1 outward, -1 inward)
-    std::vector<int> faceSigns_;
+    std::vector<int8_t> faceSigns_;
 
     /// Cell geometric center
     Vector centroid_;

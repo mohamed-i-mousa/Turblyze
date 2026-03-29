@@ -12,12 +12,16 @@
 
 // *********************** Geometric Property Methods ***********************
 
-void Cell::calculateGeometricProperties(std::span<const Face> allFaces)
+void Cell::calculateGeometricProperties
+(
+    std::span<const Face> allFaces,
+    std::span<const FaceIntegrals> allFaceIntegrals
+)
 {
     geometricPropertiesCalculated_ = false;
     volume_ = 0.0;
-    centroid_ = Vector(0.0, 0.0, 0.0);
-    Vector centroidSum(0.0, 0.0, 0.0);
+    centroid_ = Vector{};
+    Vector centroidSum;
 
     for (size_t i = 0; i < faceIndices_.size(); ++i)
     {
@@ -38,24 +42,21 @@ void Cell::calculateGeometricProperties(std::span<const Face> allFaces)
         }
 
         Scalar faceSign = S(faceSigns_[i]);
+        const FaceIntegrals& integrals = allFaceIntegrals[faceIndex];
 
-        volume_ += faceSign * face.volumeContribution();
+        volume_ += faceSign * integrals.volume;
 
         centroidSum += Vector
         (
-            faceSign * face.x2Integral(),
-            faceSign * face.y2Integral(),
-            faceSign * face.z2Integral()
+            faceSign * integrals.x2,
+            faceSign * integrals.y2,
+            faceSign * integrals.z2
         );
     }
 
     volume_ /= S(3.0);
 
-    if (std::abs(volume_) > smallValue)
-    {
-        centroid_ = centroidSum / (S(2.0) * volume_);
-    }
-    else
+    if (std::abs(volume_) < smallValue)
     {
         throw
             std::runtime_error
@@ -64,22 +65,8 @@ void Cell::calculateGeometricProperties(std::span<const Face> allFaces)
             );
     }
 
-    if (volume_ < S(0.0))
-    {
-        throw
-            std::runtime_error
-            (
-                "Error: Cell " + std::to_string(idx_)
-              + " calculated negative volume ("
-              + std::to_string(volume_)
-              + "). Check face normal conventions"
-              + " and mesh connectivity."
-            );
-    }
-    else
-    {
-        geometricPropertiesCalculated_ = true;
-    }
+    centroid_ = centroidSum / (S(2.0) * volume_);
+    geometricPropertiesCalculated_ = true;
 }
 
 std::ostream& operator<<(std::ostream& os, const Cell& c)
@@ -106,7 +93,7 @@ std::ostream& operator<<(std::ostream& os, const Cell& c)
 
     if (c.geometricPropertiesCalculated())
     {
-        std::ios_base::fmtflags flags = os.flags();
+        auto flags = os.flags();
         auto prec = os.precision();
 
         os  << std::fixed
