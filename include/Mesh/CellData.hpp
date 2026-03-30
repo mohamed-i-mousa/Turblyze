@@ -39,7 +39,7 @@ public:
      */
     CellData
     (
-        const std::string& fieldName,
+        std::string fieldName,
         size_t numCells
     );
 
@@ -51,26 +51,27 @@ public:
      */
     CellData
     (
-        const std::string& fieldName,
+        std::string fieldName,
         size_t numCells,
         const T& initialValue
     );
 
     /**
-     * @brief Subscript operator
+     * @brief Unchecked subscript operator
      * @param cellIndex Index of the cell to access
      * @return Reference to field value at the cell
-     * @throws std::out_of_range if cellIndex is invalid
      */
-    T& operator[](size_t cellIndex);
+    T& operator[](size_t cellIndex) { return internalField_[cellIndex]; }
 
     /**
-     * @brief Const subscript operator
+     * @brief Unchecked const subscript operator
      * @param cellIndex Index of the cell to access
      * @return Const reference to field value at the cell
-     * @throws std::out_of_range if cellIndex is invalid
      */
-    const T& operator[](size_t cellIndex) const;
+    const T& operator[](size_t cellIndex) const
+    {
+        return internalField_[cellIndex];
+    }
 
     /**
      * @brief Get number of cells in the field

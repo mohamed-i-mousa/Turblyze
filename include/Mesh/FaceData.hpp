@@ -39,7 +39,7 @@ public:
      */
     FaceData
     (
-        const std::string& fieldName,
+        std::string fieldName,
         size_t numFaces
     );
 
@@ -51,32 +51,33 @@ public:
      */
     FaceData
     (
-        const std::string& fieldName,
+        std::string fieldName,
         size_t numFaces,
         const T& initialValue
     );
 
     /**
-     * @brief Subscript operator
+     * @brief Unchecked subscript operator
      * @param faceIndex Index of the face to access
      * @return Reference to field value at the face
-     * @throws std::out_of_range if faceIndex is invalid
      */
-    T& operator[](size_t faceIndex);
+    T& operator[](size_t faceIndex) { return internalField_[faceIndex]; }
 
     /**
-     * @brief Const subscript operator
+     * @brief Unchecked const subscript operator
      * @param faceIndex Index of the face to access
      * @return Const reference to field value at the face
-     * @throws std::out_of_range if faceIndex is invalid
      */
-    const T& operator[](size_t faceIndex) const;
+    const T& operator[](size_t faceIndex) const
+    {
+        return internalField_[faceIndex];
+    }
 
     /**
      * @brief Get number of faces in the field
      * @return Number of faces
      */
-    size_t size() const noexcept { return allFacesValues_.size(); }
+    size_t size() const noexcept { return internalField_.size(); }
 
     /**
      * @brief Set all field values to a given value
@@ -88,31 +89,31 @@ public:
      * @brief Get pointer to field storage
      * @return Pointer to first element
      */
-    T* data() noexcept { return allFacesValues_.data(); }
+    T* data() noexcept { return internalField_.data(); }
 
     /**
      * @brief Get const pointer to field storage
      * @return Const pointer to first element
      */
-    const T* data() const noexcept { return allFacesValues_.data(); }
+    const T* data() const noexcept { return internalField_.data(); }
 
     /**
      * @brief Get a mutable view of the field storage
      * @return Non-owning span over face values
      */
-    std::span<T> span() noexcept { return allFacesValues_; }
+    std::span<T> span() noexcept { return internalField_; }
 
     /**
      * @brief Get a read-only view of the field storage
      * @return Non-owning span over const face values
      */
-    std::span<const T> span() const noexcept { return allFacesValues_; }
+    std::span<const T> span() const noexcept { return internalField_; }
 
     /// Iterator access (range-based for loops)
-    auto begin() noexcept { return allFacesValues_.begin(); }
-    auto end() noexcept { return allFacesValues_.end(); }
-    auto begin() const noexcept { return allFacesValues_.begin(); }
-    auto end() const noexcept { return allFacesValues_.end(); }
+    auto begin() noexcept { return internalField_.begin(); }
+    auto end() noexcept { return internalField_.end(); }
+    auto begin() const noexcept { return internalField_.begin(); }
+    auto end() const noexcept { return internalField_.end(); }
 
     /**
      * @brief Get field name
@@ -132,7 +133,7 @@ private:
     std::string name_;
 
     /// Face-centered field values
-    std::vector<T> allFacesValues_;
+    std::vector<T> internalField_;
 };
 
 /// Type alias for scalar face fields (e.g., mass flux)
