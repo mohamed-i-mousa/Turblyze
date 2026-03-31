@@ -289,7 +289,8 @@ void Matrix::assembleBoundaryFace
     }
 
     Vector Sf = face.normal() * face.projectedArea();
-    const Vector ePf = face.ePf();
+
+    const Vector ePf = face.dPf().normalized();
     const Scalar dPfMag = face.dPfMag();
 
     Vector Ef = (dot(Sf, Sf) / dot(Sf, ePf)) * ePf;
@@ -347,7 +348,7 @@ void Matrix::assembleBoundaryFace
                 equation.fieldName,
                 equation.phi,
                 equation.gradPhi[ownerIdx],
-                Vector(),
+                Vector{},
                 face.idx(),
                 equation.componentIdx
             );

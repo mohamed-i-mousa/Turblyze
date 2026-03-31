@@ -22,85 +22,14 @@
 #pragma once
 
 #include <vector>
-#include <string>
 #include <optional>
-#include <functional>
 
 #include <eigen3/Eigen/SparseCore>
 
 #include "Cell.hpp"
 #include "Face.hpp"
 #include "BoundaryConditions.hpp"
-#include "CellData.hpp"
-#include "FaceData.hpp"
-#include "ConvectionScheme.hpp"
-#include "GradientScheme.hpp"
-
-
-/// Non-owning optional reference (absent = std::nullopt)
-template<typename T>
-using OptionalRef = std::optional<std::reference_wrapper<const T>>;
-
-
-/**
- * @brief Data describing a scalar transport equation
- *
- * @details 
- * - Combines the field value, convection, diffusion, source,
- *   and gradient data needed by Matrix::buildMatrix().
- * 
- * - Organised by physics terms:
- *     field, transient (placeholder), convection, diffusion,
- *     source, gradient reconstruction, boundary overrides.
- */
-struct TransportEquation
-{
-
-// Field
-
-    /// Name of the field ("Ux", "k", "pCorr", etc.)
-    std::string fieldName;
-
-    /// Current cell-centered field values (mutable for zero-copy solve)
-    ScalarField& phi;
-
-// Transient (placeholder for future)
-
-// Convection: div(F * phi)
-
-    /// Face volumetric flow rates (nullopt = no convection)
-    OptionalRef<FaceFluxField> flowRate = std::nullopt;
-
-    /// Convection discretization scheme (nullopt = no convection)
-    OptionalRef<ConvectionScheme> convScheme = std::nullopt;
-
-// Diffusion: div(Gamma * grad(phi))
-
-    /// Cell-centered diffusion coefficient
-    OptionalRef<ScalarField> Gamma = std::nullopt;
-
-    /// Pre-interpolated face diffusion coefficient
-    OptionalRef<FaceFluxField> GammaFace = std::nullopt;
-
-// Source
-
-    /// Explicit source term field
-    const ScalarField& source;
-
-// Gradient reconstruction
-
-    /// Pre-computed cell gradients of phi
-    const VectorField& gradPhi;
-
-    /// Gradient reconstruction scheme
-    const GradientScheme& gradScheme;
-
-// Vector component extraction
-
-    /// Component index for vector field equations (0=x, 1=y, 2=z)
-    std::optional<int> componentIdx = std::nullopt;
-
-};
+#include "TransportEquation.hpp"
 
 
 class Matrix
@@ -132,7 +61,6 @@ public:
      * @brief Get assembled sparse matrix A (const)
      * @return Const reference to coefficient matrix
      */
-    [[nodiscard("Matrix components needed for linear system solution")]]
     const Eigen::SparseMatrix<Scalar>& matrixA() const noexcept
     {
         return matrixA_;
@@ -151,7 +79,6 @@ public:
      * @brief Get right-hand side vector b (const)
      * @return Const reference to RHS vector
      */
-    [[nodiscard("Matrix components needed for linear system solution")]]
     const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&
     vectorB() const noexcept
     {
