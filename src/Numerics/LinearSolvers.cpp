@@ -3,12 +3,10 @@
  * @brief LinearSolver class implementation
  *****************************************************************************/
 
-#include "LinearSolvers.hpp"
-
 #include <cassert>
 #include <iostream>
 
-#include <eigen3/Eigen/IterativeLinearSolvers>
+#include "LinearSolvers.hpp"
 
 // ************************* Constructor & Setters ************************
 
@@ -24,6 +22,35 @@ LinearSolver::LinearSolver
 {}
 
 
+// *********************************** Copy ***********************************
+
+LinearSolver::LinearSolver(const LinearSolver& other)
+:   fieldName_(other.fieldName_),
+    tolerance_(other.tolerance_),
+    maxIterations_(other.maxIterations_),
+    ilutFillFactor_(other.ilutFillFactor_),
+    ilutDropTol_(other.ilutDropTol_),
+    icInitialShift_(other.icInitialShift_),
+    debug_(other.debug_)
+{}
+
+LinearSolver& LinearSolver::operator=(const LinearSolver& other)
+{
+    if (this != &other)
+    {
+        fieldName_       = other.fieldName_;
+        tolerance_       = other.tolerance_;
+        maxIterations_   = other.maxIterations_;
+        ilutFillFactor_  = other.ilutFillFactor_;
+        ilutDropTol_     = other.ilutDropTol_;
+        icInitialShift_  = other.icInitialShift_;
+        debug_           = other.debug_;
+        solverInitialized_ = false;
+    }
+    return *this;
+}
+
+
 // ***************************** BiCGSTAB Solver *****************************
 
 void LinearSolver::solveWithBiCGSTAB
@@ -35,31 +62,42 @@ void LinearSolver::solveWithBiCGSTAB
 {
     assert(x.size() == B.size());
 
-    // Configure Eigen BiCGSTAB with ILUT preconditioning
-    Eigen::BiCGSTAB
-    <Eigen::SparseMatrix<Scalar>, Eigen::IncompleteLUT<Scalar>>
-    bicgstab;
+    // Configure and analyze once — parameters and sparsity are fixed
+    if (!solverInitialized_)
+    {
+        bicgstab_.setMaxIterations(maxIterations_);
+        bicgstab_.setTolerance(tolerance_);
+        bicgstab_.preconditioner().setFillfactor(ilutFillFactor_);
+        bicgstab_.preconditioner().setDroptol(ilutDropTol_);
+        
+        bicgstab_.analyzePattern(A);
 
-    bicgstab.setMaxIterations(maxIterations_);
-    bicgstab.setTolerance(tolerance_);
-    bicgstab.preconditioner().setFillfactor(ilutFillFactor_);
-    bicgstab.preconditioner().setDroptol(ilutDropTol_);
+        solverInitialized_ = true;
+    }
 
-    bicgstab.compute(A);
-    if (bicgstab.info() != Eigen::Success)
+    // Numeric factorization must run each call — coefficients change
+    bicgstab_.factorize(A);
+
+    if (bicgstab_.info() != Eigen::Success)
     {
         std::cerr
             << "Error for field '" << fieldName_
-            << "': BiCGSTAB compute failed!"
+            << "': BiCGSTAB factorization failed!"
             << std::endl;
-
-        std::cerr
-            << "  Eigen Info Code: "
-            << bicgstab.info() << std::endl;
         return;
     }
 
-    x = bicgstab.solveWithGuess(B, x);
+    x = bicgstab_.solveWithGuess(B, x);
+
+    if (debug_)
+    {
+        std::cout
+            << "  [" << fieldName_ << "] BiCGSTAB: "
+            << bicgstab_.iterations() << " iterations"
+            << ", residual = " << std::scientific
+            << bicgstab_.error() << std::fixed
+            << std::endl;
+    }
 }
 
 // ******************************* PCG Solver *******************************
@@ -73,29 +111,39 @@ void LinearSolver::solveWithPCG
 {
     assert(x.size() == B.size());
 
-    // Configure Eigen CG with Incomplete Cholesky preconditioning
-    Eigen::ConjugateGradient
-    <Eigen::SparseMatrix<Scalar>, Eigen::Lower|Eigen::Upper,
-    Eigen::IncompleteCholesky<Scalar>>
-    pcg;
+    // Configure and analyze once — parameters and sparsity are fixed
+    if (!solverInitialized_)
+    {
+        pcg_.setMaxIterations(maxIterations_);
+        pcg_.setTolerance(tolerance_);
+        pcg_.preconditioner().setInitialShift(icInitialShift_);
 
-    pcg.setMaxIterations(maxIterations_);
-    pcg.setTolerance(tolerance_);
-    pcg.preconditioner().setInitialShift(icInitialShift_);
+        pcg_.analyzePattern(A);
 
-    pcg.compute(A);
-    if (pcg.info() != Eigen::Success)
+        solverInitialized_ = true;
+    }
+
+    // Numeric factorization must run each call — coefficients change
+    pcg_.factorize(A);
+
+    if (pcg_.info() != Eigen::Success)
     {
         std::cerr
             << "Error for field '" << fieldName_
-            << "': PCG compute failed!"
+            << "': PCG factorization failed!"
             << std::endl;
-
-        std::cerr
-            << "  Eigen Info Code: "
-            << pcg.info() << std::endl;
         return;
     }
 
-    x = pcg.solveWithGuess(B, x);
+    x = pcg_.solveWithGuess(B, x);
+
+    if (debug_)
+    {
+        std::cout
+            << "  [" << fieldName_ << "] PCG: "
+            << pcg_.iterations() << " iterations"
+            << ", residual = " << std::scientific
+            << pcg_.error() << std::fixed
+            << std::endl;
+    }
 }

@@ -18,6 +18,7 @@
 
 #include <string>
 #include <eigen3/Eigen/SparseCore>
+#include <eigen3/Eigen/IterativeLinearSolvers>
 
 #include "Scalar.hpp"
 
@@ -37,6 +38,20 @@ public:
         Scalar tolerance = S(1e-6),
         int maxIterations = 1000
     );
+
+    /**
+     * @brief Copy configuration to a new solver instance
+     * @param other Source solver to copy configuration from
+     * @note Copies tolerance, iterations, preconditioner parameters, and
+     * debug flag only. Eigen solver state (bicgstab_, pcg_) is not copied —
+     * the new instance builds its own on first solve call.
+     */
+    LinearSolver(const LinearSolver& other);
+    LinearSolver& operator=(const LinearSolver& other);
+
+    /// Deleted — Eigen types are not moveable
+    LinearSolver(LinearSolver&&) = delete;
+    LinearSolver& operator=(LinearSolver&&) = delete;
 
 // Preconditioner configuration
 
@@ -73,6 +88,12 @@ public:
      * @param maxIter Maximum allowed iterations
      */
     void setMaxIterations(int maxIter) noexcept { maxIterations_ = maxIter; }
+
+    /**
+     * @brief Enable or disable debug logging after each solve
+     * @param debug True to print iteration count and residual
+     */
+    void setDebug(bool debug) noexcept { debug_ = debug; }
 
 // Accessors
 
@@ -142,4 +163,24 @@ private:
 
     /// Incomplete Cholesky initial shift parameter
     Scalar icInitialShift_ = S(1e-3);
+
+    /// Whether solver parameters and sparsity pattern have been initialized
+    bool solverInitialized_ = false;
+
+    /// Enable debug logging of iteration count and residual after each solve
+    bool debug_ = false;
+
+    /// BiCGSTAB solver with ILUT preconditioner
+    Eigen::BiCGSTAB
+    <Eigen::SparseMatrix<Scalar>, Eigen::IncompleteLUT<Scalar>>
+    bicgstab_;
+
+    /// PCG solver with Incomplete Cholesky preconditioner
+    Eigen::ConjugateGradient
+    <
+        Eigen::SparseMatrix<Scalar>,
+        Eigen::Lower|Eigen::Upper,
+        Eigen::IncompleteCholesky<Scalar>
+    >
+    pcg_;
 };
