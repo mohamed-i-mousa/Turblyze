@@ -27,64 +27,13 @@ SIMPLE::SIMPLE
     allCells_(cells),
     bcManager_(bc),
     gradientScheme_(gradScheme),
-    convectionScheme_(convSchemes),
-
-    // Physical properties
-    rho_(1.225),
-    mu_(1.7894e-5),
-    nu_(1.7894e-5 / 1.225),
-
-    // Algorithm parameters
-    alphaU_(0.7),
-    alphaP_(0.3),
-    alphaK_(0.5),
-    alphaOmega_(0.5),
-    maxIterations_(500),
-    tolerance_(1e-3),
-    debug_(false),
-
-    // Turbulence model
-    turbulenceModel_(nullptr),
-
-    // Field constraint system
-    constraintSystem_(nullptr),
-
-    // Solution fields
-    U_("U", cells.size(), Vector{}),
-    p_("p", cells.size(), 0.0),
-    pCorr_("pCorr", cells.size(), 0.0),
-    lastPressureCorrectionRMS_(S(1e9)),
-
-    // Previous-iteration fields
-    UPrev_("UPrev", cells.size(), Vector{}),
-    UAvgf_("UAvgf", faces.size(), Vector{}),
-    UAvgPrevf_("UAvgPrevf", faces.size(), Vector{}),
-
-    // Face-based fields for Rhie-Chow interpolation
-    RhieChowFlowRate_("RhieChowMassFlux", faces.size(), 0.0),
-    RhieChowFlowRatePrev_("RhieChowMassFluxPrev", faces.size(), 0.0),
-
-    // Momentum equation coefficients
-    DU_("DU", cells.size(), 0.0),
-    DUf_("DUf", faces.size(), 0.0),
-
-    // Gradient fields
-    gradP_("gradP", cells.size(), Vector{}),
-    gradPCorr_("gradPCorr", cells.size(), Vector{}),
-
-    // Matrix constructor
-    matrixConstruct_(nullptr),
-
-    // Linear solvers (per-equation defaults)
-    momentumSolver_("momentum", S(1e-6), 1000),
-    pressureSolver_("pCorr", S(1e-6), 1000)
+    convectionScheme_(convSchemes)
 {}
-
 
 SIMPLE::~SIMPLE() = default;
 
 
-// ******************************* Setter Methods ****************************
+// ****************************** Setter Methods ******************************
 
 void SIMPLE::setTurbulenceSolvers
 (

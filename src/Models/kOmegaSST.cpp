@@ -22,46 +22,12 @@ kOmegaSST::kOmegaSST
     const ConvectionScheme& kScheme,
     const ConvectionScheme& omegaScheme
 )
-    : k_("k", cells.size(), S(1e-6)),
-      omega_("omega", cells.size(), S(1.0)),
-      nut_("nut", cells.size(), S(0.0)),
-      wallDistance_("wallDistance", cells.size(), S(1.0)),
-      wallShearStress_("wallShearStress", faces.size(), S(0.0)),
-      yPlus_("yPlus", faces.size(), S(0.0)),
-      gradK_("gradK", cells.size(), Vector{}),
-      gradOmega_("gradOmega", cells.size(), Vector{}),
-      allFaces_(faces),
+    : allFaces_(faces),
       allCells_(cells),
       bcManager_(bc),
       gradientScheme_(gradientScheme),
       kConvectionScheme_(kScheme),
-      omegaConvectionScheme_(omegaScheme),
-      divU_("divU", cells.size(), S(0.0)),
-      F1_("F1", cells.size(), S(0.0)),
-      F2_("F2", cells.size(), S(0.0)),
-      F23_("F23", cells.size(), S(0.0)),
-      F3_("F3", cells.size(), S(0.0)),
-      productionK_("productionk", cells.size(), S(0.0)),
-      productionOmega_("productionOmega", cells.size(), S(0.0)),
-      strainRate_("strainRate", cells.size(), S(0.0)),
-      CDkOmega_("CDkOmega", cells.size(), S(0.0)),
-      nutWall_("nutWallFace", faces.size(), S(0.0)),
-      omegaWallFunctionFaceValues_
-      (
-          "omegaWallFunctionFaceValues",
-          faces.size(),
-          std::numeric_limits<Scalar>::quiet_NaN()
-      ),
-      wallFaceWeight_("wallFaceWeight", faces.size(), S(0.0)),
-      rho_(S(1.225)),
-      nu_(S(0.0)),
-      useF3_(false),
-      kMin_(S(smallValue)),
-      omegaMin_(S(smallValue)),
-      alphaK_(S(0.5)),
-      alphaOmega_(S(0.5)),
-      kSolver_("k", S(1e-8), 1000),
-      omegaSolver_("omega", S(1e-8), 1000)
+      omegaConvectionScheme_(omegaScheme)
 {
     matrixConstruct_ =
         std::make_unique<Matrix>(allFaces_, allCells_, bcManager_);

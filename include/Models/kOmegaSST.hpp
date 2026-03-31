@@ -243,34 +243,6 @@ public:
 
 private:
 
-// Turbulence fields
-
-    /// Turbulent kinetic energy
-    ScalarField k_;
-
-    /// Specific dissipation rate
-    ScalarField omega_;
-
-    /// Turbulent kinematic viscosity
-    ScalarField nut_;
-
-    /// Distance to nearest wall
-    ScalarField wallDistance_;
-
-    /// Wall shear stress magnitude
-    FaceData<Scalar> wallShearStress_;
-
-    /// y+
-    FaceData<Scalar> yPlus_;
-
-// Gradient fields
-
-    /// Gradient of k
-    VectorField gradK_;
-
-    /// Gradient of Omega
-    VectorField gradOmega_;
-
 // Mesh references
 
     /// Reference to all mesh faces
@@ -291,43 +263,85 @@ private:
     /// Reference to omega convection scheme
     const ConvectionScheme& omegaConvectionScheme_;
 
+// Turbulence fields
+
+    /// Turbulent kinetic energy
+    ScalarField k_ = ScalarField("k", allCells_.size(), S(1e-6));
+
+    /// Specific dissipation rate
+    ScalarField omega_ = ScalarField("omega", allCells_.size(), S(1.0));
+
+    /// Turbulent kinematic viscosity
+    ScalarField nut_ = ScalarField("nut", allCells_.size(), S(0.0));
+
+    /// Distance to nearest wall
+    ScalarField wallDistance_ =
+        ScalarField("wallDistance", allCells_.size(), S(1.0));
+
+    /// Wall shear stress magnitude
+    FaceData<Scalar> wallShearStress_ =
+        FaceData<Scalar>("wallShearStress", allFaces_.size(), S(0.0));
+
+    /// y+
+    FaceData<Scalar> yPlus_ =
+        FaceData<Scalar>("yPlus", allFaces_.size(), S(0.0));
+
+// Gradient fields
+
+    /// Gradient of k
+    VectorField gradK_ = VectorField("gradK", allCells_.size(), Vector{});
+
+    /// Gradient of Omega
+    VectorField gradOmega_ =
+        VectorField("gradOmega", allCells_.size(), Vector{});
+
 // Auxiliary fields
 
     /// Cached velocity divergence (computed once per solve() call)
-    ScalarField divU_;
+    ScalarField divU_ = ScalarField("divU", allCells_.size(), S(0.0));
 
     /// Blending function 1 (k-ω to k-ε)
-    ScalarField F1_;
+    ScalarField F1_ = ScalarField("F1", allCells_.size(), S(0.0));
 
     /// Blending function 2 (viscous sublayer)
-    ScalarField F2_;
+    ScalarField F2_ = ScalarField("F2", allCells_.size(), S(0.0));
 
     /// Blending function 23
-    ScalarField F23_;
+    ScalarField F23_ = ScalarField("F23", allCells_.size(), S(0.0));
 
     /// Blending function 3
-    ScalarField F3_;
+    ScalarField F3_ = ScalarField("F3", allCells_.size(), S(0.0));
 
     /// Production of k
-    ScalarField productionK_;
+    ScalarField productionK_ =
+        ScalarField("productionK", allCells_.size(), S(0.0));
 
     /// Production of omega
-    ScalarField productionOmega_;
+    ScalarField productionOmega_ =
+        ScalarField("productionOmega", allCells_.size(), S(0.0));
 
     /// Strain rate magnitude (shared between production and viscosity)
-    ScalarField strainRate_;
+    ScalarField strainRate_ =
+        ScalarField("strainRate", allCells_.size(), S(0.0));
 
     /// Cross-diffusion term: 2·σω2·(∇k·∇ω)/ω
-    ScalarField CDkOmega_;
+    ScalarField CDkOmega_ = ScalarField("CDkOmega", allCells_.size(), S(0.0));
 
     /// Wall-function nut values on wall faces (nutkWallFunction)
-    FaceData<Scalar> nutWall_;
+    FaceData<Scalar> nutWall_ =
+        FaceData<Scalar>("nutWall", allFaces_.size(), S(0.0));
 
     /// Dynamic omega wall-function values on faces
-    FaceData<Scalar> omegaWallFunctionFaceValues_;
+    FaceData<Scalar> omegaWallFunctionFaceValues_ =
+        FaceData<Scalar>
+        (
+            "omegaWallFunctionFaceValues",
+            allFaces_.size(),
+            std::numeric_limits<Scalar>::quiet_NaN()
+        );
 
     /// Area-based weight per wall face (face area / total wall area of cell)
-    FaceData<Scalar> wallFaceWeight_;
+    FaceData<Scalar> wallFaceWeight_ = FaceData<Scalar>("wallFaceWeight", allFaces_.size(), S(0.0));
 
     /// Indices into allFaces_ for faces with wall-function BCs
     std::vector<size_t> wallFunctionFaceIndices_;
@@ -347,19 +361,19 @@ private:
 // Physical properties
 
     /// Fluid density (used for wall shear stress)
-    Scalar rho_;
+    Scalar rho_ = S(1.225);
 
     /// Laminar kinematic viscosity
-    Scalar nu_;
+    Scalar nu_ = S(1.225/1.7894e-5);
 
     /// Optional SST F3 switch
-    bool useF3_;
+    bool useF3_ = false;
 
     /// Positive floor for k
-    Scalar kMin_;
+    Scalar kMin_ = S(smallValue);
 
     /// Positive floor for omega
-    Scalar omegaMin_;
+    Scalar omegaMin_ = S(smallValue);
 
     /// Maximum turbulent-to-laminar viscosity ratio for omega bound
     Scalar nutMaxCoeff_ = S(1e5);
@@ -368,10 +382,10 @@ private:
     Scalar yPlusLam_ = S(11.225);
 
     /// Under-relaxation factor for k equation
-    Scalar alphaK_;
+    Scalar alphaK_ = S(0.5);
 
     /// Under-relaxation factor for omega equation
-    Scalar alphaOmega_;
+    Scalar alphaOmega_ = S(0.5);
 
     /// Enable verbose console output
     bool debug_ = false;
@@ -382,10 +396,10 @@ private:
     std::unique_ptr<Matrix> matrixConstruct_;
 
     /// Linear solver for k equation
-    LinearSolver kSolver_;
+    LinearSolver kSolver_ = LinearSolver("k", S(1e-8), 1000);
 
     /// Linear solver for omega equation
-    LinearSolver omegaSolver_;
+    LinearSolver omegaSolver_ = LinearSolver("omega", S(1e-8), 1000);
 
 // Private helper methods
 

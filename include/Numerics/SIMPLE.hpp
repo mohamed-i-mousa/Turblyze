@@ -328,44 +328,44 @@ private:
 // Physical properties
 
     /// Fluid density
-    Scalar rho_;
+    Scalar rho_ = S(1.225);
     /// Dynamic viscosity
-    Scalar mu_;
+    Scalar mu_ = S(1.7894e-5);
     /// Kinematic viscosity
-    Scalar nu_;
+    Scalar nu_ = S(1.225/1.7894e-5);
 
 /// Algorithm parameters
 
     /// Under-relaxation factor for velocity
-    Scalar alphaU_;
+    Scalar alphaU_ = S(0.7);
     /// Under-relaxation factor for pressure
-    Scalar alphaP_;
+    Scalar alphaP_= S(0.3);
     /// Under-relaxation factor for k
-    Scalar alphaK_;
+    Scalar alphaK_ = S(0.5);
     /// Under-relaxation factor for omega
-    Scalar alphaOmega_;
+    Scalar alphaOmega_ = S(0.5);
     /// Maximum number of iterations
-    int maxIterations_;
+    int maxIterations_ = 500;
     /// Convergence tolerance
-    Scalar tolerance_;
+    Scalar tolerance_ = S(1e-3);
 
     /// Enable verbose console output
     bool debug_ = false;
 
     /// Turbulence model
-    std::unique_ptr<kOmegaSST> turbulenceModel_;
+    std::unique_ptr<kOmegaSST> turbulenceModel_ = nullptr;
 
     /// Field constraint system
-    std::unique_ptr<Constraint> constraintSystem_;
+    std::unique_ptr<Constraint> constraintSystem_ = nullptr;
 
     /// Velocity field
-    VectorField U_;
+    VelocityField U_ = VelocityField("U", allCells_.size(), Vector{});
 
     /// Pressure field
-    ScalarField p_;
+    PressureField p_ = PressureField("p", allCells_.size(), S(0.0));
 
     /// Pressure correction field
-    ScalarField pCorr_;
+    ScalarField pCorr_ = ScalarField("pCorr", allCells_.size(), S(0.0));
 
     /// Track pressure correction RMS before reset
     Scalar lastPressureCorrectionRMS_ = S(1e9);
@@ -382,48 +382,56 @@ private:
     Scalar omegaResidual0_ = S(0.0);
 
     /// Velocity from previous iteration
-    VectorField UPrev_;
+    VectorField UPrev_ = VelocityField("UPrev", allCells_.size(), Vector{});
 
     /// Face velocity field (current iteration)
-    FaceVectorField UAvgf_;
+    FaceVectorField UAvgf_ =
+        FaceVectorField("UAvgf", allFaces_.size(), Vector{});
 
     /// Face velocity from previous iteration
-    FaceVectorField UAvgPrevf_;
+    FaceVectorField UAvgPrevf_ = 
+        FaceVectorField("UAvgPrevf", allFaces_.size(), Vector{});
 
     /// Mass flux through faces (Rhie-Chow)
-    FaceFluxField RhieChowFlowRate_;
+    FaceFluxField RhieChowFlowRate_ =
+        FaceFluxField("RhieChowFlowRate", allFaces_.size(), S(0.0));
 
     /// Mass flux from previous iteration
-    FaceFluxField RhieChowFlowRatePrev_;
+    FaceFluxField RhieChowFlowRatePrev_ =
+        FaceFluxField("RhieChowFlowRatePrev", allFaces_.size(), S(0.0));
 
     /// Cell diffusion coefficients for momentum
-    ScalarField DU_;
+    ScalarField DU_ = ScalarField("DU", allCells_.size(), S(0.0));
 
     /// Face diffusion coefficients for momentum
-    FaceFluxField DUf_;
+    FaceFluxField DUf_ = FaceFluxField("DUf", allFaces_.size(), S(0.0));
 
 // Gradient fields
 
     /// Pressure gradient field
-    VectorField gradP_;
+    VectorField gradP_ = VectorField("gradP", allCells_.size(), Vector{});
 
     /// Pressure correction gradient field
-    VectorField gradPCorr_;
+    VectorField gradPCorr_ = 
+        VectorField("gradPCorr", allCells_.size(), Vector{});
 
     /// Velocity gradients (shared between momentum,
     /// transpose source, turbulence)
     std::vector<VectorField> gradU_;
 
     /// Matrix constructor and solver object
-    std::unique_ptr<Matrix> matrixConstruct_;
+    std::unique_ptr<Matrix> matrixConstruct_ = nullptr;
 
     /// Linear solver for momentum equations
-    LinearSolver momentumSolver_;
+    LinearSolver momentumSolver_ = LinearSolver("momentum", S(1e-6), 1000);
 
     /// Linear solver for pressure correction equation
-    LinearSolver pressureSolver_;
+    LinearSolver pressureSolver_ = LinearSolver("pCorr", S(1e-6), 1000);
 
 // Private methods
+
+    /// Initialize all field members with mesh dimensions
+    void initializeFields() noexcept;
 
     /**
      * @brief Extract a component (x=0, y=1, z=2) from a VectorField
