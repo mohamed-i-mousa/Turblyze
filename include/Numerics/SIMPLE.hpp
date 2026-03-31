@@ -332,7 +332,7 @@ private:
     /// Dynamic viscosity
     Scalar mu_ = S(1.7894e-5);
     /// Kinematic viscosity
-    Scalar nu_ = S(1.225/1.7894e-5);
+    Scalar nu_ = S(1.7894e-5/1.225);
 
 /// Algorithm parameters
 

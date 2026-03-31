@@ -341,7 +341,8 @@ private:
         );
 
     /// Area-based weight per wall face (face area / total wall area of cell)
-    FaceData<Scalar> wallFaceWeight_ = FaceData<Scalar>("wallFaceWeight", allFaces_.size(), S(0.0));
+    FaceData<Scalar> wallFaceWeight_ =
+        FaceData<Scalar>("wallFaceWeight", allFaces_.size(), S(0.0));
 
     /// Indices into allFaces_ for faces with wall-function BCs
     std::vector<size_t> wallFunctionFaceIndices_;
@@ -364,7 +365,7 @@ private:
     Scalar rho_ = S(1.225);
 
     /// Laminar kinematic viscosity
-    Scalar nu_ = S(1.225/1.7894e-5);
+    Scalar nu_ = S(1.7894e-5 / 1.225);
 
     /// Optional SST F3 switch
     bool useF3_ = false;
