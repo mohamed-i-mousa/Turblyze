@@ -6,26 +6,21 @@
  * set of faces on the domain boundary. A patch is identified by a name
  * (e.g., "inlet", "wall") and a geometric zone ID from the mesh file.
  *
+ * @enum PatchType
+ * - Enumeration of boundary condition types
+ * 
  * @class BoundaryPatch
- *
- * The BoundaryPatch class provides:
  * - Identification of boundary zones (name, ID, type)
  * - Topological range definitions (start face index, end face index)
- * - Mapping between mesh file types (e.g., Fluent strings) and internal enums
  * - Helper methods for querying patch size and face validity
  *****************************************************************************/
 
 #pragma once
 
-#include <array>
 #include <string>
-#include <string_view>
 
-/**
- * @enum BoundaryConditionType
- * @brief Enumeration of boundary condition types
- */
-enum class BoundaryConditionType
+
+enum class PatchType
 {
     VELOCITY_INLET,         ///< Velocity inlet boundary
     PRESSURE_INLET,         ///< Pressure inlet boundary
@@ -69,19 +64,16 @@ public:
      * @brief Set patch name
      * @param name New human-readable name
      */
-    void setPatchName(std::string name) { patchName_ = std::move(name); }
+    void setPatchName(std::string name) noexcept
+    {
+        patchName_ = std::move(name);
+    }
 
     /**
-     * @brief Set Fluent type
-     * @param typeStr New Fluent boundary type string
+     * @brief Set patch type
+     * @param patchType New patch type
      */
-    void setFluentType(std::string typeStr) { fluentType_ = std::move(typeStr); }
-
-    /**
-     * @brief Set boundary condition type
-     * @param bcType New boundary condition type
-     */
-    void setType(BoundaryConditionType bcType) noexcept { type_ = bcType; }
+    void setType(PatchType patchType) noexcept { type_ = patchType; }
 
 // Accessor methods
 
@@ -101,16 +93,10 @@ public:
     const std::string& patchName() const noexcept { return patchName_; }
 
     /**
-     * @brief Get Fluent type string
-     * @return Original Fluent boundary type
+     * @brief Get patch type
+     * @return Mapped patch type
      */
-    const std::string& fluentType() const noexcept { return fluentType_; }
-
-    /**
-     * @brief Get boundary condition type
-     * @return Mapped boundary condition type
-     */
-    BoundaryConditionType type() const noexcept { return type_; }
+    PatchType type() const noexcept { return type_; }
 
     /**
      * @brief Get zone identifier
@@ -130,56 +116,15 @@ public:
      */
     size_t lastFaceIdx() const noexcept { return lastFaceIdx_; }
 
-    /**
-     * @brief Maps Fluent boundary type string to enumeration
-     * @param fluentType String representation from Fluent mesh file
-     * @return Corresponding BoundaryConditionType enumeration
-     */
-    static BoundaryConditionType mapFluentBCToEnum
-    (
-        std::string_view fluentType
-    );
-
 private:
-
-// Private types
-
-    /// Mapping entry from Fluent type string to enum
-    struct BCMapping
-    {
-        std::string_view fluentType;
-        BoundaryConditionType bcType;
-    };
-
-// Private static data
-
-    /// Lookup table for Fluent BC type string to enum mapping
-    static constexpr std::array<BCMapping, 13> bcMappings_ = {{
-        {"velocity-inlet",   BoundaryConditionType::VELOCITY_INLET},
-        {"pressure-inlet",   BoundaryConditionType::PRESSURE_INLET},
-        {"pressure-outlet",  BoundaryConditionType::PRESSURE_OUTLET},
-        {"wall",             BoundaryConditionType::WALL},
-        {"symmetry",         BoundaryConditionType::SYMMETRY},
-        {"periodic",         BoundaryConditionType::PERIODIC},
-        {"periodic-shadow",  BoundaryConditionType::PERIODIC},
-        {"mass-flow-inlet",  BoundaryConditionType::MASS_FLOW_INLET},
-        {"outflow",          BoundaryConditionType::OUTFLOW},
-        {"interface",        BoundaryConditionType::INTERFACE},
-        {"interior",         BoundaryConditionType::INTERIOR},
-        {"solid",            BoundaryConditionType::SOLID},
-        {"fluid",            BoundaryConditionType::FLUID}
-    }};
 
 // Private members
 
     /// Human-readable patch name
     std::string patchName_;
 
-    /// Original Fluent boundary type string
-    std::string fluentType_;
-
     /// Mapped boundary condition type
-    BoundaryConditionType type_ = BoundaryConditionType::UNDEFINED;
+    PatchType type_ = PatchType::UNDEFINED;
 
     /// Zone identifier from mesh file
     size_t zoneIdx_;

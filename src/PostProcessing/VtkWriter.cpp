@@ -409,7 +409,7 @@ void writeWallBoundaryData
 
         const BoundaryPatch* patch = face.patch();
 
-        if (patch && patch->type() == BoundaryConditionType::WALL)
+        if (patch && patch->type() == PatchType::WALL)
         {
             wallFaceIndices.push_back(faceIdx);
         }

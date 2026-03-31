@@ -32,7 +32,6 @@ add_executable(${PROJECT_NAME}
     src/Mesh/MeshReader.cpp
     src/Mesh/MeshChecker.cpp
     src/BoundaryConditions/BoundaryData.cpp
-    src/BoundaryConditions/BoundaryPatch.cpp
     src/BoundaryConditions/BoundaryConditions.cpp
     src/Numerics/GradientScheme.cpp
     src/Numerics/ConvectionScheme.cpp

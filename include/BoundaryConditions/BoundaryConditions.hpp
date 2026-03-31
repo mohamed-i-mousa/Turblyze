@@ -101,20 +101,6 @@ public:
     );
 
     /**
-     * @brief Set fixed vector gradient boundary condition
-     * @param patchName Name of the boundary patch
-     * @param fieldName Name of the field
-     * @param gradient Vector gradient to fix at boundary
-     * @return True if successfully set
-     */
-    bool setFixedGradient
-    (
-        const std::string& patchName,
-        const std::string& fieldName,
-        const Vector& gradient
-    );
-
-    /**
      * @brief Set zero gradient boundary condition
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field
@@ -139,40 +125,17 @@ public:
     );
 
     /**
-     * @brief Set k wall function boundary condition
+     * @brief Set wall function boundary condition type
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field
+     * @param wallType The wall function type (K_WALL_FUNCTION, OMEGA_WALL_FUNCTION, or NUT_WALL_FUNCTION)
      * @return True if successfully set
      */
-    bool setKWallFunction
+    bool setWallFunctionType
     (
         const std::string& patchName,
-        const std::string& fieldName
-    );
-
-
-    /**
-     * @brief Set omega wall function boundary condition
-     * @param patchName Name of the boundary patch
-     * @param fieldName Name of the field
-     * @return True if successfully set
-     */
-    bool setOmegaWallFunction
-    (
-        const std::string& patchName,
-        const std::string& fieldName
-    );
-
-    /**
-     * @brief Set nut wall function boundary condition
-     * @param patchName Name of the boundary patch
-     * @param fieldName Name of the field
-     * @return True if successfully set
-     */
-    bool setNutWallFunction
-    (
-        const std::string& patchName,
-        const std::string& fieldName
+        const std::string& fieldName,
+        BCType wallType
     );
 
 // Accessor methods
@@ -218,6 +181,7 @@ public:
      *        a scalar from a vector BC (0=x, 1=y, 2=z)
      * @return Boundary value based on boundary condition
      */
+    [[nodiscard("Computed boundary face value needed for discretization")]]
     Scalar calculateBoundaryFaceValue
     (
         const std::string& fieldName,
@@ -234,6 +198,7 @@ public:
      * @return Boundary vector value based on boundary condition
      * @note Defaults to zero-gradient if no BC is specified for the face
      */
+    [[nodiscard("Computed boundary face value needed for discretization")]]
     Vector calculateBoundaryVectorFaceValue
     (
         const std::string& fieldName,
@@ -244,8 +209,10 @@ public:
     /**
      * @brief Link boundary faces to their owning patches
      * @param faces All mesh faces (boundary faces get patch pointers set)
+     * @note This is a state-changing initialization method; must be called
+     *       exactly once before solving, and prevents further addPatch() calls
      */
-    void linkFaces(std::vector<Face>& faces) const;
+    void linkFaces(std::vector<Face>& faces);
 
     /**
      * @brief Convert boundary condition type to string
@@ -276,4 +243,7 @@ private:
 
     /// Vector of all boundary patches
     std::vector<BoundaryPatch> patches_;
+
+    /// True after linkFaces() — prevents addPatch() after linking
+    bool linked_ = false;
 };

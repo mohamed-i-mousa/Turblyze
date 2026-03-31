@@ -6,9 +6,13 @@
  * transfer object holding the specific parameters for boundary conditions
  * (e.g., "velocity on inlet patch").
  *
+ * @enum BCType
+ * - Enumeration of boundary condition types
+ * 
+ * @enum BCValueType
+ * - Enumeration of boundary condition value types
+ * 
  * @class BoundaryData
- *
- * The BoundaryData class provides:
  * - Type-safe storage for BC parameters (scalar/vector values, gradients)
  * - Enumerations for supported BC types (FIXED_VALUE, ZERO_GRADIENT, etc.)
  * - Validation logic to ensure data consistency
@@ -20,10 +24,7 @@
 #include "Scalar.hpp"
 #include "Vector.hpp"
 
-/**
- * @enum BCType
- * @brief Enumeration of boundary condition types
- */
+
 enum class BCType
 {
     FIXED_VALUE,            ///< Fixed value (Dirichlet) boundary condition
@@ -36,16 +37,14 @@ enum class BCType
     UNDEFINED               ///< Undefined boundary condition type
 };
 
-/**
- * @enum BCValueType
- * @brief Enumeration of boundary condition value types
- */
+
 enum class BCValueType
 {
     SCALAR,                 ///< Scalar-valued boundary condition
     VECTOR,                 ///< Vector-valued boundary condition
     UNDEFINED               ///< Undefined value type
 };
+
 
 class BoundaryData
 {
@@ -74,26 +73,17 @@ public:
      */
     void setFixedGradient(Scalar scalarGradient) noexcept;
 
-    /**
-     * @brief Set fixed vector gradient boundary condition
-     * @param vectorGradient Vector gradient (normal component) at boundary
-     */
-    void setFixedGradient(const Vector& vectorGradient) noexcept;
-
     /// Set zero gradient boundary condition
     void setZeroGradient() noexcept;
 
     /// Set no-slip boundary condition (for velocity)
     void setNoSlip() noexcept;
 
-    /// Set k wall function boundary condition
-    void setKWallFunction() noexcept;
-
-    /// Set omega wall function boundary condition
-    void setOmegaWallFunction() noexcept;
-
-    /// Set nut wall function boundary condition
-    void setNutWallFunction() noexcept;
+    /**
+     * @brief Set wall function boundary condition type
+     * @param wallType The wall function type (K_WALL_FUNCTION, OMEGA_WALL_FUNCTION, or NUT_WALL_FUNCTION)
+     */
+    void setWallFunctionType(BCType wallType) noexcept;
 
 // Accessor methods
 
@@ -134,12 +124,6 @@ public:
     Scalar scalarGradient() const noexcept { return scalarGradient_; }
 
     /**
-     * @brief Get vector gradient
-     * @return Current vector boundary gradient
-     */
-    const Vector& vectorGradient() const noexcept { return vectorGradient_; }
-
-    /**
      * @brief Get fixed scalar value
      * @return Fixed scalar value
      * @throws std::runtime_error if not a fixed scalar value BC
@@ -159,13 +143,6 @@ public:
      * @throws std::runtime_error if not a fixed scalar gradient BC
      */
     Scalar fixedScalarGradient() const;
-    
-    /**
-     * @brief Get fixed vector gradient
-     * @return Fixed vector gradient (normal component)
-     * @throws std::runtime_error if not a fixed vector gradient BC
-     */
-    const Vector& fixedVectorGradient() const;
 
 private:
 
@@ -188,7 +165,4 @@ private:
 
     /// Scalar boundary gradient (normal component)
     Scalar scalarGradient_ = S(0.0);
-
-    /// Vector boundary gradient (normal component)
-    Vector vectorGradient_;
 };

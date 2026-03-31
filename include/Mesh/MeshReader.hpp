@@ -55,6 +55,7 @@ public:
      * @brief Transfer ownership of nodes data
      * @return Moved vector of node coordinates
      */
+    [[nodiscard("Moved mesh data must be captured")]]
     std::vector<Vector> moveNodes() noexcept
     {
         return std::move(nodes_);
@@ -64,6 +65,7 @@ public:
      * @brief Transfer ownership of faces data
      * @return Moved vector of mesh faces
      */
+    [[nodiscard("Moved mesh data must be captured")]]
     std::vector<Face> moveFaces() noexcept
     {
         return std::move(faces_);
@@ -73,6 +75,7 @@ public:
      * @brief Transfer ownership of cells data
      * @return Moved vector of mesh cells
      */
+    [[nodiscard("Moved mesh data must be captured")]]
     std::vector<Cell> moveCells() noexcept
     {
         return std::move(cells_);
@@ -82,6 +85,7 @@ public:
      * @brief Transfer ownership of boundary patches data
      * @return Moved vector of boundary patches
      */
+    [[nodiscard("Moved mesh data must be captured")]]
     std::vector<BoundaryPatch> moveBoundaryPatches() noexcept
     {
         return std::move(boundaryPatches_);
@@ -206,5 +210,43 @@ private:
     (
         size_t fluentIdx,
         const std::string& context
+    );
+
+// Fluent BC type mapping
+
+    /// Mapping entry from Fluent type string to enum
+    struct BCMapping
+    {
+        std::string_view fluentType;
+        PatchType patchType;
+    };
+
+    /// Lookup table for Fluent BC type string to enum mapping
+    static constexpr BCMapping bcMappings_[] =
+    {
+        {"velocity-inlet",   PatchType::VELOCITY_INLET},
+        {"pressure-inlet",   PatchType::PRESSURE_INLET},
+        {"pressure-outlet",  PatchType::PRESSURE_OUTLET},
+        {"wall",             PatchType::WALL},
+        {"symmetry",         PatchType::SYMMETRY},
+        {"periodic",         PatchType::PERIODIC},
+        {"periodic-shadow",  PatchType::PERIODIC},
+        {"mass-flow-inlet",  PatchType::MASS_FLOW_INLET},
+        {"outflow",          PatchType::OUTFLOW},
+        {"interface",        PatchType::INTERFACE},
+        {"interior",         PatchType::INTERIOR},
+        {"solid",            PatchType::SOLID},
+        {"fluid",            PatchType::FLUID}
+    };
+
+    /**
+     * @brief Maps Fluent boundary type string to enumeration
+     * @param fluentType String representation from Fluent mesh file
+     * @return Corresponding PatchType enumeration
+     */
+    [[nodiscard("Computed enum mapping is required")]]
+    static PatchType mapFluentBCToEnum
+    (
+        std::string_view fluentType
     );
 };

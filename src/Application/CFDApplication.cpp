@@ -190,9 +190,11 @@ void CFDApplication::prepareMesh()
         << faces_.size() << " faces, " << cells_.size()
         << " cells." << std::endl;
 
-    for (auto& face : faces_)
+    std::vector<FaceIntegrals> faceIntegrals(faces_.size());
+    for (size_t faceIdx = 0; faceIdx < faces_.size(); ++faceIdx)
     {
-        face.calculateGeometricProperties(nodes_);
+        faceIntegrals[faceIdx] =
+            faces_[faceIdx].calculateGeometricProperties(nodes_);
     }
     if (debug_)
     {
@@ -202,7 +204,7 @@ void CFDApplication::prepareMesh()
     }
 
     {
-        std::vector<Vector> approxCentroids(cells_.size(), Vector(0,0,0));
+        std::vector<Vector> approxCentroids(cells_.size(), Vector{});
         std::vector<std::set<size_t>> cellNodes(cells_.size());
 
         // Collect unique node indices for each cell
@@ -269,7 +271,7 @@ void CFDApplication::prepareMesh()
 
     for (auto& cell : cells_)
     {
-        cell.calculateGeometricProperties(faces_);
+        cell.calculateGeometricProperties(faces_, faceIntegrals);
     }
 
     if (debug_)
@@ -289,9 +291,14 @@ void CFDApplication::prepareMesh()
         );
     }
 
+    std::vector<Vector> cellCentroids(cells_.size());
+    for (size_t cellIdx = 0; cellIdx < cells_.size(); ++cellIdx)
+    {
+        cellCentroids[cellIdx] = cells_[cellIdx].centroid();
+    }
     for (auto& face : faces_)
     {
-        face.calculateDistanceProperties(cells_);
+        face.calculateDistanceProperties(cellCentroids);
     }
     if (debug_)
     {
@@ -507,7 +514,7 @@ void CFDApplication::setupBoundaryConditions()
             }
             else if (bcType == "kWallFunction")
             {
-                bcManager_.setKWallFunction(patchName, "k");
+                bcManager_.setWallFunctionType(patchName, "k", BCType::K_WALL_FUNCTION);
             }
             else if (bcType == "zeroGradient")
             {
@@ -615,7 +622,7 @@ void CFDApplication::setupBoundaryConditions()
             }
             else if (bcType == "omegaWallFunction")
             {
-                bcManager_.setOmegaWallFunction(patchName, "omega");
+                bcManager_.setWallFunctionType(patchName, "omega", BCType::OMEGA_WALL_FUNCTION);
             }
             else if (bcType == "zeroGradient")
             {
@@ -658,7 +665,7 @@ void CFDApplication::setupBoundaryConditions()
             }
             else if (bcType == "nutWallFunction")
             {
-                bcManager_.setNutWallFunction(patchName, "nut");
+                bcManager_.setWallFunctionType(patchName, "nut", BCType::NUT_WALL_FUNCTION);
             }
             else
             {
@@ -753,6 +760,7 @@ void CFDApplication::configureSolver()
                 USection.lookupOrDefault<Scalar>("tolerance", S(1e-8)),
                 USection.lookupOrDefault<int>("maxIter", 1000)
             );
+            momentumSolver.setDebug(debug_);
             solver_->setMomentumSolver(momentumSolver);
 
             if (debug_)
@@ -783,7 +791,7 @@ void CFDApplication::configureSolver()
                 pSection.lookupOrDefault<Scalar>("initialShift", S(1e-2));
 
             pressureSolver.setICParameters(initialShift);
-
+            pressureSolver.setDebug(debug_);
             solver_->setPressureSolver(pressureSolver);
 
             if (debug_)
@@ -829,6 +837,8 @@ void CFDApplication::configureSolver()
                 ("maxIter", 1000)
               : 1000
             );
+            kSolver.setDebug(debug_);
+            omegaSolver.setDebug(debug_);
             solver_->setTurbulenceSolvers(kSolver, omegaSolver);
         }
     }

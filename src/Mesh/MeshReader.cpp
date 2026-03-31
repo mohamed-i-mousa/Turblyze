@@ -409,12 +409,10 @@ void MeshReader::parseBoundariesSection
         {
             boundaryPatches_[i].setPatchName(nameString);
 
-            boundaryPatches_[i].setFluentType(typeString);
-
-            BoundaryConditionType mappedType =
-                BoundaryPatch::mapFluentBCToEnum(typeString);
-
-            boundaryPatches_[i].setType(mappedType);
+            boundaryPatches_[i].setType
+            (
+                mapFluentBCToEnum(typeString)
+            );
         }
     }
 }
@@ -427,8 +425,6 @@ void MeshReader::buildTopology()
     for (size_t i = 0; i < cells_.size(); ++i)
     {
         cells_[i].setIdx(i);
-        cells_[i].clearFaceIndices();
-        cells_[i].clearNeighborCellIndices();
     }
 
     std::vector<std::vector<size_t>> tempCellNeighbors(cells_.size());
@@ -439,8 +435,7 @@ void MeshReader::buildTopology()
 
         if (currentFace.ownerCell() < cells_.size())
         {
-            cells_[currentFace.ownerCell()].addFaceIndex(faceIdx);
-            cells_[currentFace.ownerCell()].addFaceSign(1);
+            cells_[currentFace.ownerCell()].addFace(faceIdx, 1);
 
             // If this face has a valid neighborCell
             if
@@ -465,10 +460,9 @@ void MeshReader::buildTopology()
           < cells_.size()
         )
         {
-            size_t neighborIdx =
-                currentFace.neighborCell().value();
-            cells_[neighborIdx].addFaceIndex(faceIdx);
-            cells_[neighborIdx].addFaceSign(-1);
+            size_t neighborIdx = currentFace.neighborCell().value();
+            
+            cells_[neighborIdx].addFace(faceIdx, -1);
 
             if (currentFace.ownerCell() < cells_.size())
             {
@@ -547,6 +541,24 @@ void MeshReader::printSummary() const
 
 
 // ************************* Static utility methods ***************************
+
+PatchType MeshReader::mapFluentBCToEnum
+(
+    std::string_view fluentType
+)
+{
+    for (const auto& [name, type] : bcMappings_)
+    {
+        if (fluentType == name)
+            return type;
+    }
+
+    std::cerr
+        << "Warning: Unknown Fluent boundary type encountered: "
+        << fluentType << std::endl;
+
+    return PatchType::UNDEFINED;
+}
 
 size_t MeshReader::hexToDec(const std::string &hexStr)
 {

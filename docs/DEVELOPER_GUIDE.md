@@ -80,7 +80,7 @@ This document explains the internal architecture and implementation details of t
 - Sections: comments `(0)`, dimension `(2)`, nodes `(10)`, cells `(12)`, faces `(13)`, boundaries `(45)`.
 - Fluent uses hexadecimal indices for declarations; helpers convert hex→dec robustly.
 - Faces section returns owner and optional neighbor cell; neighbor absent implies boundary.
-- Boundaries section maps `zoneID` to `BoundaryPatch` name/type via `mapFluentBCToEnum`.
+- Boundaries section maps `zoneID` to `BoundaryPatch` name/type via `MeshReader::mapFluentBCToEnum`.
 - After reading:
   - Builds `Cell.faceIndices`, `Cell.faceSigns` (+1 owner, -1 neighbor), and unique `neighbourCellIndices`.
   - Validates: min faces per cell, min nodes per face; prints a summary.
