@@ -50,15 +50,15 @@ SIMPLE::SIMPLE
     constraintSystem_(nullptr),
 
     // Solution fields
-    U_("U", cells.size(), Vector(0.0, 0.0, 0.0)),
+    U_("U", cells.size(), Vector{}),
     p_("p", cells.size(), 0.0),
     pCorr_("pCorr", cells.size(), 0.0),
     lastPressureCorrectionRMS_(S(1e9)),
 
     // Previous-iteration fields
-    UPrev_("UPrev", cells.size(), Vector(0.0, 0.0, 0.0)),
-    UAvgf_("UAvgf", faces.size(), Vector(0.0, 0.0, 0.0)),
-    UAvgPrevf_("UAvgPrevf", faces.size(), Vector(0.0, 0.0, 0.0)),
+    UPrev_("UPrev", cells.size(), Vector{}),
+    UAvgf_("UAvgf", faces.size(), Vector{}),
+    UAvgPrevf_("UAvgPrevf", faces.size(), Vector{}),
 
     // Face-based fields for Rhie-Chow interpolation
     RhieChowFlowRate_("RhieChowMassFlux", faces.size(), 0.0),
@@ -69,8 +69,8 @@ SIMPLE::SIMPLE
     DUf_("DUf", faces.size(), 0.0),
 
     // Gradient fields
-    gradP_("gradP", cells.size(), Vector(0.0, 0.0, 0.0)),
-    gradPCorr_("gradPCorr", cells.size(), Vector(0.0, 0.0, 0.0)),
+    gradP_("gradP", cells.size(), Vector{}),
+    gradPCorr_("gradPCorr", cells.size(), Vector{}),
 
     // Matrix constructor
     matrixConstruct_(nullptr),
@@ -235,9 +235,9 @@ void SIMPLE::initialize
     // Pre-allocate velocity gradient fields
     size_t numCells = allCells_.size();
     gradU_.reserve(3);
-    gradU_.emplace_back("gradUx", numCells, Vector(0, 0, 0));
-    gradU_.emplace_back("gradUy", numCells, Vector(0, 0, 0));
-    gradU_.emplace_back("gradUz", numCells, Vector(0, 0, 0));
+    gradU_.emplace_back("gradUx", numCells, Vector{});
+    gradU_.emplace_back("gradUy", numCells, Vector{});
+    gradU_.emplace_back("gradUz", numCells, Vector{});
 
     U_.setAll(initialVelocity);
     p_.setAll(initialPressure);
@@ -539,7 +539,7 @@ void SIMPLE::solvePressureCorrection()
     (
         "gradPCorr",
         numCells,
-        Vector(0.0, 0.0, 0.0)
+        Vector{}
     );
 
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -1111,6 +1111,6 @@ Vector SIMPLE::buildGradientTransposeColumn
         case 0: return Vector(gradUx.x(), gradUy.x(), gradUz.x());
         case 1: return Vector(gradUx.y(), gradUy.y(), gradUz.y());
         case 2: return Vector(gradUx.z(), gradUy.z(), gradUz.z());
-        default: return Vector(0.0, 0.0, 0.0);
+        default: return Vector{};
     }
 }

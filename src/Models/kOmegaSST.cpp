@@ -28,8 +28,8 @@ kOmegaSST::kOmegaSST
       wallDistance_("wallDistance", cells.size(), S(1.0)),
       wallShearStress_("wallShearStress", faces.size(), S(0.0)),
       yPlus_("yPlus", faces.size(), S(0.0)),
-      gradK_("gradK", cells.size(), Vector(0.0, 0.0, 0.0)),
-      gradOmega_("gradOmega", cells.size(), Vector(0.0, 0.0, 0.0)),
+      gradK_("gradK", cells.size(), Vector{}),
+      gradOmega_("gradOmega", cells.size(), Vector{}),
       allFaces_(faces),
       allCells_(cells),
       bcManager_(bc),
@@ -228,7 +228,7 @@ void kOmegaSST::calculateWallDistance()
 
         const BoundaryPatch* patch = face.patch();
 
-        if (patch->type() != BoundaryConditionType::WALL) continue;
+        if (patch->type() != PatchType::WALL) continue;
 
         size_t cellIdx = face.ownerCell();
         Vector cellCenter = allCells_[cellIdx].centroid();
@@ -318,7 +318,7 @@ void kOmegaSST::buildWallFunctionWeights()
         if (!face.isBoundary()) continue;
 
         const BoundaryPatch* patch = face.patch();
-        if (patch->type() != BoundaryConditionType::WALL) continue;
+        if (patch->type() != PatchType::WALL) continue;
 
         const BoundaryData* bc =
             bcManager_.fieldBC(patch->patchName(), "omega");
@@ -367,7 +367,7 @@ void kOmegaSST::buildWallFunctionWeights()
 
             const BoundaryPatch* patch = face.patch();
             if (patch
-                && patch->type() == BoundaryConditionType::WALL)
+                && patch->type() == PatchType::WALL)
             {
                 totalPolyWallArea[cellIdx] += face.projectedArea();
             }
