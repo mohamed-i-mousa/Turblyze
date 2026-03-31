@@ -59,6 +59,7 @@ public:
      *        used to extract scalar from vector BCs
      * @return Gradient vector at the specified cell
      */
+    [[nodiscard("Computed cells gradient vector needs a receiver")]]
     Vector cellGradient
     (
         const std::string& fieldName,
@@ -84,6 +85,7 @@ public:
      * @param faceIndex Index of the face
      * @return Gradient vector at the specified face
      */
+    [[nodiscard("Computed faces gradient vector needs a receiver")]]
     Vector faceGradient
     (
         const std::string& fieldName,

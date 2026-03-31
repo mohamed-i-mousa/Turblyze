@@ -67,12 +67,14 @@ public:
      * @brief Apply velocity field constraints
      * @return Number of cells where constraints were applied
      */
+    [[nodiscard("Constrained cells count needed for diagnostics")]]
     size_t applyVelocityConstraints() noexcept;
 
     /**
      * @brief Apply pressure field constraints
      * @return Number of cells where constraints were applied
      */
+    [[nodiscard("Constrained cells count needed for diagnostics")]]
     size_t applyPressureConstraints() noexcept;
 
 private:

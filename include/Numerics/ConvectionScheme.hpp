@@ -57,6 +57,7 @@ public:
      * @param flowRate Convective volumetric flow rate through the face
      * @return FluxCoefficients with owner and neighbor coefficients
      */
+    [[nodiscard("Computed flux coefficients are needed for matrix assembly")]]
     static constexpr FluxCoefficients getFluxCoefficients
     (
         Scalar flowRate
