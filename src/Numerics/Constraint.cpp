@@ -19,7 +19,7 @@ Constraint::Constraint
 
 void Constraint::setVelocityConstraints(Scalar maxVelocity) noexcept
 {
-    maxVelocityMagnitude_ = maxVelocity;
+    maxVelocityMagnitude_ = std::abs(maxVelocity);
 }
 
 void Constraint::setPressureConstraints
@@ -28,8 +28,24 @@ void Constraint::setPressureConstraints
     Scalar maxPressure
 ) noexcept
 {
-    minPressure_ = minPressure;
-    maxPressure_ = maxPressure;
+    if (minPressure < maxPressure)
+    {
+        minPressure_ = minPressure;
+        maxPressure_ = maxPressure;
+    }
+    else if (minPressure > maxPressure)
+    {
+        minPressure_ = maxPressure;
+        maxPressure_ = minPressure;
+    }
+    else
+    {
+        throw
+            std::runtime_error
+            (
+                "Wrong Pressure Constraints input"
+            );
+    }
 }
 
 void Constraint::enableConstraints
@@ -46,7 +62,7 @@ size_t Constraint::applyVelocityConstraints() noexcept
 {
     if (!enableVelocityConstraints_) return 0;
 
-    size_t constraintApplications = 0;
+    size_t constraintApplied = 0;
     Scalar maxMagSq = maxVelocityMagnitude_ * maxVelocityMagnitude_;
 
     for (size_t cellIdx = 0; cellIdx < U_.size(); ++cellIdx)
@@ -57,33 +73,28 @@ size_t Constraint::applyVelocityConstraints() noexcept
             Scalar mag = std::sqrt(magSq);
             U_[cellIdx] *= maxVelocityMagnitude_ / mag;
 
-            constraintApplications++;
+            constraintApplied++;
         }
     }
 
-    return constraintApplications;
+    return constraintApplied;
 }
 
 size_t Constraint::applyPressureConstraints() noexcept
 {
     if (!enablePressureConstraints_) return 0;
 
-    size_t constraintApplications = 0;
+    size_t constraintApplied = 0;
 
     for (size_t cellIdx = 0; cellIdx < p_.size(); ++cellIdx)
     {
-        // Apply pressure bounds
-        if (p_[cellIdx] < minPressure_)
+        Scalar clamped = std::clamp(p_[cellIdx], minPressure_, maxPressure_);
+        if (clamped != p_[cellIdx])
         {
-            p_[cellIdx] = minPressure_;
-            constraintApplications++;
-        }
-        else if (p_[cellIdx] > maxPressure_)
-        {
-            p_[cellIdx] = maxPressure_;
-            constraintApplications++;
+            p_[cellIdx] = clamped;
+            constraintApplied++;
         }
     }
 
-    return constraintApplications;
+    return constraintApplied;
 }

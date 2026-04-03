@@ -33,6 +33,10 @@ public:
         ScalarField& pressureField
     ) noexcept;
 
+    /// Copy and Move Semantics
+    Constraint(const Constraint&) = delete;
+    Constraint& operator=(const Constraint&) = delete;
+    
 // Setter methods
 
     /**
@@ -59,8 +63,8 @@ public:
      */
     void enableConstraints
     (
-        bool enableVel = true,
-        bool enablePress = true
+        bool enableVel,
+        bool enablePress
     ) noexcept;
 
     /**
