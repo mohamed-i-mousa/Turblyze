@@ -26,7 +26,7 @@ void Constraint::setPressureConstraints
 (
     Scalar minPressure,
     Scalar maxPressure
-) noexcept
+)
 {
     if (minPressure < maxPressure)
     {
