@@ -49,30 +49,30 @@ void MeshReader::parseFile(const std::string& filePath)
             parseCommentSection(ifs);
         }
 
-        if (token == MSH_DIMENSION)
+        else if (token == MSH_DIMENSION)
         {
             parseDimensionSection(ifs);
         }
 
-        if (token == MSH_NODES)
+        else if (token == MSH_NODES)
         {
             ifs >> token;
             parseNodesSection(ifs, token);
         }
 
-        if (token == MSH_CELLS)
+        else if (token == MSH_CELLS)
         {
             ifs >> token;
             parseCellsSection(ifs, token);
         }
 
-        if (token == MSH_FACES)
+        else if (token == MSH_FACES)
         {
             ifs >> token;
             parseFacesSection(ifs, token);
         }
 
-        if (token == MSH_BOUNDARIES)
+        else if (token == MSH_BOUNDARIES)
         {
             ifs >> token;
             parseBoundariesSection(ifs, token);
@@ -90,14 +90,22 @@ void MeshReader::parseFile(const std::string& filePath)
 void MeshReader::parseCommentSection(std::ifstream& ifs) const
 {
     int parenLevel = 1;
+    bool inQuotes = false;
     char ch;
 
     while (ifs.get(ch))
     {
-        if (ch == '(')
-            parenLevel++;
-        else if (ch == ')')
-            parenLevel--;
+        if (ch == '"')
+            inQuotes = !inQuotes;
+
+        if (!inQuotes)
+        {
+            if (ch == '(')
+                parenLevel++;
+            else if (ch == ')')
+                parenLevel--;
+        }
+
         if (parenLevel == 0)
             break;
     }
@@ -108,7 +116,7 @@ void MeshReader::parseDimensionSection(std::ifstream& ifs) const
     std::string dimension;
     ifs >> dimension;
     dimension.pop_back();
-    if (dimension == "2")
+    if (dimension != "3")
     {
         throw
             std::runtime_error
@@ -254,17 +262,21 @@ void MeshReader::parseFacesSection
         size_t startIdx = hexToDec(startIdxStr);
         size_t endIdx = hexToDec(endIdxStr);
 
-        boundaryPatches_.emplace_back(
-            zoneIdx,
-            safeFluentIndexConvert
+        if (typeStr != "2")
+        {
+            boundaryPatches_.emplace_back
             (
-                startIdx, "face zone start index"
-            ),
-            safeFluentIndexConvert
-            (
-                endIdx, "face zone end index"
-            )
-        );
+                zoneIdx,
+                safeFluentIndexConvert
+                (
+                    startIdx, "face zone start index"
+                ),
+                safeFluentIndexConvert
+                (
+                    endIdx, "face zone end index"
+                )
+            );
+        }
 
         std::string line;
         std::getline(ifs, line);
@@ -329,26 +341,25 @@ void MeshReader::parseFacesSection
                 hexItems.push_back(itemHex);
             }
 
-            // If mixed elements, discard first item (node count)
-            if (hasMixedElements)
-            {
-                hexItems.erase(hexItems.begin());
-            }
+            // Owner and neighbor are the last two items;
+            // node indices are everything before them.
+            // If mixed elements, the first item is the
+            // node count and must be skipped.
+            size_t nodeStart = hasMixedElements ? 1 : 0;
+            size_t nodeEnd   = hexItems.size() - 2;
 
-            // Last two ids are for owner and neighbor cells.
-            std::string neighborHex = hexItems.back();
-            hexItems.pop_back();
-            std::string ownerHex = hexItems.back();
-            hexItems.pop_back();
+            std::string_view ownerHex =
+                hexItems[hexItems.size() - 2];
+            std::string_view neighborHex =
+                hexItems[hexItems.size() - 1];
 
-            // The remaining items are node indices
-            for (const std::string &nodeIdxHex : hexItems)
+            for (size_t j = nodeStart; j < nodeEnd; ++j)
             {
                 currentFace.addNodeIndex
                 (
                     safeFluentIndexConvert
                     (
-                        hexToDec(nodeIdxHex),
+                        hexToDec(hexItems[j]),
                         "face node index"
                     )
                 );
@@ -523,20 +534,20 @@ void MeshReader::validateMesh() const
 void MeshReader::printSummary() const
 {
     std::cout
-        << "Mesh loaded successfully:" << std::endl;
+        << "Mesh loaded successfully:" << '\n';
 
     std::cout
-        << "  - Nodes: " << nodes_.size() << std::endl;
+        << "  - Nodes: " << nodes_.size() << '\n';
 
     std::cout
-        << "  - Faces: " << faces_.size() << std::endl;
+        << "  - Faces: " << faces_.size() << '\n';
 
     std::cout
-        << "  - Cells: " << cells_.size() << std::endl;
+        << "  - Cells: " << cells_.size() << '\n';
 
     std::cout
         << "  - Boundary patches: "
-        << boundaryPatches_.size() << std::endl;
+        << boundaryPatches_.size() << '\n';
 }
 
 
@@ -560,7 +571,7 @@ PatchType MeshReader::mapFluentBCToEnum
     return PatchType::UNDEFINED;
 }
 
-size_t MeshReader::hexToDec(const std::string &hexStr)
+size_t MeshReader::hexToDec(std::string_view hexStr)
 {
     size_t decVal;
     auto result =
@@ -582,7 +593,7 @@ size_t MeshReader::hexToDec(const std::string &hexStr)
             std::runtime_error
             (
                 "Error: Failed to convert hex string"
-              + std::string(" '") + hexStr
+              + std::string(" '") + std::string(hexStr)
               + "' to decimal."
             );
     }
@@ -590,7 +601,7 @@ size_t MeshReader::hexToDec(const std::string &hexStr)
     return decVal;
 }
 
-size_t MeshReader::strToDec(const std::string& decStr)
+size_t MeshReader::strToDec(std::string_view decStr)
 {
     if (decStr.empty())
     {
@@ -622,7 +633,7 @@ size_t MeshReader::strToDec(const std::string& decStr)
             std::runtime_error
             (
                 "Error: Failed to convert decimal"
-              + std::string(" string '") + decStr
+              + std::string(" string '") + std::string(decStr)
               + "' to size_t. Invalid format or"
               + " contains non-numeric characters."
             );
@@ -634,7 +645,7 @@ size_t MeshReader::strToDec(const std::string& decStr)
 size_t MeshReader::safeFluentIndexConvert
 (
     size_t fluentIdx,
-    const std::string& context
+    std::string_view context
 )
 {
     if (fluentIdx == 0)
@@ -643,7 +654,7 @@ size_t MeshReader::safeFluentIndexConvert
             std::runtime_error
             (
                 "Error: Invalid Fluent index 0 in "
-              + context
+              + std::string(context)
               + ". Fluent uses 1-based indexing."
             );
     }

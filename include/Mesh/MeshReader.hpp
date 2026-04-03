@@ -190,14 +190,14 @@ private:
      * @param hexStr Hexadecimal string to convert
      * @return Converted decimal value
      */
-    static size_t hexToDec(const std::string& hexStr);
+    static size_t hexToDec(std::string_view hexStr);
 
     /**
      * @brief Convert decimal string to size_t
      * @param decStr Decimal string to convert
      * @return Converted decimal value
      */
-    static size_t strToDec(const std::string& decStr);
+    static size_t strToDec(std::string_view decStr);
 
     /**
      * @brief Safely convert 1-based Fluent index to 0-based index
@@ -209,7 +209,7 @@ private:
     static size_t safeFluentIndexConvert
     (
         size_t fluentIdx,
-        const std::string& context
+        std::string_view context
     );
 
 // Fluent BC type mapping
