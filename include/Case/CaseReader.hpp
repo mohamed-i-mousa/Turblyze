@@ -169,14 +169,7 @@ inline Scalar CaseReader::convertTo<Scalar>(const std::string& value) const
 {
     try
     {
-        if constexpr (std::is_same_v<Scalar, double>)
-        {
-            return std::stod(value);
-        }
-        else
-        {
-            return std::stof(value);
-        }
+        return static_cast<Scalar>(std::stod(value));
     }
     catch (const std::exception& e)
     {
