@@ -23,6 +23,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <algorithm>
+#include <cctype>
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
@@ -143,6 +144,11 @@ private:
     template<typename T>
     T convertTo(const std::string& value) const;
 
+    static char toLowerSafe(char c) noexcept
+    {
+        return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    }
+
 // Private members
 
     /// Storage for key-value pairs
@@ -163,7 +169,14 @@ inline Scalar CaseReader::convertTo<Scalar>(const std::string& value) const
 {
     try
     {
-        return std::stod(value);
+        if constexpr (std::is_same_v<Scalar, double>)
+        {
+            return std::stod(value);
+        }
+        else
+        {
+            return std::stof(value);
+        }
     }
     catch (const std::exception& e)
     {
@@ -196,7 +209,7 @@ template<>
 inline bool CaseReader::convertTo<bool>(const std::string& value) const
 {
     std::string lower = value;
-    std::ranges::transform(lower, lower.begin(), ::tolower);
+    std::ranges::transform(lower, lower.begin(), toLowerSafe);
 
     if (lower == "true" || lower == "on" || lower == "yes" || lower == "1")
     {

@@ -61,19 +61,19 @@ void CaseReader::print(int indent) const
     for (const auto& [key, value] : entries_)
     {
         std::cout
-            << indentStr << key << ": " << value << std::endl;
+            << indentStr << key << ": " << value << "\n";
     }
 
     // Print sections
     for (const auto& [name, section] : sections_)
     {
         std::cout
-            << indentStr << name << " {" << std::endl;
+            << indentStr << name << " {" << "\n";
 
         section.print(indent + 1);
 
         std::cout
-            << indentStr << "}" << std::endl;
+            << indentStr << "}" << "\n";
     }
 }
 
@@ -230,6 +230,7 @@ std::string CaseReader::readToken(std::istream& is)
      || next == '}'
      || next == ';'
      || next == '('
+     || next == ')'
     )
     {
         is.get(c);
@@ -285,9 +286,22 @@ std::string CaseReader::parseValue
             {
                 currentLine_++;
             }
+
             value += c;
-            if (c == '(') parenDepth++;
-            if (c == ')') parenDepth--;
+
+            if (c == '(')
+            {
+                parenDepth++;
+            }
+            if (c == ')')
+            {
+                parenDepth--;
+            }
+        }
+        skipCommentsAndWhitespace(is);
+        if (is.peek() == ';')
+        {
+            is.get(); // consume semicolon
         }
     }
     else
