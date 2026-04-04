@@ -19,6 +19,8 @@
 #pragma once
 
 #include <vector>
+#include <span>
+
 #include "Face.hpp"
 #include "Cell.hpp"
 #include "Vector.hpp"
@@ -137,5 +139,11 @@ private:
      * @param cell Cell object
      * @return Aspect ratio (1.0 = perfect cube, higher = elongated)
      */
-    Scalar calculateCellAspectRatio(const Cell& cell) const noexcept;
+    Scalar calculateCellAspectRatio(const Cell& cell) const;
+
+    /**
+     * @brief Validate mesh connectivity indices are in range
+     * @return True if all indices are valid, false otherwise
+     */
+    bool validateConnectivity() const;
 };
