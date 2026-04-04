@@ -971,11 +971,11 @@ void kOmegaSST::calculateGradients
     // Apply Barth-Jespersen cell-based gradient limiting
     if (computeGradK)
     {
-        gradientScheme_.limitGradient(k_, gradK_);
+        gradientScheme_.limitGradient("k", k_, gradK_);
     }
     if (computeGradOmega)
     {
-        gradientScheme_.limitGradient(omega_, gradOmega_);
+        gradientScheme_.limitGradient("omega", omega_, gradOmega_);
     }
 }
 

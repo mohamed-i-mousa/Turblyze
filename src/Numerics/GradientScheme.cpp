@@ -57,7 +57,7 @@ void GradientScheme::precomputeInverseATA()
               - cell.centroid();
 
             Scalar rMagSqr = r.magnitudeSquared();
-            Scalar w = S(1.0) / (rMagSqr + vSmallValue);
+            Scalar w = S(1.0) / (rMagSqr + smallValue);
 
             rVector << r.x(), r.y(), r.z();
             ATA.noalias() += w * (rVector * rVector.transpose());
@@ -72,7 +72,7 @@ void GradientScheme::precomputeInverseATA()
 
             Vector r = face.centroid() - cell.centroid();
             Scalar rMagSqr = r.magnitudeSquared();
-            Scalar w = S(1.0) / (rMagSqr + vSmallValue);
+            Scalar w = S(1.0) / (rMagSqr + smallValue);
 
             rVector << r.x(), r.y(), r.z();
             ATA.noalias() += w * (rVector * rVector.transpose());
@@ -158,7 +158,7 @@ Vector GradientScheme::cellGradient
         Vector r = neighbor.centroid() - cell.centroid();
 
         Scalar rMagSqr = r.magnitudeSquared();
-        Scalar w = S(1.0) / (rMagSqr + vSmallValue);
+        Scalar w = S(1.0) / (rMagSqr + smallValue);
 
         Scalar wDeltaPhi =
             w * (phi[neighborIdx] - phi[cellIndex]);
@@ -177,7 +177,7 @@ Vector GradientScheme::cellGradient
 
         Vector r = face.centroid() - cell.centroid();
         Scalar rMagSqr = r.magnitudeSquared();
-        Scalar w = S(1.0) / (rMagSqr + vSmallValue);
+        Scalar w = S(1.0) / (rMagSqr + smallValue);
 
         Scalar phiBoundary = S(0.0);
         bool useOverride =
@@ -224,9 +224,11 @@ Vector GradientScheme::cellGradient
 
 void GradientScheme::limitGradient
 (
+    const std::string& fieldName,
     const ScalarField& phi,
-    VectorField& gradPhi
-) const noexcept
+    VectorField& gradPhi,
+    std::optional<int> componentIdx
+) const
 {
     for (size_t cellIdx = 0; cellIdx < allCells_.size(); ++cellIdx)
     {
@@ -241,6 +243,25 @@ void GradientScheme::limitGradient
         {
             phiMin = std::min(phiMin, phi[neighborIdx]);
             phiMax = std::max(phiMax, phi[neighborIdx]);
+        }
+
+        // Include boundary face values so the limiter does not clip
+        // physically correct near-boundary gradients (e.g. k near walls)
+        for (size_t faceIdx : cell.faceIndices())
+        {
+            const Face& face = allFaces_[faceIdx];
+            if (!face.isBoundary()) continue;
+
+            Scalar phiBound =
+                bcManager_.calculateBoundaryFaceValue
+                (
+                    fieldName,
+                    phi,
+                    face,
+                    componentIdx
+                );
+            phiMin = std::min(phiMin, phiBound);
+            phiMax = std::max(phiMax, phiBound);
         }
 
         // Compute Barth-Jespersen limiter: min alpha over all faces
@@ -328,8 +349,8 @@ Vector GradientScheme::averageFaceGradient
         throw
             std::invalid_argument
             (
-                "VectorLinearInterpolation: "
-                "Cannot interpolate on boundary face"
+                "GradientScheme::averageFaceGradient: "
+                "Cannot average gradient on boundary face"
             );
     }
 
@@ -388,26 +409,14 @@ Vector GradientScheme::calculateBoundaryFaceGradient
                     return cellGradient;
                 }
             }
-            else if (componentIdx && bc->valueType() == BCValueType::VECTOR)
-            {
-                // NO_SLIP with component index: extract from (0,0,0)
-                const Vector& v = bc->vectorValue();
-                switch (*componentIdx)
-                {
-                    case 0: boundaryValue = v.x(); break;
-                    case 1: boundaryValue = v.y(); break;
-                    case 2: boundaryValue = v.z(); break;
-                }
-            }
-
             Scalar cellValue = phi[face.ownerCell()];
 
             Scalar dn = dot(face.dPf(), face.normal());
 
             Scalar dPfMag = face.dPfMag();
 
-            // Stabilization: limit dn to 5% minimum
-            Scalar dnStabilized = std::max(dn, S(0.05) * dPfMag);
+            // Stabilization: clamp dn to minNormalFraction_ * ||dPf||
+            Scalar dnStabilized = std::max(dn, minNormalFraction_ * dPfMag);
 
             // ∂φ/∂n = (φ_boundary - φ_cell) / dnStabilized
             Scalar normalGradient =

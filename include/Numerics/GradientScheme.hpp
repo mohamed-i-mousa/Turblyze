@@ -53,8 +53,11 @@ public:
      * @param fieldName Name of the field for BC lookup
      * @param phi Scalar field for gradient calculation
      * @param cellIdx Index of the cell to compute gradient for
-     * @param boundaryFaceValues Optional pre-computed boundary face
-     *        values that override BC lookup when provided
+     * @param boundaryFaceValues Optional per-face boundary value overrides.
+     *        The caller MUST initialise every entry to
+     *        std::numeric_limits<Scalar>::quiet_NaN() before filling in
+     *        specific overrides. Faces left as NaN fall back to the BC
+     *        manager. Pass nullptr to bypass the override entirely
      * @param componentIdx For vector field components (0=x, 1=y, 2=z),
      *        used to extract scalar from vector BCs
      * @return Gradient vector at the specified cell
@@ -100,17 +103,22 @@ public:
      * @brief Apply Barth-Jespersen cell-based gradient limiter
      *
      * @details Scales each cell's gradient so that face-extrapolated
-     * values do not exceed the range of neighboring cell values.
+     * values do not exceed the range of neighboring cell values,
+     * including values imposed by boundary conditions on boundary faces.
      * Prevents overshoot from steep gradients (e.g. near wall cells).
      *
+     * @param fieldName Name of the field for BC lookup on boundary faces
      * @param phi Cell-centered scalar field
      * @param gradPhi Cell-centered gradient field (modified in place)
+     * @param componentIdx For vector field components (0=x, 1=y, 2=z)
      */
     void limitGradient
     (
+        const std::string& fieldName,
         const ScalarField& phi,
-        VectorField& gradPhi
-    ) const noexcept;
+        VectorField& gradPhi,
+        std::optional<int> componentIdx = std::nullopt
+    ) const;
 
 
 private:
@@ -164,4 +172,8 @@ private:
 
     /// Cached inverse of ATA per cell {xx, xy, xz, yy, yz, zz}
     std::vector<std::array<Scalar, 6>> invATA_;
+
+    /// Minimum fraction of ||dPf|| used as normal distance to a boundary face.
+    /// Prevents gradient amplification beyond ~87 degrees of non-orthogonality.
+    static constexpr Scalar minNormalFraction_ = S(0.05);
 };
