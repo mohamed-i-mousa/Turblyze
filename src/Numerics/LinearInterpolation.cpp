@@ -6,7 +6,17 @@
 #include "LinearInterpolation.hpp"
 #include "BoundaryConditions.hpp"
 
-#include <iostream>
+#include <cassert>
+
+// Helper function: compute weight for neighbor cell in linear interpolation.
+// Returns wN = dP / (dP + dN), so wP = 1 - wN.
+// Weight for the closer cell is larger, as expected.
+static Scalar faceWeight(const Face& face)
+{
+    const Scalar dP = face.dPfMag();
+    const Scalar dN = face.dNfMag().value();
+    return dP / (dP + dN);
+}
 
 Scalar interpolateToFace
 (
@@ -14,28 +24,13 @@ Scalar interpolateToFace
     const ScalarField& field
 )
 {
-    if (face.isBoundary())
-    {
-        std::cerr
-            << "WARNING: interpolateToFace() called on boundary face "
-            << "without BoundaryConditions. Use the overload with "
-            << "bcManager instead. "
-            << "Falling back to owner cell value.\n";
-
-        return field[face.ownerCell()];
-    }
+    assert(!face.isBoundary() && "interpolateToFace (no BC) must not be called on boundary faces");
 
     const size_t P = face.ownerCell();
     const size_t N = face.neighborCell().value();
+    const Scalar wN = faceWeight(face);
 
-    const Scalar dP = face.dPfMag();
-    const Scalar dN = face.dNfMag().value();
-    const Scalar total = dP + dN + vSmallValue;
-
-    const Scalar wP = dN / total;
-    const Scalar wN = dP / total;
-
-    return wP * field[P] + wN * field[N];
+    return (S(1.0) - wN) * field[P] + wN * field[N];
 }
 
 Vector interpolateToFace
@@ -44,28 +39,13 @@ Vector interpolateToFace
     const VectorField& field
 )
 {
-    if (face.isBoundary())
-    {
-        std::cerr
-            << "WARNING: interpolateToFace() called on boundary "
-            << "face without BoundaryConditions. Use the overload "
-            << "with bcManager instead. "
-            << "Falling back to owner cell value.\n";
-
-        return field[face.ownerCell()];
-    }
+    assert(!face.isBoundary() && "interpolateToFace (no BC) must not be called on boundary faces");
 
     const size_t P = face.ownerCell();
     const size_t N = face.neighborCell().value();
+    const Scalar wN = faceWeight(face);
 
-    const Scalar dP = face.dPfMag();
-    const Scalar dN = face.dNfMag().value();
-    const Scalar total = dP + dN + vSmallValue;
-
-    const Scalar wP = dN / total;
-    const Scalar wN = dP / total;
-
-    return wP * field[P] + wN * field[N];
+    return (S(1.0) - wN) * field[P] + wN * field[N];
 }
 
 Vector interpolateToFace
@@ -86,13 +66,7 @@ Vector interpolateToFace
 
     const size_t P = face.ownerCell();
     const size_t N = face.neighborCell().value();
+    const Scalar wN = faceWeight(face);
 
-    const Scalar dP = face.dPfMag();
-    const Scalar dN = face.dNfMag().value();
-    const Scalar total = dP + dN + vSmallValue;
-
-    const Scalar wP = dN / total;
-    const Scalar wN = dP / total;
-
-    return wP * field[P] + wN * field[N];
+    return (S(1.0) - wN) * field[P] + wN * field[N];
 }
