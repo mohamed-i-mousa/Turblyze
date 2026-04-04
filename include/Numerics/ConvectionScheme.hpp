@@ -2,24 +2,49 @@
  * @file ConvectionScheme.hpp
  * @brief Convection discretization schemes for finite volume method
  *
- * @details This header defines the convection scheme hierarchy for 
- * discretizing convective fluxes in transport equations. The implementation 
- * follows a deferred correction approach where all schemes use stable upwind 
- * matrix coefficients, with higher-order schemes adding explicit correction 
- * terms.
+ * @details This header defines the convection scheme hierarchy for
+ * discretizing convective fluxes in transport equations. The implementation
+ * follows a deferred correction approach: all schemes use stable first-order
+ * upwind coefficients in the implicit matrix, with higher-order schemes
+ * adding an explicit correction term to the RHS each iteration.
  *
- * @class ConvectionScheme
+ * ## Scheme Hierarchy
  *
- * The ConvectionScheme class provides:
- * - Base interface for convective flux discretization
- * - Upwind flux coefficient calculation for matrix assembly
- * - Virtual deferred correction interface for higher-order accuracy
- * - Support for first-order (Upwind), second-order (CDS, SOU) schemes
+ * @class ConvectionScheme is the abstract base class. Three concrete schemes
+ * are provided:
+ *
+ * - @class UpwindScheme (1st-order): φ_f = φ_upwind
+ *     Selects the upwind cell value based on flow direction.
+ *     Unconditionally stable but introduces numerical diffusion.
+ *
+ * - @class CentralDifferenceScheme (2nd-order): φ_f = w·φ_P + (1-w)·φ_N
+ *     Distance-weighted linear interpolation between owner and neighbor.
+ *     Second-order accurate but can be unstable at high cell Peclet numbers.
+ *
+ * - @class SecondOrderUpwindScheme (2nd-order): φ_f = φ_upwind + ∇φ_upwind · d
+ *     Gradient-reconstructed face value from the upwind cell center.
+ *     Balances accuracy and robustness; preferred for turbulent flows.
+ *
+ * ## Upwind Matrix Coefficients
+ *
+ * @struct FluxCoefficients holds the implicit upwind contributions used by
+ * all schemes for matrix assembly:
+ * - owner    = max(F, 0): active when flow is from owner to neighbor (F >= 0)
+ * - neighbor = min(F, 0): active when flow is from neighbor to owner (F < 0)
+ *
+ * Retrieved via ConvectionScheme::getFluxCoefficients(flowRate).
+ *
+ * ## ConvectionSchemes Container
+ *
+ * ConvectionSchemes groups per-equation scheme selections (momentum, k,
+ * omega) with a shared default fallback. Accessor methods return the
+ * equation-specific scheme when set, otherwise fall back to the default.
  *****************************************************************************/
 
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <memory>
 
 #include "Scalar.hpp"
@@ -36,14 +61,6 @@ public:
 
 // Public types
 
-    /**
-     * @brief Upwind convection flux coefficients for matrix assembly
-     *
-     * @details
-     * All schemes use upwind coefficients in the matrix for stability:
-     * - owner = max(F, 0): takes flow when F >= 0
-     * - neighbor = min(F, 0): takes flow when F < 0
-     */
     struct FluxCoefficients
     {
         Scalar owner;
@@ -53,15 +70,20 @@ public:
 // Public interface
 
     /**
-     * @brief Get upwind convection flux coefficients for matrix assembly
-     * @param flowRate Convective volumetric flow rate through the face
-     * @return FluxCoefficients with owner and neighbor coefficients
+     * @brief Get implicit upwind flux coefficients for matrix assembly
+     * @param flowRate Volumetric flow rate through face (F = ρ·U·A)
+     * @return FluxCoefficients with owner and neighbor contributions
+     *
+     * The returned coefficients are used in the implicit matrix assembly:
+     * - owner    = max(F, 0): active when flow is from owner to neighbor (F >= 0)
+     * - neighbor = min(F, 0): active when flow is from neighbor to owner (F < 0)
+     *
+     * All schemes use these same upwind coefficients for stability. Higher-order
+     * schemes add an explicit correction term to the RHS to achieve improved
+     * accuracy while maintaining a stable implicit discretization.
      */
     [[nodiscard("Computed flux coefficients are needed for matrix assembly")]]
-    static constexpr FluxCoefficients getFluxCoefficients
-    (
-        Scalar flowRate
-    ) noexcept
+    static FluxCoefficients getFluxCoefficients(Scalar flowRate) noexcept
     {
         return
         {
@@ -77,11 +99,12 @@ public:
      * @param gradPhiP Cell gradient at owner cell
      * @param gradPhiN Cell gradient at neighbor cell
      * @param flowRate Volumetric flow rate through face
-     * @return Correction flux: flowRate × (φ_highOrder - φ_upwind)
-     *
-     * Base implementation returns 0 (no correction for first-order upwind).
-     * Higher-order schemes override to provide explicit correction terms.
+     * @return Correction flux: flowRate × (φ_highOrder - φ_upwind).
+     *         UpwindScheme returns 0; higher-order schemes return the
+     *         explicit correction term added to the RHS.
      */
+    
+    [[nodiscard("Computed correction is needed for matrix assembly")]]
     virtual Scalar calculateCorrection
     (
         const Face& face,
@@ -89,48 +112,31 @@ public:
         const Vector& gradPhiP,
         const Vector& gradPhiN,
         Scalar flowRate
-    ) const;
+    ) const = 0;
 };
 
-/**
- * @brief First-order Upwind Differencing Scheme (UDS)
- *
- * @details
- * Discretization: φ_f = φ_upwind (flow-direction dependent)
- *   - F >= 0: φ_f = φ_P (owner cell value)
- *   - F < 0:  φ_f = φ_N (neighbor cell value)
- *
- * Unconditionally stable but diffusive (first-order accurate).
- */
-class UpwindScheme final : public ConvectionScheme {};
 
-/**
- * @brief Central Differencing Scheme (CDS) with deferred correction
- *
- * @details
- * Discretization: φ_f = w·φ_P + (1-w)·φ_N (distance-weighted interpolation)
- *
- * Implementation uses deferred correction approach:
- *   - Matrix coefficients: upwind (for stability)
- *   - RHS correction: F × (φ_CDS - φ_upwind)
- *
- * Second-order accurate but can be unstable for high cell Peclet numbers.
- */
+class UpwindScheme final : public ConvectionScheme
+{
+public:
+
+    Scalar calculateCorrection
+    (
+        const Face& face,
+        const ScalarField& phi,
+        const Vector& gradPhiP,
+        const Vector& gradPhiN,
+        Scalar flowRate
+    ) const override;
+};
+
+
 class CentralDifferenceScheme final : public ConvectionScheme
 {
 public:
 
 // Public interface
 
-    /**
-     * @brief Calculate deferred correction for CDS
-     * @param face Face for interpolation
-     * @param phi Cell-centered field values
-     * @param gradPhiP Cell gradient at owner (unused for CDS)
-     * @param gradPhiN Cell gradient at neighbor (unused for CDS)
-     * @param flowRate Volumetric flow rate through face
-     * @return Correction flux: F × (φ_CDS - φ_upwind)
-     */
     Scalar calculateCorrection
     (
         const Face& face,
@@ -141,34 +147,13 @@ public:
     ) const override;
 };
 
-/**
- * @brief Second-order Upwind Scheme (SOU) with gradient reconstruction
- *
- * @details
- * Discretization: φ_f = φ_upwind + ∇φ_upwind · d_{upwind→face}
- *
- * Implementation uses deferred correction approach:
- *   - Matrix coefficients: upwind (for stability)
- *   - RHS correction: F × (φ_SOU - φ_upwind)
- *
- * Balances accuracy (second-order) with stability (upwind bias).
- * More robust than CDS for convection-dominated flows.
- */
+
 class SecondOrderUpwindScheme final : public ConvectionScheme
 {
 public:
 
 // Public interface
 
-    /**
-     * @brief Calculate deferred correction for SOU
-     * @param face Face for interpolation
-     * @param phi Cell-centered field values
-     * @param gradPhiP Cell gradient at owner cell
-     * @param gradPhiN Cell gradient at neighbor cell
-     * @param flowRate Volumetric flow rate (determines upwind direction)
-     * @return Correction flux: F × (φ_SOU - φ_upwind)
-     */
     Scalar calculateCorrection
     (
         const Face& face,
@@ -179,19 +164,6 @@ public:
     ) const override;
 };
 
-/**
- * @brief Container for equation-specific convection schemes
- *
- * @details
- * Manages convection schemes for different transport equations:
- * - momentum: Ux, Uy, Uz momentum equations
- * - k: Turbulent kinetic energy transport
- * - omega: Specific dissipation rate transport
- * - default: Fallback for any unspecified equation
- *
- * Accessor methods automatically fall back to default scheme when
- * equation-specific scheme is not set.
- */
 struct ConvectionSchemes
 {
 // Scheme storage
@@ -216,6 +188,7 @@ struct ConvectionSchemes
      */
     const ConvectionScheme& momentum() const
     {
+        assert(defaultScheme && "Default convection scheme must be set");
         return momentumScheme ? *momentumScheme : *defaultScheme;
     }
 
@@ -225,6 +198,7 @@ struct ConvectionSchemes
      */
     const ConvectionScheme& k() const
     {
+        assert(defaultScheme && "Default convection scheme must be set");
         return kScheme ? *kScheme : *defaultScheme;
     }
 
@@ -234,6 +208,7 @@ struct ConvectionSchemes
      */
     const ConvectionScheme& omega() const
     {
+        assert(defaultScheme && "Default convection scheme must be set");
         return omegaScheme ? *omegaScheme : *defaultScheme;
     }
 };
