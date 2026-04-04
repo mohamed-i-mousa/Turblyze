@@ -1154,15 +1154,15 @@ void kOmegaSST::logFieldDiagnostics() const
         << std::scientific
         << "  Turbulence: k     [min, max, mean] = ["
         << kMin << ", " << kMax << ", "
-        << kSum / n << "]" << std::endl;
+        << kSum / n << ']' << std::endl;
 
     std::cout
         << "  Turbulence: omega [min, max, mean] = ["
         << oMin << ", " << oMax << ", "
-        << oSum / n << "]" << std::endl;
+        << oSum / n << ']' << std::endl;
 
     std::cout
         << "  Turbulence: nut   [min, max, mean] = ["
         << nMin << ", " << nMax << ", "
-        << nSum / n << "]" << std::endl;
+        << nSum / n << ']' << std::endl;
 }

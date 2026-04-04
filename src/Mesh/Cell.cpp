@@ -89,7 +89,7 @@ std::ostream& operator<<(std::ostream& os, const Cell& c)
             << (i == neighbors.size() - 1 ? "" : ", ");
     }
 
-    os  << "]";
+    os  << ']';
 
     if (c.geometricPropertiesCalculated())
     {
@@ -109,7 +109,7 @@ std::ostream& operator<<(std::ostream& os, const Cell& c)
         os  << ", Geometry: N/A";
     }
 
-    os  << ")";
+    os  << ')';
 
     return os;
 }

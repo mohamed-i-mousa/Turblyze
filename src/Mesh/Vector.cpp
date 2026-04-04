@@ -16,7 +16,7 @@ std::ostream& operator<<(std::ostream& os, const Vector& p)
 
     os  << std::fixed << std::setprecision(6);
 
-    os  << "(" << p.x() << ", " << p.y() << ", " << p.z() << ")";
+    os  << '(' << p.x() << ", " << p.y() << ", " << p.z() << ')';
 
     os.flags(flags);
     os.precision(prec);

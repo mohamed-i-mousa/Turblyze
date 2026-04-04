@@ -720,11 +720,11 @@ void writeCellGeometryData
         const Cell& cell = allCells[i];
         const Vector& c = cell.centroid();
 
-        outFile << i << " "
-                << cell.volume() << " "
-                << c.x() << " "
-                << c.y() << " "
-                << c.z() << "\n";
+        outFile << i << ' '
+                << cell.volume() << ' '
+                << c.x() << ' '
+                << c.y() << ' '
+                << c.z() << '\n';
     }
 
     outFile.close();

@@ -249,13 +249,13 @@ void MeshChecker::check() const
         << "  Minimum area: "
         << std::scientific << std::setprecision(6)
         << minFaceArea << " m² (face "
-        << minFaceId << ")" << std::endl;
+        << minFaceId << ')' << std::endl;
 
     std::cout
         << "  Maximum area: "
         << std::scientific << std::setprecision(6)
         << maxFaceArea << " m² (face "
-        << maxFaceId << ")" << std::endl;
+        << maxFaceId << ')' << std::endl;
 
     std::cout
         << "\nCell Volume Statistics:" << std::endl;
@@ -264,13 +264,13 @@ void MeshChecker::check() const
         << "  Minimum volume: "
         << std::scientific << std::setprecision(6)
         << minCellVolume << " m³ (cell "
-        << minCellId << ")" << std::endl;
+        << minCellId << ')' << std::endl;
 
     std::cout
         << "  Maximum volume: "
         << std::scientific << std::setprecision(6)
         << maxCellVolume << " m³ (cell "
-        << maxCellId << ")" << std::endl;
+        << maxCellId << ')' << std::endl;
 
     if (!invertedCells.empty())
     {
@@ -319,7 +319,7 @@ void MeshChecker::check() const
 
     std::cout
         << "  Maximum: " << maxSkewness << " (face "
-        << maxSkewFaceId << ")" << std::endl;
+        << maxSkewFaceId << ')' << std::endl;
 
     if (!highSkewFaces.empty())
     {
@@ -341,7 +341,7 @@ void MeshChecker::check() const
 
     std::cout
         << "  Maximum: " << maxAspectRatio << " (cell "
-        << maxAspectCellId << ")" << std::endl;
+        << maxAspectCellId << ')' << std::endl;
 
     if (!highAspectCells.empty())
     {

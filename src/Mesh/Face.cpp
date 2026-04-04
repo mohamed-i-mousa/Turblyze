@@ -209,7 +209,7 @@ std::ostream& operator<<(std::ostream& os, const Face& f)
         os.precision(prec);
     }
 
-    os  << ")";
+    os  << ')';
 
     return os;
 }

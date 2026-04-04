@@ -61,19 +61,19 @@ void CaseReader::print(int indent) const
     for (const auto& [key, value] : entries_)
     {
         std::cout
-            << indentStr << key << ": " << value << "\n";
+            << indentStr << key << ": " << value << '\n';
     }
 
     // Print sections
     for (const auto& [name, section] : sections_)
     {
         std::cout
-            << indentStr << name << " {" << "\n";
+            << indentStr << name << " {" << '\n';
 
         section.print(indent + 1);
 
         std::cout
-            << indentStr << "}" << "\n";
+            << indentStr << '}' << '\n';
     }
 }
 
