@@ -142,8 +142,8 @@ private:
     std::vector<Eigen::Triplet<Scalar>> tripletList_;
 
     /// Cached face counts for triplet list reservation
-    size_t numInternalFaces_;
-    size_t numBoundaryFaces_;
+    size_t numInternalFaces_ = 0;
+    size_t numBoundaryFaces_ = 0;
 
     /// Relaxation factor from last relax() call (0 = not relaxed)
     Scalar lastRelaxationFactor_ = S(0.0);

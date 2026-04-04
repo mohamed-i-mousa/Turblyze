@@ -3,7 +3,9 @@
  * @brief Matrix assembly and linear system construction for equations
  *****************************************************************************/
 
+#include <cassert>
 #include <iostream>
+
 #include "Matrix.hpp"
 
 // ************************* Constructor & Destructor *************************
@@ -16,15 +18,22 @@ Matrix::Matrix
 ) noexcept
   : allFaces_(faces),
     allCells_(cells),
-    bcManager_(boundaryConds),
-    numInternalFaces_(0),
-    numBoundaryFaces_(0)
+    bcManager_(boundaryConds)
 {
     for (const auto& face : allFaces_)
     {
         if (face.isBoundary()) ++numBoundaryFaces_;
         else ++numInternalFaces_;
     }
+
+    size_t numCells = allCells_.size();
+
+    matrixA_.resize
+    (
+        static_cast<Eigen::Index>(numCells),
+        static_cast<Eigen::Index>(numCells)
+    );
+    vectorB_.resize(static_cast<Eigen::Index>(numCells));
 }
 
 
@@ -68,7 +77,7 @@ void Matrix::buildMatrix(const TransportEquation& equation)
 
 void Matrix::relax(Scalar alpha, const ScalarField& phiPrev)
 {
-    if (alpha <= 0.0)
+    if (alpha <= S(0.0))
     {
         throw
             std::runtime_error
@@ -116,19 +125,8 @@ void Matrix::relax(Scalar alpha, const ScalarField& phiPrev)
 void Matrix::clear()
 {
     tripletList_.clear();
-
-    size_t numCells = allCells_.size();
-
-    matrixA_.resize
-    (
-        static_cast<Eigen::Index>(numCells),
-        static_cast<Eigen::Index>(numCells)
-    );
     matrixA_.setZero();
-
-    vectorB_.resize(static_cast<Eigen::Index>(numCells));
     vectorB_.setZero();
-
     lastRelaxationFactor_ = S(0.0);
 }
 
@@ -153,6 +151,12 @@ Scalar Matrix::extractBoundaryScalar
             case 0: return v.x();
             case 1: return v.y();
             case 2: return v.z();
+            default:
+                assert
+                (
+                    false
+                 && "extractBoundaryScalar: component index out of range"
+                );
         }
     }
 
@@ -201,11 +205,15 @@ void Matrix::assembleInternalFace
     else
     {
         // Face-based: use directly
+        assert
+        (
+            equation.GammaFace.has_value()
+         && "assembleInternalFace: equation has no Gamma or GammaFace"
+        );
         Gammaf = equation.GammaFace->get()[face.idx()];
     }
 
-    Scalar aDiff =
-        Gammaf * Ef.magnitude() / (dPNMag + vSmallValue);
+    Scalar aDiff = Gammaf * Ef.magnitude() / (dPNMag + vSmallValue);
 
     // Convection coefficients
     Scalar aPConv = S(0.0);
@@ -215,8 +223,7 @@ void Matrix::assembleInternalFace
     {
         Scalar flowRate = equation.flowRate->get()[face.idx()];
 
-        auto [aP, aN] = 
-            equation.convScheme->get().getFluxCoefficients(flowRate);
+        auto [aP, aN] = ConvectionScheme::getFluxCoefficients(flowRate);
 
         aPConv = aP;
         aNConv = aN;
@@ -304,6 +311,11 @@ void Matrix::assembleBoundaryFace
     }
     else
     {
+        assert
+        (
+            equation.GammaFace.has_value()
+         && "assembleBoundaryFace: equation has no Gamma or GammaFace"
+        );
         Gammaf = equation.GammaFace->get()[face.idx()];
     }
 
