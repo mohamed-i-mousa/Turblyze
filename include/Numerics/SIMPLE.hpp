@@ -20,9 +20,11 @@
 
 #pragma once
 
+#include <array>
 #include <vector>
 #include <memory>
 
+#include "ErrorHandler.hpp"
 #include "Face.hpp"
 #include "Cell.hpp"
 #include "BoundaryConditions.hpp"
@@ -82,73 +84,6 @@ public:
         bool enableTurbulence = false
     );
 
-    /// Solve momentum equations for velocity components
-    void solveMomentumEquations();
-
-    /**
-     * @brief Calculate mass fluxes using Rhie-Chow interpolation
-     *
-     * @details
-     * Implements the Rhie-Chow interpolation method to prevent checkerboard
-     * pressure oscillations in collocated grids.
-     *
-     * The face velocity is computed as:
-     *
-     * Uf = UAvgf + DUf * (∇pAvgf - ∇pFaceAccurate)
-     *       + (1 - alphaU) * (UPrevf - UPrevLinearf)
-     *
-     * where D_f is the face diffusion coefficient calculated using the
-     * momentum equation diagonals.
-     */
-    void calculateRhieChowFlowRate();
-
-    /**
-     * @brief Solve pressure correction equation
-     *
-     * @details
-     * Assembles and solves the pressure correction equation:
-     * ∇·(DUf ∇p') = -∇·(ρU*)
-     */
-    void solvePressureCorrection();
-
-    /**
-     * @brief Correct velocity field
-     *
-     * @details
-     * Applies the SIMPLE velocity correction:
-     * U = U* - D ∇p'
-     * then re-interpolates face velocities from the corrected field.
-     */
-    void correctVelocity();
-
-    /**
-     * @brief Correct pressure field
-     *
-     * @details
-     * Computes RMS of p' for convergence monitoring, then applies
-     * under-relaxed pressure correction:
-     * p = p + αp p'
-     * Resets p' to zero for the next iteration.
-     */
-    void correctPressure();
-
-    /**
-     * @brief Correct mass fluxes
-     *
-     * @details
-     * Corrects Rhie-Chow face mass fluxes using:
-     * ṁf = ṁf* - Df (∇p')f · Sf
-     * Internal faces use interpolated face gradients;
-     * boundary faces use one-sided owner-cell gradients.
-     */
-    void correctFlowRate();
-
-    /// Solve turbulence equations if turbulence modeling is enabled
-    void solveTurbulence();
-
-    /// Check if solution has converged
-    bool checkConvergence();
-
 // Accessor methods
 
     /**
@@ -184,8 +119,8 @@ public:
     (
         Scalar alphaU,
         Scalar alphaP,
-        Scalar alphaK = 0.5,
-        Scalar alphaOmega = 0.5
+        Scalar alphaK = S(0.5),
+        Scalar alphaOmega = S(0.5)
     ) noexcept
     {
         alphaU_ = alphaU;
@@ -223,11 +158,15 @@ public:
      * @param rho Fluid density
      * @param mu Dynamic viscosity
      */
-    void setPhysicalProperties(Scalar rho, Scalar mu) noexcept
+    void setPhysicalProperties(Scalar rho, Scalar mu)
     {
+        if (rho <= S(0.0))
+        {
+            FatalError("setPhysicalProperties: density must be positive");
+        }
         rho_ = rho;
-        mu_ = mu;
-        nu_ = mu / rho;
+        mu_  = mu;
+        nu_  = mu / rho;
     }
 
     /**
@@ -323,7 +262,7 @@ private:
     std::span<const Cell> allCells_;
     const BoundaryConditions& bcManager_;
     const GradientScheme& gradientScheme_;
-    const ConvectionSchemes& convectionScheme_;
+    const ConvectionSchemes& convectionSchemes_;
 
 // Physical properties
 
@@ -417,7 +356,7 @@ private:
 
     /// Velocity gradients (shared between momentum,
     /// transpose source, turbulence)
-    std::vector<VectorField> gradU_;
+    std::array<VectorField, 3> gradU_;
 
     /// Matrix constructor and solver object
     std::unique_ptr<Matrix> matrixConstruct_ = nullptr;
@@ -428,23 +367,54 @@ private:
     /// Linear solver for pressure correction equation
     LinearSolver pressureSolver_ = LinearSolver("pCorr", S(1e-6), 1000);
 
+// Private types
+
+    /// Velocity component selector used in place of raw char/int indices
+    enum class Component : int { X = 0, Y = 1, Z = 2 };
+
+// Algorithm steps (called only by solve())
+
+    /// Solve momentum equations for each velocity component
+    void solveMomentumEquations();
+
+    /// Calculate face mass fluxes using Rhie-Chow interpolation
+    void calculateRhieChowFlowRate();
+
+    /// Assemble and solve the pressure correction Poisson equation
+    void solvePressureCorrection();
+
+    /// Apply SIMPLE velocity correction: U = U* - D*gradPCorr
+    void correctVelocity();
+
+    /// Update pressure with under-relaxation and reset pCorr
+    void correctPressure();
+
+    /// Update face mass fluxes from pressure correction gradient
+    void correctFlowRate();
+
+    /// Advance k-omega SST turbulence equations (if enabled)
+    void solveTurbulence();
+
+    /// Check convergence against scaled residual tolerance
+    [[nodiscard]] bool checkConvergence();
+
 // Private methods
 
     /// Initialize all field members with mesh dimensions
     void initializeFields() noexcept;
 
     /**
-     * @brief Extract a component (x=0, y=1, z=2) from a VectorField
+     * @brief Extract a single component from a VectorField into a ScalarField
      * @param name Name for the resulting scalar field
      * @param V Source vector field
-     * @param component Component index (0=x, 1=y, 2=z)
+     * @param component Component to extract (X, Y, or Z)
      * @return ScalarField containing the extracted component
      */
     static ScalarField extractComponent
     (
         const std::string& name,
         const VectorField& V,
-        int component
+        Component component
     );
 
     /// Calculate mass imbalance across domain
@@ -483,16 +453,16 @@ private:
      * @brief Solve a single momentum component equation
      *
      * @details Builds and solves the discretized momentum equation for one
-     * velocity component (x, y, or z). Handles matrix assembly,
-     * under-relaxation, and linear solver iteration.
+     * velocity component. Handles matrix assembly, under-relaxation, and
+     * linear solver iteration.
      *
-     * @param component Component identifier ('x', 'y', or 'z')
+     * @param component Component to solve (X, Y, or Z)
      * @param eq Transport equation data for this component
      * @param componentPrev Previous iteration velocity component
      */
     void solveMomentumComponent
     (
-        char component,
+        Component component,
         TransportEquation& eq,
         const ScalarField& componentPrev
     );
@@ -501,14 +471,14 @@ private:
      * @brief Build gradient transpose vector from velocity gradients
      *
      * @details Constructs the transpose gradient columns:
-     * - component 0 (x): [∂u/∂x, ∂v/∂x, ∂w/∂x]
-     * - component 1 (y): [∂u/∂y, ∂v/∂y, ∂w/∂y]
-     * - component 2 (z): [∂u/∂z, ∂v/∂z, ∂w/∂z]
+     * - X: [∂u/∂x, ∂v/∂x, ∂w/∂x]
+     * - Y: [∂u/∂y, ∂v/∂y, ∂w/∂y]
+     * - Z: [∂u/∂z, ∂v/∂z, ∂w/∂z]
      *
      * @param gradUx Gradient of x-velocity
      * @param gradUy Gradient of y-velocity
      * @param gradUz Gradient of z-velocity
-     * @param component Which column of transpose (0=x, 1=y, 2=z)
+     * @param component Which column of the transpose to build
      * @return Vector representing the transpose gradient column
      */
     Vector buildGradientTransposeColumn
@@ -516,6 +486,6 @@ private:
         const Vector& gradUx,
         const Vector& gradUy,
         const Vector& gradUz,
-        int component
+        Component component
     ) const noexcept;
 };

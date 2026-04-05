@@ -27,7 +27,7 @@ SIMPLE::SIMPLE
     allCells_(cells),
     bcManager_(bc),
     gradientScheme_(gradScheme),
-    convectionScheme_(convSchemes)
+    convectionSchemes_(convSchemes)
 {}
 
 SIMPLE::~SIMPLE() = default;
@@ -114,6 +114,13 @@ void SIMPLE::solve()
         << "\n=== Starting SIMPLE Loop ===" << std::endl
         << std::endl;
 
+    // Reset first-iteration residual references for clean convergence tracking
+    massImbalance0_    = S(0.0);
+    velocityResidual0_ = S(0.0);
+    pressureResidual0_ = S(0.0);
+    kResidual0_        = S(0.0);
+    omegaResidual0_    = S(0.0);
+
     int iteration = 0;
 
     bool converged = false;
@@ -181,12 +188,11 @@ void SIMPLE::initialize
     // Initialize constraint system
     constraintSystem_ = std::make_unique<Constraint>(U_, p_);
 
-    // Pre-allocate velocity gradient fields
+    // Initialize velocity gradient fields
     size_t numCells = allCells_.size();
-    gradU_.reserve(3);
-    gradU_.emplace_back("gradUx", numCells, Vector{});
-    gradU_.emplace_back("gradUy", numCells, Vector{});
-    gradU_.emplace_back("gradUz", numCells, Vector{});
+    gradU_[0] = VectorField("gradUx", numCells, Vector{});
+    gradU_[1] = VectorField("gradUy", numCells, Vector{});
+    gradU_[2] = VectorField("gradUz", numCells, Vector{});
 
     U_.setAll(initialVelocity);
     p_.setAll(initialPressure);
@@ -211,8 +217,8 @@ void SIMPLE::initialize
                 allCells_,
                 bcManager_,
                 gradientScheme_,
-                convectionScheme_.k(),
-                convectionScheme_.omega()
+                convectionSchemes_.k(),
+                convectionSchemes_.omega()
             );
 
         turbulenceModel_->setDebug(debug_);
@@ -249,14 +255,14 @@ void SIMPLE::solveMomentumEquations()
     ScalarField nuEff("nuEff", numCells);
 
     // Extract velocity components
-    ScalarField Ux = extractComponent("Ux", U_, 0);
-    ScalarField Uy = extractComponent("Uy", U_, 1);
-    ScalarField Uz = extractComponent("Uz", U_, 2);
+    ScalarField Ux = extractComponent("Ux", U_, Component::X);
+    ScalarField Uy = extractComponent("Uy", U_, Component::Y);
+    ScalarField Uz = extractComponent("Uz", U_, Component::Z);
 
     // Extract previous-iteration components
-    ScalarField UxPrev = extractComponent("UxPrev", UPrev_, 0);
-    ScalarField UyPrev = extractComponent("UyPrev", UPrev_, 1);
-    ScalarField UzPrev = extractComponent("UzPrev", UPrev_, 2);
+    ScalarField UxPrev = extractComponent("UxPrev", UPrev_, Component::X);
+    ScalarField UyPrev = extractComponent("UyPrev", UPrev_, Component::Y);
+    ScalarField UzPrev = extractComponent("UzPrev", UPrev_, Component::Z);
 
     ScalarField UxSource("UxSource", numCells);
     ScalarField UySource("UySource", numCells);
@@ -365,7 +371,7 @@ void SIMPLE::solveMomentumEquations()
         .fieldName      = "U",
         .phi            = Ux,
         .flowRate       = std::cref(RhieChowFlowRatePrev_),
-        .convScheme     = std::cref(convectionScheme_.momentum()),
+        .convScheme     = std::cref(convectionSchemes_.momentum()),
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace),
         .source         = UxSource,
@@ -373,14 +379,14 @@ void SIMPLE::solveMomentumEquations()
         .gradScheme     = gradientScheme_,
         .componentIdx   = 0
     };
-    solveMomentumComponent('x', equationUx, UxPrev);
+    solveMomentumComponent(Component::X, equationUx, UxPrev);
 
     TransportEquation equationUy
     {
         .fieldName      = "U",
         .phi            = Uy,
         .flowRate       = std::cref(RhieChowFlowRatePrev_),
-        .convScheme     = std::cref(convectionScheme_.momentum()),
+        .convScheme     = std::cref(convectionSchemes_.momentum()),
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace),
         .source         = UySource,
@@ -388,14 +394,14 @@ void SIMPLE::solveMomentumEquations()
         .gradScheme     = gradientScheme_,
         .componentIdx   = 1
     };
-    solveMomentumComponent('y', equationUy, UyPrev);
+    solveMomentumComponent(Component::Y, equationUy, UyPrev);
 
     TransportEquation equationUz
     {
         .fieldName      = "U",
         .phi            = Uz,
         .flowRate       = std::cref(RhieChowFlowRatePrev_),
-        .convScheme     = std::cref(convectionScheme_.momentum()),
+        .convScheme     = std::cref(convectionSchemes_.momentum()),
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace),
         .source         = UzSource,
@@ -403,7 +409,7 @@ void SIMPLE::solveMomentumEquations()
         .gradScheme     = gradientScheme_,
         .componentIdx   = 2
     };
-    solveMomentumComponent('z', equationUz, UzPrev);
+    solveMomentumComponent(Component::Z, equationUz, UzPrev);
 
     // Calculate DUf_ field using complete DU_
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
@@ -699,9 +705,9 @@ void SIMPLE::solveTurbulence()
         // Recompute velocity gradients from corrected velocity
         size_t numCells = allCells_.size();
 
-        ScalarField Ux = extractComponent("Ux", U_, 0);
-        ScalarField Uy = extractComponent("Uy", U_, 1);
-        ScalarField Uz = extractComponent("Uz", U_, 2);
+        ScalarField Ux = extractComponent("Ux", U_, Component::X);
+        ScalarField Uy = extractComponent("Uy", U_, Component::Y);
+        ScalarField Uz = extractComponent("Uz", U_, Component::Z);
 
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
@@ -824,7 +830,7 @@ ScalarField SIMPLE::extractComponent
 (
     const std::string& name,
     const VectorField& V,
-    int component
+    Component component
 )
 {
     size_t numCells = V.size();
@@ -835,9 +841,9 @@ ScalarField SIMPLE::extractComponent
     {
         switch (component)
         {
-            case 0: result[cellIdx] = V[cellIdx].x(); break;
-            case 1: result[cellIdx] = V[cellIdx].y(); break;
-            case 2: result[cellIdx] = V[cellIdx].z(); break;
+            case Component::X: result[cellIdx] = V[cellIdx].x(); break;
+            case Component::Y: result[cellIdx] = V[cellIdx].y(); break;
+            case Component::Z: result[cellIdx] = V[cellIdx].z(); break;
         }
     }
 
@@ -936,7 +942,7 @@ void SIMPLE::calculateTransposeGradientSource
                     gradU_[0][ownerIdx],
                     gradU_[1][ownerIdx],
                     gradU_[2][ownerIdx],
-                    0
+                    Component::X
                 );
 
             Vector gradTy =
@@ -945,7 +951,7 @@ void SIMPLE::calculateTransposeGradientSource
                     gradU_[0][ownerIdx],
                     gradU_[1][ownerIdx],
                     gradU_[2][ownerIdx],
-                    1
+                    Component::Y
                 );
 
             Vector gradTz =
@@ -954,7 +960,7 @@ void SIMPLE::calculateTransposeGradientSource
                     gradU_[0][ownerIdx],
                     gradU_[1][ownerIdx],
                     gradU_[2][ownerIdx],
-                    2
+                    Component::Z
                 );
 
             // Flux contribution: ν_eff_f * (∇U)^T · Sf
@@ -973,13 +979,22 @@ void SIMPLE::calculateTransposeGradientSource
 
             // Build transpose gradient columns
             Vector gradTx =
-                buildGradientTransposeColumn(gradUxf, gradUyf, gradUzf, 0);
+                buildGradientTransposeColumn
+                (
+                    gradUxf, gradUyf, gradUzf, Component::X
+                );
 
             Vector gradTy =
-                buildGradientTransposeColumn(gradUxf, gradUyf, gradUzf, 1);
+                buildGradientTransposeColumn
+                (
+                    gradUxf, gradUyf, gradUzf, Component::Y
+                );
 
             Vector gradTz =
-                buildGradientTransposeColumn(gradUxf, gradUyf, gradUzf, 2);
+                buildGradientTransposeColumn
+                (
+                    gradUxf, gradUyf, gradUzf, Component::Z
+                );
 
             // Flux contribution: ν_eff_f * (∇U)^T · Sf
             Scalar fluxX = nuEfff * dot(gradTx, Sf);
@@ -999,7 +1014,7 @@ void SIMPLE::calculateTransposeGradientSource
 
 void SIMPLE::solveMomentumComponent
 (
-    char component,
+    Component component,
     TransportEquation& eq,
     const ScalarField& componentPrev
 )
@@ -1014,7 +1029,7 @@ void SIMPLE::solveMomentumComponent
     size_t numCells = allCells_.size();
 
     // DU_ is identical for all 3 momentum components — compute only once
-    if (component == 'x')
+    if (component == Component::X)
     {
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
@@ -1040,9 +1055,9 @@ void SIMPLE::solveMomentumComponent
     {
         switch (component)
         {
-            case 'x': U_[cellIdx].setX(eq.phi[cellIdx]); break;
-            case 'y': U_[cellIdx].setY(eq.phi[cellIdx]); break;
-            case 'z': U_[cellIdx].setZ(eq.phi[cellIdx]); break;
+            case Component::X: U_[cellIdx].setX(eq.phi[cellIdx]); break;
+            case Component::Y: U_[cellIdx].setY(eq.phi[cellIdx]); break;
+            case Component::Z: U_[cellIdx].setZ(eq.phi[cellIdx]); break;
         }
     }
 }
@@ -1052,14 +1067,14 @@ Vector SIMPLE::buildGradientTransposeColumn
     const Vector& gradUx,
     const Vector& gradUy,
     const Vector& gradUz,
-    int component
+    Component component
 ) const noexcept
 {
     switch (component)
     {
-        case 0: return Vector(gradUx.x(), gradUy.x(), gradUz.x());
-        case 1: return Vector(gradUx.y(), gradUy.y(), gradUz.y());
-        case 2: return Vector(gradUx.z(), gradUy.z(), gradUz.z());
-        default: return Vector{};
+        case Component::X: return Vector(gradUx.x(), gradUy.x(), gradUz.x());
+        case Component::Y: return Vector(gradUx.y(), gradUy.y(), gradUz.y());
+        case Component::Z: return Vector(gradUx.z(), gradUy.z(), gradUz.z());
     }
+    return Vector{};
 }
