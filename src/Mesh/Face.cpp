@@ -3,12 +3,12 @@
  * @brief Implementation of face geometric properties and operations
  *****************************************************************************/
 
-#include <stdexcept>
 #include <cmath>
 #include <ostream>
 #include <iomanip>
 
 #include "Face.hpp"
+#include "ErrorHandler.hpp"
 
 // ********************** Geometric Property Methods **********************
 
@@ -24,17 +24,14 @@ FaceIntegrals Face::calculateGeometricProperties
     {
         if (nodeIdx >= allNodes.size())
         {
-            throw
-                std::out_of_range
-                (
-                    "Error calculating properties for Face "
-                  + std::to_string(idx_) + ": Node index "
-                  + std::to_string(nodeIdx)
-                  + " out of range ("
-                  + "Node list size: "
-                  + std::to_string(allNodes.size())
-                  + ")."
-                );
+            FatalError
+            (
+                "Error calculating properties for Face "
+              + std::to_string(idx_) + ": Node index "
+              + std::to_string(nodeIdx)
+              + " out of range (Node list size: "
+              + std::to_string(allNodes.size()) + ")."
+            );
         }
     }
 
@@ -57,12 +54,11 @@ FaceIntegrals Face::calculateGeometricProperties
 
         if (crossProdMag < vSmallValue)
         {
-            throw
-                std::runtime_error
-                (
-                    "Error: Face " + std::to_string(idx_)
-                  + " is geometrically degenerate (zero area)."
-                );
+            FatalError
+            (
+                "Face " + std::to_string(idx_)
+              + " is geometrically degenerate (zero area)."
+            );
         }
 
         projectedArea_ = S(0.5) * crossProdMag;

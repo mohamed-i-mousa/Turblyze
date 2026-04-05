@@ -48,6 +48,7 @@ add_executable(${PROJECT_NAME}
 
 # --- Include directories ---
 target_include_directories(${PROJECT_NAME} PUBLIC
+    include/ErrorHandling/
     include/Mesh/
     include/BoundaryConditions/
     include/Numerics/

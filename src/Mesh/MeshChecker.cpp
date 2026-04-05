@@ -4,10 +4,13 @@
  *****************************************************************************/
 
 #include "MeshChecker.hpp"
+
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
 #include <cmath>
+
+#include "ErrorHandler.hpp"
 #include <numbers>
 #include <stdexcept>
 
@@ -557,15 +560,14 @@ Scalar MeshChecker::calculateFaceSkewness
     {
         if (nodeIdx >= allNodes_.size())
         {
-            throw
-                std::out_of_range
-                (
-                    "Node index "
-                  + std::to_string(nodeIdx)
-                  + " out of range in skewness"
-                  + " calculation for face "
-                  + std::to_string(face.idx())
-                );
+            FatalError
+            (
+                "Node index "
+              + std::to_string(nodeIdx)
+              + " out of range in skewness"
+                " calculation for face "
+              + std::to_string(face.idx())
+            );
         }
 
         Vector vertexToCentroid =
@@ -613,16 +615,14 @@ Scalar MeshChecker::calculateBoundarySkewness
     {
         if (nodeIdx >= allNodes_.size())
         {
-            throw
-                std::out_of_range
-                (
-                    "Node index "
-                  + std::to_string(nodeIdx)
-                  + " out of range in boundary"
-                  + " skewness calculation"
-                  + " for face "
-                  + std::to_string(face.idx())
-                );
+            FatalError
+            (
+                "Node index "
+              + std::to_string(nodeIdx)
+              + " out of range in boundary"
+                " skewness calculation for face "
+              + std::to_string(face.idx())
+            );
         }
 
         Vector vertexToCentroid = allNodes_[nodeIdx] - faceCentroid;

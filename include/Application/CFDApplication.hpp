@@ -79,7 +79,7 @@ private:
      * @brief Create a convection scheme by name
      * @param name Scheme name (Upwind, CentralDifference, SecondOrderUpwind)
      * @return Unique pointer to created scheme
-     * @throws std::runtime_error if name is unknown
+     * @note Terminates the program if name is unknown
      */
     static std::unique_ptr<ConvectionScheme>
     createConvectionScheme(const std::string& name);

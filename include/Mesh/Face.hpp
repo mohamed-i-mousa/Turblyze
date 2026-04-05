@@ -244,8 +244,8 @@ public:
      * - Sets geometricPropertiesCalculated flag when success.
      *
      * @param allNodes Vector of all mesh nodes
-     * @throws std::out_of_range if node index is invalid
-     * @throws std::runtime_error if face has zero area (collinear nodes)
+     * @note Terminates the program if node index is invalid
+     * @note Terminates the program if face has zero area (collinear nodes)
      * @return FaceIntegrals for cell volume/centroid computation
      */
     FaceIntegrals calculateGeometricProperties(std::span<const Vector> allNodes);

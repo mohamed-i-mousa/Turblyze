@@ -44,9 +44,9 @@
 #pragma once
 
 #include <algorithm>
-#include <cassert>
 #include <memory>
 
+#include "ErrorHandler.hpp"
 #include "Scalar.hpp"
 #include "Vector.hpp"
 #include "Face.hpp"
@@ -188,7 +188,10 @@ struct ConvectionSchemes
      */
     const ConvectionScheme& momentum() const
     {
-        assert(defaultScheme && "Default convection scheme must be set");
+        if (!defaultScheme)
+        {
+            FatalError("Default convection scheme must be set");
+        }
         return momentumScheme ? *momentumScheme : *defaultScheme;
     }
 
@@ -198,7 +201,10 @@ struct ConvectionSchemes
      */
     const ConvectionScheme& k() const
     {
-        assert(defaultScheme && "Default convection scheme must be set");
+        if (!defaultScheme)
+        {
+            FatalError("Default convection scheme must be set");
+        }
         return kScheme ? *kScheme : *defaultScheme;
     }
 
@@ -208,7 +214,10 @@ struct ConvectionSchemes
      */
     const ConvectionScheme& omega() const
     {
-        assert(defaultScheme && "Default convection scheme must be set");
+        if (!defaultScheme)
+        {
+            FatalError("Default convection scheme must be set");
+        }
         return omegaScheme ? *omegaScheme : *defaultScheme;
     }
 };

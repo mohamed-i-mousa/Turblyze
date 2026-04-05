@@ -5,8 +5,7 @@
 
 #include "LinearInterpolation.hpp"
 #include "BoundaryConditions.hpp"
-
-#include <cassert>
+#include "ErrorHandler.hpp"
 
 // Helper function: compute weight for neighbor cell in linear interpolation.
 // Returns wN = dP / (dP + dN), so wP = 1 - wN.
@@ -24,7 +23,14 @@ Scalar interpolateToFace
     const ScalarField& field
 )
 {
-    assert(!face.isBoundary() && "interpolateToFace (no BC) must not be called on boundary faces");
+    if (face.isBoundary())
+    {
+        FatalError
+        (
+            "interpolateToFace (no BC) must not be "
+            "called on boundary faces"
+        );
+    }
 
     const size_t P = face.ownerCell();
     const size_t N = face.neighborCell().value();
@@ -39,7 +45,14 @@ Vector interpolateToFace
     const VectorField& field
 )
 {
-    assert(!face.isBoundary() && "interpolateToFace (no BC) must not be called on boundary faces");
+    if (face.isBoundary())
+    {
+        FatalError
+        (
+            "interpolateToFace (no BC) must not be "
+            "called on boundary faces"
+        );
+    }
 
     const size_t P = face.ownerCell();
     const size_t N = face.neighborCell().value();

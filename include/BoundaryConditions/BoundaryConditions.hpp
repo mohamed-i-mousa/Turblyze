@@ -144,7 +144,7 @@ public:
      * @brief Get boundary patch by name
      * @param name Name of the patch to retrieve
      * @return Pointer to the found patch
-     * @throws std::runtime_error if patch not found
+     * @note Terminates the program if patch not found
      */
     const BoundaryPatch* patch(const std::string& name) const;
 
@@ -218,7 +218,7 @@ public:
      * @brief Convert boundary condition type to string
      * @param bctype Boundary condition type enumeration
      * @return String representation of BC type
-     * @throws std::runtime_error if unknown BC type
+     * @note Terminates the program if unknown BC type
      * @note It's used in printSummary
      */
     static std::string bcTypeToString(BCType bctype);
@@ -226,7 +226,7 @@ public:
     /**
      * @brief Validate that all patch names in boundary data
      *        exist in the mesh patches
-     * @throws std::runtime_error if an unknown patch name is found
+     * @note Terminates the program if an unknown patch name is found
      */
     void validatePatchNames() const;
 

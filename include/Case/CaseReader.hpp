@@ -21,12 +21,13 @@
 #include <map>
 #include <vector>
 #include <sstream>
-#include <stdexcept>
 #include <algorithm>
+#include <charconv>
 #include <cctype>
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
+#include "ErrorHandler.hpp"
 
 
 class CaseReader
@@ -49,7 +50,7 @@ public:
      * @tparam T Type to convert value
      * @param keyword Key to look up
      * @return Converted value
-     * @throws std::runtime_error if keyword not found or conversion fails
+     * @note Terminates the program if keyword not found or conversion fails
      */
     template<typename T>
     T lookup(const std::string& keyword) const;
@@ -68,7 +69,7 @@ public:
      * @brief Access a section
      * @param name Name of section
      * @return Section object
-     * @throws std::runtime_error if section not found
+     * @note Terminates the program if section not found
      */
     const CaseReader& section(const std::string& name) const;
 
@@ -167,35 +168,39 @@ private:
 template<>
 inline Scalar CaseReader::convertTo<Scalar>(const std::string& value) const
 {
-    try
+    double result = 0.0;
+    auto [ptr, ec] = std::from_chars
+    (
+        value.data(),
+        value.data() + value.size(),
+        result
+    );
+
+    if (ec != std::errc() || ptr != value.data() + value.size())
     {
-        return static_cast<Scalar>(std::stod(value));
+        FatalError("Cannot convert '" + value + "' to Scalar");
     }
-    catch (const std::exception& e)
-    {
-        throw
-            std::runtime_error
-            (
-                "Cannot convert '" + value + "' to Scalar"
-            );
-    }
+
+    return static_cast<Scalar>(result);
 }
 
 template<>
 inline int CaseReader::convertTo<int>(const std::string& value) const
 {
-    try
+    int result = 0;
+    auto [ptr, ec] = std::from_chars
+    (
+        value.data(),
+        value.data() + value.size(),
+        result
+    );
+
+    if (ec != std::errc() || ptr != value.data() + value.size())
     {
-        return std::stoi(value);
+        FatalError("Cannot convert '" + value + "' to int");
     }
-    catch (const std::exception& e)
-    {
-        throw
-            std::runtime_error
-            (
-                "Cannot convert '" + value + "' to int"
-            );
-    }
+
+    return result;
 }
 
 template<>
@@ -216,11 +221,7 @@ inline bool CaseReader::convertTo<bool>(const std::string& value) const
         return false;
     }
 
-    throw
-        std::runtime_error
-        (
-            "Cannot convert '" + value + "' to bool"
-        );
+    FatalError("Cannot convert '" + value + "' to bool");
 }
 
 template<>
@@ -249,11 +250,7 @@ inline Vector CaseReader::convertTo<Vector>(const std::string& value) const
 
     if (!(iss >> x >> y >> z))
     {
-        throw
-            std::runtime_error
-            (
-                "Cannot convert '" + value + "' to Vector"
-            );
+        FatalError("Cannot convert '" + value + "' to Vector");
     }
 
     return Vector(x, y, z);
@@ -267,11 +264,7 @@ T CaseReader::lookup(const std::string& keyword) const
     auto it = entries_.find(keyword);
     if (it == entries_.end())
     {
-        throw
-            std::runtime_error
-            (
-                "Keyword '" + keyword + "' not found in case file"
-            );
+        FatalError("Keyword '" + keyword + "' not found in case file");
     }
 
     return convertTo<T>(it->second);
@@ -289,12 +282,5 @@ T CaseReader::lookupOrDefault
         return defaultValue;
     }
 
-    try
-    {
-        return convertTo<T>(it->second);
-    }
-    catch (const std::exception&)
-    {
-        return defaultValue;
-    }
+    return convertTo<T>(it->second);
 }

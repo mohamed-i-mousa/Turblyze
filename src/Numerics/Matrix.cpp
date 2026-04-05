@@ -3,10 +3,10 @@
  * @brief Matrix assembly and linear system construction for equations
  *****************************************************************************/
 
-#include <cassert>
 #include <iostream>
 
 #include "Matrix.hpp"
+#include "ErrorHandler.hpp"
 
 // ************************* Constructor & Destructor *************************
 
@@ -79,23 +79,18 @@ void Matrix::relax(Scalar alpha, const ScalarField& phiPrev)
 {
     if (alpha <= S(0.0))
     {
-        throw
-            std::runtime_error
-            (
-                "Matrix::relax: alpha must be positive"
-            );
+        FatalError("Matrix::relax: alpha must be positive");
     }
 
     const Eigen::Index numCells = matrixA_.rows();
 
     if (static_cast<Eigen::Index>(phiPrev.size()) != numCells)
     {
-        throw
-            std::runtime_error
-            (
-                "Matrix::relax: phiPrev size mismatch"
-                " with matrix size"
-            );
+        FatalError
+        (
+            "Matrix::relax: phiPrev size mismatch "
+            "with matrix size"
+        );
     }
 
     // Store relaxation factor for setValues to recover
@@ -152,10 +147,10 @@ Scalar Matrix::extractBoundaryScalar
             case 1: return v.y();
             case 2: return v.z();
             default:
-                assert
+                FatalError
                 (
-                    false
-                 && "extractBoundaryScalar: component index out of range"
+                    "extractBoundaryScalar: "
+                    "component index out of range"
                 );
         }
     }
@@ -205,11 +200,14 @@ void Matrix::assembleInternalFace
     else
     {
         // Face-based: use directly
-        assert
-        (
-            equation.GammaFace.has_value()
-         && "assembleInternalFace: equation has no Gamma or GammaFace"
-        );
+        if (!equation.GammaFace.has_value())
+        {
+            FatalError
+            (
+                "assembleInternalFace: equation has "
+                "no Gamma or GammaFace"
+            );
+        }
         Gammaf = equation.GammaFace->get()[face.idx()];
     }
 
@@ -311,11 +309,14 @@ void Matrix::assembleBoundaryFace
     }
     else
     {
-        assert
-        (
-            equation.GammaFace.has_value()
-         && "assembleBoundaryFace: equation has no Gamma or GammaFace"
-        );
+        if (!equation.GammaFace.has_value())
+        {
+            FatalError
+            (
+                "assembleBoundaryFace: equation has "
+                "no Gamma or GammaFace"
+            );
+        }
         Gammaf = equation.GammaFace->get()[face.idx()];
     }
 
@@ -402,13 +403,13 @@ void Matrix::assembleBoundaryFace
     else
     {
         // Unhandled BC type: default to zero gradient
-        std::cerr
-            << "Warning: Undefined boundary "
-            << "condition type for field "
-            << equation.fieldName << " on patch "
-            << face.patch()->patchName()
-            << ". Applying zero gradient."
-            << std::endl;
+        Warning
+        (
+            "Undefined boundary condition type for field "
+          + equation.fieldName + " on patch "
+          + face.patch()->patchName()
+          + ". Applying zero gradient."
+        );
 
         if (equation.flowRate)
         {

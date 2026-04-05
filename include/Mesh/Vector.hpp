@@ -21,9 +21,9 @@
 
 #include <cmath>
 #include <iosfwd>
-#include <stdexcept>
 
 #include "Scalar.hpp"
+#include "ErrorHandler.hpp"
 
 class Vector
 {
@@ -123,7 +123,7 @@ public:
      * @brief Scalar division operator
      * @param scalar Scalar to divide by
      * @return Vector divided by scalar
-     * @throws std::runtime_error if scalar is near zero
+     * @note Terminates the program if scalar is near zero
      */
     Vector operator/(Scalar scalar) const
     {
@@ -178,17 +178,13 @@ public:
      * @brief Compound division assignment operator
      * @param scalar Scalar to divide by
      * @return Reference to this vector
-     * @throws std::runtime_error if scalar is near zero
+     * @note Terminates the program if scalar is near zero
      */
     Vector& operator/=(Scalar scalar)
     {
         if (std::abs(scalar) <= vSmallValue)
         {
-            throw
-                std::runtime_error
-                (
-                    "Error: Division by zero in Vector::operator/="
-                );
+            FatalError("Division by zero in Vector::operator/=");
         }
 
         Scalar inv = S(1.0) / scalar;
@@ -235,18 +231,14 @@ public:
     /**
      * @brief Returns normalized copy of this vector
      * @return Normalized vector
-     * @throws std::runtime_error if vector has zero magnitude
+     * @note Terminates the program if vector has zero magnitude
      */
     [[nodiscard]] Vector normalized() const
     {
         Scalar mag = magnitude();
         if (mag < vSmallValue)
         {
-            throw
-                std::runtime_error
-                (
-                    "Error: Division by zero in Vector::normalized"
-                );
+            FatalError("Division by zero in Vector::normalized");
         }
 
         Scalar inv = S(1.0) / mag;

@@ -63,7 +63,7 @@ All documentation lives in **headers only**. Source files have no Doxygen on met
  * @param phi Scalar field
  * @param fieldName Name of the field
  * @return Boundary value based on boundary condition
- * @throws std::runtime_error if face not found in boundary patches
+ * @note Terminates the program if face not found in boundary patches
  */
 Scalar calculateBoundaryFaceValue
 (
@@ -142,16 +142,28 @@ else
 }
 ```
 
-## Error Throwing
-`throw` on its own line, exception type and parenthesized message indented below, Allman-style:
+## Error Handling
+Two macros from `ErrorHandler.hpp` for all error reporting:
+
+**Fatal errors** (unrecoverable — prints message with file/line and aborts):
 ```cpp
-throw
-    std::runtime_error
-    (
-        "Error in Cell " + std::to_string(idx_)
-      + " calculation: something went wrong."
-    );
+FatalError
+(
+    "Cell " + std::to_string(idx_)
+  + " calculation: something went wrong."
+);
 ```
+
+**Warnings** (non-fatal — prints message with file/line and continues):
+```cpp
+Warning
+(
+    "Degenerate least-squares matrix in "
+  + std::to_string(count) + " cells"
+);
+```
+
+Do not use `throw`, `assert()`, or raw `std::cerr` for error reporting.
 
 ## Return Statement Formatting
 For long return statements that exceed 80 characters or span multiple lines, place the expression on a new line after `return`, indented:
@@ -168,6 +180,18 @@ return phi[face.ownerCell()];
 
 ## Line Length
 Lines should not exceed 80 characters. Break long lines using the Allman-style parameter formatting, string concatenation with `+`, or continuation on the next line.
+
+## Character Literals
+Use `'\n'`, `':'`, `' '`, etc. for single characters — not `"\n"`, `":"`, `" "`.
+Single-character string literals carry an unnecessary null terminator and are
+less semantically precise:
+```cpp
+// Correct
+std::cerr << '\n' << "Error: " << msg << '\n';
+
+// Wrong
+std::cerr << "\n" << "Error: " << msg << "\n";
+```
 
 ## Naming Conventions
 - **Classes**: PascalCase (e.g., `LinearSolver`, `KOmegaSST`)

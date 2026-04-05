@@ -5,10 +5,11 @@
 
 #include "BoundaryConditions.hpp"
 
-#include <stdexcept>
 #include <iostream>
 #include <utility>
 #include <set>
+
+#include "ErrorHandler.hpp"
 
 
 // ****************************** Setter Methods ******************************
@@ -17,7 +18,8 @@ void BoundaryConditions::addPatch(BoundaryPatch patch)
 {
     if (linked_)
     {
-        throw std::runtime_error(
+        FatalError
+        (
             "Cannot add patch after linkFaces() has been called — "
             "stored face pointers would become invalid."
         );
@@ -120,11 +122,7 @@ BoundaryConditions::patch(const std::string& name) const
         }
     }
 
-    throw
-        std::runtime_error
-        (
-            "Patch " + name + " not found"
-        );
+    FatalError("Patch " + name + " not found");
 }
 
 const BoundaryData* BoundaryConditions::fieldBC
@@ -161,7 +159,8 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
     const BoundaryPatch* patch = face.patch();
     if (!patch)
     {
-        throw std::runtime_error(
+        FatalError
+        (
             "Face " + std::to_string(face.idx())
             + " has no linked patch. "
               "Ensure linkFaces() is called before solving."
@@ -190,7 +189,8 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
                     case 1: return v.y();
                     case 2: return v.z();
                     default:
-                        throw std::runtime_error(
+                        FatalError
+                        (
                             "Invalid component index "
                             + std::to_string(*componentIdx)
                             + " for vector BC on face "
@@ -222,15 +222,14 @@ Scalar BoundaryConditions::calculateBoundaryFaceValue
         }
 
         default:
-            throw
-                std::runtime_error
-                (
-                    "Unknown BC type for face "
-                  + std::to_string(face.idx())
-                  + " in patch " + patch->patchName()
-                  + ": "
-                  + std::to_string(static_cast<int>(bc->type()))
-                );
+            FatalError
+            (
+                "Unknown BC type for face "
+              + std::to_string(face.idx())
+              + " in patch " + patch->patchName()
+              + ": "
+              + std::to_string(static_cast<int>(bc->type()))
+            );
     }
 }
 
@@ -244,7 +243,8 @@ Vector BoundaryConditions::calculateBoundaryVectorFaceValue
     const BoundaryPatch* patch = face.patch();
     if (!patch)
     {
-        throw std::runtime_error(
+        FatalError
+        (
             "Face " + std::to_string(face.idx())
             + " has no linked patch. "
               "Ensure linkFaces() is called before solving."
@@ -292,15 +292,14 @@ Vector BoundaryConditions::calculateBoundaryVectorFaceValue
         }
 
         default:
-            throw
-                std::runtime_error
-                (
-                    "Unknown BC type for face "
-                  + std::to_string(face.idx())
-                  + " in patch " + patch->patchName()
-                  + ": "
-                  + std::to_string(static_cast<int>(bc->type()))
-                );
+            FatalError
+            (
+                "Unknown BC type for face "
+              + std::to_string(face.idx())
+              + " in patch " + patch->patchName()
+              + ": "
+              + std::to_string(static_cast<int>(bc->type()))
+            );
     }
 }
 
@@ -335,12 +334,11 @@ std::string BoundaryConditions::bcTypeToString(BCType bctype)
         case OMEGA_WALL_FUNCTION: return "OMEGA_WALL_FUNCTION";
         case NUT_WALL_FUNCTION: return "NUT_WALL_FUNCTION";
         default:
-            throw
-                std::runtime_error
-                (
-                    "Unknown BC type: "
-                  + std::to_string(static_cast<int>(bctype))
-                );
+            FatalError
+            (
+                "Unknown BC type: "
+              + std::to_string(static_cast<int>(bctype))
+            );
     }
 }
 
@@ -367,14 +365,13 @@ void BoundaryConditions::validatePatchNames() const
                 validList += "'" + name + "'";
             }
 
-            throw
-                std::runtime_error
-                (
-                    "Boundary condition patch '"
-                  + entry.first
-                  + "' does not match any mesh patch. "
-                    "Valid patch names: " + validList
-                );
+            FatalError
+            (
+                "Boundary condition patch '"
+              + entry.first
+              + "' does not match any mesh patch. "
+                "Valid patch names: " + validList
+            );
         }
     }
 }
@@ -459,11 +456,7 @@ void BoundaryConditions::printSummary() const
                     }
                     else
                     {
-                        throw
-                            std::runtime_error
-                            (
-                                "Unknown BC value type"
-                            );
+                        FatalError("Unknown BC value type");
                     }
                 }
                 else if (fbc.type() == BCType::FIXED_GRADIENT)

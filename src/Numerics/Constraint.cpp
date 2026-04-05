@@ -7,6 +7,8 @@
 
 #include <cmath>
 
+#include "ErrorHandler.hpp"
+
 Constraint::Constraint
 (
     VectorField& velocityField,
@@ -40,11 +42,7 @@ void Constraint::setPressureConstraints
     }
     else
     {
-        throw
-            std::runtime_error
-            (
-                "Wrong Pressure Constraints input"
-            );
+        FatalError("Wrong Pressure Constraints input");
     }
 }
 

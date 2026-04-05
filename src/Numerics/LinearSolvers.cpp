@@ -3,10 +3,10 @@
  * @brief LinearSolver class implementation
  *****************************************************************************/
 
-#include <cassert>
 #include <iostream>
 
 #include "LinearSolvers.hpp"
+#include "ErrorHandler.hpp"
 
 // ************************* Constructor & Setters ************************
 
@@ -60,7 +60,10 @@ void LinearSolver::solveWithBiCGSTAB
     const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
 )
 {
-    assert(x.size() == B.size());
+    if (x.size() != B.size())
+    {
+        FatalError("BiCGSTAB: x and B size mismatch");
+    }
 
     // Configure and analyze once — parameters and sparsity are fixed
     if (!solverInitialized_)
@@ -80,10 +83,11 @@ void LinearSolver::solveWithBiCGSTAB
 
     if (bicgstab_.info() != Eigen::Success)
     {
-        std::cerr
-            << "Error for field '" << fieldName_
-            << "': BiCGSTAB factorization failed!"
-            << std::endl;
+        Warning
+        (
+            "Field '" + fieldName_
+          + "': BiCGSTAB factorization failed!"
+        );
         return;
     }
 
@@ -109,7 +113,10 @@ void LinearSolver::solveWithPCG
     const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
 )
 {
-    assert(x.size() == B.size());
+    if (x.size() != B.size())
+    {
+        FatalError("PCG: x and B size mismatch");
+    }
 
     // Configure and analyze once — parameters and sparsity are fixed
     if (!solverInitialized_)
@@ -128,10 +135,11 @@ void LinearSolver::solveWithPCG
 
     if (pcg_.info() != Eigen::Success)
     {
-        std::cerr
-            << "Error for field '" << fieldName_
-            << "': PCG factorization failed!"
-            << std::endl;
+        Warning
+        (
+            "Field '" + fieldName_
+          + "': PCG factorization failed!"
+        );
         return;
     }
 

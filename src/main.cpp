@@ -45,34 +45,25 @@ int main(int argc, char* argv[])
     std::cout 
         << std::fixed << std::setprecision(6);
 
-    try
+    std::string caseFile = "../defaultCase";
+
+    if (argc > 1)
     {
-        std::string caseFile = "../defaultCase";
+        caseFile = argv[1];
 
-        if (argc > 1)
-        {
-            caseFile = argv[1];
-
-            std::cout
-                << "Using case file: " << caseFile
-                << std::endl;
-        }
-        else
-        {
-            std::cout
-                << "Using default case: " << caseFile
-                << std::endl;
-        }
-
-        CFDApplication app(caseFile);
-        app.run();
+        std::cout
+            << "Using case file: " << caseFile
+            << std::endl;
     }
-    catch (const std::exception& e)
+    else
     {
-        std::cerr
-            << std::endl << "Error: " << e.what() << std::endl;
-        return 1;
+        std::cout
+            << "Using default case: " << caseFile
+            << std::endl;
     }
+
+    CFDApplication app(caseFile);
+    app.run();
 
     auto endTime = std::chrono::high_resolution_clock::now();
 

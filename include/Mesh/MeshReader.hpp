@@ -204,7 +204,7 @@ private:
      * @param fluentIdx 1-based index from Fluent file
      * @param context Where this index is used (in the Error message)
      * @return 0-based index (fluentIdx - 1)
-     * @throws std::runtime_error if fluentIdx is 0
+     * @note Terminates the program if fluentIdx is 0
      */
     static size_t safeFluentIndexConvert
     (

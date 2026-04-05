@@ -6,9 +6,10 @@
 #include "CellData.hpp"
 
 #include <algorithm>
-#include <cassert>
 #include <iostream>
 #include <utility>
+
+#include "ErrorHandler.hpp"
 
 // ****************************** Constructor *******************************
 
@@ -20,7 +21,10 @@ CellData<T>::CellData
 ) : name_(std::move(fieldName)),
     internalField_(numCells)
 {
-    assert(numCells > 0);
+    if (numCells == 0)
+    {
+        FatalError("CellData: cannot create field with zero cells");
+    }
 }
 
 template<typename T>
@@ -32,7 +36,10 @@ CellData<T>::CellData
 ) : name_(std::move(fieldName)),
     internalField_(numCells, initialValue)
 {
-    assert(numCells > 0);
+    if (numCells == 0)
+    {
+        FatalError("CellData: cannot create field with zero cells");
+    }
 }
 
 // ***************************** Setter Methods *****************************

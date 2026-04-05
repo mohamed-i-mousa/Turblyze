@@ -5,14 +5,14 @@
 
 #include "GradientScheme.hpp"
 
-#include <stdexcept>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
-#include <cassert>
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Cholesky>
 #include <eigen3/Eigen/LU>
+
+#include "ErrorHandler.hpp"
 
 
 // ****************************** Constructor ******************************
@@ -119,11 +119,12 @@ void GradientScheme::precomputeInverseATA()
 
     if (degenerateCells > 0)
     {
-        std::cerr
-            << "WARNING: " << degenerateCells
-            << " cells have degenerate least-squares"
-            << " matrices (gradient will be zero)"
-            << std::endl;
+        Warning
+        (
+            std::to_string(degenerateCells)
+          + " cells have degenerate least-squares"
+            " matrices (gradient will be zero)"
+        );
     }
 }
 
@@ -148,11 +149,10 @@ Vector GradientScheme::cellGradient
     // Part 1: Internal neighbor cells contribution to ATb
     for (size_t neighborIdx : cell.neighborCellIndices())
     {
-        assert
-        (
-            neighborIdx < allCells_.size()
-         && "Invalid neighbor ID - mesh topology corrupted"
-        );
+        if (neighborIdx >= allCells_.size())
+        {
+            FatalError("Invalid neighbor ID - mesh topology corrupted");
+        }
 
         const Cell& neighbor = allCells_[neighborIdx];
         Vector r = neighbor.centroid() - cell.centroid();
@@ -346,12 +346,11 @@ Vector GradientScheme::averageFaceGradient
 {
     if (face.isBoundary())
     {
-        throw
-            std::invalid_argument
-            (
-                "GradientScheme::averageFaceGradient: "
-                "Cannot average gradient on boundary face"
-            );
+        FatalError
+        (
+            "GradientScheme::averageFaceGradient: "
+            "Cannot average gradient on boundary face"
+        );
     }
 
     Scalar dPf = face.dPfMag();

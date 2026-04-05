@@ -126,21 +126,21 @@ public:
     /**
      * @brief Get fixed scalar value
      * @return Fixed scalar value
-     * @throws std::runtime_error if not a fixed scalar value BC
+     * @note Terminates the program if not a fixed scalar value BC
      */
     Scalar fixedScalarValue() const;
 
     /**
      * @brief Get fixed vector value
      * @return Fixed vector value
-     * @throws std::runtime_error if not a fixed vector value BC
+     * @note Terminates the program if not a fixed vector value BC
      */
     const Vector& fixedVectorValue() const;
 
     /**
      * @brief Get fixed scalar gradient
      * @return Fixed scalar gradient (normal component)
-     * @throws std::runtime_error if not a fixed scalar gradient BC
+     * @note Terminates the program if not a fixed scalar gradient BC
      */
     Scalar fixedScalarGradient() const;
 

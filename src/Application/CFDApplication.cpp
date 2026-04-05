@@ -20,6 +20,7 @@
 #include "VtkWriter.hpp"
 #include "LinearSolvers.hpp"
 #include "Constraint.hpp"
+#include "ErrorHandler.hpp"
 
 
 // ******************************* Constructor *******************************
@@ -90,13 +91,12 @@ void CFDApplication::loadCase()
 
     if (turbulenceEnabled_ && turbulenceModel_ != "kOmegaSST")
     {
-        throw
-            std::runtime_error
-            (
-                "Unsupported turbulence model: '"
-              + turbulenceModel_
-              + "'. Only 'kOmegaSST' is supported."
-            );
+        FatalError
+        (
+            "Unsupported turbulence model: '"
+          + turbulenceModel_
+          + "'. Only 'kOmegaSST' is supported."
+        );
     }
 
     // Compute turbulence initial conditions
@@ -335,13 +335,12 @@ void CFDApplication::setupBoundaryConditions()
     {
         if (face.isBoundary() && !face.patch())
         {
-            throw
-                std::runtime_error
-                (
-                    "Boundary face "
-                  + std::to_string(face.idx())
-                  + " has no patch after linking."
-                );
+            FatalError
+            (
+                "Boundary face "
+              + std::to_string(face.idx())
+              + " has no patch after linking."
+            );
         }
     }
 
@@ -373,16 +372,15 @@ void CFDApplication::setupBoundaryConditions()
             }
             else
             {
-                throw
-                    std::runtime_error
-                    (
-                        "Unknown boundary condition type '"
-                      + bcType
-                      + "' for field 'U' on patch '"
-                      + patchName
-                      + "'. Valid types: "
-                        "fixedValue, noSlip, zeroGradient"
-                    );
+                FatalError
+                (
+                    "Unknown boundary condition type '"
+                  + bcType
+                  + "' for field 'U' on patch '"
+                  + patchName
+                  + "'. Valid types: "
+                    "fixedValue, noSlip, zeroGradient"
+                );
             }
         }
     }
@@ -411,16 +409,15 @@ void CFDApplication::setupBoundaryConditions()
             }
             else
             {
-                throw
-                    std::runtime_error
-                    (
-                        "Unknown boundary condition type '"
-                      + bcType
-                      + "' for field 'p' on patch '"
-                      + patchName
-                      + "'. Valid types: "
-                        "fixedValue, zeroGradient"
-                    );
+                FatalError
+                (
+                    "Unknown boundary condition type '"
+                  + bcType
+                  + "' for field 'p' on patch '"
+                  + patchName
+                  + "'. Valid types: "
+                    "fixedValue, zeroGradient"
+                );
             }
         }
 
@@ -444,12 +441,12 @@ void CFDApplication::setupBoundaryConditions()
 
     if (!hasFixedPressure)
     {
-        std::cerr
-            << "WARNING: No fixedValue pressure boundary "
-            << "condition found. The pressure field has no "
-            << "reference value, which may cause a singular "
-            << "pressure matrix."
-            << std::endl;
+        Warning
+        (
+            "No fixedValue pressure boundary condition found. "
+            "The pressure field has no reference value, which "
+            "may cause a singular pressure matrix."
+        );
     }
 
     // Process turbulent kinetic energy BCs
@@ -522,16 +519,15 @@ void CFDApplication::setupBoundaryConditions()
             }
             else
             {
-                throw
-                    std::runtime_error
-                    (
-                        "Unknown boundary condition type '"
-                      + bcType
-                      + "' for field 'k' on patch '"
-                      + patchName
-                      + "'. Valid types: "
-                        "fixedValue, kWallFunction, zeroGradient"
-                    );
+                FatalError
+                (
+                    "Unknown boundary condition type '"
+                  + bcType
+                  + "' for field 'k' on patch '"
+                  + patchName
+                  + "'. Valid types: "
+                    "fixedValue, kWallFunction, zeroGradient"
+                );
             }
         }
     }
@@ -630,16 +626,15 @@ void CFDApplication::setupBoundaryConditions()
             }
             else
             {
-                throw
-                    std::runtime_error
-                    (
-                        "Unknown boundary condition type '"
-                      + bcType
-                      + "' for field 'omega' on patch '"
-                      + patchName
-                      + "'. Valid types: "
-                        "fixedValue, omegaWallFunction, zeroGradient"
-                    );
+                FatalError
+                (
+                    "Unknown boundary condition type '"
+                  + bcType
+                  + "' for field 'omega' on patch '"
+                  + patchName
+                  + "'. Valid types: "
+                    "fixedValue, omegaWallFunction, zeroGradient"
+                );
             }
         }
     }
@@ -669,16 +664,15 @@ void CFDApplication::setupBoundaryConditions()
             }
             else
             {
-                throw
-                    std::runtime_error
-                    (
-                        "Unknown boundary condition type '"
-                      + bcType
-                      + "' for field 'nut' on patch '"
-                      + patchName
-                      + "'. Valid types: "
-                        "fixedValue, zeroGradient, nutWallFunction"
-                    );
+                FatalError
+                (
+                    "Unknown boundary condition type '"
+                  + bcType
+                  + "' for field 'nut' on patch '"
+                  + patchName
+                  + "'. Valid types: "
+                    "fixedValue, zeroGradient, nutWallFunction"
+                );
             }
         }
     }
@@ -955,9 +949,7 @@ void CFDApplication::postProcess()
 
     if (velocity.size() == 0)
     {
-        std::cerr
-            << "WARNING: Solution fields are empty. "
-            << "Skipping statistics." << std::endl;
+        Warning("Solution fields are empty. Skipping statistics.");
         return;
     }
 
@@ -1135,11 +1127,7 @@ CFDApplication::createConvectionScheme(const std::string& name)
     }
     else
     {
-        throw
-            std::runtime_error
-            (
-                "Unknown convection scheme: " + name
-            );
+        FatalError("Unknown convection scheme: " + name);
     }
 }
 
@@ -1219,12 +1207,11 @@ ConvectionSchemes CFDApplication::parseConvectionSchemes()
     }
     else
     {
-        throw
-            std::runtime_error
-            (
-                "Missing 'convection' sub-section "
-                "in numericalSchemes"
-            );
+        FatalError
+        (
+            "Missing 'convection' sub-section "
+            "in numericalSchemes"
+        );
     }
 
     return schemes;

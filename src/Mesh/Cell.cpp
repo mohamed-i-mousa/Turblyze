@@ -5,9 +5,10 @@
 
 #include "Cell.hpp"
 
-#include <stdexcept>
 #include <cmath>
 #include <ostream>
+
+#include "ErrorHandler.hpp"
 #include <iomanip>
 
 // *********************** Geometric Property Methods ***********************
@@ -30,15 +31,13 @@ void Cell::calculateGeometricProperties
 
         if(!face.geometricPropertiesCalculated())
         {
-            throw
-                std::runtime_error
-                (
-                    "Error in Cell " + std::to_string(idx_)
-                  + " calculation:"
-                  + " Geometric properties for bounding Face "
-                  + std::to_string(face.idx())
-                  + " were not calculated."
-                );
+            FatalError
+            (
+                "Cell " + std::to_string(idx_)
+              + " calculation: Geometric properties for "
+                "bounding Face " + std::to_string(face.idx())
+              + " were not calculated."
+            );
         }
 
         Scalar faceSign = S(faceSigns_[i]);
@@ -58,11 +57,10 @@ void Cell::calculateGeometricProperties
 
     if (std::abs(volume_) < smallValue)
     {
-        throw
-            std::runtime_error
-            (
-                "Cell " + std::to_string(idx_) + " has zero volume"
-            );
+        FatalError
+        (
+            "Cell " + std::to_string(idx_) + " has zero volume"
+        );
     }
 
     centroid_ = centroidSum / (S(2.0) * volume_);
@@ -99,7 +97,8 @@ std::ostream& operator<<(std::ostream& os, const Cell& c)
         os  << std::fixed
             << std::setprecision(6);
 
-        os  << ", Volume: " << c.volume() << ", Centroid: " << c.centroid();
+        os  << ", Volume: " << c.volume()
+            << ", Centroid: " << c.centroid();
 
         os.flags(flags);
         os.precision(prec);

@@ -16,7 +16,6 @@
 #include <vtkCellArray.h>
 
 // STL includes
-#include <stdexcept>
 #include <set>
 #include <unordered_set>
 #include <unordered_map>
@@ -33,6 +32,7 @@
 #include "Cell.hpp"
 #include "Face.hpp"
 #include "BoundaryPatch.hpp"
+#include "ErrorHandler.hpp"
 
 
 namespace VtkWriter
@@ -615,11 +615,7 @@ void writePVDTimeSeriesHeader
 
     if (!pvdFile.is_open())
     {
-        throw
-            std::runtime_error
-            (
-                "Failed to open PVD file: " + pvdFilename
-            );
+        FatalError("Failed to open PVD file: " + pvdFilename);
     }
 
     pvdFile << "<?xml version=\"1.0\"?>\n";
@@ -647,12 +643,11 @@ void appendPVDTimeStep
     std::ifstream pvdFileIn(pvdFilename);
     if (!pvdFileIn.is_open())
     {
-        throw
-            std::runtime_error
-            (
-                "Failed to open PVD file for reading: "
-              + pvdFilename
-            );
+        FatalError
+        (
+            "Failed to open PVD file for reading: "
+          + pvdFilename
+        );
     }
 
     std::vector<std::string> lines;
@@ -667,12 +662,11 @@ void appendPVDTimeStep
     std::ofstream pvdFileOut(pvdFilename);
     if (!pvdFileOut.is_open())
     {
-        throw
-            std::runtime_error
-            (
-                "Failed to open PVD file for writing: "
-              + pvdFilename
-            );
+        FatalError
+        (
+            "Failed to open PVD file for writing: "
+          + pvdFilename
+        );
     }
 
     for (const auto& existingLine : lines)
@@ -704,11 +698,7 @@ void writeCellGeometryData
     std::ofstream outFile(filename);
     if (!outFile.is_open())
     {
-        throw
-            std::runtime_error
-            (
-                "Failed to open file: " + filename
-            );
+        FatalError("Failed to open file: " + filename);
     }
 
     // Header line

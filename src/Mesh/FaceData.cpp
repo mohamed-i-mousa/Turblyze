@@ -6,9 +6,10 @@
 #include "FaceData.hpp"
 
 #include <algorithm>
-#include <cassert>
 #include <iostream>
 #include <utility>
+
+#include "ErrorHandler.hpp"
 
 // ****************************** Constructor *******************************
 
@@ -20,7 +21,10 @@ FaceData<T>::FaceData
 ) : name_(std::move(fieldName)),
     internalField_(numFaces)
 {
-    assert(numFaces > 0);
+    if (numFaces == 0)
+    {
+        FatalError("FaceData: cannot create field with zero faces");
+    }
 }
 
 template<typename T>
@@ -32,7 +36,10 @@ FaceData<T>::FaceData
 ) : name_(std::move(fieldName)),
     internalField_(numFaces, initialValue)
 {
-    assert(numFaces > 0);
+    if (numFaces == 0)
+    {
+        FatalError("FaceData: cannot create field with zero faces");
+    }
 }
 
 // ***************************** Setter Methods *****************************

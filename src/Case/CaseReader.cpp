@@ -4,9 +4,11 @@
  *****************************************************************************/
 
 #include "CaseReader.hpp"
-#include <cctype>
+
 #include <fstream>
 #include <iostream>
+
+#include "ErrorHandler.hpp"
 
 // ************************** Constructor/Destructor **************************
 
@@ -24,11 +26,7 @@ const CaseReader& CaseReader::section(const std::string& name) const
     auto it = sections_.find(name);
     if (it == sections_.end())
     {
-        throw
-            std::runtime_error
-            (
-                "Section '" + name + "' not found"
-            );
+        FatalError("Section '" + name + "' not found");
     }
 
     return it->second;
@@ -85,11 +83,7 @@ void CaseReader::parseFile(const std::string& filename)
     std::ifstream file(filename);
     if (!file.is_open())
     {
-        throw
-            std::runtime_error
-            (
-                "Cannot open case file: " + filename
-            );
+        FatalError("Cannot open case file: " + filename);
     }
 
     currentLine_ = 1;
@@ -122,12 +116,11 @@ void CaseReader::parseSection
         {
             if (terminator == '\0')
             {
-                throw
-                    std::runtime_error
-                    (
-                        "Unexpected '}' at line "
-                      + std::to_string(currentLine_)
-                    );
+                FatalError
+                (
+                    "Unexpected '}' at line "
+                  + std::to_string(currentLine_)
+                );
             }
             return;
         }
@@ -152,12 +145,11 @@ void CaseReader::parseSection
     // Check if we expected a terminator but hit EOF
     if (terminator != '\0')
     {
-        throw
-            std::runtime_error
-            (
-                "Unexpected end of file, expected '"
-              + std::string(1, terminator) + "'"
-            );
+        FatalError
+        (
+            "Unexpected end of file, expected '"
+          + std::string(1, terminator) + "'"
+        );
     }
 }
 
