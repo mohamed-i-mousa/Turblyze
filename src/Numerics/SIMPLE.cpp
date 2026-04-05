@@ -3,12 +3,13 @@
  * @brief Implementation of the SIMPLE algorithm for pressure-velocity coupling
  *****************************************************************************/
 
+#include "SIMPLE.hpp"
+
 #include <cmath>
 #include <iostream>
 #include <algorithm>
 
 #include "LinearInterpolation.hpp"
-#include "SIMPLE.hpp"
 #include "Scalar.hpp"
 #include "kOmegaSST.hpp"
 #include "Constraint.hpp"

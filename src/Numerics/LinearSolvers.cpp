@@ -3,10 +3,12 @@
  * @brief LinearSolver class implementation
  *****************************************************************************/
 
+#include "LinearSolvers.hpp"
+
 #include <iostream>
 
-#include "LinearSolvers.hpp"
 #include "ErrorHandler.hpp"
+
 
 // ************************* Constructor & Setters ************************
 

@@ -3,9 +3,10 @@
  * @brief Matrix assembly and linear system construction for equations
  *****************************************************************************/
 
+#include "Matrix.hpp"
+
 #include <iostream>
 
-#include "Matrix.hpp"
 #include "ErrorHandler.hpp"
 
 // ************************* Constructor & Destructor *************************

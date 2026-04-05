@@ -25,6 +25,7 @@
 #include "Scalar.hpp"
 #include "ErrorHandler.hpp"
 
+
 class Vector
 {
 public:

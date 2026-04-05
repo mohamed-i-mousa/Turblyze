@@ -46,11 +46,11 @@
 #include <algorithm>
 #include <memory>
 
-#include "ErrorHandler.hpp"
 #include "Scalar.hpp"
 #include "Vector.hpp"
 #include "Face.hpp"
 #include "CellData.hpp"
+#include "ErrorHandler.hpp"
 
 
 class ConvectionScheme

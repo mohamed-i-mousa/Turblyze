@@ -119,7 +119,7 @@ void CFDApplication::loadCase()
         std::max
         (
             std::sqrt(defaultK_)
-          / (std::pow(kOmegaSST::const_.Cmu, S(0.25)) * lTurb),
+          / (std::pow(kOmegaSST::coeffs_.betaStar, S(0.25)) * lTurb),
             S(1e-4)
         );
 
@@ -597,7 +597,7 @@ void CFDApplication::setupBoundaryConditions()
                     // Compute omega from k
                     const Scalar omegaValue =
                         std::sqrt(std::max(kValue, S(0.0)))
-                      / (std::pow(kOmegaSST::const_.Cmu, S(0.25))
+                      / (std::pow(kOmegaSST::coeffs_.betaStar, S(0.25))
                        * lengthScale);
 
                     value = std::max(omegaValue, S(1e-4));

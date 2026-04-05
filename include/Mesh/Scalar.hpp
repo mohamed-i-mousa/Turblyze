@@ -12,6 +12,7 @@
 #include <string_view>
 #include <limits>
 
+
 /// Floating-point precision type (configured via CMakeLists.txt)
 #ifdef PROJECT_USE_DOUBLE_PRECISION
     using Scalar = double;

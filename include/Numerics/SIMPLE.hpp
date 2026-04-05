@@ -24,7 +24,6 @@
 #include <vector>
 #include <memory>
 
-#include "ErrorHandler.hpp"
 #include "Face.hpp"
 #include "Cell.hpp"
 #include "BoundaryConditions.hpp"
@@ -34,6 +33,8 @@
 #include "ConvectionScheme.hpp"
 #include "Matrix.hpp"
 #include "LinearSolvers.hpp"
+#include "ErrorHandler.hpp"
+
 
 // Forward declarations
 class kOmegaSST;

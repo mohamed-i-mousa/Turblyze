@@ -9,10 +9,10 @@
 #include <iomanip>
 #include <algorithm>
 #include <cmath>
-
-#include "ErrorHandler.hpp"
 #include <numbers>
 #include <stdexcept>
+
+#include "ErrorHandler.hpp"
 
 
 // ************************* Constructor & Destructor *************************

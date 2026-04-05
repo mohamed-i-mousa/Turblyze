@@ -22,6 +22,7 @@
 
 #include "Scalar.hpp"
 
+
 class LinearSolver
 {
 public:

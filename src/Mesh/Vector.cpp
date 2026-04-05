@@ -3,10 +3,10 @@
  * @brief Stream output for the Vector class
  *****************************************************************************/
 
+#include "Vector.hpp"
+
 #include <ostream>
 #include <iomanip>
-
-#include "Vector.hpp"
 
 
 std::ostream& operator<<(std::ostream& os, const Vector& p)

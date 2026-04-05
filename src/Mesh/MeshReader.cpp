@@ -3,13 +3,14 @@
  * @brief Implementation of the MeshReader class for Fluent mesh files
  *****************************************************************************/
 
+#include "MeshReader.hpp"
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <algorithm>
 #include <charconv>
 
-#include "MeshReader.hpp"
 #include "ErrorHandler.hpp"
 
 

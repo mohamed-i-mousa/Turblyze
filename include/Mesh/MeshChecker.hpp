@@ -21,10 +21,10 @@
 #include <vector>
 #include <span>
 
+#include "Scalar.hpp"
+#include "Vector.hpp"
 #include "Face.hpp"
 #include "Cell.hpp"
-#include "Vector.hpp"
-#include "Scalar.hpp"
 
 
 class MeshChecker

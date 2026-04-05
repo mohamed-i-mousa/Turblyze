@@ -4,6 +4,7 @@
  *****************************************************************************/
 
 #include "LinearInterpolation.hpp"
+
 #include "BoundaryConditions.hpp"
 #include "ErrorHandler.hpp"
 

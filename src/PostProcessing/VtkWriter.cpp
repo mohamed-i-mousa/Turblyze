@@ -3,6 +3,9 @@
  * @brief Implementation of VTK output writer for post-processing
  *****************************************************************************/
 
+// Own header
+#include "VtkWriter.hpp"
+
 // VTK includes
 #include <vtkPoints.h>
 #include <vtkDoubleArray.h>
@@ -28,7 +31,6 @@
 #include <cmath>
 
 // Header includes
-#include "VtkWriter.hpp"
 #include "Cell.hpp"
 #include "Face.hpp"
 #include "BoundaryPatch.hpp"

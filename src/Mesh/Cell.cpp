@@ -7,9 +7,10 @@
 
 #include <cmath>
 #include <ostream>
+#include <iomanip>
 
 #include "ErrorHandler.hpp"
-#include <iomanip>
+
 
 // *********************** Geometric Property Methods ***********************
 
