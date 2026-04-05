@@ -32,6 +32,9 @@ class CellData
 {
 public:
 
+    /// Default constructor
+    CellData() = default;
+
     /**
      * @brief Constructor for uninitialized field
      * @param fieldName Name identifier for the field

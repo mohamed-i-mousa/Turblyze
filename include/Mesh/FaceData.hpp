@@ -32,6 +32,9 @@ class FaceData
 {
 public:
 
+    /// Default constructor
+    FaceData() = default;
+
     /**
      * @brief Constructor for uninitialized field
      * @param fieldName Name identifier for the field
