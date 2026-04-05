@@ -25,20 +25,20 @@
 
 /**
  * @brief Print a fatal error message and abort the program
- * @param msg The error message to display
- * @param loc The source location (file and line) where the error occurred
+ * @param message The error message to display
+ * @param location The source location (file & line) where the error occurred
  */
 // Print a fatal error message and abort the program
 [[noreturn]] inline void FatalError
 (
-    const std::string& msg,
-    std::source_location loc = std::source_location::current()
+    const std::string& message,
+    std::source_location location = std::source_location::current()
 )
 {
     std::cerr
         << "\n\nFATAL ERROR"
-        << "\n    " << loc.file_name() << ':' << loc.line()
-        << "\n    " << msg
+        << "\n    " << location.file_name() << ':' << location.line()
+        << "\n    " << message
         << '\n' << std::endl;
 
     std::abort();
@@ -47,16 +47,16 @@
 
 /**
  * @brief Print a warning message and continue execution
- * @param msg The warning message to display
- * @param loc The source location (file and line) where the warning occurred
+ * @param message The warning message to display
+ * @param location The source location (file & line) where the warning occurred
  */
 inline void Warning
 (
-    const std::string& msg,
-    std::source_location loc = std::source_location::current()
+    const std::string& message,
+    std::source_location location = std::source_location::current()
 )
 {
     std::cerr
-        << "\n[WARNING] (" << loc.file_name() << ':' << loc.line() << ") "
-        << msg << std::endl;
+        << "\n[WARNING] (" << location.file_name() << ':' 
+        << location.line() << ") " << message << std::endl;
 }
