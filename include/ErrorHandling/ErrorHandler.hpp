@@ -1,8 +1,8 @@
 /******************************************************************************
  * @file ErrorHandler.hpp
- * @brief Fatal error and warning macros for program diagnostics
+ * @brief Fatal error and warning functions for program diagnostics
  *
- * Provides two macros for error reporting:
+ * Provides two functions for error reporting:
  *
  * - FatalError("message")  — prints file, line, and message to stderr,
  *                            then calls std::abort() (enables core dumps)
@@ -19,20 +19,25 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <source_location>
 #include <string>
 
 
-/// Print a fatal error message and abort the program
-[[noreturn]] inline void fatalErrorImpl
+/**
+ * @brief Print a fatal error message and abort the program
+ * @param msg The error message to display
+ * @param loc The source location (file and line) where the error occurred
+ */
+// Print a fatal error message and abort the program
+[[noreturn]] inline void FatalError
 (
-    const char* file,
-    int line,
-    const std::string& msg
+    const std::string& msg,
+    std::source_location loc = std::source_location::current()
 )
 {
     std::cerr
         << "\n\nFATAL ERROR"
-        << "\n    " << file << ':' << line
+        << "\n    " << loc.file_name() << ':' << loc.line()
         << "\n    " << msg
         << '\n' << std::endl;
 
@@ -40,22 +45,18 @@
 }
 
 
-/// Print a warning message and continue execution
-inline void warningImpl
+/**
+ * @brief Print a warning message and continue execution
+ * @param msg The warning message to display
+ * @param loc The source location (file and line) where the warning occurred
+ */
+inline void Warning
 (
-    const char* file,
-    int line,
-    const std::string& msg
+    const std::string& msg,
+    std::source_location loc = std::source_location::current()
 )
 {
     std::cerr
-        << "\n[WARNING] (" << file << ':' << line << ") "
+        << "\n[WARNING] (" << loc.file_name() << ':' << loc.line() << ") "
         << msg << std::endl;
 }
-
-
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define FatalError(msg) fatalErrorImpl(__FILE__, __LINE__, msg)
-
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define Warning(msg) warningImpl(__FILE__, __LINE__, msg)
