@@ -9,10 +9,10 @@
  * - Warning("message")     — prints file, line, and message to stderr,
  *                            then continues execution
  *
- * CFD solvers are batch executables, not servers. There is no caller to
+ * The CFD solver is batch executable, not a server. There is no caller to
  * catch and retry, so unrecoverable errors terminate immediately rather
- * than throwing exceptions. std::abort() preserves the full call stack
- * for post-mortem debugging.
+ * than throwing exceptions. std::abort() preserves the entire memory snapshot
+ * for post-crash debugging.
  *****************************************************************************/
 
 #pragma once

@@ -25,9 +25,9 @@ void Cell::calculateGeometricProperties
     centroid_ = Vector{};
     Vector centroidSum;
 
-    for (size_t i = 0; i < faceIndices_.size(); ++i)
+    for (size_t faceIdx = 0; faceIdx < faceIndices_.size(); ++faceIdx)
     {
-        size_t faceIndex = faceIndices_[i];
+        size_t faceIndex = faceIndices_[faceIdx];
         const Face& face = allFaces[faceIndex];
 
         if(!face.geometricPropertiesCalculated())
@@ -41,7 +41,7 @@ void Cell::calculateGeometricProperties
             );
         }
 
-        Scalar faceSign = S(faceSigns_[i]);
+        Scalar faceSign = S(faceSigns_[faceIdx]);
         const FaceIntegrals& integrals = allFaceIntegrals[faceIndex];
 
         volume_ += faceSign * integrals.volume;
@@ -56,7 +56,7 @@ void Cell::calculateGeometricProperties
 
     volume_ /= S(3.0);
 
-    if (std::abs(volume_) < smallValue)
+    if (std::abs(volume_) < vSmallValue)
     {
         FatalError
         (
@@ -73,34 +73,38 @@ std::ostream& operator<<(std::ostream& os, const Cell& c)
     os  << "Cell(ID: " << c.idx() << ", Faces: [";
 
     const auto& faces = c.faceIndices();
-    for (size_t i = 0; i < faces.size(); ++i)
+    for (size_t faceIdx = 0; faceIdx < faces.size(); ++faceIdx)
     {
-        os  << faces[i]
-            << (i == faces.size() - 1 ? "" : ", ");
+        os  << faces[faceIdx]
+            << (faceIdx == faces.size() - 1 ? "" : ", ");
     }
 
     os  << "], Neighbors: [";
 
     const auto& neighbors = c.neighborCellIndices();
-    for (size_t i = 0; i < neighbors.size(); ++i)
+    for (size_t neighborIdx = 0; neighborIdx < neighbors.size(); ++neighborIdx)
     {
-        os  << neighbors[i]
-            << (i == neighbors.size() - 1 ? "" : ", ");
+        os  << neighbors[neighborIdx]
+            << (neighborIdx == neighbors.size() - 1 ? "" : ", ");
     }
 
     os  << ']';
 
     if (c.geometricPropertiesCalculated())
     {
+        // save current formatting
         auto flags = os.flags();
         auto prec = os.precision();
 
+        // change formatting for geometric properties
         os  << std::fixed
             << std::setprecision(6);
 
+        // output volume and centroid
         os  << ", Volume: " << c.volume()
             << ", Centroid: " << c.centroid();
 
+        // restore original formatting
         os.flags(flags);
         os.precision(prec);
     }

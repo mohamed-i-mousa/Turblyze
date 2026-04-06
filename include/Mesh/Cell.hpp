@@ -9,8 +9,6 @@
  * volume.
  *
  * @class Cell
- *
- * The Cell class provides:
  * - Topological connectivity (bounding faces, neighboring cells)
  * - Orientation data (face alignment signs relative to cell)
  * - Cell properties (centroid, volume)

@@ -8,9 +8,11 @@
  * and serves as the boundary between two control volumes (cells) or between a
  * cell and the domain boundary.
  *
+ * @struct FaceIntegrals
+ * - Stores second moment integrals and volume contribution from a face
+ *   used in cell geometric property calculations.
+ * 
  * @class Face
- *
- * The face class provides:
  * - Connectivity (nodes, owner cell, neighbor cell)
  * - Face properties (centroid, area, normal vector)
  * - Distance vectors for interpolations and gradient calculations
@@ -30,13 +32,7 @@
 // Forward declaration
 class BoundaryPatch;
 
-/**
- * @brief Integrals computed during face geometry setup
- *
- * @details These values are produced by Face::calculateGeometricProperties()
- * and used once by Cell::calculateGeometricProperties() to compute cell
- * volumes and centroids via the divergence theorem.
- */
+
 struct FaceIntegrals
 {
     Scalar x2 = 0.0;
@@ -44,6 +40,7 @@ struct FaceIntegrals
     Scalar z2 = 0.0;
     Scalar volume = 0.0;
 };
+
 
 class Face
 {
@@ -283,6 +280,7 @@ public:
     void flipNormal() noexcept { normal_ *= S(-1.0); }
 
 private:
+
     /// Unique face identifier
     size_t idx_ = 0;
 

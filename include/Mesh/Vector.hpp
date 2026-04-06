@@ -8,8 +8,6 @@
  * discretization and mesh operations.
  *
  * @class Vector
- *
- * The Vector class provides:
  * - Components access and manipulation (x, y, z coordinates)
  * - Arithmetic operations (addition, subtraction, scalar multiplication)
  * - Vector operations (dot product, cross product, normalization)
@@ -124,7 +122,7 @@ public:
      * @brief Scalar division operator
      * @param scalar Scalar to divide by
      * @return Vector divided by scalar
-     * @note Terminates the program if scalar is near zero
+     * @note Terminates the program if scalar is zero
      */
     Vector operator/(Scalar scalar) const
     {
@@ -180,6 +178,8 @@ public:
      * @param scalar Scalar to divide by
      * @return Reference to this vector
      * @note Terminates the program if scalar is near zero
+     * @note Using inverse is a micro-optimization to reduce the number
+     *       of divisions, which are more expensive than multiplications
      */
     Vector& operator/=(Scalar scalar)
     {
@@ -188,10 +188,10 @@ public:
             FatalError("Division by zero in Vector::operator/=");
         }
 
-        Scalar inv = S(1.0) / scalar;
-        x_ *= inv;
-        y_ *= inv;
-        z_ *= inv;
+        Scalar inverse = S(1.0) / scalar;
+        x_ *= inverse;
+        y_ *= inverse;
+        z_ *= inverse;
 
         return *this;
     }
@@ -215,7 +215,8 @@ public:
      * @brief Calculates squared magnitude of vector
      * @return Squared magnitude (x² + y² + z²)
      */
-    [[nodiscard]] Scalar magnitudeSquared() const noexcept
+    [[nodiscard("Squared magnitude of the vector has to be returned")]]
+    Scalar magnitudeSquared() const noexcept
     {
         return x_ * x_ + y_ * y_ + z_ * z_;
     }
@@ -224,7 +225,8 @@ public:
      * @brief Calculates magnitude (length) of vector
      * @return Vector magnitude
      */
-    [[nodiscard]] Scalar magnitude() const noexcept
+    [[nodiscard("Magnitude of the vector has to be returned")]]
+    Scalar magnitude() const noexcept
     {
         return std::sqrt(magnitudeSquared());
     }
@@ -234,7 +236,8 @@ public:
      * @return Normalized vector
      * @note Terminates the program if vector has zero magnitude
      */
-    [[nodiscard]] Vector normalized() const
+    [[nodiscard("Normalized vector has to be returned")]]
+    Vector normalized() const
     {
         Scalar mag = magnitude();
         if (mag < vSmallValue)
@@ -242,13 +245,13 @@ public:
             FatalError("Division by zero in Vector::normalized");
         }
 
-        Scalar inv = S(1.0) / mag;
-        return Vector(x_ * inv, y_ * inv, z_ * inv);
+        Scalar inverse = S(1.0) / mag;
+        return Vector(x_ * inverse, y_ * inverse, z_ * inverse);
     }
 
 private:
 
-    /// X, Y, Z components of the vector
+    /// x, y, z components of the vector
     Scalar x_ = 0.0;
     Scalar y_ = 0.0;
     Scalar z_ = 0.0;

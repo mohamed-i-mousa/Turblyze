@@ -12,7 +12,7 @@
 #include "ErrorHandler.hpp"
 
 
-// ********************** Geometric Property Methods **********************
+// ************************ Geometric Property Methods ************************
 
 FaceIntegrals Face::calculateGeometricProperties
 (
@@ -94,14 +94,14 @@ FaceIntegrals Face::calculateGeometricProperties
 
         faceCenter /= S(numNodes);
 
-        Vector weightedCentroidSum(0.0, 0.0, 0.0);
-        Vector normalSum(0.0, 0.0, 0.0);
+        Vector weightedCentroidSum{};
+        Vector normalSum{};
         Scalar weightedAreaSum = 0.0;
 
-        for (size_t i = 0; i < numNodes; ++i)
+        for (size_t nodeIdx = 0; nodeIdx < numNodes; ++nodeIdx)
         {
-            const Vector& pCurr = allNodes[nodeIndices_[i]];
-            const Vector& pNext = allNodes[nodeIndices_[(i + 1) % numNodes]];
+            const Vector& pCurr = allNodes[nodeIndices_[nodeIdx]];
+            const Vector& pNext = allNodes[nodeIndices_[(nodeIdx + 1) % numNodes]];
 
             const Vector& p1Tri = faceCenter;
             const Vector& p2Tri = pCurr;
@@ -115,7 +115,6 @@ FaceIntegrals Face::calculateGeometricProperties
             normalSum += crossProdTri;
 
             // Weighted integrals using each sub-triangle's normal
-            // For divergence theorem: contribution = N_x * x2Formula / 12
             integrals.x2 +=
                 crossProdTri.x()
               * secondMoment(p1Tri.x(), p2Tri.x(), p3Tri.x())
@@ -153,66 +152,7 @@ FaceIntegrals Face::calculateGeometricProperties
     return integrals;
 }
 
-std::ostream& operator<<(std::ostream& os, const Face& f)
-{
-    os  << "Face(ID: " << f.idx() << ", Nodes: [";
-
-    const auto& nodes = f.nodeIndices();
-    for (size_t i = 0; i < nodes.size(); ++i)
-    {
-        os  << nodes[i]
-            << (i == nodes.size() - 1 ? "" : ", ");
-    }
-
-    os  <<  "], Owner: " << f.ownerCell() << ", Neighbor: "
-        <<  (
-                f.isBoundary() ? "Boundary"
-              : std::to_string(f.neighborCell().value())
-            );
-
-    if (f.geometricPropertiesCalculated())
-    {
-        auto flags = os.flags();
-        auto prec = os.precision();
-
-        os  << std::fixed << std::setprecision(6);
-
-        os  << ", Centroid: " << f.centroid()
-            << ", Area: "   << f.projectedArea()
-            << ", Normal: " << f.normal();
-
-        os.flags(flags);
-        os.precision(prec);
-    }
-    else
-    {
-        os  << ", Geometry: N/A";
-    }
-
-    if (f.distancePropertiesCalculated())
-    {
-        auto flags = os.flags();
-        auto prec = os.precision();
-
-        os  << std::fixed << std::setprecision(6);
-
-        os  << ", dPfMag: " << f.dPfMag();
-
-        if (f.dNfMag().has_value())
-        {
-            os  << ", dNfMag: " << f.dNfMag().value();
-        }
-
-        os.flags(flags);
-        os.precision(prec);
-    }
-
-    os  << ')';
-
-    return os;
-}
-
-// *********************** Distance Property Methods **********************
+// ************************* Distance Property Methods ************************
 
 void Face::calculateDistanceProperties(std::span<const Vector> cellCentroids)
 {
@@ -229,4 +169,73 @@ void Face::calculateDistanceProperties(std::span<const Vector> cellCentroids)
         dNfMag_ = dNfVec.magnitude();
     }
     distancePropertiesCalculated_ = true;
+}
+
+// ***************************** Output Methods *******************************
+
+std::ostream& operator<<(std::ostream& os, const Face& f)
+{
+    os  << "Face(ID: " << f.idx() << ", Nodes: [";
+
+    const auto& nodes = f.nodeIndices();
+    for (size_t nodeIdx = 0; nodeIdx < nodes.size(); ++nodeIdx)
+    {
+        os  << nodes[nodeIdx]
+            << (nodeIdx == nodes.size() - 1 ? "" : ", ");
+    }
+
+    os  <<  "], Owner: " << f.ownerCell() << ", Neighbor: "
+        <<  (
+                f.isBoundary() ? "Boundary"
+              : std::to_string(f.neighborCell().value())
+            );
+
+    if (f.geometricPropertiesCalculated())
+    {
+        // save the current format
+        auto flags = os.flags();
+        auto prec = os.precision();
+
+        // change format for geometric properties
+        os  << std::fixed << std::setprecision(6);
+
+        // Output geometric properties
+        os  << ", Centroid: " << f.centroid()
+            << ", Area: "   << f.projectedArea()
+            << ", Normal: " << f.normal();
+
+        // restore original format
+        os.flags(flags);
+        os.precision(prec);
+    }
+    else
+    {
+        os  << ", Geometry: N/A";
+    }
+
+    if (f.distancePropertiesCalculated())
+    {
+        // save the current format
+        auto flags = os.flags();
+        auto prec = os.precision();
+
+        // change format for distance properties
+        os  << std::fixed << std::setprecision(6);
+
+        // Output distance properties
+        os  << ", dPfMag: " << f.dPfMag();
+
+        if (f.dNfMag().has_value())
+        {
+            os  << ", dNfMag: " << f.dNfMag().value();
+        }
+
+        // restore original format
+        os.flags(flags);
+        os.precision(prec);
+    }
+
+    os  << ')';
+
+    return os;
 }
