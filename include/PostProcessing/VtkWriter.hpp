@@ -26,9 +26,7 @@
 #include <map>
 
 #include "Scalar.hpp"
-#include "Vector.hpp"
-#include "Face.hpp"
-#include "Cell.hpp"
+#include "Mesh.hpp"
 #include "CellData.hpp"
 #include "FaceData.hpp"
 
@@ -48,18 +46,14 @@ namespace VtkWriter
  * prisms, pyramids) with proper cell-centered data.
  *
  * @param filename Output VTK file path (should end with .vtu extension)
- * @param allNodes Vector of 3D node coordinates
- * @param allCells Vector of mesh cells with connectivity
- * @param allFaces Vector of mesh faces (needed for cell node extraction)
+ * @param mesh Mesh view (nodes, faces, cells)
  * @param scalarCellFields Map of scalar field names to cell-centered data
  * @param vectorCellFields Map of vector field names to cell-centered data
  */
 void writeVtkUnstructuredGrid
 (
     const std::string& filename,
-    std::span<const Vector> allNodes,
-    std::span<const Cell> allCells,
-    std::span<const Face> allFaces,
+    const Mesh& mesh,
     const std::map<std::string,
     const ScalarField*>& scalarCellFields = {},
     const std::map<std::string,
@@ -75,16 +69,14 @@ void writeVtkUnstructuredGrid
  * yPlus, wallShearStress) as VTK PolyData for surface visualization.
  *
  * @param filename Output VTK file path (should end with .vtp extension)
- * @param allNodes Vector of 3D node coordinates
- * @param allFaces Vector of mesh faces (wall faces are extracted)
+ * @param mesh Mesh view (nodes, faces, cells)
  * @param scalarFaceFields Map of scalar field names to face-centered data
  * @param debug Enable verbose output
  */
 void writeWallBoundaryData
 (
     const std::string& filename,
-    std::span<const Vector> allNodes,
-    std::span<const Face> allFaces,
+    const Mesh& mesh,
     const std::map<std::string,
     const FaceData<Scalar>*>& scalarFaceFields = {},
     bool debug = false
@@ -172,12 +164,12 @@ void appendPVDTimeStep
 /**
  * @brief Write cell geometry data (volumes and centroids) to text file
  * @param filename Output text file path
- * @param allCells Vector of mesh cells with computed geometry
+ * @param mesh Mesh view (nodes, faces, cells)
  */
 void writeCellGeometryData
 (
     const std::string& filename,
-    std::span<const Cell> allCells
+    const Mesh& mesh
 );
 
 } // namespace VtkWriter

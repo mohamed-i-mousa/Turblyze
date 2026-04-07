@@ -31,8 +31,7 @@
 #include <cmath>
 
 // Header includes
-#include "Cell.hpp"
-#include "Face.hpp"
+#include "Mesh.hpp"
 #include "BoundaryPatch.hpp"
 #include "ErrorHandler.hpp"
 
@@ -59,11 +58,7 @@ struct StrainTensor
     }
 };
 
-ScalarField computeMagnitude
-(
-    const VectorField& field,
-    const std::string& fieldName
-);
+ScalarField computeMagnitude(const VectorField& field);
 
 StrainTensor computeStrainTensor
 (
@@ -110,9 +105,7 @@ std::vector<vtkIdType> orderPyramidNodes
 void writeVtkUnstructuredGrid
 (
     const std::string& filename,
-    std::span<const Vector> allNodes,
-    std::span<const Cell> allCells,
-    std::span<const Face> allFaces,
+    const Mesh& mesh,
     const std::map<std::string,
     const ScalarField*>& scalarCellFields,
     const std::map<std::string,
@@ -120,6 +113,10 @@ void writeVtkUnstructuredGrid
     bool debug
 )
 {
+    std::span<const Vector> allNodes = mesh.nodes();
+    std::span<const Cell> allCells = mesh.cells();
+    std::span<const Face> allFaces = mesh.faces();
+
     // Create vtkUnstructuredGrid
     vtkSmartPointer<vtkUnstructuredGrid>
     unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
@@ -394,13 +391,15 @@ void writeVtkUnstructuredGrid
 void writeWallBoundaryData
 (
     const std::string& filename,
-    std::span<const Vector> allNodes,
-    std::span<const Face> allFaces,
+    const Mesh& mesh,
     const std::map<std::string,
     const FaceData<Scalar>*>& scalarFaceFields,
     bool debug
 )
 {
+    std::span<const Vector> allNodes = mesh.nodes();
+    std::span<const Face> allFaces = mesh.faces();
+
     // Collect wall boundary faces
     std::vector<size_t> wallFaceIndices;
 
@@ -539,12 +538,12 @@ void writeWallBoundaryData
 
 ScalarField computeVelocityMagnitude(const VectorField& velocity)
 {
-    return computeMagnitude(velocity, "velocityMagnitude");
+    return computeMagnitude(velocity);
 }
 
 ScalarField computeVorticityMagnitude(const VectorField& vorticity)
 {
-    return computeMagnitude(vorticity, "vorticityMagnitude");
+    return computeMagnitude(vorticity);
 }
 
 ScalarField computeQCriterion
@@ -554,7 +553,7 @@ ScalarField computeQCriterion
     const VectorField& gradUz
 )
 {
-    ScalarField qCriterion("QCriterion", gradUx.size());
+    ScalarField qCriterion;
 
     for (size_t i = 0; i < gradUx.size(); ++i)
     {
@@ -592,7 +591,7 @@ ScalarField computeStrainRateMagnitude
     const VectorField& gradUz
 )
 {
-    ScalarField strainRateMag("strainRateMagnitude", gradUx.size());
+    ScalarField strainRateMag;
 
     for (size_t idx = 0; idx < gradUx.size(); ++idx)
     {
@@ -694,9 +693,11 @@ void appendPVDTimeStep
 void writeCellGeometryData
 (
     const std::string& filename,
-    std::span<const Cell> allCells
+    const Mesh& mesh
 )
 {
+    std::span<const Cell> allCells = mesh.cells();
+
     std::ofstream outFile(filename);
     if (!outFile.is_open())
     {
@@ -729,13 +730,9 @@ void writeCellGeometryData
 
 // ****************** Internal Helper Methods: Field Utilities *****************
 
-ScalarField computeMagnitude
-(
-    const VectorField& field,
-    const std::string& fieldName
-)
+ScalarField computeMagnitude(const VectorField& field)
 {
-    ScalarField magnitude(fieldName, field.size());
+    ScalarField magnitude;
     for (size_t idx = 0; idx < field.size(); ++idx)
     {
         magnitude[idx] = field[idx].magnitude();

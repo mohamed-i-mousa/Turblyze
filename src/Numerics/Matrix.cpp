@@ -13,21 +13,19 @@
 
 Matrix::Matrix
 (
-    std::span<const Face> faces,
-    std::span<const Cell> cells,
+    const Mesh& mesh,
     const BoundaryConditions& boundaryConds
 ) noexcept
-  : allFaces_(faces),
-    allCells_(cells),
+  : mesh_(mesh),
     bcManager_(boundaryConds)
 {
-    for (const auto& face : allFaces_)
+    for (const auto& face : mesh_.faces())
     {
         if (face.isBoundary()) ++numBoundaryFaces_;
         else ++numInternalFaces_;
     }
 
-    size_t numCells = allCells_.size();
+    size_t numCells = mesh_.numCells();
 
     matrixA_.resize
     (
@@ -45,7 +43,7 @@ void Matrix::buildMatrix(const TransportEquation& equation)
     clear();
     reserveTripletList();
 
-    size_t numCells = allCells_.size();
+    size_t numCells = mesh_.numCells();
 
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
@@ -54,10 +52,10 @@ void Matrix::buildMatrix(const TransportEquation& equation)
     }
 
     for (size_t faceIdx = 0;
-         faceIdx < allFaces_.size();
+         faceIdx < mesh_.numFaces();
          ++faceIdx)
     {
-        const Face& face = allFaces_[faceIdx];
+        const Face& face = mesh_.faces()[faceIdx];
 
         if (face.isBoundary())
         {
@@ -174,8 +172,8 @@ void Matrix::assembleInternalFace
     Vector Sf = face.normal() * face.projectedArea();
 
     Vector dPN =
-        allCells_[neighborIdx].centroid()
-      - allCells_[ownerIdx].centroid();
+        mesh_.cells()[neighborIdx].centroid()
+      - mesh_.cells()[ownerIdx].centroid();
 
     Scalar dPNMag = dPN.magnitude();
     Vector ePN = dPN / (dPNMag + vSmallValue);
@@ -394,7 +392,7 @@ void Matrix::assembleBoundaryFace
             Scalar normalComponent = dot(gradPhiP, eb);
             Vector gradPhib = gradPhiP - normalComponent * eb;
 
-            Vector dCb = face.centroid() - allCells_[ownerIdx].centroid();
+            Vector dCb = face.centroid() - mesh_.cells()[ownerIdx].centroid();
 
             Scalar correction = aConv * dot(gradPhib, dCb);
             vectorB_(static_cast<Eigen::Index>(ownerIdx)) -= correction;
@@ -464,7 +462,7 @@ void Matrix::setValues
                 it.valueRef() = S(0.0);
             }
 
-            for (size_t neighborIdx : allCells_[cellIdx].neighborCellIndices())
+            for (size_t neighborIdx : mesh_.cells()[cellIdx].neighborCellIndices())
             {
                 matrixA_.coeffRef
                 (

@@ -25,12 +25,9 @@
 
 #include <vector>
 #include <memory>
-#include <span>
 
 #include "Scalar.hpp"
-#include "Vector.hpp"
-#include "Cell.hpp"
-#include "Face.hpp"
+#include "Mesh.hpp"
 #include "CellData.hpp"
 #include "FaceData.hpp"
 #include "BoundaryConditions.hpp"
@@ -48,8 +45,7 @@ public:
     /// Constructor
     kOmegaSST
     (
-        std::span<const Face> faces,
-        std::span<const Cell> cells,
+        const Mesh& mesh,
         const BoundaryConditions& bc,
         const GradientScheme& gradScheme,
         const ConvectionScheme& kScheme,
@@ -245,11 +241,8 @@ private:
 
 // Mesh references
 
-    /// Reference to all mesh faces
-    std::span<const Face> allFaces_;
-
-    /// Reference to all mesh cells
-    std::span<const Cell> allCells_;
+    /// Mesh view (nodes, faces, cells)
+    const Mesh& mesh_;
 
     /// Reference to BCs
     const BoundaryConditions& bcManager_;
@@ -266,85 +259,77 @@ private:
 // Turbulence fields
 
     /// Turbulent kinetic energy
-    ScalarField k_ = ScalarField("k", allCells_.size(), S(1e-6));
+    ScalarField k_{S(1e-6)};
 
     /// Specific dissipation rate
-    ScalarField omega_ = ScalarField("omega", allCells_.size(), S(1.0));
+    ScalarField omega_{S(1.0)};
 
     /// Turbulent kinematic viscosity
-    ScalarField nut_ = ScalarField("nut", allCells_.size(), S(0.0));
+    ScalarField nut_;
+
+    /// Effective viscosity (laminar + turbulent), cached for efficiency
+    ScalarField nuEff_;
 
     /// Distance to nearest wall
-    ScalarField wallDistance_ =
-        ScalarField("wallDistance", allCells_.size(), S(1.0));
+    ScalarField wallDistance_{S(1.0)};
 
-    /// Wall shear stress magnitude
-    FaceData<Scalar> wallShearStress_ =
-        FaceData<Scalar>("wallShearStress", allFaces_.size(), S(0.0));
+    /// Coordinates of the nearest wall point per cell (for mesh-wave propagation)
+    VectorField nearestWallPoint_;
+
+    /// Kinematic wall shear stress magnitude (tau/rho) [m^2/s^2]
+    FaceData<Scalar> wallShearStress_;
 
     /// y+
-    FaceData<Scalar> yPlus_ =
-        FaceData<Scalar>("yPlus", allFaces_.size(), S(0.0));
+    FaceData<Scalar> yPlus_;
 
 // Gradient fields
 
     /// Gradient of k
-    VectorField gradK_ = VectorField("gradK", allCells_.size(), Vector{});
+    VectorField gradK_;
 
     /// Gradient of Omega
-    VectorField gradOmega_ =
-        VectorField("gradOmega", allCells_.size(), Vector{});
+    VectorField gradOmega_;
 
 // Auxiliary fields
 
     /// Cached velocity divergence (computed once per solve() call)
-    ScalarField divU_ = ScalarField("divU", allCells_.size(), S(0.0));
+    ScalarField divU_;
 
     /// Blending function 1 (k-ω to k-ε)
-    ScalarField F1_ = ScalarField("F1", allCells_.size(), S(0.0));
+    ScalarField F1_;
 
     /// Blending function 2 (viscous sublayer)
-    ScalarField F2_ = ScalarField("F2", allCells_.size(), S(0.0));
+    ScalarField F2_;
 
     /// Blending function 23
-    ScalarField F23_ = ScalarField("F23", allCells_.size(), S(0.0));
+    ScalarField F23_;
 
     /// Blending function 3
-    ScalarField F3_ = ScalarField("F3", allCells_.size(), S(0.0));
+    ScalarField F3_;
 
     /// Production of k
-    ScalarField productionK_ =
-        ScalarField("productionK", allCells_.size(), S(0.0));
+    ScalarField productionK_;
 
     /// Production of omega
-    ScalarField productionOmega_ =
-        ScalarField("productionOmega", allCells_.size(), S(0.0));
+    ScalarField productionOmega_;
 
     /// Strain rate magnitude (shared between production and viscosity)
-    ScalarField strainRate_ =
-        ScalarField("strainRate", allCells_.size(), S(0.0));
+    ScalarField strainRate_;
 
     /// Cross-diffusion term: 2·σω2·(∇k·∇ω)/ω
-    ScalarField CDkOmega_ = ScalarField("CDkOmega", allCells_.size(), S(0.0));
+    ScalarField CDkOmega_;
 
     /// Wall-function nut values on wall faces (nutkWallFunction)
-    FaceData<Scalar> nutWall_ =
-        FaceData<Scalar>("nutWall", allFaces_.size(), S(0.0));
+    FaceData<Scalar> nutWall_;
 
     /// Dynamic omega wall-function values on faces
-    FaceData<Scalar> omegaWallFunctionFaceValues_ =
-        FaceData<Scalar>
-        (
-            "omegaWallFunctionFaceValues",
-            allFaces_.size(),
-            std::numeric_limits<Scalar>::quiet_NaN()
-        );
+    FaceData<Scalar> omegaWallFunctionFaceValues_{
+        std::numeric_limits<Scalar>::quiet_NaN()};
 
     /// Area-based weight per wall face (face area / total wall area of cell)
-    FaceData<Scalar> wallFaceWeight_ =
-        FaceData<Scalar>("wallFaceWeight", allFaces_.size(), S(0.0));
+    FaceData<Scalar> wallFaceWeight_;
 
-    /// Indices into allFaces_ for faces with wall-function BCs
+    /// Indices into mesh_.faces for faces with wall-function BCs
     std::vector<size_t> wallFunctionFaceIndices_;
 
     /// Unique cell indices adjacent to wall-function faces

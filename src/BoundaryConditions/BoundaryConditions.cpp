@@ -303,7 +303,7 @@ Vector BoundaryConditions::calculateBoundaryVectorFaceValue
     }
 }
 
-void BoundaryConditions::linkFaces(std::vector<Face>& faces)
+void BoundaryConditions::linkFaces(std::span<Face> faces)
 {
     for (const auto& patch : patches_)
     {

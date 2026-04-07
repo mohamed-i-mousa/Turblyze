@@ -180,21 +180,24 @@ void CFDApplication::prepareMesh()
 
     MeshReader meshReader(meshFilePath);
 
-    nodes_ = meshReader.moveNodes();
-    faces_ = meshReader.moveFaces();
-    cells_ = meshReader.moveCells();
-    patches_ = meshReader.moveBoundaryPatches();
+    mesh_ = Mesh
+    (
+        meshReader.moveNodes(),
+        meshReader.moveFaces(),
+        meshReader.moveCells(),
+        meshReader.moveBoundaryPatches()
+    );
 
     std::cout
-        << "Mesh Loaded: " << nodes_.size() << " nodes, "
-        << faces_.size() << " faces, " << cells_.size()
+        << "Mesh Loaded: " << mesh_.numNodes() << " nodes, "
+        << mesh_.numFaces() << " faces, " << mesh_.numCells()
         << " cells." << std::endl;
 
-    std::vector<FaceIntegrals> faceIntegrals(faces_.size());
-    for (size_t faceIdx = 0; faceIdx < faces_.size(); ++faceIdx)
+    std::vector<FaceIntegrals> faceIntegrals(mesh_.numFaces());
+    for (size_t faceIdx = 0; faceIdx < mesh_.numFaces(); ++faceIdx)
     {
         faceIntegrals[faceIdx] =
-            faces_[faceIdx].calculateGeometricProperties(nodes_);
+            mesh_.faces()[faceIdx].calculateGeometricProperties(mesh_.nodes());
     }
     if (debug_)
     {
@@ -204,11 +207,11 @@ void CFDApplication::prepareMesh()
     }
 
     {
-        std::vector<Vector> approxCentroids(cells_.size(), Vector{});
-        std::vector<std::set<size_t>> cellNodes(cells_.size());
+        std::vector<Vector> approxCentroids(mesh_.numCells(), Vector{});
+        std::vector<std::set<size_t>> cellNodes(mesh_.numCells());
 
         // Collect unique node indices for each cell
-        for (const auto& face : faces_)
+        for (const auto& face : mesh_.faces())
         {
             size_t owner = face.ownerCell();
             for (size_t nodeIdx : face.nodeIndices())
@@ -228,13 +231,13 @@ void CFDApplication::prepareMesh()
         }
 
         // Compute centroid as average of node positions
-        for (size_t cellIdx = 0; cellIdx < cells_.size(); ++cellIdx)
+        for (size_t cellIdx = 0; cellIdx < mesh_.numCells(); ++cellIdx)
         {
             if (!cellNodes[cellIdx].empty())
             {
                 for (size_t nodeIdx : cellNodes[cellIdx])
                 {
-                    approxCentroids[cellIdx] += nodes_[nodeIdx];
+                    approxCentroids[cellIdx] += mesh_.nodes()[nodeIdx];
                 }
                 approxCentroids[cellIdx] /= S(cellNodes[cellIdx].size());
             }
@@ -242,7 +245,7 @@ void CFDApplication::prepareMesh()
 
         // Check and correct any inverted face normals
         int flippedCount = 0;
-        for (auto& face : faces_)
+        for (auto& face : mesh_.faces())
         {
             if (!face.isBoundary())
             {
@@ -269,9 +272,9 @@ void CFDApplication::prepareMesh()
         }
     }
 
-    for (auto& cell : cells_)
+    for (auto& cell : mesh_.cells())
     {
-        cell.calculateGeometricProperties(faces_, faceIntegrals);
+        cell.calculateGeometricProperties(mesh_.faces(), faceIntegrals);
     }
 
     if (debug_)
@@ -287,16 +290,16 @@ void CFDApplication::prepareMesh()
         VtkWriter::writeCellGeometryData
         (
             "../outputFiles.nosync/cell_geometry_turblyze.txt",
-            cells_
+            mesh_
         );
     }
 
-    std::vector<Vector> cellCentroids(cells_.size());
-    for (size_t cellIdx = 0; cellIdx < cells_.size(); ++cellIdx)
+    std::vector<Vector> cellCentroids(mesh_.numCells());
+    for (size_t cellIdx = 0; cellIdx < mesh_.numCells(); ++cellIdx)
     {
-        cellCentroids[cellIdx] = cells_[cellIdx].centroid();
+        cellCentroids[cellIdx] = mesh_.cells()[cellIdx].centroid();
     }
-    for (auto& face : faces_)
+    for (auto& face : mesh_.faces())
     {
         face.calculateDistanceProperties(cellCentroids);
     }
@@ -310,7 +313,7 @@ void CFDApplication::prepareMesh()
     // Check mesh quality if requested
     if (checkQuality_)
     {
-        MeshChecker meshChecker(nodes_, faces_, cells_);
+        MeshChecker meshChecker(mesh_);
         meshChecker.check();
     }
 }
@@ -323,15 +326,15 @@ void CFDApplication::setupBoundaryConditions()
     std::cout
         << std::endl << "--- 2. Setting Boundary Conditions ---" << std::endl;
 
-    for (const auto& patch : patches_)
+    for (const auto& patch : mesh_.patches())
     {
         bcManager_.addPatch(patch);
     }
 
     // Link boundary faces to their owning patches
-    bcManager_.linkFaces(faces_);
+    bcManager_.linkFaces(mesh_.faces());
 
-    for (const auto& face : faces_)
+    for (const auto& face : mesh_.faces())
     {
         if (face.isBoundary() && !face.patch())
         {
@@ -687,7 +690,7 @@ void CFDApplication::setupBoundaryConditions()
 
     std::cout
         << "Boundary conditions set for "
-        << patches_.size() << " patches." << std::endl;
+        << mesh_.patches().size() << " patches." << std::endl;
 }
 
 
@@ -699,13 +702,12 @@ void CFDApplication::configureSolver()
         << std::endl << "--- 3. Initializing SIMPLE Solver ---" << std::endl;
 
     gradScheme_ =
-        std::make_unique<GradientScheme>(faces_, cells_, bcManager_);
+        std::make_unique<GradientScheme>(mesh_, bcManager_);
 
     solver_ =
         std::make_unique<SIMPLE>
         (
-            faces_,
-            cells_,
+            mesh_,
             bcManager_,
             *gradScheme_,
             convectionSchemes_
@@ -1056,9 +1058,7 @@ void CFDApplication::exportResults()
     VtkWriter::writeVtkUnstructuredGrid
     (
         vtuFilename,
-        nodes_,
-        cells_,
-        faces_,
+        mesh_,
         scalarFieldsToVtk,
         vectorFieldsToVtk,
         debug_
@@ -1093,8 +1093,7 @@ void CFDApplication::exportResults()
         VtkWriter::writeWallBoundaryData
         (
             vtpFilename,
-            nodes_,
-            faces_,
+            mesh_,
             wallScalarFields,
             debug_
         );

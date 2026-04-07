@@ -24,8 +24,7 @@
 #include <vector>
 #include <memory>
 
-#include "Face.hpp"
-#include "Cell.hpp"
+#include "Mesh.hpp"
 #include "BoundaryConditions.hpp"
 #include "CellData.hpp"
 #include "FaceData.hpp"
@@ -47,16 +46,14 @@ public:
 
     /**
      * @brief Constructor for SIMPLE solver
-     * @param faces Reference to face data
-     * @param cells Reference to cell data
+     * @param mesh Mesh view (nodes, faces, cells)
      * @param bc Reference to boundary conditions
      * @param gradScheme Reference to gradient scheme
      * @param convSchemes Reference to per-equation convection schemes
      */
     SIMPLE
     (
-        std::span<const Face> faces,
-        std::span<const Cell> cells,
+        const Mesh& mesh,
         const BoundaryConditions& bc,
         const GradientScheme& gradScheme,
         const ConvectionSchemes& convSchemes
@@ -258,9 +255,8 @@ private:
 
 // Private members
 
-    /// Mesh references
-    std::span<const Face> allFaces_;
-    std::span<const Cell> allCells_;
+    /// Mesh view (nodes, faces, cells)
+    const Mesh& mesh_;
     const BoundaryConditions& bcManager_;
     const GradientScheme& gradientScheme_;
     const ConvectionSchemes& convectionSchemes_;
@@ -299,13 +295,13 @@ private:
     std::unique_ptr<Constraint> constraintSystem_ = nullptr;
 
     /// Velocity field
-    VelocityField U_ = VelocityField("U", allCells_.size(), Vector{});
+    VectorField U_;
 
     /// Pressure field
-    PressureField p_ = PressureField("p", allCells_.size(), S(0.0));
+    ScalarField p_;
 
     /// Pressure correction field
-    ScalarField pCorr_ = ScalarField("pCorr", allCells_.size(), S(0.0));
+    ScalarField pCorr_;
 
     /// Track pressure correction RMS before reset
     Scalar lastPressureCorrectionRMS_ = S(1e9);
@@ -322,38 +318,33 @@ private:
     Scalar omegaResidual0_ = S(0.0);
 
     /// Velocity from previous iteration
-    VectorField UPrev_ = VelocityField("UPrev", allCells_.size(), Vector{});
+    VectorField UPrev_;
 
     /// Face velocity field (current iteration)
-    FaceVectorField UAvgf_ =
-        FaceVectorField("UAvgf", allFaces_.size(), Vector{});
+    FaceVectorField UAvgf_;
 
     /// Face velocity from previous iteration
-    FaceVectorField UAvgPrevf_ = 
-        FaceVectorField("UAvgPrevf", allFaces_.size(), Vector{});
+    FaceVectorField UAvgPrevf_;
 
     /// Mass flux through faces (Rhie-Chow)
-    FaceFluxField RhieChowFlowRate_ =
-        FaceFluxField("RhieChowFlowRate", allFaces_.size(), S(0.0));
+    FaceFluxField RhieChowFlowRate_;
 
     /// Mass flux from previous iteration
-    FaceFluxField RhieChowFlowRatePrev_ =
-        FaceFluxField("RhieChowFlowRatePrev", allFaces_.size(), S(0.0));
+    FaceFluxField RhieChowFlowRatePrev_;
 
     /// Cell diffusion coefficients for momentum
-    ScalarField DU_ = ScalarField("DU", allCells_.size(), S(0.0));
+    ScalarField DU_;
 
     /// Face diffusion coefficients for momentum
-    FaceFluxField DUf_ = FaceFluxField("DUf", allFaces_.size(), S(0.0));
+    FaceFluxField DUf_;
 
 // Gradient fields
 
     /// Pressure gradient field
-    VectorField gradP_ = VectorField("gradP", allCells_.size(), Vector{});
+    VectorField gradP_;
 
     /// Pressure correction gradient field
-    VectorField gradPCorr_ = 
-        VectorField("gradPCorr", allCells_.size(), Vector{});
+    VectorField gradPCorr_;
 
     /// Velocity gradients (shared between momentum,
     /// transpose source, turbulence)
@@ -401,19 +392,14 @@ private:
 
 // Private methods
 
-    /// Initialize all field members with mesh dimensions
-    void initializeFields() noexcept;
-
     /**
      * @brief Extract a single component from a VectorField into a ScalarField
-     * @param name Name for the resulting scalar field
      * @param V Source vector field
      * @param component Component to extract (X, Y, or Z)
      * @return ScalarField containing the extracted component
      */
     static ScalarField extractComponent
     (
-        const std::string& name,
         const VectorField& V,
         Component component
     );

@@ -19,13 +19,11 @@
 
 SIMPLE::SIMPLE
 (
-    std::span<const Face> faces,
-    std::span<const Cell> cells,
+    const Mesh& mesh,
     const BoundaryConditions& bc,
     const GradientScheme& gradScheme,
     const ConvectionSchemes& convSchemes
-) : allFaces_(faces),
-    allCells_(cells),
+) : mesh_(mesh),
     bcManager_(bc),
     gradientScheme_(gradScheme),
     convectionSchemes_(convSchemes)
@@ -135,7 +133,7 @@ void SIMPLE::solve()
         UAvgPrevf_ = UAvgf_;
         RhieChowFlowRatePrev_ = RhieChowFlowRate_;
 
-        size_t numCells = allCells_.size();
+        size_t numCells = mesh_.numCells();
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
             gradP_[cellIdx] = gradientScheme_.cellGradient("p", p_, cellIdx);
@@ -184,26 +182,20 @@ void SIMPLE::initialize
 )
 {
     matrixConstruct_ =
-        std::make_unique<Matrix>(allFaces_, allCells_, bcManager_);
+        std::make_unique<Matrix>(mesh_, bcManager_);
 
     // Initialize constraint system
     constraintSystem_ = std::make_unique<Constraint>(U_, p_);
-
-    // Initialize velocity gradient fields
-    size_t numCells = allCells_.size();
-    gradU_[0] = VectorField("gradUx", numCells, Vector{});
-    gradU_[1] = VectorField("gradUy", numCells, Vector{});
-    gradU_[2] = VectorField("gradUz", numCells, Vector{});
 
     U_.setAll(initialVelocity);
     p_.setAll(initialPressure);
     UAvgf_.setAll(initialVelocity);
 
     // Initialize RhieChowFlowRate_ with linear interpolation
-    size_t numFaces = allFaces_.size();
+    size_t numFaces = mesh_.numFaces();
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
-        const Face& face = allFaces_[faceIdx];
+        const Face& face = mesh_.faces()[faceIdx];
         Vector Uf = interpolateToFace(face, U_, bcManager_, "U");
         Vector Sf = face.normal() * face.projectedArea();
         RhieChowFlowRate_[faceIdx] = dot(Uf, Sf);
@@ -214,8 +206,7 @@ void SIMPLE::initialize
         turbulenceModel_ =
             std::make_unique<kOmegaSST>
             (
-                allFaces_,
-                allCells_,
+                mesh_,
                 bcManager_,
                 gradientScheme_,
                 convectionSchemes_.k(),
@@ -250,24 +241,24 @@ void SIMPLE::initialize
 
 void SIMPLE::solveMomentumEquations()
 {
-    size_t numCells = allCells_.size();
-    size_t numFaces = allFaces_.size();
+    size_t numCells = mesh_.numCells();
+    size_t numFaces = mesh_.numFaces();
 
-    ScalarField nuEff("nuEff", numCells);
+    ScalarField nuEff;
 
     // Extract velocity components
-    ScalarField Ux = extractComponent("Ux", U_, Component::X);
-    ScalarField Uy = extractComponent("Uy", U_, Component::Y);
-    ScalarField Uz = extractComponent("Uz", U_, Component::Z);
+    ScalarField Ux = extractComponent(U_, Component::X);
+    ScalarField Uy = extractComponent(U_, Component::Y);
+    ScalarField Uz = extractComponent(U_, Component::Z);
 
     // Extract previous-iteration components
-    ScalarField UxPrev = extractComponent("UxPrev", UPrev_, Component::X);
-    ScalarField UyPrev = extractComponent("UyPrev", UPrev_, Component::Y);
-    ScalarField UzPrev = extractComponent("UzPrev", UPrev_, Component::Z);
+    ScalarField UxPrev = extractComponent(UPrev_, Component::X);
+    ScalarField UyPrev = extractComponent(UPrev_, Component::Y);
+    ScalarField UzPrev = extractComponent(UPrev_, Component::Z);
 
-    ScalarField UxSource("UxSource", numCells);
-    ScalarField UySource("UySource", numCells);
-    ScalarField UzSource("UzSource", numCells);
+    ScalarField UxSource;
+    ScalarField UySource;
+    ScalarField UzSource;
 
     // Reset diagonals accumulator
     DU_.setAll(0.0);
@@ -286,17 +277,17 @@ void SIMPLE::solveMomentumEquations()
         }
 
         // Calculate pressure gradients source term
-        UxSource[cellIdx] = -gradP_[cellIdx].x() * allCells_[cellIdx].volume();
-        UySource[cellIdx] = -gradP_[cellIdx].y() * allCells_[cellIdx].volume();
-        UzSource[cellIdx] = -gradP_[cellIdx].z() * allCells_[cellIdx].volume();
+        UxSource[cellIdx] = -gradP_[cellIdx].x() * mesh_.cells()[cellIdx].volume();
+        UySource[cellIdx] = -gradP_[cellIdx].y() * mesh_.cells()[cellIdx].volume();
+        UzSource[cellIdx] = -gradP_[cellIdx].z() * mesh_.cells()[cellIdx].volume();
     }
 
     // Build face-based effective viscosity
-    FaceData<Scalar> nuEffFace("nuEffFace", numFaces, nu_);
+    FaceData<Scalar> nuEffFace(nu_);
 
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
-        const Face& face = allFaces_[faceIdx];
+        const Face& face = mesh_.faces()[faceIdx];
 
         if (face.isBoundary())
         {
@@ -345,9 +336,9 @@ void SIMPLE::solveMomentumEquations()
     // Add transpose gradient source term
     if (turbulenceModel_)
     {
-        ScalarField transposeSourceX("transposeSourceX", numCells, 0.0);
-        ScalarField transposeSourceY("transposeSourceY", numCells, 0.0);
-        ScalarField transposeSourceZ("transposeSourceZ", numCells, 0.0);
+        ScalarField transposeSourceX;
+        ScalarField transposeSourceY;
+        ScalarField transposeSourceZ;
 
         calculateTransposeGradientSource
         (
@@ -415,7 +406,7 @@ void SIMPLE::solveMomentumEquations()
     // Calculate DUf_ field using complete DU_
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
-        const Face& face = allFaces_[faceIdx];
+        const Face& face = mesh_.faces()[faceIdx];
 
         if (face.isBoundary())
         {
@@ -443,10 +434,10 @@ void SIMPLE::solveMomentumEquations()
 
 void SIMPLE::calculateRhieChowFlowRate()
 {
-    size_t numFaces = allFaces_.size();
+    size_t numFaces = mesh_.numFaces();
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
-        const Face& face = allFaces_[faceIdx];
+        const Face& face = mesh_.faces()[faceIdx];
 
         if (face.isBoundary())
         {
@@ -489,14 +480,9 @@ void SIMPLE::calculateRhieChowFlowRate()
 
 void SIMPLE::solvePressureCorrection()
 {
-    size_t numCells = allCells_.size();
+    size_t numCells = mesh_.numCells();
 
-    VectorField gradPCorrPrecomputed
-    (
-        "gradPCorr",
-        numCells,
-        Vector{}
-    );
+    VectorField gradPCorrPrecomputed;
 
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
@@ -505,13 +491,13 @@ void SIMPLE::solvePressureCorrection()
     }
 
     // Compute mass imbalance source term
-    ScalarField massImbalance("massImbalance", numCells, S(0.0));
+    ScalarField massImbalance;
 
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         Scalar net = S(0.0);
-        const auto& faceIndices = allCells_[cellIdx].faceIndices();
-        const auto& signs = allCells_[cellIdx].faceSigns();
+        const auto& faceIndices = mesh_.cells()[cellIdx].faceIndices();
+        const auto& signs = mesh_.cells()[cellIdx].faceSigns();
 
         for (size_t j = 0; j < faceIndices.size(); ++j)
         {
@@ -557,7 +543,7 @@ void SIMPLE::solvePressureCorrection()
 
 void SIMPLE::correctVelocity()
 {
-    size_t numCells = allCells_.size();
+    size_t numCells = mesh_.numCells();
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         U_[cellIdx].setX
@@ -590,10 +576,10 @@ void SIMPLE::correctVelocity()
     }
 
     // Update face velocities
-    size_t numFaces = allFaces_.size();
+    size_t numFaces = mesh_.numFaces();
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
-        const Face& face = allFaces_[faceIdx];
+        const Face& face = mesh_.faces()[faceIdx];
 
         if (face.isBoundary())
         {
@@ -611,7 +597,7 @@ void SIMPLE::correctPressure()
 {
     Scalar sumSq = 0.0;
 
-    size_t numCells = allCells_.size();
+    size_t numCells = mesh_.numCells();
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         sumSq += pCorr_[cellIdx] * pCorr_[cellIdx];
@@ -646,10 +632,10 @@ void SIMPLE::correctPressure()
 void SIMPLE::correctFlowRate()
 {
     // Update mass flux on faces
-    size_t numFaces = allFaces_.size();
+    size_t numFaces = mesh_.numFaces();
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
-        const Face& face = allFaces_[faceIdx];
+        const Face& face = mesh_.faces()[faceIdx];
 
         if (face.isBoundary())
         {
@@ -704,11 +690,11 @@ void SIMPLE::solveTurbulence()
         }
 
         // Recompute velocity gradients from corrected velocity
-        size_t numCells = allCells_.size();
+        size_t numCells = mesh_.numCells();
 
-        ScalarField Ux = extractComponent("Ux", U_, Component::X);
-        ScalarField Uy = extractComponent("Uy", U_, Component::Y);
-        ScalarField Uz = extractComponent("Uz", U_, Component::Z);
+        ScalarField Ux = extractComponent(U_, Component::X);
+        ScalarField Uy = extractComponent(U_, Component::Y);
+        ScalarField Uz = extractComponent(U_, Component::Z);
 
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
@@ -723,8 +709,8 @@ void SIMPLE::solveTurbulence()
         const auto& kField = turbulenceModel_->k();
         const auto& omegaField = turbulenceModel_->omega();
 
-        ScalarField kPrev("kPrev", numCells);
-        ScalarField omegaPrev("omegaPrev", numCells);
+        ScalarField kPrev;
+        ScalarField omegaPrev;
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
             kPrev[cellIdx] = kField[cellIdx];
@@ -829,14 +815,13 @@ bool SIMPLE::checkConvergence()
 
 ScalarField SIMPLE::extractComponent
 (
-    const std::string& name,
     const VectorField& V,
     Component component
 )
 {
     size_t numCells = V.size();
 
-    ScalarField result(name, numCells);
+    ScalarField result;
 
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
@@ -856,16 +841,16 @@ Scalar SIMPLE::calculateMassImbalance() const
     // Dimensionless normalized continuity residual per cell, averaged
     Scalar totalNormImbalance = 0.0;
 
-    size_t numCells = allCells_.size();
+    size_t numCells = mesh_.numCells();
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         Scalar net = 0.0;
         Scalar sumAbs = 0.0;
 
-        for (size_t j = 0; j < allCells_[cellIdx].faceIndices().size(); ++j)
+        for (size_t j = 0; j < mesh_.cells()[cellIdx].faceIndices().size(); ++j)
         {
-            const size_t faceIdx = allCells_[cellIdx].faceIndices()[j];
-            const int sign = allCells_[cellIdx].faceSigns()[j];
+            const size_t faceIdx = mesh_.cells()[cellIdx].faceIndices()[j];
+            const int sign = mesh_.cells()[cellIdx].faceSigns()[j];
             const Scalar mf = RhieChowFlowRate_[faceIdx];
             net += sign * mf;
             sumAbs += std::abs(mf);
@@ -884,7 +869,7 @@ Scalar SIMPLE::calculateVelocityResidual() const
     Scalar num = 0.0;
     Scalar den = 0.0;
 
-    size_t numCells = allCells_.size();
+    size_t numCells = mesh_.numCells();
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Vector d = U_[cellIdx] - UPrev_[cellIdx];
@@ -903,7 +888,7 @@ Scalar SIMPLE::calculatePressureResidual() const
     // Normalize p' RMS by RMS(p)
     Scalar sumP2 = 0.0;
 
-    size_t numCells = allCells_.size();
+    size_t numCells = mesh_.numCells();
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         sumP2 += p_[cellIdx] * p_[cellIdx];
@@ -926,9 +911,9 @@ void SIMPLE::calculateTransposeGradientSource
     transposeSourceY.setAll(0.0);
     transposeSourceZ.setAll(0.0);
 
-    for (size_t faceIdx = 0; faceIdx < allFaces_.size(); ++faceIdx)
+    for (size_t faceIdx = 0; faceIdx < mesh_.numFaces(); ++faceIdx)
     {
-        const Face& face = allFaces_[faceIdx];
+        const Face& face = mesh_.faces()[faceIdx];
         const size_t ownerIdx = face.ownerCell();
         Vector Sf = face.normal() * face.projectedArea();
 
@@ -1027,7 +1012,7 @@ void SIMPLE::solveMomentumComponent
 
     matrixConstruct_->relax(alphaU_, componentPrev);
 
-    size_t numCells = allCells_.size();
+    size_t numCells = mesh_.numCells();
 
     // DU_ is identical for all 3 momentum components — compute only once
     if (component == Component::X)
@@ -1035,7 +1020,7 @@ void SIMPLE::solveMomentumComponent
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
             DU_[cellIdx] =
-                allCells_[cellIdx].volume()
+                mesh_.cells()[cellIdx].volume()
               / (matrixA.coeff(static_cast<Eigen::Index>(cellIdx), static_cast<Eigen::Index>(cellIdx)) + vSmallValue);
         }
     }

@@ -5,64 +5,28 @@
 
 #include "CellData.hpp"
 
-#include <algorithm>
 #include <iostream>
-#include <utility>
 
 #include "ErrorHandler.hpp"
 
-// ****************************** Constructor *******************************
 
-template<typename T>
-CellData<T>::CellData
-(
-    std::string fieldName,
-    size_t numCells
-) : name_(std::move(fieldName)),
-    internalField_(numCells)
-{
-    if (numCells == 0)
-    {
-        FatalError("CellData: cannot create field with zero cells");
-    }
-}
-
-template<typename T>
-CellData<T>::CellData
-(
-    std::string fieldName,
-    size_t numCells,
-    const T& initialValue
-) : name_(std::move(fieldName)),
-    internalField_(numCells, initialValue)
-{
-    if (numCells == 0)
-    {
-        FatalError("CellData: cannot create field with zero cells");
-    }
-}
-
-// ***************************** Setter Methods *****************************
-
-template<typename T>
-void CellData<T>::setAll(const T& value)
-{
-    std::fill(internalField_.begin(), internalField_.end(), value);
-}
-
-// ***************************** Utility Methods ****************************
+// ***************************** Helper Methods ******************************
 
 template<typename T>
 void CellData<T>::printSummary(size_t itemsToShow) const
 {
     std::cout
-        << "CellData: " << name_ << " (Size: " << internalField_.size()
-        << ")\n";
+        << "CellData (Size: " << internalField_.size() << ")\n";
 
-    for (size_t i = 0; i < std::min(internalField_.size(), itemsToShow); ++i)
+    for
+    (
+        size_t cellIdx = 0;
+        cellIdx < std::min(internalField_.size(),itemsToShow);
+        ++cellIdx
+    )
     {
         std::cout
-            << "  Cell " << i << ": " << internalField_[i] << '\n';
+            << "  Cell " << cellIdx << ": " << internalField_[cellIdx] << '\n';
     }
 
     if (internalField_.size() > itemsToShow)
@@ -72,7 +36,7 @@ void CellData<T>::printSummary(size_t itemsToShow) const
     }
 }
 
-// ************************* Template Instantiations *************************
+// ************************* Template Instantiations **************************
 
 template class CellData<Vector>;
 template class CellData<Scalar>;

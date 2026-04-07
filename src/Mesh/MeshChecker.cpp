@@ -17,16 +17,9 @@
 
 // ************************* Constructor & Destructor *************************
 
-MeshChecker::MeshChecker
-(
-    std::span<const Vector> nodes,
-    std::span<const Face> faces,
-    std::span<const Cell> cells
-) noexcept
+MeshChecker::MeshChecker(const Mesh& mesh) noexcept
 :
-    allNodes_(nodes),
-    allFaces_(faces),
-    allCells_(cells)
+    mesh_(mesh)
 {}
 
 
@@ -37,7 +30,7 @@ void MeshChecker::check() const
     std::cout
         << "\n--- Mesh Quality Check ---" << std::endl;
 
-    if (allFaces_.empty() || allCells_.empty())
+    if (mesh_.faces().empty() || mesh_.cells().empty())
     {
         std::cout
             << "Warning: Empty mesh detected!" << std::endl;
@@ -54,11 +47,11 @@ void MeshChecker::check() const
     }
 
     // Face area statistics
-    const Scalar firstArea = allFaces_[0].projectedArea();
+    const Scalar firstArea = mesh_.faces()[0].projectedArea();
     Scalar minFaceArea = firstArea;
     Scalar maxFaceArea = firstArea;
-    size_t minFaceId = allFaces_[0].idx();
-    size_t maxFaceId = allFaces_[0].idx();
+    size_t minFaceId = mesh_.faces()[0].idx();
+    size_t maxFaceId = mesh_.faces()[0].idx();
 
     std::vector<size_t> smallAreaFaces;
 
@@ -77,7 +70,7 @@ void MeshChecker::check() const
     // Radian to degree conversion
     constexpr Scalar radToDeg = S(180.0) / std::numbers::pi_v<Scalar>;
 
-    for (const auto& face : allFaces_)
+    for (const auto& face : mesh_.faces())
     {
         const Scalar area = face.projectedArea();
         const size_t faceIdx = face.idx();
@@ -103,7 +96,7 @@ void MeshChecker::check() const
         if (face.isBoundary())
         {
             // Boundary face: calculate skewness only
-            const Cell& ownerCell = allCells_[face.ownerCell()];
+            const Cell& ownerCell = mesh_.cells()[face.ownerCell()];
 
             Scalar skew =
                 calculateBoundarySkewness
@@ -128,10 +121,10 @@ void MeshChecker::check() const
         {
             // Internal face: calculate both
             const Cell& ownerCell =
-                allCells_[face.ownerCell()];
+                mesh_.cells()[face.ownerCell()];
 
             const Cell& neighborCell =
-                allCells_[face.neighborCell().value()];
+                mesh_.cells()[face.neighborCell().value()];
 
             // Non-orthogonality (angle in degrees)
             Scalar ortho =
@@ -190,10 +183,10 @@ void MeshChecker::check() const
     avgNonOrthogonality *= radToDeg;
 
     // Cell volume and aspect ratio statistics
-    Scalar minCellVolume = allCells_[0].volume();
-    Scalar maxCellVolume = allCells_[0].volume();
-    size_t minCellId = allCells_[0].idx();
-    size_t maxCellId = allCells_[0].idx();
+    Scalar minCellVolume = mesh_.cells()[0].volume();
+    Scalar maxCellVolume = mesh_.cells()[0].volume();
+    size_t minCellId = mesh_.cells()[0].idx();
+    size_t maxCellId = mesh_.cells()[0].idx();
 
     Scalar maxAspectRatio = 0.0;
     size_t maxAspectCellId = 0;
@@ -202,7 +195,7 @@ void MeshChecker::check() const
     std::vector<size_t> smallVolumeCells;
     std::vector<size_t> invertedCells;
 
-    for (const auto& cell : allCells_)
+    for (const auto& cell : mesh_.cells())
     {
         // Volume statistics
         if (cell.volume() < minCellVolume)
@@ -558,7 +551,7 @@ Scalar MeshChecker::calculateFaceSkewness
 
     for (size_t nodeIdx : nodeIndices)
     {
-        if (nodeIdx >= allNodes_.size())
+        if (nodeIdx >= mesh_.numNodes())
         {
             FatalError
             (
@@ -571,7 +564,7 @@ Scalar MeshChecker::calculateFaceSkewness
         }
 
         Vector vertexToCentroid =
-            allNodes_[nodeIdx] - faceCentroid;
+            mesh_.nodes()[nodeIdx] - faceCentroid;
 
         Scalar projection =
             std::abs(dot(skewnessDirection, vertexToCentroid));
@@ -613,7 +606,7 @@ Scalar MeshChecker::calculateBoundarySkewness
 
     for (size_t nodeIdx : nodeIndices)
     {
-        if (nodeIdx >= allNodes_.size())
+        if (nodeIdx >= mesh_.numNodes())
         {
             FatalError
             (
@@ -625,7 +618,7 @@ Scalar MeshChecker::calculateBoundarySkewness
             );
         }
 
-        Vector vertexToCentroid = allNodes_[nodeIdx] - faceCentroid;
+        Vector vertexToCentroid = mesh_.nodes()[nodeIdx] - faceCentroid;
 
         Scalar projection = std::abs(dot(skewnessDirection, vertexToCentroid));
 
@@ -649,7 +642,7 @@ Scalar MeshChecker::calculateCellAspectRatio
 
     for (size_t faceIdx : faceIndices)
     {
-        const Face& face = allFaces_[faceIdx];
+        const Face& face = mesh_.faces()[faceIdx];
         const Vector areaVec = face.normal() * face.projectedArea();
 
         // Absolute components (sign irrelevant)
@@ -717,9 +710,9 @@ bool MeshChecker::validateConnectivity() const
 {
     bool valid = true;
 
-    for (const auto& face : allFaces_)
+    for (const auto& face : mesh_.faces())
     {
-        if (face.ownerCell() >= allCells_.size())
+        if (face.ownerCell() >= mesh_.numCells())
         {
             std::cout
                 << "ERROR: Face " << face.idx()
@@ -730,7 +723,7 @@ bool MeshChecker::validateConnectivity() const
         }
 
         if (!face.isBoundary()
-         && face.neighborCell().value() >= allCells_.size())
+         && face.neighborCell().value() >= mesh_.numCells())
         {
             std::cout
                 << "ERROR: Face " << face.idx()
@@ -743,7 +736,7 @@ bool MeshChecker::validateConnectivity() const
 
         for (size_t nodeIdx : face.nodeIndices())
         {
-            if (nodeIdx >= allNodes_.size())
+            if (nodeIdx >= mesh_.numNodes())
             {
                 std::cout
                     << "ERROR: Face " << face.idx()
@@ -755,11 +748,11 @@ bool MeshChecker::validateConnectivity() const
         }
     }
 
-    for (const auto& cell : allCells_)
+    for (const auto& cell : mesh_.cells())
     {
         for (size_t faceIdx : cell.faceIndices())
         {
-            if (faceIdx >= allFaces_.size())
+            if (faceIdx >= mesh_.numFaces())
             {
                 std::cout
                     << "ERROR: Cell " << cell.idx()

@@ -19,12 +19,9 @@
 #pragma once
 
 #include <vector>
-#include <span>
 
 #include "Scalar.hpp"
-#include "Vector.hpp"
-#include "Face.hpp"
-#include "Cell.hpp"
+#include "Mesh.hpp"
 
 
 class MeshChecker
@@ -32,17 +29,10 @@ class MeshChecker
 public:
 
     /**
-     * @brief Construct a MeshChecker with mesh data references
-     * @param nodes Vector containing all mesh nodes
-     * @param faces Vector containing all mesh faces
-     * @param cells Vector containing all mesh cells
+     * @brief Construct a MeshChecker with a mesh view
+     * @param mesh Mesh view (nodes, faces, cells)
      */
-    MeshChecker
-    (
-        std::span<const Vector> nodes,
-        std::span<const Face> faces,
-        std::span<const Cell> cells
-    ) noexcept;
+    MeshChecker(const Mesh& mesh) noexcept;
 
     /// Perform mesh quality checks and report statistics
     void check() const;
@@ -75,14 +65,8 @@ private:
 
 // Private members
 
-    /// Reference to all mesh nodes
-    std::span<const Vector> allNodes_;
-
-    /// Reference to all mesh faces
-    std::span<const Face> allFaces_;
-
-    /// Reference to all mesh cells
-    std::span<const Cell> allCells_;
+    /// Mesh view (nodes, faces, cells)
+    const Mesh& mesh_;
 
 // Private methods
 

@@ -17,14 +17,10 @@
 #pragma once
 
 #include <string>
-#include <vector>
 #include <memory>
 
 #include "Scalar.hpp"
-#include "Vector.hpp"
-#include "Face.hpp"
-#include "Cell.hpp"
-#include "BoundaryPatch.hpp"
+#include "Mesh.hpp"
 #include "BoundaryConditions.hpp"
 #include "ConvectionScheme.hpp"
 
@@ -99,10 +95,7 @@ private:
     std::unique_ptr<CaseReader> caseReader_;
 
     /// Mesh data
-    std::vector<Vector> nodes_;
-    std::vector<Face> faces_;
-    std::vector<Cell> cells_;
-    std::vector<BoundaryPatch> patches_;
+    Mesh mesh_{};
 
     /// Physical properties
     Scalar rho_ = 0;

@@ -24,9 +24,7 @@
 #include <optional>
 
 #include "Scalar.hpp"
-#include "Vector.hpp"
-#include "Face.hpp"
-#include "Cell.hpp"
+#include "Mesh.hpp"
 #include "BoundaryConditions.hpp"
 #include "CellData.hpp"
 #include "FaceData.hpp"
@@ -38,14 +36,12 @@ public:
 
     /**
      * @brief Construct gradient scheme with mesh context
-     * @param faces Reference to all mesh faces
-     * @param cells Reference to all mesh cells
+     * @param mesh Mesh view (nodes, faces, cells)
      * @param bc Reference to boundary conditions manager
      */
     GradientScheme
     (
-        std::span<const Face> faces,
-        std::span<const Cell> cells,
+        const Mesh& mesh,
         const BoundaryConditions& bc
     );
 
@@ -162,11 +158,8 @@ private:
 
 // Private members
 
-    /// Reference to all mesh faces
-    std::span<const Face> allFaces_;
-
-    /// Reference to all mesh cells
-    std::span<const Cell> allCells_;
+    /// Mesh view (nodes, faces, cells)
+    const Mesh& mesh_;
 
     /// Reference to boundary conditions manager
     const BoundaryConditions& bcManager_;

@@ -19,12 +19,10 @@
 
 GradientScheme::GradientScheme
 (
-    std::span<const Face> faces,
-    std::span<const Cell> cells,
+    const Mesh& mesh,
     const BoundaryConditions& bc
 )
-  : allFaces_(faces),
-    allCells_(cells),
+  : mesh_(mesh),
     bcManager_(bc)
 {
     precomputeInverseATA();
@@ -35,7 +33,7 @@ GradientScheme::GradientScheme
 
 void GradientScheme::precomputeInverseATA()
 {
-    const size_t numCells = allCells_.size();
+    const size_t numCells = mesh_.numCells();
     invATA_.resize(numCells);
 
     Eigen::Matrix<Scalar,3,3> ATA;
@@ -45,7 +43,7 @@ void GradientScheme::precomputeInverseATA()
 
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        const Cell& cell = allCells_[cellIdx];
+        const Cell& cell = mesh_.cells()[cellIdx];
 
         ATA.setZero();
 
@@ -53,7 +51,7 @@ void GradientScheme::precomputeInverseATA()
         for (size_t neighborIdx : cell.neighborCellIndices())
         {
             Vector r =
-                allCells_[neighborIdx].centroid()
+                mesh_.cells()[neighborIdx].centroid()
               - cell.centroid();
 
             Scalar rMagSqr = r.magnitudeSquared();
@@ -66,7 +64,7 @@ void GradientScheme::precomputeInverseATA()
         // Boundary faces contribution (purely geometric)
         for (size_t faceIdx : cell.faceIndices())
         {
-            const Face& face = allFaces_[faceIdx];
+            const Face& face = mesh_.faces()[faceIdx];
 
             if (!face.isBoundary()) continue;
 
@@ -140,7 +138,7 @@ Vector GradientScheme::cellGradient
     std::optional<int> componentIdx
 ) const
 {
-    const Cell& cell = allCells_[cellIndex];
+    const Cell& cell = mesh_.cells()[cellIndex];
 
     Scalar b0 = S(0.0);
     Scalar b1 = S(0.0);
@@ -149,12 +147,12 @@ Vector GradientScheme::cellGradient
     // Part 1: Internal neighbor cells contribution to ATb
     for (size_t neighborIdx : cell.neighborCellIndices())
     {
-        if (neighborIdx >= allCells_.size())
+        if (neighborIdx >= mesh_.numCells())
         {
             FatalError("Invalid neighbor ID - mesh topology corrupted");
         }
 
-        const Cell& neighbor = allCells_[neighborIdx];
+        const Cell& neighbor = mesh_.cells()[neighborIdx];
         Vector r = neighbor.centroid() - cell.centroid();
 
         Scalar rMagSqr = r.magnitudeSquared();
@@ -171,7 +169,7 @@ Vector GradientScheme::cellGradient
     // Part 2: Boundary faces contribution to ATb
     for (size_t faceIdx : cell.faceIndices())
     {
-        const Face& face = allFaces_[faceIdx];
+        const Face& face = mesh_.faces()[faceIdx];
 
         if (!face.isBoundary()) continue;
 
@@ -230,9 +228,9 @@ void GradientScheme::limitGradient
     std::optional<int> componentIdx
 ) const
 {
-    for (size_t cellIdx = 0; cellIdx < allCells_.size(); ++cellIdx)
+    for (size_t cellIdx = 0; cellIdx < mesh_.numCells(); ++cellIdx)
     {
-        const Cell& cell = allCells_[cellIdx];
+        const Cell& cell = mesh_.cells()[cellIdx];
         Scalar phiP = phi[cellIdx];
 
         // Find min/max among cell P and all its neighbors
@@ -249,7 +247,7 @@ void GradientScheme::limitGradient
         // physically correct near-boundary gradients (e.g. k near walls)
         for (size_t faceIdx : cell.faceIndices())
         {
-            const Face& face = allFaces_[faceIdx];
+            const Face& face = mesh_.faces()[faceIdx];
             if (!face.isBoundary()) continue;
 
             Scalar phiBound =
@@ -269,7 +267,7 @@ void GradientScheme::limitGradient
 
         for (size_t faceIdx : cell.faceIndices())
         {
-            const Face& face = allFaces_[faceIdx];
+            const Face& face = mesh_.faces()[faceIdx];
             Vector r = face.centroid() - cell.centroid();
             Scalar phiFace = phiP + dot(gradPhi[cellIdx], r);
             Scalar delta = phiFace - phiP;
@@ -300,7 +298,7 @@ Vector GradientScheme::faceGradient
     std::optional<int> componentIdx
 ) const
 {
-    const Face& face = allFaces_[faceIndex];
+    const Face& face = mesh_.faces()[faceIndex];
     size_t P = face.ownerCell();
 
     if (face.isBoundary())
@@ -319,7 +317,7 @@ Vector GradientScheme::faceGradient
     {
         size_t N = face.neighborCell().value();
 
-        Vector dPN = allCells_[N].centroid() - allCells_[P].centroid();
+        Vector dPN = mesh_.cells()[N].centroid() - mesh_.cells()[P].centroid();
 
         Scalar dPNMag = dPN.magnitude();
 

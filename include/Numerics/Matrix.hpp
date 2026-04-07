@@ -26,8 +26,7 @@
 
 #include <eigen3/Eigen/SparseCore>
 
-#include "Cell.hpp"
-#include "Face.hpp"
+#include "Mesh.hpp"
 #include "BoundaryConditions.hpp"
 #include "TransportEquation.hpp"
 
@@ -38,14 +37,12 @@ public:
 
     /**
      * @brief Constructor for matrix assembly
-     * @param faces Reference to face data
-     * @param cells Reference to cell data
+     * @param mesh Mesh view (nodes, faces, cells)
      * @param boundaryConds Boundary conditions manager
      */
     Matrix
     (
-        const std::span<const Face> faces,
-        const std::span<const Cell> cells,
+        const Mesh& mesh,
         const BoundaryConditions& boundaryConds
     ) noexcept;
 
@@ -130,8 +127,7 @@ private:
 // Private members
 
     /// Mesh and boundary data references
-    std::span<const Face> allFaces_;
-    std::span<const Cell> allCells_;
+    const Mesh& mesh_;
     const BoundaryConditions& bcManager_;
 
     /// Sparse linear system components

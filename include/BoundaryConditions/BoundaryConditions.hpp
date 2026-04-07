@@ -21,6 +21,7 @@
 #include <string>
 #include <map>
 #include <optional>
+#include <span>
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
@@ -212,7 +213,7 @@ public:
      * @note This is a state-changing initialization method; must be called
      *       exactly once before solving, and prevents further addPatch() calls
      */
-    void linkFaces(std::vector<Face>& faces);
+    void linkFaces(std::span<Face> faces);
 
     /**
      * @brief Convert boundary condition type to string
