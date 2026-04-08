@@ -35,14 +35,18 @@ public:
 
     /// Construct zero-initialized field
     FaceData()
-        : internalField_(Mesh::faceCount(), T{}) {}
+    : 
+        internalField_(Mesh::faceCount(), T{})
+    {}
 
     /**
      * @brief Construct field with initial value
      * @param initialValue Value to initialize all faces with
      */
     explicit FaceData(const T& initialValue)
-        : internalField_(Mesh::faceCount(), initialValue) {}
+    :
+        internalField_(Mesh::faceCount(), initialValue)
+    {}
 
 // Setter methods
 

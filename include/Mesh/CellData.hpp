@@ -35,14 +35,18 @@ public:
 
     /// Construct zero-initialized field
     CellData()
-        : internalField_(Mesh::cellCount(), T{}) {}
+    :
+        internalField_(Mesh::cellCount(), T{})
+    {}
 
     /**
      * @brief Construct field with initial value
      * @param initialValue Value to initialize all cells with
      */
     explicit CellData(const T& initialValue)
-        : internalField_(Mesh::cellCount(), initialValue) {}
+    :
+        internalField_(Mesh::cellCount(), initialValue)
+    {}
     
 // Setter methods
 

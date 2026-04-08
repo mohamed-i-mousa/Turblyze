@@ -22,7 +22,8 @@ GradientScheme::GradientScheme
     const Mesh& mesh,
     const BoundaryConditions& bc
 )
-  : mesh_(mesh),
+:
+    mesh_(mesh),
     bcManager_(bc)
 {
     precomputeInverseATA();

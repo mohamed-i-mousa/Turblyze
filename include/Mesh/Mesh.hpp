@@ -1,6 +1,6 @@
 /******************************************************************************
  * @file Mesh.hpp
- * @brief Owning mesh container and lightweight view provider
+ * @brief Owning mesh data and lightweight view provider
  *
  * @details This header defines the Mesh class, which owns all mesh data
  * (nodes, faces, cells, boundary patches) and provides span-based views
@@ -11,7 +11,7 @@
  * - Owns nodes, faces, cells, and boundary patches via std::vector members
  * - Const span accessors for read-only consumers (const Mesh&)
  * - Mutable span accessors for the mesh preparation phase
- * - Static registration and retrieval of cell and face counts
+ * - Static retrieval of cell and face counts
  *****************************************************************************/
 
 #pragma once
@@ -30,15 +30,15 @@ class Mesh
 {
 public:
 
-    /// Construct empty mesh (for delayed initialization)
+    /// Construct empty mesh
     Mesh() = default;
 
     /**
      * @brief Construct mesh by taking ownership of data vectors
-     * @param nodes  Node coordinate data (moved in)
-     * @param faces  Face topology data (moved in)
-     * @param cells  Cell topology data (moved in)
-     * @param patches Boundary patch data (moved in)
+     * @param nodes  Node coordinate data
+     * @param faces  Face topology data
+     * @param cells  Cell topology data
+     * @param patches Boundary patch data
      */
     Mesh
     (
@@ -46,7 +46,16 @@ public:
         std::vector<Face> faces,
         std::vector<Cell> cells,
         std::vector<BoundaryPatch> patches
-    );
+    )
+    : 
+        nodes_(std::move(nodes)),
+        faces_(std::move(faces)),
+        cells_(std::move(cells)),
+        patches_(std::move(patches))
+    {
+        cellCount_ = cells_.size();
+        faceCount_ = faces_.size();
+    }
 
     Mesh(const Mesh&) = delete;
     Mesh& operator=(const Mesh&) = delete;
@@ -54,38 +63,26 @@ public:
     Mesh(Mesh&&) = default;
     Mesh& operator=(Mesh&&) = default;
 
-// Const accessor methods (for const Mesh& consumers)
+// Const accessor methods
 
     /// Read-only view of node coordinates
-    std::span<const Vector> nodes() const noexcept
-    {
-        return nodes_;
-    }
+    std::span<const Vector> nodes() const noexcept { return nodes_; }
 
     /// Read-only view of faces
-    std::span<const Face> faces() const noexcept
-    {
-        return faces_;
-    }
+    std::span<const Face> faces() const noexcept { return faces_; }
 
     /// Read-only view of cells
-    std::span<const Cell> cells() const noexcept
-    {
-        return cells_;
-    }
+    std::span<const Cell> cells() const noexcept{ return cells_; }
 
     /// Read-only view of boundary patches
-    std::span<const BoundaryPatch> patches() const noexcept
-    {
-        return patches_;
-    }
+    std::span<const BoundaryPatch> patches() const noexcept{ return patches_; }
 
-// Mutable accessor methods (for mesh preparation phase only)
+// Mutable accessor methods (during prepareMesh() only)
 
-    /// Mutable view of faces — use only during prepareMesh()
+    /// Mutable view of faces
     std::span<Face> faces() noexcept { return faces_; }
 
-    /// Mutable view of cells — use only during prepareMesh()
+    /// Mutable view of cells
     std::span<Cell> cells() noexcept { return cells_; }
 
 // Size accessor methods
@@ -99,10 +96,10 @@ public:
     /// Number of cells in the mesh
     size_t numCells() const noexcept { return cells_.size(); }
 
-    /// Cell count registered at startup (used by CellData/FaceData)
+    /// Cell count at startup (used by CellData/FaceData)
     static size_t cellCount() noexcept { return cellCount_; }
 
-    /// Face count registered at startup (used by CellData/FaceData)
+    /// Face count at startup (used by CellData/FaceData)
     static size_t faceCount() noexcept { return faceCount_; }
 
 private:
@@ -119,9 +116,9 @@ private:
     /// Boundary patch descriptors
     std::vector<BoundaryPatch> patches_;
 
-    /// Cell count for field container initialization (set once at startup)
+    /// Cell count for field container initialization
     static inline size_t cellCount_ = 0;
 
-    /// Face count for field container initialization (set once at startup)
+    /// Face count for field container initialization
     static inline size_t faceCount_ = 0;
 };

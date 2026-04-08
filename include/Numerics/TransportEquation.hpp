@@ -80,5 +80,4 @@ struct TransportEquation
 
     /// Component index for vector field equations (0=x, 1=y, 2=z)
     std::optional<int> componentIdx = std::nullopt;
-
 };

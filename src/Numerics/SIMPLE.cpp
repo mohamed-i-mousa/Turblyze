@@ -23,7 +23,9 @@ SIMPLE::SIMPLE
     const BoundaryConditions& bc,
     const GradientScheme& gradScheme,
     const ConvectionSchemes& convSchemes
-) : mesh_(mesh),
+) 
+:
+    mesh_(mesh),
     bcManager_(bc),
     gradientScheme_(gradScheme),
     convectionSchemes_(convSchemes)

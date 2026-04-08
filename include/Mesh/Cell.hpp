@@ -45,10 +45,13 @@ public:
         std::vector<size_t> faces,
         std::vector<size_t> neighbors,
         std::vector<int8_t> signs
-    ) : idx_(cellIdx),
+    )
+    : 
+        idx_(cellIdx),
         faceIndices_(std::move(faces)),
         neighborCellIndices_(std::move(neighbors)),
-        faceSigns_(std::move(signs)) {}
+        faceSigns_(std::move(signs))
+    {}
 
 // Setter methods
 

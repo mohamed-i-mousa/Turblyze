@@ -21,14 +21,14 @@ kOmegaSST::kOmegaSST
     const ConvectionScheme& kScheme,
     const ConvectionScheme& omegaScheme
 )
-    : mesh_(mesh),
+:
+    mesh_(mesh),
       bcManager_(bc),
       gradientScheme_(gradientScheme),
       kConvectionScheme_(kScheme),
       omegaConvectionScheme_(omegaScheme)
 {
-    matrixConstruct_ =
-        std::make_unique<Matrix>(mesh_, bcManager_);
+    matrixConstruct_ = std::make_unique<Matrix>(mesh_, bcManager_);
 
     if (debug_)
     {

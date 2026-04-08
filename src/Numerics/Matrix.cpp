@@ -16,7 +16,8 @@ Matrix::Matrix
     const Mesh& mesh,
     const BoundaryConditions& boundaryConds
 ) noexcept
-  : mesh_(mesh),
+:
+    mesh_(mesh),
     bcManager_(boundaryConds)
 {
     for (const auto& face : mesh_.faces())

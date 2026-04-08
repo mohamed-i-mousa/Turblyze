@@ -62,10 +62,13 @@ public:
         std::vector<size_t> nodes,
         size_t owner,
         size_t neighbor
-    ) : idx_(faceIdx),
+    )
+    :
+        idx_(faceIdx),
         nodeIndices_(std::move(nodes)),
         ownerCell_(owner),
-        neighborCell_(neighbor) {}
+        neighborCell_(neighbor)
+    {}
 
     /**
      * @brief Constructor for boundary faces
@@ -78,10 +81,13 @@ public:
         size_t faceIdx,
         std::vector<size_t> nodes,
         size_t owner
-    ) : idx_(faceIdx),
+    )
+    :
+        idx_(faceIdx),
         nodeIndices_(std::move(nodes)),
         ownerCell_(owner),
-        neighborCell_(std::nullopt) {}
+        neighborCell_(std::nullopt)
+    {}
 
 // Setter methods
 

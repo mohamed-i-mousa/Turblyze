@@ -54,9 +54,11 @@ public:
         size_t startIdx,
         size_t endIdx
     ) noexcept
-        : zoneIdx_(idx),
-          firstFaceIdx_(startIdx),
-          lastFaceIdx_(endIdx) {}
+    :
+        zoneIdx_(idx),
+        firstFaceIdx_(startIdx),
+        lastFaceIdx_(endIdx)
+    {}
 
 // Setter methods
 

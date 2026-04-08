@@ -14,10 +14,10 @@ Constraint::Constraint
     VectorField& velocityField,
     ScalarField& pressureField
 ) noexcept
-  : U_(velocityField),
+:
+    U_(velocityField),
     p_(pressureField)
-{
-}
+{}
 
 void Constraint::setVelocityConstraints(Scalar maxVelocity) noexcept
 {

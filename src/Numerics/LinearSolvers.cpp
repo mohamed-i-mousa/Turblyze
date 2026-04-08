@@ -18,7 +18,8 @@ LinearSolver::LinearSolver
     Scalar tolerance,
     int maxIterations
 )
-:   fieldName_(std::move(fieldName)),
+:
+    fieldName_(std::move(fieldName)),
     tolerance_(tolerance),
     maxIterations_(maxIterations)
 {}

@@ -26,7 +26,9 @@
 // ******************************* Constructor *******************************
 
 CFDApplication::CFDApplication(const std::string& caseFilePath)
-    : caseFilePath_(caseFilePath) {}
+:
+    caseFilePath_(caseFilePath)
+{}
 
 CFDApplication::~CFDApplication() = default;
 

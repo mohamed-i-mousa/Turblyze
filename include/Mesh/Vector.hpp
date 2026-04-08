@@ -38,7 +38,11 @@ public:
      * @param zValue Z component
      */
     Vector(Scalar xValue, Scalar yValue, Scalar zValue) noexcept
-        : x_(xValue), y_(yValue), z_(zValue) {}
+    :
+        x_(xValue),
+        y_(yValue),
+        z_(zValue)
+    {}
 
 // Setter methods
 
