@@ -78,7 +78,10 @@ public:
      * @param name Name of section
      * @return true if section exists
      */
-    bool hasSection(const std::string& name) const noexcept;
+    bool hasSection(const std::string& name) const noexcept
+    {
+        return sections_.contains(name);
+    }
 
     /**
      * @brief Get all section names

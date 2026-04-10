@@ -32,11 +32,6 @@ const CaseReader& CaseReader::section(const std::string& name) const
     return it->second;
 }
 
-bool CaseReader::hasSection(const std::string& name) const noexcept
-{
-    return sections_.contains(name);
-}
-
 std::vector<std::string> CaseReader::sectionNames() const
 {
     std::vector<std::string> names;
