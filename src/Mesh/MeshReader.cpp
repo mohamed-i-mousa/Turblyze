@@ -571,15 +571,6 @@ size_t MeshReader::hexToDec(std::string_view hexStr)
 
 size_t MeshReader::strToDec(std::string_view decStr)
 {
-    if (decStr.empty())
-    {
-        FatalError
-        (
-            "Attempted to convert empty decimal string "
-            "to size_t."
-        );
-    }
-
     size_t decVal;
     auto result =
         std::from_chars
