@@ -543,7 +543,8 @@ PatchType MeshReader::mapFluentBCToEnum(std::string_view fluentType)
 
 size_t MeshReader::hexToDec(std::string_view hexStr)
 {
-    size_t decVal;
+    size_t decVal = 0;
+
     auto result =
         std::from_chars
         (
@@ -571,7 +572,8 @@ size_t MeshReader::hexToDec(std::string_view hexStr)
 
 size_t MeshReader::strToDec(std::string_view decStr)
 {
-    size_t decVal;
+    size_t decVal = 0;
+    
     auto result =
         std::from_chars
         (
