@@ -8,21 +8,19 @@
  * from ANSYS Meshing.
  *
  * @class MeshReader
- *
- * The mesh reading process involves:
  * - Parsing file sections (Nodes, Cells, Faces, Boundaries)
  * - Constructing the topology and connectivity
  * - Establishing owner-neighbor relationships for all faces
  * - Identifying and grouping boundary patches
  *
- * Supported Fluent face types (hexadecimal):
+ * @note Supported Fluent face types (hexadecimal):
  * - "2" = internal, "3" = wall, "4" = pressure-inlet
  * - "5" = pressure-outlet, "7" = symmetry, "8" = periodic-shadow
  * - "9" = pressure-far-field, "a" = velocity-inlet, "c" = periodic
  * - "e" = fan/porous-jump, "14" = mass-flow-inlet, "18" = interface
  * - "1F" = parent, "24" = outflow, "25" = axis
  *
- * Supported Fluent element types (hexadecimal):
+ * @note Supported Fluent element types (hexadecimal):
  * - "0" = mixed, "2" = line/edge, "3" = triangular
  * - "4" = quadrilateral, "5" = polygonal
  *****************************************************************************/
@@ -56,30 +54,21 @@ public:
      * @return Moved vector of node coordinates
      */
     [[nodiscard("Moved mesh data must be captured")]]
-    std::vector<Vector> moveNodes() noexcept
-    {
-        return std::move(nodes_);
-    }
+    std::vector<Vector> moveNodes() noexcept { return std::move(nodes_); }
 
     /**
      * @brief Transfer ownership of faces data
      * @return Moved vector of mesh faces
      */
     [[nodiscard("Moved mesh data must be captured")]]
-    std::vector<Face> moveFaces() noexcept
-    {
-        return std::move(faces_);
-    }
+    std::vector<Face> moveFaces() noexcept{ return std::move(faces_); }
 
     /**
      * @brief Transfer ownership of cells data
      * @return Moved vector of mesh cells
      */
     [[nodiscard("Moved mesh data must be captured")]]
-    std::vector<Cell> moveCells() noexcept
-    {
-        return std::move(cells_);
-    }
+    std::vector<Cell> moveCells() noexcept { return std::move(cells_); }
 
     /**
      * @brief Transfer ownership of boundary patches data

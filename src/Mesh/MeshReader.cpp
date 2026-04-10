@@ -26,11 +26,6 @@ MeshReader::MeshReader(const std::string& filePath)
 
 void MeshReader::parseFile(const std::string& filePath)
 {
-    nodes_.clear();
-    faces_.clear();
-    cells_.clear();
-    boundaryPatches_.clear();
-
     std::string token;
 
     std::ifstream ifs(filePath);
@@ -112,7 +107,10 @@ void MeshReader::parseDimensionSection(std::ifstream& ifs) const
 {
     std::string dimension;
     ifs >> dimension;
+
+    // Remove trailing parentheses
     dimension.pop_back();
+
     if (dimension != "3")
     {
         FatalError("This code doesn't handle 2D geometries!");
@@ -125,6 +123,7 @@ void MeshReader::parseNodesSection
     const std::string& token
 )
 {
+    // Header with "(0"
     if (token == "(0")
     {
         std::string firstIdxStr, lastIdxStr, zeroStrOrType;
@@ -136,14 +135,17 @@ void MeshReader::parseNodesSection
 
         nodes_.resize(lastIdx);
     }
+    // Data block with "(zoneIdx"
     else
     {
         std::string zoneIdxStr, startIdxStr, endIdxStr;
         std::string typeStr, dimensionStr;
 
-        // Remove leading '('
         std::string zoneToken = token;
+
+        // Remove leading '('
         zoneToken.erase(0, 1);
+
         zoneIdxStr = zoneToken;
 
         ifs >> startIdxStr;
@@ -151,6 +153,7 @@ void MeshReader::parseNodesSection
         ifs >> typeStr;
         ifs >> dimensionStr;
 
+        // Remove trailing parentheses
         dimensionStr.pop_back();
         dimensionStr.pop_back();
 
@@ -198,6 +201,7 @@ void MeshReader::parseCellsSection
     const std::string& token
 )
 {
+    // Only header with "(0" is expected for cells section, no data block
     if (token == "(0")
     {
         std::string firstIdxStr, lastIdxStr, zeroStrOrType;
@@ -217,6 +221,7 @@ void MeshReader::parseFacesSection
     const std::string& token
 )
 {
+    // The faces section header
     if (token == "(0")
     {
         std::string firstIdxStr, lastIdxStr, zeroStrOrType;
@@ -228,14 +233,17 @@ void MeshReader::parseFacesSection
 
         faces_.resize(lastIdx);
     }
+    // Data block with "(zoneIdx" for each face zone
     else
     {
         std::string zoneIdxStr, startIdxStr, endIdxStr;
         std::string typeStr, elementTypeStr;
 
-        // Remove leading '('
         std::string zoneToken = token;
+
+        // Remove leading '('
         zoneToken.erase(0, 1);
+
         zoneIdxStr = zoneToken;
 
         ifs >> startIdxStr;
@@ -243,6 +251,7 @@ void MeshReader::parseFacesSection
         ifs >> typeStr;
         ifs >> elementTypeStr;
 
+        // Remove trailing parentheses
         elementTypeStr.pop_back();
         elementTypeStr.pop_back();
 
@@ -253,6 +262,7 @@ void MeshReader::parseFacesSection
         size_t startIdx = hexToDec(startIdxStr);
         size_t endIdx = hexToDec(endIdxStr);
 
+        // If not internal face zone, create a boundary patch for this zone
         if (typeStr != "2")
         {
             boundaryPatches_.emplace_back
@@ -293,7 +303,7 @@ void MeshReader::parseFacesSection
                 );
             }
 
-            Face &currentFace = faces_[(faceIdx - 1)];
+            Face& currentFace = faces_[(faceIdx - 1)];
             currentFace.setIdx(faceIdx - 1);
             currentFace.clearNodeIndices();
 
@@ -301,7 +311,7 @@ void MeshReader::parseFacesSection
             {
                 FatalError
                 (
-                    "Could not read face data line for id: "
+                    "Could not read face data line for idx: "
                   + std::to_string(faceIdx)
                   + ". End of file reached unexpectedly."
                 );
@@ -311,7 +321,7 @@ void MeshReader::parseFacesSection
             {
                 FatalError
                 (
-                    "Empty line: face id: "
+                    "Empty line: face idx: "
                   + std::to_string(faceIdx)
                 );
             }
@@ -332,10 +342,8 @@ void MeshReader::parseFacesSection
             size_t nodeStart = hasMixedElements ? 1 : 0;
             size_t nodeEnd   = hexItems.size() - 2;
 
-            std::string_view ownerHex =
-                hexItems[hexItems.size() - 2];
-            std::string_view neighborHex =
-                hexItems[hexItems.size() - 1];
+            std::string_view ownerHex = hexItems[hexItems.size() - 2];
+            std::string_view neighborHex = hexItems[hexItems.size() - 1];
 
             for (size_t j = nodeStart; j < nodeEnd; ++j)
             {
@@ -383,9 +391,11 @@ void MeshReader::parseBoundariesSection
     const std::string& token
 )
 {
-    // Remove leading '('
     std::string zoneToken = token;
+
+    // Remove leading '('
     zoneToken.erase(0, 1);
+
     size_t zoneIdx = strToDec(zoneToken);
 
     std::string typeString;
@@ -393,21 +403,20 @@ void MeshReader::parseBoundariesSection
 
     std::string nameString;
     ifs >> nameString;
+    
+    // Remove trailing parentheses
     nameString.pop_back();
     nameString.pop_back();
     nameString.pop_back();
     nameString.pop_back();
 
-    for (size_t i = 0; i < boundaryPatches_.size(); i++)
+    for (size_t i = 0; i < boundaryPatches_.size(); ++i)
     {
         if (zoneIdx == boundaryPatches_[i].zoneIdx())
         {
             boundaryPatches_[i].setPatchName(nameString);
 
-            boundaryPatches_[i].setType
-            (
-                mapFluentBCToEnum(typeString)
-            );
+            boundaryPatches_[i].setType(mapFluentBCToEnum(typeString));
         }
     }
 }
@@ -417,17 +426,18 @@ void MeshReader::parseBoundariesSection
 
 void MeshReader::buildTopology()
 {
-    for (size_t i = 0; i < cells_.size(); ++i)
+    for (size_t cellIdx = 0; cellIdx < cells_.size(); ++cellIdx)
     {
-        cells_[i].setIdx(i);
+        cells_[cellIdx].setIdx(cellIdx);
     }
 
     std::vector<std::vector<size_t>> tempCellNeighbors(cells_.size());
 
     for (size_t faceIdx = 0; faceIdx < faces_.size(); ++faceIdx)
     {
-        const Face &currentFace = faces_[faceIdx];
+        const Face& currentFace = faces_[faceIdx];
 
+        // Map face to owner cell and assign sign +1
         if (currentFace.ownerCell() < cells_.size())
         {
             cells_[currentFace.ownerCell()].addFace(faceIdx, 1);
@@ -436,23 +446,22 @@ void MeshReader::buildTopology()
             if
             (
                 currentFace.neighborCell().has_value()
-             && currentFace.neighborCell().value()
-              < cells_.size()
+             && currentFace.neighborCell().value() < cells_.size()
             )
             {
-                tempCellNeighbors
-                    [currentFace.ownerCell()].push_back
+                tempCellNeighbors[currentFace.ownerCell()].push_back
                 (
                     currentFace.neighborCell().value()
                 );
             }
         }
 
+        // If this face has a valid neighborCell, 
+        // map face to neighbor cell and assign sign -1
         if
         (
             currentFace.neighborCell().has_value()
-         && currentFace.neighborCell().value()
-          < cells_.size()
+         && currentFace.neighborCell().value() < cells_.size()
         )
         {
             size_t neighborIdx = currentFace.neighborCell().value();
@@ -469,42 +478,25 @@ void MeshReader::buildTopology()
         }
     }
 
-    for (size_t i = 0; i < cells_.size(); ++i)
+    // After processing all faces, set the neighbor cell indices for each cell
+    for (size_t cellIdx = 0; cellIdx < cells_.size(); ++cellIdx)
     {
-        std::vector<size_t> &neighbors =
-            tempCellNeighbors[i];
-
-        std::sort
-        (
-            neighbors.begin(), neighbors.end()
-        );
-
-        neighbors.erase
-        (
-            std::unique
-            (
-                neighbors.begin(),
-                neighbors.end()
-            ),
-            neighbors.end()
-        );
-
-        cells_[i].setNeighborCellIndices(neighbors);
+        cells_[cellIdx].setNeighborCellIndices(tempCellNeighbors[cellIdx]);
     }
 }
 
 void MeshReader::validateMesh() const
 {
-    for (size_t i = 0; i < faces_.size(); ++i)
+    for (size_t faceIdx = 0; faceIdx < faces_.size(); ++faceIdx)
     {
-        if (faces_[i].nodeIndices().size() < 3)
+        if (faces_[faceIdx].nodeIndices().size() < 3)
         {
             FatalError
             (
                 "Face "
-              + std::to_string(i)
+              + std::to_string(faceIdx)
               + " has only "
-              + std::to_string(faces_[i].nodeIndices().size())
+              + std::to_string(faces_[faceIdx].nodeIndices().size())
               + " nodes, minimum required is 3."
             );
         }
@@ -533,15 +525,11 @@ void MeshReader::printSummary() const
 
 // ************************* Static utility methods ***************************
 
-PatchType MeshReader::mapFluentBCToEnum
-(
-    std::string_view fluentType
-)
+PatchType MeshReader::mapFluentBCToEnum(std::string_view fluentType)
 {
     for (const auto& [name, type] : bcMappings_)
     {
-        if (fluentType == name)
-            return type;
+        if (fluentType == name) return type;
     }
 
     Warning
