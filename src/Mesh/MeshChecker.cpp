@@ -10,17 +10,8 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
-#include <stdexcept>
 
 #include "ErrorHandler.hpp"
-
-
-// ************************* Constructor & Destructor *************************
-
-MeshChecker::MeshChecker(const Mesh& mesh) noexcept
-:
-    mesh_(mesh)
-{}
 
 
 // ****************************** Public Methods ******************************
@@ -32,39 +23,34 @@ void MeshChecker::check() const
 
     if (mesh_.faces().empty() || mesh_.cells().empty())
     {
-        std::cout
-            << "Warning: Empty mesh detected!" << std::endl;
-        return;
+        FatalError("Empty mesh detected");
     }
 
     if (!validateConnectivity())
     {
-        std::cout
-            << "Mesh connectivity validation failed."
-            << " Skipping quality checks."
-            << std::endl;
-        return;
+        FatalError("Mesh connectivity validation failed");
     }
 
     // Face area statistics
     const Scalar firstArea = mesh_.faces()[0].projectedArea();
     Scalar minFaceArea = firstArea;
     Scalar maxFaceArea = firstArea;
-    size_t minFaceId = mesh_.faces()[0].idx();
-    size_t maxFaceId = mesh_.faces()[0].idx();
+    size_t minFaceIdx = mesh_.faces()[0].idx();
+    size_t maxFaceIdx = mesh_.faces()[0].idx();
 
+    // Collect faces with small area
     std::vector<size_t> smallAreaFaces;
 
     // Non-orthogonality statistics
     Scalar maxNonOrthogonality = 0.0;
     Scalar totalCosAngle = 0.0;
     size_t nonOrthCount = 0;
-    size_t maxNonOrthFaceId = 0;
+    size_t maxNonOrthFaceIdx = 0;
     std::vector<size_t> severeNonOrthFaces;
 
     // Skewness statistics
     Scalar maxSkewness = 0.0;
-    size_t maxSkewFaceId = 0;
+    size_t maxSkewFaceIdx = 0;
     std::vector<size_t> highSkewFaces;
 
     // Radian to degree conversion
@@ -79,12 +65,13 @@ void MeshChecker::check() const
         if (area < minFaceArea)
         {
             minFaceArea = area;
-            minFaceId = faceIdx;
+            minFaceIdx = faceIdx;
         }
+
         if (area > maxFaceArea)
         {
             maxFaceArea = area;
-            maxFaceId = faceIdx;
+            maxFaceIdx = faceIdx;
         }
 
         if (area < minArea_)
@@ -98,19 +85,13 @@ void MeshChecker::check() const
             // Boundary face: calculate skewness only
             const Cell& ownerCell = mesh_.cells()[face.ownerCell()];
 
-            Scalar skew =
-                calculateBoundarySkewness
-                (
-                    face,
-                    ownerCell.centroid(),
-                    face.centroid(),
-                    face.normal()
-                );
+            Scalar skew = 
+                calculateBoundarySkewness(face, ownerCell.centroid());
 
             if (skew > maxSkewness)
             {
                 maxSkewness = skew;
-                maxSkewFaceId = faceIdx;
+                maxSkewFaceIdx = faceIdx;
             }
             if (skew > maxSkewThreshold_)
             {
@@ -120,8 +101,7 @@ void MeshChecker::check() const
         else
         {
             // Internal face: calculate both
-            const Cell& ownerCell =
-                mesh_.cells()[face.ownerCell()];
+            const Cell& ownerCell = mesh_.cells()[face.ownerCell()];
 
             const Cell& neighborCell =
                 mesh_.cells()[face.neighborCell().value()];
@@ -144,7 +124,7 @@ void MeshChecker::check() const
             if (angleDeg > maxNonOrthogonality)
             {
                 maxNonOrthogonality = angleDeg;
-                maxNonOrthFaceId = faceIdx;
+                maxNonOrthFaceIdx = faceIdx;
             }
 
             if (angleDeg > maxNonOrthThreshold_)
@@ -158,15 +138,13 @@ void MeshChecker::check() const
                 (
                     face,
                     ownerCell.centroid(),
-                    neighborCell.centroid(),
-                    face.centroid(),
-                    face.normal()
+                    neighborCell.centroid()
                 );
 
             if (skew > maxSkewness)
             {
                 maxSkewness = skew;
-                maxSkewFaceId = faceIdx;
+                maxSkewFaceIdx = faceIdx;
             }
 
             if (skew > maxSkewThreshold_)
@@ -177,19 +155,18 @@ void MeshChecker::check() const
     }
 
     // Calculate average non-orthogonality
-    Scalar avgNonOrthogonality =
-        std::acos(totalCosAngle / S(nonOrthCount));
+    Scalar avgNonOrthogonality = std::acos(totalCosAngle / S(nonOrthCount));
 
     avgNonOrthogonality *= radToDeg;
 
     // Cell volume and aspect ratio statistics
     Scalar minCellVolume = mesh_.cells()[0].volume();
     Scalar maxCellVolume = mesh_.cells()[0].volume();
-    size_t minCellId = mesh_.cells()[0].idx();
-    size_t maxCellId = mesh_.cells()[0].idx();
+    size_t minCellIdx = mesh_.cells()[0].idx();
+    size_t maxCellIdx = mesh_.cells()[0].idx();
 
     Scalar maxAspectRatio = 0.0;
-    size_t maxAspectCellId = 0;
+    size_t maxAspectCellIdx = 0;
     std::vector<size_t> highAspectCells;
 
     std::vector<size_t> smallVolumeCells;
@@ -201,12 +178,13 @@ void MeshChecker::check() const
         if (cell.volume() < minCellVolume)
         {
             minCellVolume = cell.volume();
-            minCellId = cell.idx();
+            minCellIdx = cell.idx();
         }
+
         if (cell.volume() > maxCellVolume)
         {
             maxCellVolume = cell.volume();
-            maxCellId = cell.idx();
+            maxCellIdx = cell.idx();
         }
 
         // Check for inverted or small cells
@@ -224,7 +202,7 @@ void MeshChecker::check() const
         if (aspectRatio > maxAspectRatio)
         {
             maxAspectRatio = aspectRatio;
-            maxAspectCellId = cell.idx();
+            maxAspectCellIdx = cell.idx();
         }
 
         // High aspect ratio threshold
@@ -245,13 +223,13 @@ void MeshChecker::check() const
         << "  Minimum area: "
         << std::scientific << std::setprecision(6)
         << minFaceArea << " m² (face "
-        << minFaceId << ')' << std::endl;
+        << minFaceIdx << ')' << std::endl;
 
     std::cout
         << "  Maximum area: "
         << std::scientific << std::setprecision(6)
         << maxFaceArea << " m² (face "
-        << maxFaceId << ')' << std::endl;
+        << maxFaceIdx << ')' << std::endl;
 
     std::cout
         << "\nCell Volume Statistics:" << std::endl;
@@ -260,23 +238,21 @@ void MeshChecker::check() const
         << "  Minimum volume: "
         << std::scientific << std::setprecision(6)
         << minCellVolume << " m³ (cell "
-        << minCellId << ')' << std::endl;
+        << minCellIdx << ')' << std::endl;
 
     std::cout
         << "  Maximum volume: "
         << std::scientific << std::setprecision(6)
         << maxCellVolume << " m³ (cell "
-        << maxCellId << ')' << std::endl;
+        << maxCellIdx << ')' << std::endl;
 
     if (!invertedCells.empty())
     {
-        std::cout
-            << "\nCRITICAL: "
-            << invertedCells.size()
-            << " inverted cells (negative volume)!"
-            << std::endl;
-
-        printIndicesList(invertedCells, "Cell");
+        FatalError
+        (
+            std::to_string(invertedCells.size())
+          + " inverted cells (negative volume) detected"
+        );
     }
 
     // Non-orthogonality statistics
@@ -288,7 +264,7 @@ void MeshChecker::check() const
 
     std::cout
         << "  Maximum: " << maxNonOrthogonality
-        << "° (face " << maxNonOrthFaceId << ")"
+        << "° (face " << maxNonOrthFaceIdx << ")"
         << std::endl;
 
     std::cout
@@ -297,11 +273,12 @@ void MeshChecker::check() const
 
     if (!severeNonOrthFaces.empty())
     {
-        std::cout
-            << "  WARNING: " << severeNonOrthFaces.size()
-            << " faces with non-orthogonality > "
-            << maxNonOrthThreshold_ << "°"
-            << std::endl;
+        Warning
+        (
+            std::to_string(severeNonOrthFaces.size())
+          + " faces with non-orthogonality > "
+          + std::to_string(maxNonOrthThreshold_) + "°"
+        );
 
         printIndicesList(severeNonOrthFaces, "Face");
     }
@@ -315,15 +292,16 @@ void MeshChecker::check() const
 
     std::cout
         << "  Maximum: " << maxSkewness << " (face "
-        << maxSkewFaceId << ')' << std::endl;
+        << maxSkewFaceIdx << ')' << std::endl;
 
     if (!highSkewFaces.empty())
     {
-        std::cout
-            << "  WARNING: " << highSkewFaces.size()
-            << " faces with skewness > "
-            << maxSkewThreshold_
-            << std::endl;
+        Warning
+        (
+            std::to_string(highSkewFaces.size())
+          + " faces with skewness > "
+          + std::to_string(maxSkewThreshold_)
+        );
 
         printIndicesList(highSkewFaces, "Face");
     }
@@ -337,15 +315,16 @@ void MeshChecker::check() const
 
     std::cout
         << "  Maximum: " << maxAspectRatio << " (cell "
-        << maxAspectCellId << ')' << std::endl;
+        << maxAspectCellIdx << ')' << std::endl;
 
     if (!highAspectCells.empty())
     {
-        std::cout
-            << "  WARNING: " << highAspectCells.size()
-            << " cells with aspect ratio > "
-            << maxAspectThreshold_
-            << std::endl;
+        Warning
+        (
+            std::to_string(highAspectCells.size())
+          + " cells with aspect ratio > "
+          + std::to_string(maxAspectThreshold_)
+        );
 
         printIndicesList(highAspectCells, "Cell");
     }
@@ -398,40 +377,40 @@ void MeshChecker::check() const
 
     if (!invertedCells.empty())
     {
-        std::cout
-            << "WARNING: Inverted cells detected"
-            << std::endl;
-
+        Warning("Inverted cells detected");
         goodQuality = false;
     }
 
     if (maxNonOrthogonality > maxNonOrthThreshold_)
     {
-        std::cout
-            << "WARNING: Non-orthogonality exceeds "
-            << maxNonOrthThreshold_
-            << "° threshold" << std::endl;
-
+        Warning
+        (
+            "Non-orthogonality exceeds "
+          + std::to_string(maxNonOrthThreshold_)
+          + "° threshold"
+        );
         goodQuality = false;
     }
 
     if (maxSkewness > maxSkewThreshold_)
     {
-        std::cout
-            << "WARNING: Skewness exceeds "
-            << maxSkewThreshold_
-            << " threshold" << std::endl;
-
+        Warning
+        (
+            "Skewness exceeds "
+          + std::to_string(maxSkewThreshold_)
+          + " threshold"
+        );
         goodQuality = false;
     }
 
     if (maxAspectRatio > maxAspectThreshold_)
     {
-        std::cout
-            << "WARNING: Aspect ratio exceeds "
-            << maxAspectThreshold_
-            << " threshold" << std::endl;
-
+        Warning
+        (
+            "Aspect ratio exceeds "
+          + std::to_string(maxAspectThreshold_)
+          + " threshold"
+        );
         goodQuality = false;
     }
 
@@ -524,18 +503,16 @@ Scalar MeshChecker::calculateFaceSkewness
 (
     const Face& face,
     const Vector& ownerCellCentroid,
-    const Vector& neighborCellCentroid,
-    const Vector& faceCentroid,
-    const Vector& faceNormal
+    const Vector& neighborCellCentroid
 ) const
 {
-    const Vector dPf = faceCentroid - ownerCellCentroid;
+    const Vector dPf = face.centroid() - ownerCellCentroid;
     const Vector dPN = neighborCellCentroid - ownerCellCentroid;
 
     const Vector skewnessVector =
         dPf
-      - ((dot(faceNormal, dPf))
-      / (dot(faceNormal, dPN) + vSmallValue))
+      - ((dot(face.normal(), dPf))
+      / (dot(face.normal(), dPN) + vSmallValue))
       * dPN;
 
     const Scalar skewnessMag = skewnessVector.magnitude();
@@ -546,25 +523,12 @@ Scalar MeshChecker::calculateFaceSkewness
     // Characteristic face dimension: empirical approximation
     Scalar faceCharacteristicLength = S(0.2) * dPN.magnitude() + vSmallValue;
 
-    // Refine by finding max vertex extent in skewness dir
+    // Refine by finding max vertex extent in skewness direction
     std::span<const size_t> nodeIndices = face.nodeIndices();
 
     for (size_t nodeIdx : nodeIndices)
     {
-        if (nodeIdx >= mesh_.numNodes())
-        {
-            FatalError
-            (
-                "Node index "
-              + std::to_string(nodeIdx)
-              + " out of range in skewness"
-                " calculation for face "
-              + std::to_string(face.idx())
-            );
-        }
-
-        Vector vertexToCentroid =
-            mesh_.nodes()[nodeIdx] - faceCentroid;
+        Vector vertexToCentroid = mesh_.nodes()[nodeIdx] - face.centroid();
 
         Scalar projection =
             std::abs(dot(skewnessDirection, vertexToCentroid));
@@ -581,17 +545,15 @@ Scalar MeshChecker::calculateFaceSkewness
 Scalar MeshChecker::calculateBoundarySkewness
 (
     const Face& face,
-    const Vector& ownerCellCentroid,
-    const Vector& faceCentroid,
-    const Vector& faceNormal
+    const Vector& ownerCellCentroid
 ) const
 {
-    const Vector dPf = faceCentroid - ownerCellCentroid;
+    const Vector dPf = face.centroid() - ownerCellCentroid;
 
     // Virtual dPN for boundary faces
-    const Vector dPN = S(2.0) * dot(faceNormal, dPf) * faceNormal;
+    const Vector dPN = S(2.0) * dot(face.normal(), dPf) * face.normal();
 
-    const Vector skewnessVector = dPf - dot(faceNormal, dPf) * faceNormal;
+    const Vector skewnessVector = dPf - dot(face.normal(), dPf) * face.normal();
 
     const Scalar skewnessMag = skewnessVector.magnitude();
 
@@ -601,24 +563,12 @@ Scalar MeshChecker::calculateBoundarySkewness
     // Characteristic face dimension: empirical approximation
     Scalar faceCharacteristicLength = S(0.4) * dPN.magnitude() + vSmallValue;
 
-    // Refine by finding max vertex extent in skewness dir
+    // Refine by finding max vertex extent in skewness direction
     std::span<const size_t> nodeIndices = face.nodeIndices();
 
     for (size_t nodeIdx : nodeIndices)
     {
-        if (nodeIdx >= mesh_.numNodes())
-        {
-            FatalError
-            (
-                "Node index "
-              + std::to_string(nodeIdx)
-              + " out of range in boundary"
-                " skewness calculation for face "
-              + std::to_string(face.idx())
-            );
-        }
-
-        Vector vertexToCentroid = mesh_.nodes()[nodeIdx] - faceCentroid;
+        Vector vertexToCentroid = mesh_.nodes()[nodeIdx] - face.centroid();
 
         Scalar projection = std::abs(dot(skewnessDirection, vertexToCentroid));
 
@@ -714,23 +664,28 @@ bool MeshChecker::validateConnectivity() const
     {
         if (face.ownerCell() >= mesh_.numCells())
         {
-            std::cout
-                << "ERROR: Face " << face.idx()
-                << " owner cell index "
-                << face.ownerCell() << " out of range"
-                << std::endl;
+            Warning
+            (
+                "Face " + std::to_string(face.idx())
+              + " owner cell index "
+              + std::to_string(face.ownerCell())
+              + " out of range"
+            );
             valid = false;
         }
 
-        if (!face.isBoundary()
+        if 
+        (
+            !face.isBoundary()
          && face.neighborCell().value() >= mesh_.numCells())
         {
-            std::cout
-                << "ERROR: Face " << face.idx()
-                << " neighbor cell index "
-                << face.neighborCell().value()
-                << " out of range"
-                << std::endl;
+            Warning
+            (
+                "Face " + std::to_string(face.idx())
+              + " neighbor cell index "
+              + std::to_string(face.neighborCell().value())
+              + " out of range"
+            );
             valid = false;
         }
 
@@ -738,11 +693,12 @@ bool MeshChecker::validateConnectivity() const
         {
             if (nodeIdx >= mesh_.numNodes())
             {
-                std::cout
-                    << "ERROR: Face " << face.idx()
-                    << " node index " << nodeIdx
-                    << " out of range"
-                    << std::endl;
+                Warning
+                (
+                    "Face " + std::to_string(face.idx())
+                  + " node index " + std::to_string(nodeIdx)
+                  + " out of range"
+                );
                 valid = false;
             }
         }
@@ -754,11 +710,12 @@ bool MeshChecker::validateConnectivity() const
         {
             if (faceIdx >= mesh_.numFaces())
             {
-                std::cout
-                    << "ERROR: Cell " << cell.idx()
-                    << " face index " << faceIdx
-                    << " out of range"
-                    << std::endl;
+                Warning
+                (
+                    "Cell " + std::to_string(cell.idx())
+                  + " face index " + std::to_string(faceIdx)
+                  + " out of range"
+                );
                 valid = false;
             }
         }
