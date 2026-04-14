@@ -100,12 +100,6 @@ public:
     BCValueType valueType() const noexcept { return valueType_; }
 
     /**
-     * @brief Get gradient type
-     * @return Type of boundary gradient (scalar/vector)
-     */
-    BCValueType gradientType() const noexcept { return gradientType_; }
-
-    /**
      * @brief Get scalar value
      * @return Current scalar boundary value
      */
@@ -159,9 +153,6 @@ private:
 
     /// Vector boundary value
     Vector vectorValue_;
-
-    /// Type of boundary gradient (scalar or vector)
-    BCValueType gradientType_ = BCValueType::UNDEFINED;
 
     /// Scalar boundary gradient (normal component)
     Scalar scalarGradient_ = S(0.0);

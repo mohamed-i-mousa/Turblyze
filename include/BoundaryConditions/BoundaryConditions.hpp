@@ -51,23 +51,24 @@ public:
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field (U, p, k, omega, etc.)
      * @param bcData Boundary condition data
-     * @return True if successfully set
      */
-    bool setBC
+    void setBC
     (
         const std::string& patchName,
         const std::string& fieldName,
         BoundaryData bcData
-    );
+    )
+    {
+        patchBoundaryData_[patchName][fieldName] = std::move(bcData);
+    }
 
     /**
      * @brief Set fixed scalar value boundary condition
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field
      * @param value Scalar value to fix at boundary
-     * @return True if successfully set
      */
-    bool setFixedValue
+    void setFixedValue
     (
         const std::string& patchName,
         const std::string& fieldName,
@@ -79,9 +80,8 @@ public:
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field
      * @param value Vector value to fix at boundary
-     * @return True if successfully set
      */
-    bool setFixedValue
+    void setFixedValue
     (
         const std::string& patchName,
         const std::string& fieldName,
@@ -93,9 +93,8 @@ public:
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field
      * @param gradient Scalar gradient to fix at boundary
-     * @return True if successfully set
      */
-    bool setFixedGradient
+    void setFixedGradient
     (
         const std::string& patchName,
         const std::string& fieldName,
@@ -106,9 +105,8 @@ public:
      * @brief Set zero gradient boundary condition
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field
-     * @return True if successfully set
      */
-    bool setZeroGradient
+    void setZeroGradient
     (
         const std::string& patchName,
         const std::string& fieldName
@@ -118,9 +116,8 @@ public:
      * @brief Set no-slip boundary condition (for velocity)
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field
-     * @return True if successfully set
      */
-    bool setNoSlip
+    void setNoSlip
     (
         const std::string& patchName,
         const std::string& fieldName
@@ -131,9 +128,8 @@ public:
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field
      * @param wallType The wall function type (K_WALL_FUNCTION, OMEGA_WALL_FUNCTION, or NUT_WALL_FUNCTION)
-     * @return True if successfully set
      */
-    bool setWallFunctionType
+    void setWallFunctionType
     (
         const std::string& patchName,
         const std::string& fieldName,
@@ -145,10 +141,10 @@ public:
     /**
      * @brief Get boundary patch by name
      * @param name Name of the patch to retrieve
-     * @return Pointer to the found patch
+     * @return Reference to the found patch
      * @note Terminates the program if patch not found
      */
-    const BoundaryPatch* patch(const std::string& name) const;
+    const BoundaryPatch& patch(const std::string& name) const;
 
     /**
      * @brief Get all boundary patches
@@ -166,9 +162,10 @@ public:
      * @brief Get boundary condition for a field on a patch
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field
-     * @return Pointer to boundary data, or nullptr if not found
+     * @return Reference to boundary data
+     * @note Terminates the program if not found
      */
-    const BoundaryData* fieldBC
+    const BoundaryData& fieldBC
     (
         const std::string& patchName,
         const std::string& fieldName
@@ -184,7 +181,7 @@ public:
      * @return Boundary value based on boundary condition
      */
     [[nodiscard("Computed boundary face value needed for discretization")]]
-    Scalar calculateBoundaryFaceValue
+    Scalar boundaryFaceValue
     (
         const std::string& fieldName,
         const ScalarField& phi,
@@ -201,7 +198,7 @@ public:
      * @note Defaults to zero-gradient if no BC is specified for the face
      */
     [[nodiscard("Computed boundary face value needed for discretization")]]
-    Vector calculateBoundaryVectorFaceValue
+    Vector boundaryVectorFaceValue
     (
         const std::string& fieldName,
         const VectorField& phi,

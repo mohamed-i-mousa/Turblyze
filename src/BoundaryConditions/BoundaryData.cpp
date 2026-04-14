@@ -17,7 +17,6 @@ void BoundaryData::setFixedValue(Scalar scalarValue) noexcept
     valueType_ = BCValueType::SCALAR;
 
     vectorValue_ = Vector{};
-    gradientType_ = BCValueType::UNDEFINED;
 }
 
 void BoundaryData::setFixedValue(const Vector& vectorValue) noexcept
@@ -27,14 +26,12 @@ void BoundaryData::setFixedValue(const Vector& vectorValue) noexcept
     valueType_ = BCValueType::VECTOR;
 
     scalarValue_ = S(0.0);
-    gradientType_ = BCValueType::UNDEFINED;
 }
 
 void BoundaryData::setFixedGradient(Scalar scalarGradient) noexcept
 {
     type_ = BCType::FIXED_GRADIENT;
     scalarGradient_ = scalarGradient;
-    gradientType_ = BCValueType::SCALAR;
 
     vectorValue_ = Vector{};
     valueType_ = BCValueType::UNDEFINED;
@@ -46,7 +43,6 @@ void BoundaryData::setZeroGradient() noexcept
     scalarGradient_ = S(0.0);
 
     valueType_ = BCValueType::UNDEFINED;
-    gradientType_ = BCValueType::UNDEFINED;
 }
 
 void BoundaryData::setNoSlip() noexcept
@@ -56,14 +52,12 @@ void BoundaryData::setNoSlip() noexcept
     valueType_ = BCValueType::VECTOR;
 
     scalarValue_ = S(0.0);
-    gradientType_ = BCValueType::UNDEFINED;
 }
 
 void BoundaryData::setWallFunctionType(BCType wallType) noexcept
 {
     type_ = wallType;
     valueType_ = BCValueType::UNDEFINED;
-    gradientType_ = BCValueType::UNDEFINED;
 }
 
 
@@ -105,11 +99,7 @@ const Vector& BoundaryData::fixedVectorValue() const
 
 Scalar BoundaryData::fixedScalarGradient() const
 {
-    if
-    (
-        type_ == BCType::FIXED_GRADIENT
-     && gradientType_ == BCValueType::SCALAR
-    )
+    if (type_ == BCType::FIXED_GRADIENT)
     {
         return scalarGradient_;
     }
