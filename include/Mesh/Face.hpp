@@ -28,9 +28,8 @@
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
-
-// Forward declaration
-class BoundaryPatch;
+#include "OptionalRef.hpp"
+#include "BoundaryPatch.hpp"
 
 
 struct FaceIntegrals
@@ -133,9 +132,9 @@ public:
 
     /**
      * @brief Set the boundary patch this face belongs to
-     * @param p Pointer to the owning boundary patch
+     * @param p Reference to the owning boundary patch
      */
-    void setPatch(const BoundaryPatch* p) noexcept { patch_ = p; }
+    void setPatch(const BoundaryPatch& p) noexcept { patch_ = std::cref(p); }
 
 // Accessor methods
 
@@ -251,7 +250,10 @@ public:
      * @note Terminates the program if face has zero area (collinear nodes)
      * @return FaceIntegrals for cell volume/centroid computation
      */
-    FaceIntegrals calculateGeometricProperties(std::span<const Vector> allNodes);
+    FaceIntegrals calculateGeometricProperties
+    (
+        std::span<const Vector> allNodes
+    );
 
     /**
      * @brief Calculate distance properties of the face
@@ -269,16 +271,13 @@ public:
      * @brief Check if this is a boundary face
      * @return True if face is on domain boundary
      */
-    bool isBoundary() const noexcept
-    {
-        return !neighborCell_.has_value();
-    }
+    bool isBoundary() const noexcept { return !neighborCell_.has_value(); }
 
     /**
      * @brief Get the boundary patch this face belongs to
-     * @return Pointer to owning patch, nullptr for internal faces
+     * @return Optional reference to owning patch (nullopt if unlinked)
      */
-    const BoundaryPatch* patch() const noexcept { return patch_; }
+    const OptionalRef<BoundaryPatch>& patch() const noexcept { return patch_; }
 
     /**
      * @brief Flip the face normal direction
@@ -329,8 +328,8 @@ private:
     /// Flag indicating if distance properties calculated
     bool distancePropertiesCalculated_ = false;
 
-    /// Owning boundary patch (nullptr for internal faces)
-    const BoundaryPatch* patch_ = nullptr;
+    /// Owning boundary patch (nullopt for internal or unlinked faces)
+    OptionalRef<BoundaryPatch> patch_;
 
     /**
      * @brief Symmetric second-moment polynomial for triangle integration
