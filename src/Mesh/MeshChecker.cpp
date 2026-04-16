@@ -553,7 +553,8 @@ Scalar MeshChecker::calculateBoundarySkewness
     // Virtual dPN for boundary faces
     const Vector dPN = S(2.0) * dot(face.normal(), dPf) * face.normal();
 
-    const Vector skewnessVector = dPf - dot(face.normal(), dPf) * face.normal();
+    const Vector skewnessVector = 
+        dPf - dot(face.normal(), dPf) * face.normal();
 
     const Scalar skewnessMag = skewnessVector.magnitude();
 

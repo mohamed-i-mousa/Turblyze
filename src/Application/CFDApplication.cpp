@@ -61,7 +61,9 @@ void CFDApplication::loadCase()
     checkQuality_ = mesh.lookupOrDefault<bool>("checkQuality", true);
 
     // Extract physical properties
-    const auto& physicalProperties = caseReader_->section("physicalProperties");
+    const auto& physicalProperties =
+        caseReader_->section("physicalProperties");
+
     rho_ = physicalProperties.lookup<Scalar>("rho");
     mu_ = physicalProperties.lookup<Scalar>("mu");
 
@@ -297,14 +299,17 @@ void CFDApplication::prepareMesh()
     }
 
     std::vector<Vector> cellCentroids(mesh_.numCells());
+
     for (size_t cellIdx = 0; cellIdx < mesh_.numCells(); ++cellIdx)
     {
         cellCentroids[cellIdx] = mesh_.cells()[cellIdx].centroid();
     }
+
     for (auto& face : mesh_.faces())
     {
         face.calculateDistanceProperties(cellCentroids);
     }
+
     if (debug_)
     {
         std::cout
@@ -338,7 +343,7 @@ void CFDApplication::setupBoundaryConditions()
 
     for (const auto& face : mesh_.faces())
     {
-        if (face.isBoundary() && !face.patch())
+        if (face.isBoundary() && !face.patch().has_value())
         {
             FatalError
             (
@@ -427,8 +432,7 @@ void CFDApplication::setupBoundaryConditions()
         }
 
         // Derive pressure correction BCs from pressure BCs
-        for (const auto& patchName
-            : pressureBCs.sectionNames())
+        for (const auto& patchName : pressureBCs.sectionNames())
         {
             const auto& patchBC = pressureBCs.section(patchName);
             std::string bcType = patchBC.lookup<std::string>("type");
@@ -474,24 +478,20 @@ void CFDApplication::setupBoundaryConditions()
 
                 if (valStr == "calculated")
                 {
-                    const BoundaryData* velocityBC =
+                    const BoundaryData& velocityBC =
                         bcManager_.fieldBC(patchName, "U");
 
                     Scalar UMag = initialVelocity_.magnitude();
 
                     if
                     (
-                        velocityBC
-                     && velocityBC->type() == BCType::FIXED_VALUE
-                     && velocityBC->valueType() == BCValueType::VECTOR
+                        velocityBC.type() == BCType::FIXED_VALUE
+                     && velocityBC.valueType() == BCValueType::VECTOR
                     )
                     {
-                        UMag = velocityBC->fixedVectorValue().magnitude();
+                        UMag = velocityBC.fixedVectorValue().magnitude();
                     }
-                    else if
-                    (
-                        velocityBC && velocityBC->type() == BCType::NO_SLIP
-                    )
+                    else if (velocityBC.type() == BCType::NO_SLIP)
                     {
                         UMag = S(0.0);
                     }
@@ -516,7 +516,12 @@ void CFDApplication::setupBoundaryConditions()
             }
             else if (bcType == "kWallFunction")
             {
-                bcManager_.setWallFunctionType(patchName, "k", BCType::K_WALL_FUNCTION);
+                bcManager_.setWallFunctionType
+                (
+                    patchName,
+                    "k",
+                    BCType::K_WALL_FUNCTION
+                );
             }
             else if (bcType == "zeroGradient")
             {
@@ -558,39 +563,34 @@ void CFDApplication::setupBoundaryConditions()
                     // Determine k value for this patch
                     Scalar kValue = S(0.0);
 
-                    const BoundaryData* kPatchBC =
+                    const BoundaryData& kPatchBC =
                         bcManager_.fieldBC(patchName, "k");
 
                     if
                     (
-                        kPatchBC
-                     && kPatchBC->type() == BCType::FIXED_VALUE
-                     && kPatchBC->valueType() == BCValueType::SCALAR
+                        kPatchBC.type() == BCType::FIXED_VALUE
+                     && kPatchBC.valueType() == BCValueType::SCALAR
                     )
                     {
-                        kValue = kPatchBC->fixedScalarValue();
+                        kValue = kPatchBC.fixedScalarValue();
                     }
                     else
                     {
                         // Compute k from velocity BC
-                        const BoundaryData* velocityBC =
+                        const BoundaryData& velocityBC =
                             bcManager_.fieldBC(patchName, "U");
 
                         Scalar UMag = initialVelocity_.magnitude();
 
                         if
                         (
-                            velocityBC
-                         && velocityBC->type() == BCType::FIXED_VALUE
-                         && velocityBC->valueType() == BCValueType::VECTOR
+                            velocityBC.type() == BCType::FIXED_VALUE
+                         && velocityBC.valueType() == BCValueType::VECTOR
                         )
                         {
-                            UMag = velocityBC->fixedVectorValue().magnitude();
+                            UMag = velocityBC.fixedVectorValue().magnitude();
                         }
-                        else if
-                        (
-                            velocityBC && velocityBC->type() == BCType::NO_SLIP
-                        )
+                        else if (velocityBC.type() == BCType::NO_SLIP)
                         {
                             UMag = S(0.0);
                         }
@@ -623,7 +623,12 @@ void CFDApplication::setupBoundaryConditions()
             }
             else if (bcType == "omegaWallFunction")
             {
-                bcManager_.setWallFunctionType(patchName, "omega", BCType::OMEGA_WALL_FUNCTION);
+                bcManager_.setWallFunctionType
+                (
+                    patchName,
+                    "omega",
+                    BCType::OMEGA_WALL_FUNCTION
+                );
             }
             else if (bcType == "zeroGradient")
             {
@@ -665,7 +670,12 @@ void CFDApplication::setupBoundaryConditions()
             }
             else if (bcType == "nutWallFunction")
             {
-                bcManager_.setWallFunctionType(patchName, "nut", BCType::NUT_WALL_FUNCTION);
+                bcManager_.setWallFunctionType
+                (
+                    patchName,
+                    "nut",
+                    BCType::NUT_WALL_FUNCTION
+                );
             }
             else
             {
@@ -835,6 +845,7 @@ void CFDApplication::configureSolver()
                 ("maxIter", 1000)
               : 1000
             );
+
             kSolver.setDebug(debug_);
             omegaSolver.setDebug(debug_);
             solver_->setTurbulenceSolvers(kSolver, omegaSolver);
@@ -870,46 +881,43 @@ void CFDApplication::configureSolver()
     }
 
     // Configure field constraints
-    Constraint* constraintSystem = solver_->constraintSystem();
+    Constraint& constraintSystem = solver_->constraintSystem();
 
-    if (constraintSystem)
+    if (velocityConstraintEnabled_)
     {
-        if (velocityConstraintEnabled_)
-        {
-            constraintSystem->setVelocityConstraints(
-                maxVelocityConstraint_);
+        constraintSystem.setVelocityConstraints(
+            maxVelocityConstraint_);
 
-            if (debug_)
-            {
-                std::cout
-                    << "Velocity constraint enabled: max = "
-                    << maxVelocityConstraint_ << " m/s"
-                    << std::endl;
-            }
-        }
-        if (pressureConstraintEnabled_)
+        if (debug_)
         {
-            constraintSystem->setPressureConstraints
-            (
-                minPressureConstraint_,
-                maxPressureConstraint_
-            );
-
-            if (debug_)
-            {
-                std::cout
-                    << "Pressure constraint enabled: ["
-                    << minPressureConstraint_
-                    << ", " << maxPressureConstraint_
-                    << "] Pa" << std::endl;
-            }
+            std::cout
+                << "Velocity constraint enabled: max = "
+                << maxVelocityConstraint_ << " m/s"
+                << std::endl;
         }
-        constraintSystem->enableConstraints
-        (
-            velocityConstraintEnabled_,
-            pressureConstraintEnabled_
-        );
     }
+    if (pressureConstraintEnabled_)
+    {
+        constraintSystem.setPressureConstraints
+        (
+            minPressureConstraint_,
+            maxPressureConstraint_
+        );
+
+        if (debug_)
+        {
+            std::cout
+                << "Pressure constraint enabled: ["
+                << minPressureConstraint_
+                << ", " << maxPressureConstraint_
+                << "] Pa" << std::endl;
+        }
+    }
+    constraintSystem.enableConstraints
+    (
+        velocityConstraintEnabled_,
+        pressureConstraintEnabled_
+    );
 
     std::cout
         << "SIMPLE solver initialized." << std::endl;
@@ -998,15 +1006,6 @@ void CFDApplication::exportResults()
     const VectorField& velocity = solver_->velocity();
     const ScalarField& pressure = solver_->pressure();
 
-    // Extract turbulence fields if available
-    const ScalarField* kField = solver_->turbulentKineticEnergy();
-    const ScalarField* omegaField = solver_->specificDissipationRate();
-    const ScalarField* nutField = solver_->turbulentViscosity();
-    const ScalarField* wallDistField = solver_->wallDistance();
-    const FaceData<Scalar>* yPlusFace = solver_->yPlus();
-    const FaceData<Scalar>* wallShearStressFace =
-        solver_->wallShearStress();
-
     // Calculate velocity magnitude
     ScalarField velocityMagnitude =
         VtkWriter::computeVelocityMagnitude(velocity);
@@ -1020,19 +1019,12 @@ void CFDApplication::exportResults()
     scalarFieldsToVtk["velocityMagnitude"] = &velocityMagnitude;
 
     // Add turbulence fields if available
-    if
-    (
-        turbulenceEnabled_
-     && kField
-     && omegaField
-     && nutField
-     && wallDistField
-    )
+    if (turbulenceEnabled_)
     {
-        scalarFieldsToVtk["k"] = kField;
-        scalarFieldsToVtk["omega"] = omegaField;
-        scalarFieldsToVtk["nut"] = nutField;
-        scalarFieldsToVtk["wallDistance"] = wallDistField;
+        scalarFieldsToVtk["k"] = &solver_->turbulentKineticEnergy();
+        scalarFieldsToVtk["omega"] = &solver_->specificDissipationRate();
+        scalarFieldsToVtk["nut"] = &solver_->turbulentViscosity();
+        scalarFieldsToVtk["wallDistance"] = &solver_->wallDistance();
     }
 
     // Prepare vector fields for export
@@ -1067,7 +1059,7 @@ void CFDApplication::exportResults()
     );
 
     // Export wall boundary data (yPlus, wallShearStress) as VTP
-    if (turbulenceEnabled_ && yPlusFace)
+    if (turbulenceEnabled_)
     {
         std::string vtpFilename = vtuFilename;
         size_t dotPos = vtpFilename.rfind(".vtu");
@@ -1084,13 +1076,10 @@ void CFDApplication::exportResults()
         std::map<std::string, const FaceData<Scalar>*>
         wallScalarFields;
 
-        wallScalarFields["yPlus"] = yPlusFace;
-
-        if (wallShearStressFace)
-        {
-            wallScalarFields["wallShearStress"] =
-                wallShearStressFace;
-        }
+        wallScalarFields["yPlus"] =
+            &solver_->yPlus();
+        wallScalarFields["wallShearStress"] =
+            &solver_->wallShearStress();
 
         VtkWriter::writeWallBoundaryData
         (

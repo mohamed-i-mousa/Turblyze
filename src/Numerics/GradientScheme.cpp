@@ -193,7 +193,7 @@ Vector GradientScheme::cellGradient
         else
         {
             phiBoundary =
-                bcManager_.calculateBoundaryFaceValue
+                bcManager_.boundaryFaceValue
                 (
                     fieldName,
                     phi,
@@ -252,7 +252,7 @@ void GradientScheme::limitGradient
             if (!face.isBoundary()) continue;
 
             Scalar phiBound =
-                bcManager_.calculateBoundaryFaceValue
+                bcManager_.boundaryFaceValue
                 (
                     fieldName,
                     phi,
@@ -371,26 +371,24 @@ Vector GradientScheme::calculateBoundaryFaceGradient
     std::optional<int> componentIdx
 ) const
 {
-    const BoundaryPatch* patch = face.patch();
+    const BoundaryPatch& patch = face.patch()->get();
 
-    const BoundaryData* bc =
-        bcManager_.fieldBC(patch->patchName(), fieldName);
-
-    if (!bc) return cellGradient;
+    const BoundaryData& bc =
+        bcManager_.fieldBC(patch.patchName(), fieldName);
 
     using enum BCType;
-    switch (bc->type())
+    switch (bc.type())
     {
         case NO_SLIP:
         case FIXED_VALUE:
         {
             Scalar boundaryValue = S(0.0);  // Default for NO_SLIP
 
-            if (bc->type() == FIXED_VALUE)
+            if (bc.type() == FIXED_VALUE)
             {
-                if (componentIdx && bc->valueType() == BCValueType::VECTOR)
+                if (componentIdx && bc.valueType() == BCValueType::VECTOR)
                 {
-                    const Vector& v = bc->vectorValue();
+                    const Vector& v = bc.vectorValue();
                     switch (*componentIdx)
                     {
                         case 0: boundaryValue = v.x(); break;
@@ -398,9 +396,9 @@ Vector GradientScheme::calculateBoundaryFaceGradient
                         case 2: boundaryValue = v.z(); break;
                     }
                 }
-                else if (bc->valueType() == BCValueType::SCALAR)
+                else if (bc.valueType() == BCValueType::SCALAR)
                 {
-                    boundaryValue = bc->fixedScalarValue();
+                    boundaryValue = bc.fixedScalarValue();
                 }
                 else
                 {
@@ -445,7 +443,7 @@ Vector GradientScheme::calculateBoundaryFaceGradient
 
         case FIXED_GRADIENT:
         {
-            Scalar specifiedGradient = bc->fixedScalarGradient();
+            Scalar specifiedGradient = bc.fixedScalarGradient();
 
             // Project cell gradient onto tangential directions
             // and combine with specified normal gradient

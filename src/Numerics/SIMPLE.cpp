@@ -52,59 +52,7 @@ void SIMPLE::setTurbulenceSolvers
 
 // ******************************* Accessor Methods ****************************
 
-const ScalarField* SIMPLE::turbulentKineticEnergy() const noexcept
-{
-    if (turbulenceModel_)
-    {
-        return &(turbulenceModel_->k());
-    }
-    return nullptr;
-}
 
-const ScalarField* SIMPLE::specificDissipationRate() const noexcept
-{
-    if (turbulenceModel_)
-    {
-        return &(turbulenceModel_->omega());
-    }
-    return nullptr;
-}
-
-const ScalarField* SIMPLE::turbulentViscosity() const noexcept
-{
-    if (turbulenceModel_)
-    {
-        return &(turbulenceModel_->turbulentViscosity());
-    }
-    return nullptr;
-}
-
-const ScalarField* SIMPLE::wallDistance() const noexcept
-{
-    if (turbulenceModel_)
-    {
-        return &(turbulenceModel_->wallDistance());
-    }
-    return nullptr;
-}
-
-const FaceData<Scalar>* SIMPLE::yPlus() const noexcept
-{
-    if (turbulenceModel_)
-    {
-        return &(turbulenceModel_->yPlus());
-    }
-    return nullptr;
-}
-
-const FaceData<Scalar>* SIMPLE::wallShearStress() const noexcept
-{
-    if (turbulenceModel_)
-    {
-        return &(turbulenceModel_->wallShearStress());
-    }
-    return nullptr;
-}
 
 
 // ******************************* Public Methods ******************************
@@ -183,8 +131,7 @@ void SIMPLE::initialize
     bool enableTurbulence
 )
 {
-    matrixConstruct_ =
-        std::make_unique<Matrix>(mesh_, bcManager_);
+    matrixConstruct_ = std::make_unique<Matrix>(mesh_, bcManager_);
 
     // Initialize constraint system
     constraintSystem_ = std::make_unique<Constraint>(U_, p_);
@@ -298,11 +245,11 @@ void SIMPLE::solveMomentumEquations()
             // Check for NUT_WALL_FUNCTION BC on wall faces
             if (turbulenceModel_)
             {
-                const BoundaryPatch* patch = face.patch();
-                const BoundaryData* bc =
-                    bcManager_.fieldBC(patch->patchName(), "nut");
+                const BoundaryPatch& patch = face.patch()->get();
+                const BoundaryData& bc =
+                    bcManager_.fieldBC(patch.patchName(), "nut");
 
-                if (bc && bc->type() == BCType::NUT_WALL_FUNCTION)
+                if (bc.type() == BCType::NUT_WALL_FUNCTION)
                 {
                     // Use wall-function nut instead of cell-center nut
                     nuEffFace[faceIdx] =
@@ -412,10 +359,10 @@ void SIMPLE::solveMomentumEquations()
 
         if (face.isBoundary())
         {
-            const BoundaryData* bc =
-                bcManager_.fieldBC(face.patch()->patchName(), "p");
+            const BoundaryData& bc =
+                bcManager_.fieldBC(face.patch()->get().patchName(), "p");
 
-            if (bc && bc->type() == BCType::FIXED_VALUE)
+            if (bc.type() == BCType::FIXED_VALUE)
             {
                 // Fixed pressure boundary: normal pressure-velocity coupling
                 DUf_[faceIdx] = DU_[face.ownerCell()];
@@ -444,7 +391,7 @@ void SIMPLE::calculateRhieChowFlowRate()
         if (face.isBoundary())
         {
             UAvgf_[faceIdx] =
-                bcManager_.calculateBoundaryVectorFaceValue("U", U_, face);
+                bcManager_.boundaryVectorFaceValue("U", U_, face);
 
             RhieChowFlowRate_[faceIdx] =
                 dot(UAvgf_[faceIdx], face.normal() * face.projectedArea());
@@ -564,17 +511,14 @@ void SIMPLE::correctVelocity()
         );
     }
 
-    if (constraintSystem_)
-    {
-        auto velocityConstraints =
-            constraintSystem_->applyVelocityConstraints();
+    auto velocityConstraints =
+        constraintSystem_->applyVelocityConstraints();
 
-        if (debug_ && velocityConstraints > 0)
-        {
-            std::cout
-                << "  Applied velocity constraints to " << velocityConstraints
-                << " cells" << std::endl;
-        }
+    if (debug_ && velocityConstraints > 0)
+    {
+        std::cout
+            << "  Applied velocity constraints to " << velocityConstraints
+            << " cells" << std::endl;
     }
 
     // Update face velocities
@@ -586,7 +530,7 @@ void SIMPLE::correctVelocity()
         if (face.isBoundary())
         {
             UAvgf_[faceIdx] =
-                bcManager_.calculateBoundaryVectorFaceValue("U", U_, face);
+                bcManager_.boundaryVectorFaceValue("U", U_, face);
         }
         else
         {
@@ -614,17 +558,14 @@ void SIMPLE::correctPressure()
     }
 
     // Apply pressure bounds constraints
-    if (constraintSystem_)
-    {
-        auto pressureConstraints =
-            constraintSystem_->applyPressureConstraints();
+    auto pressureConstraints =
+        constraintSystem_->applyPressureConstraints();
 
-        if (debug_ && pressureConstraints > 0)
-        {
-            std::cout
-                << "  Applied pressure constraints to " << pressureConstraints
-                << " cells" << std::endl;
-        }
+    if (debug_ && pressureConstraints > 0)
+    {
+        std::cout
+            << "  Applied pressure constraints to " << pressureConstraints
+            << " cells" << std::endl;
     }
 
     // Reset pressure correction for next iteration
@@ -641,11 +582,14 @@ void SIMPLE::correctFlowRate()
 
         if (face.isBoundary())
         {
-            const BoundaryData* bc =
-                bcManager_.fieldBC(face.patch()->patchName(), "p");
+            const BoundaryData& bc =
+                bcManager_.fieldBC(face.patch()->get().patchName(), "p");
 
-            if (bc && (bc->type() == BCType::FIXED_VALUE
-                    || bc->type() == BCType::ZERO_GRADIENT))
+            if
+            (
+                bc.type() == BCType::FIXED_VALUE
+             || bc.type() == BCType::ZERO_GRADIENT
+            )
             {
                 continue;
             }

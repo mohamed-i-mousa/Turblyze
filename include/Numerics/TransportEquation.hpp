@@ -21,17 +21,12 @@
 
 #include <string>
 #include <optional>
-#include <functional>
 
 #include "CellData.hpp"
 #include "FaceData.hpp"
 #include "ConvectionScheme.hpp"
 #include "GradientScheme.hpp"
-
-
-/// Non-owning optional reference (absent = std::nullopt)
-template<typename T>
-using OptionalRef = std::optional<std::reference_wrapper<const T>>;
+#include "OptionalRef.hpp"
 
 
 struct TransportEquation

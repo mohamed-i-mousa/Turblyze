@@ -408,9 +408,9 @@ void writeWallBoundaryData
         const auto& face = allFaces[faceIdx];
         if (!face.isBoundary()) continue;
 
-        const BoundaryPatch* patch = face.patch();
+        const auto& patch = face.patch();
 
-        if (patch && patch->type() == PatchType::WALL)
+        if (patch.has_value() && patch->get().type() == PatchType::WALL)
         {
             wallFaceIndices.push_back(faceIdx);
         }

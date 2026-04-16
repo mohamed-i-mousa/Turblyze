@@ -284,14 +284,8 @@ void Matrix::assembleBoundaryFace
 {
     const size_t ownerIdx = face.ownerCell();
 
-    const BoundaryData* bc =
-        bcManager_.fieldBC(face.patch()->patchName(), equation.fieldName);
-
-    if (!bc)
-    {
-        // No BC found: skip face (zero-gradient behaviour)
-        return;
-    }
+    const BoundaryData& bc =
+        bcManager_.fieldBC(face.patch()->get().patchName(), equation.fieldName);
 
     Vector Sf = face.normal() * face.projectedArea();
 
@@ -325,20 +319,20 @@ void Matrix::assembleBoundaryFace
     using enum BCType;
     if
     (
-        bc->type() == FIXED_VALUE
-     || bc->type() == NO_SLIP
+        bc.type() == FIXED_VALUE
+     || bc.type() == NO_SLIP
     )
     {
         // Dirichlet BC: phi_b is prescribed
         Scalar phiB = S(0.0);
 
-        if (bc->type() == NO_SLIP)
+        if (bc.type() == NO_SLIP)
         {
             phiB = S(0.0);
         }
         else
         {
-            phiB = extractBoundaryScalar(*bc, equation.componentIdx);
+            phiB = extractBoundaryScalar(bc, equation.componentIdx);
         }
 
         // Diffusion contribution
@@ -373,10 +367,10 @@ void Matrix::assembleBoundaryFace
     }
     else if
     (
-        bc->type() == ZERO_GRADIENT
-     || bc->type() == K_WALL_FUNCTION
-     || bc->type() == NUT_WALL_FUNCTION
-     || bc->type() == OMEGA_WALL_FUNCTION
+        bc.type() == ZERO_GRADIENT
+     || bc.type() == K_WALL_FUNCTION
+     || bc.type() == NUT_WALL_FUNCTION
+     || bc.type() == OMEGA_WALL_FUNCTION
     )
     {
         // Zero normal gradient: only convection
@@ -407,7 +401,7 @@ void Matrix::assembleBoundaryFace
         (
             "Undefined boundary condition type for field "
           + equation.fieldName + " on patch "
-          + face.patch()->patchName()
+          + face.patch()->get().patchName()
           + ". Applying zero gradient."
         );
 

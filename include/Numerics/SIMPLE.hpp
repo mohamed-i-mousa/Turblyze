@@ -33,11 +33,8 @@
 #include "Matrix.hpp"
 #include "LinearSolvers.hpp"
 #include "ErrorHandler.hpp"
-
-
-// Forward declarations
-class kOmegaSST;
-class Constraint;
+#include "kOmegaSST.hpp"
+#include "Constraint.hpp"
 
 
 class SIMPLE
@@ -88,21 +85,13 @@ public:
      * @brief Get velocity field
      * @return Const reference to velocity vector field
      */
-    [[nodiscard("Flow field result needed for post-processing or convergence check")]]
-    const VectorField& velocity() const noexcept
-    {
-        return U_;
-    }
+    const VectorField& velocity() const noexcept { return U_; }
 
     /**
      * @brief Get pressure field
      * @return Const reference to pressure scalar field
      */
-    [[nodiscard("Flow field result needed for post-processing or convergence check")]]
-    const ScalarField& pressure() const noexcept
-    {
-        return p_;
-    }
+    const ScalarField& pressure() const noexcept { return p_; }
 
 // Setter methods
 
@@ -131,19 +120,13 @@ public:
      * @brief Set convergence tolerance
      * @param tol Convergence tolerance for residuals
      */
-    void setConvergenceTolerance(Scalar tol) noexcept
-    {
-        tolerance_ = tol;
-    }
+    void setConvergenceTolerance(Scalar tol) noexcept { tolerance_ = tol; }
 
     /**
      * @brief Set maximum number of iterations
      * @param maxIter Maximum number of SIMPLE iterations
      */
-    void setMaxIterations(int maxIter) noexcept
-    {
-        maxIterations_ = maxIter;
-    }
+    void setMaxIterations(int maxIter) noexcept { maxIterations_ = maxIter; }
 
     /**
      * @brief Enable or disable verbose console output
@@ -199,57 +182,65 @@ public:
 // Getter methods
 
     /**
-     * @brief Get constraint system pointer
-     * @return Pointer to constraint system, or nullptr if none
+     * @brief Get constraint system
+     * @return Reference to constraint system
      */
     [[nodiscard("Constraint system needed for applying fixed-value cells")]]
-    Constraint* constraintSystem() noexcept
-    {
-        return constraintSystem_.get();
-    }
+    Constraint& constraintSystem() noexcept { return *constraintSystem_; }
 
     /**
      * @brief Get turbulent kinetic energy field
-     * @return Pointer to k field, or nullptr if turbulence disabled
+     * @return Reference to k field
      */
-    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
-    const ScalarField* turbulentKineticEnergy() const noexcept;
+    const ScalarField& turbulentKineticEnergy() const noexcept
+    {
+        return turbulenceModel_->k();
+    }
 
     /**
      * @brief Get specific dissipation rate field
-     * @return Pointer to omega field, or nullptr if turbulence disabled
+     * @return Reference to omega field
      */
-    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
-    const ScalarField* specificDissipationRate() const noexcept;
+    const ScalarField& specificDissipationRate() const noexcept
+    {
+        return turbulenceModel_->omega();
+    }
 
     /**
      * @brief Get turbulent viscosity field
-     * @return Pointer to nut field, or nullptr if turbulence disabled
+     * @return Reference to nut field
      */
-    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
-    const ScalarField* turbulentViscosity() const noexcept;
+    const ScalarField& turbulentViscosity() const noexcept
+    {
+        return turbulenceModel_->turbulentViscosity();
+    }
 
     /**
      * @brief Get wall distance field
-     * @return Pointer to wall distance field, nullptr if turbulence disabled
+     * @return Reference to wall distance field
      */
-    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
-    const ScalarField* wallDistance() const noexcept;
+    const ScalarField& wallDistance() const noexcept
+    {
+        return turbulenceModel_->wallDistance();
+    }
 
     /**
      * @brief Get y+ field
-     * @return Pointer to y+ field, nullptr if turbulence disabled
+     * @return Reference to y+ field
      */
-    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
-    const FaceData<Scalar>* yPlus() const noexcept;
+    const FaceData<Scalar>& yPlus() const noexcept
+    {
+        return turbulenceModel_->yPlus();
+    }
 
     /**
      * @brief Get wall shear stress field
-     * @return Pointer to wall shear stress field, nullptr if turbulence
-     *         disabled
+     * @return Reference to wall shear stress field
      */
-    [[nodiscard("Turbulence field needed for output or boundary treatment")]]
-    const FaceData<Scalar>* wallShearStress() const noexcept;
+    const FaceData<Scalar>& wallShearStress() const noexcept
+    {
+        return turbulenceModel_->wallShearStress();
+    }
 
 private:
 

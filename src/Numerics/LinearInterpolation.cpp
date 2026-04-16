@@ -72,9 +72,11 @@ Vector interpolateToFace
 {
     if (face.isBoundary())
     {
-        return bcManager.calculateBoundaryVectorFaceValue
+        return bcManager.boundaryVectorFaceValue
         (
-            fieldName, field, face
+            fieldName,
+            field,
+            face
         );
     }
 
