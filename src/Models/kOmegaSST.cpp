@@ -23,10 +23,10 @@ kOmegaSST::kOmegaSST
 )
 :
     mesh_(mesh),
-      bcManager_(bc),
-      gradientScheme_(gradientScheme),
-      kConvectionScheme_(kScheme),
-      omegaConvectionScheme_(omegaScheme)
+    bcManager_(bc),
+    gradientScheme_(gradientScheme),
+    kConvectionScheme_(kScheme),
+    omegaConvectionScheme_(omegaScheme)
 {
     matrixConstruct_ = std::make_unique<Matrix>(mesh_, bcManager_);
 
@@ -64,11 +64,11 @@ void kOmegaSST::initialize
             << std::endl;
     }
 
-    calcYPlusLam();
+    yPlusLam();
 
-    calculateWallDistance();
+    updateWallDistance();
 
-    buildWallFunctionWeights();
+    wallFunctionWeights();
 
     k_.setAll(initialK);
     omega_.setAll(initialOmega);
@@ -102,78 +102,59 @@ void kOmegaSST::solve
     std::span<const VectorField> gradU
 )
 {
-    // 1. Bound k and omega
     boundTurbulenceFields();
 
-    // 2. Wall treatment: set omega at wall faces and cells first
     updateOmegaWallFunctionBoundaryValues();
     applyOmegaWallCellValues();
 
-    // 3. Strain rate from velocity gradients
-    calculateStrainRate(gradU);
+    const ScalarField strainRateField = strainRate(gradU);
+    const VectorField gK = gradientK();
+    const VectorField gO = gradientOmega();
+    const ScalarField CDkOmega = crossDiffusion(gK, gO);
 
-    // 4. Gradients, cross-diffusion, and blending functions
-    calculateGradients(true, true);
-    calculateCrossDiffusion();
-    calculateBlendingFunctions();
-    F3();
-    F23();
+    const ScalarField f1 = F1(CDkOmega);
+    const ScalarField f2 = F2();
+    const ScalarField f3 = F3();
+    const ScalarField f23 = F23(f2, f3);
 
-    // 5. Production terms (use fresh F1/F2 and wall-updated omega)
-    calculateProductionTerms();
-    overrideWallCellProduction(U);
+    ProductionTerms P = productionTerms(f1, f23, strainRateField);
+    overrideWallCellProduction(U, P.k);
 
-    // 6. Compute divU once for both equation solvers
-    computeDivU(flowRateFace);
+    const ScalarField divUField = divU(flowRateFace);
 
-    // 7. Solve omega, then bound with viscosity-ratio limit
-    solveOmegaEquation(flowRateFace);
+    solveOmegaEquation(flowRateFace, f1, P.omega, CDkOmega, divUField, gO);
     boundOmega();
 
-    // 8. Solve k, then bound both k and omega
-    solveKEquation(flowRateFace);
+    solveKEquation(flowRateFace, f1, P.k, divUField, gK);
     boundK();
     boundOmega();
 
-    // 9. Update turbulent viscosity and wall shear stress
-    calculateTurbulentViscosity();
+    updateTurbulentViscosity(f23, strainRateField);
     updateNutWallFace();
-    calculateWallShearStress(U);
-    calculateYPlus();
+    updateWallShearStress(U);
+    updateYPlus();
 
-    // Log turbulence field evolution diagnostics
     logFieldDiagnostics();
 }
 
-ScalarField kOmegaSST::effectiveViscosity() const
+
+// ****************************** Private Methods *****************************
+
+void kOmegaSST::yPlusLam()
 {
-    size_t numCells = allCells_.size();
-    ScalarField nuEff("nuEff", numCells);
-
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-    {
-        nuEff[cellIdx] = nu_ + nut_[cellIdx];
-    }
-
-    return nuEff;
-}
-
-
-// ****************************** Private Methods ******************************
-
-void kOmegaSST::calcYPlusLam()
-{
-    yPlusLam_ = S(11.0);
+    Scalar yPlusLam = S(11.0);
 
     for (int i = 0; i < 10; ++i)
     {
-        yPlusLam_ =
-            std::log(std::max(const_.E * yPlusLam_, S(1.0)))
-          / const_.kappa;
+        yPlusLam =
+            std::log(std::max(coeffs_.E * yPlusLam, S(1.0)))
+          / coeffs_.kappa;
     }
+
+    yPlusLam_ = yPlusLam;
 }
 
-void kOmegaSST::calculateWallDistance()
+void kOmegaSST::updateWallDistance()
 {
     if (debug_)
     {
@@ -182,31 +163,37 @@ void kOmegaSST::calculateWallDistance()
             << std::endl;
     }
 
-    // Initialize with large value
+    // Initialize: large sentinel distance, zero wall point
     wallDistance_.setAll(S(1e10));
+    nearestWallPoint_.setAll(Vector{});
 
-    // Wall-adjacent cells
-    for (const auto& face : allFaces_)
+    // Seed wall-adjacent cells with the perpendicular distance to each
+    // wall face centroid
+    for (const auto& face : mesh_.faces())
     {
         if (!face.isBoundary()) continue;
 
-        const BoundaryPatch* patch = face.patch();
+        const BoundaryPatch& patch = face.patch()->get();
 
-        if (patch->type() != PatchType::WALL) continue;
+        if (patch.type() != PatchType::WALL) continue;
 
         size_t cellIdx = face.ownerCell();
-        Vector cellCenter = allCells_[cellIdx].centroid();
+        Vector cellCenter = mesh_.cells()[cellIdx].centroid();
         Vector faceCenter = face.centroid();
         Vector normal = face.normal();
 
         Vector cellToFace = faceCenter - cellCenter;
         Scalar dist = std::abs(dot(cellToFace, normal));
 
-        // Keep minimum distance if cell touches multiple walls
-        wallDistance_[cellIdx] = std::min(wallDistance_[cellIdx], dist);
+        if (dist < wallDistance_[cellIdx])
+        {
+            wallDistance_[cellIdx] = dist;
+            nearestWallPoint_[cellIdx] = faceCenter;
+        }
     }
 
-    // Iterative propagation through internal faces
+    // Iterative propagation: carry wall-point coordinates through
+    // internal faces so each cell computes its own Euclidean distance
     const size_t maxIterations = 100;
     const Scalar tolerance = S(1e-12);
 
@@ -221,26 +208,37 @@ void kOmegaSST::calculateWallDistance()
             size_t owner = face.ownerCell();
             size_t neighbor = face.neighborCell().value();
 
-            Vector ownerCenter = allCells_[owner].centroid();
-            Vector neighborCenter = allCells_[neighbor].centroid();
-            Scalar cellDist = (ownerCenter - neighborCenter).magnitude();
+            Vector ownerCenter = mesh_.cells()[owner].centroid();
+            Vector neighborCenter = mesh_.cells()[neighbor].centroid();
 
-            // Update owner from neighbor
-            Scalar newDistOwner = wallDistance_[neighbor] + cellDist;
-            if (newDistOwner < wallDistance_[owner])
+            // Try to improve owner using neighbor's nearest wall point
             {
-                Scalar change = wallDistance_[owner] - newDistOwner;
-                maxChange = std::max(maxChange, change);
-                wallDistance_[owner] = newDistOwner;
+                Vector candidatePoint = nearestWallPoint_[neighbor];
+                Scalar newDist =
+                    (ownerCenter - candidatePoint).magnitude();
+
+                if (newDist < wallDistance_[owner])
+                {
+                    Scalar change = wallDistance_[owner] - newDist;
+                    maxChange = std::max(maxChange, change);
+                    wallDistance_[owner]     = newDist;
+                    nearestWallPoint_[owner] = candidatePoint;
+                }
             }
 
-            // Update neighbor from owner
-            Scalar newDistNeighbor = wallDistance_[owner] + cellDist;
-            if (newDistNeighbor < wallDistance_[neighbor])
+            // Try to improve neighbor using owner's nearest wall point
             {
-                Scalar change = wallDistance_[neighbor] - newDistNeighbor;
-                maxChange = std::max(maxChange, change);
-                wallDistance_[neighbor] = newDistNeighbor;
+                Vector candidatePoint = nearestWallPoint_[owner];
+                Scalar newDist =
+                    (neighborCenter - candidatePoint).magnitude();
+
+                if (newDist < wallDistance_[neighbor])
+                {
+                    Scalar change = wallDistance_[neighbor] - newDist;
+                    maxChange = std::max(maxChange, change);
+                    wallDistance_[neighbor] = newDist;
+                    nearestWallPoint_[neighbor] = candidatePoint;
+                }
             }
         }
 
@@ -264,7 +262,7 @@ void kOmegaSST::calculateWallDistance()
     }
 }
 
-void kOmegaSST::buildWallFunctionWeights()
+void kOmegaSST::wallFunctionWeights()
 {
     const size_t numCells = mesh_.numCells();
 
@@ -280,13 +278,13 @@ void kOmegaSST::buildWallFunctionWeights()
         const auto& face = mesh_.faces()[faceIdx];
         if (!face.isBoundary()) continue;
 
-        const BoundaryPatch* patch = face.patch();
-        if (patch->type() != PatchType::WALL) continue;
+        const BoundaryPatch& patch = face.patch()->get();
+        if (patch.type() != PatchType::WALL) continue;
 
-        const BoundaryData* bc =
-            bcManager_.fieldBC(patch->patchName(), "omega");
+        const BoundaryData& bc =
+            bcManager_.fieldBC(patch.patchName(), "omega");
 
-        if (!bc || bc->type() != BCType::OMEGA_WALL_FUNCTION) continue;
+        if (bc.type() != BCType::OMEGA_WALL_FUNCTION) continue;
 
         wallFunctionFaceIndices_.push_back(faceIdx);
 
@@ -328,9 +326,9 @@ void kOmegaSST::buildWallFunctionWeights()
             const auto& face = mesh_.faces()[faceIdx];
             if (!face.isBoundary()) continue;
 
-            const BoundaryPatch* patch = face.patch();
-            if (patch
-                && patch->type() == PatchType::WALL)
+            const auto& patch = face.patch();
+            if (patch.has_value()
+                && patch->get().type() == PatchType::WALL)
             {
                 totalPolyWallArea[cellIdx] += face.projectedArea();
             }
@@ -365,7 +363,12 @@ void kOmegaSST::buildWallFunctionWeights()
 
 void kOmegaSST::solveOmegaEquation
 (
-    const FaceFluxField& flowRateFace
+    const FaceFluxField& flowRateFace,
+    const ScalarField& f1,
+    const ScalarField& productionOmega,
+    const ScalarField& CDkOmega,
+    const ScalarField& divUField,
+    const VectorField& gradOmega
 )
 {
     if (debug_)
@@ -381,7 +384,7 @@ void kOmegaSST::solveOmegaEquation
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         Scalar sigmaOmega =
-            blend(F1_[cellIdx], const_.sigmaOmega1, const_.sigmaOmega2);
+            blend(f1[cellIdx], coeffs_.sigmaOmega1, coeffs_.sigmaOmega2);
 
         GammaOmega[cellIdx] = nu_ + sigmaOmega * nut_[cellIdx];
     }
@@ -398,7 +401,7 @@ void kOmegaSST::solveOmegaEquation
         .Gamma      = std::cref(GammaOmega),
         .GammaFace  = std::nullopt,
         .source     = omegaSource,
-        .gradPhi    = gradOmega_,
+        .gradPhi    = gradOmega,
         .gradScheme = gradientScheme_
     };
 
@@ -413,23 +416,30 @@ void kOmegaSST::solveOmegaEquation
         Scalar cellVolume = mesh_.cells()[cellIdx].volume();
 
         // Production term: Pk * gamma / nut
-        Scalar POmega = productionOmega_[cellIdx];
-        vectorB(static_cast<Eigen::Index>(cellIdx)) += POmega * cellVolume;
+        vectorB(static_cast<Eigen::Index>(cellIdx)) +=
+            productionOmega[cellIdx] * cellVolume;
 
         // Destruction term: -β·ω² (implicit: β·ω on diagonal)
-        const Scalar beta = blend(F1_[cellIdx], const_.beta1, const_.beta2);
-        matrixA.coeffRef(static_cast<Eigen::Index>(cellIdx), static_cast<Eigen::Index>(cellIdx)) +=
-            beta * omega_[cellIdx] * cellVolume;
+        const Scalar beta =
+            blend(f1[cellIdx], coeffs_.beta1, coeffs_.beta2);
+        matrixA.coeffRef
+        (
+            static_cast<Eigen::Index>(cellIdx),
+            static_cast<Eigen::Index>(cellIdx)
+        ) += beta * omega_[cellIdx] * cellVolume;
 
         // Cross-diffusion: linearization of (1-F1)*CDkOmega
         Scalar CDkOmegaLineared =
-            (S(1.0) - F1_[cellIdx]) * CDkOmega_[cellIdx]
+            (S(1.0) - f1[cellIdx]) * CDkOmega[cellIdx]
           / (omega_[cellIdx] + vSmallValue);
 
         if (CDkOmegaLineared < S(0.0))
         {
-            matrixA.coeffRef(static_cast<Eigen::Index>(cellIdx), static_cast<Eigen::Index>(cellIdx)) +=
-                -CDkOmegaLineared * cellVolume;
+            matrixA.coeffRef
+            (
+                static_cast<Eigen::Index>(cellIdx),
+                static_cast<Eigen::Index>(cellIdx)
+            ) += -CDkOmegaLineared * cellVolume;
         }
         else
         {
@@ -438,12 +448,15 @@ void kOmegaSST::solveOmegaEquation
         }
 
         // -(2/3)*gamma*divU SuSp term (continuity correction)
-        Scalar gamma = blend(F1_[cellIdx], const_.gamma1, const_.gamma2);
+        Scalar gamma = blend(f1[cellIdx], coeffs_.gamma1, coeffs_.gamma2);
         Scalar suspOmega =
-            (S(2.0) / S(3.0)) * gamma * divU_[cellIdx];
+            (S(2.0) / S(3.0)) * gamma * divUField[cellIdx];
 
-        matrixA.coeffRef(static_cast<Eigen::Index>(cellIdx), static_cast<Eigen::Index>(cellIdx)) +=
-            std::max(suspOmega, S(0.0)) * cellVolume;
+        matrixA.coeffRef
+        (
+            static_cast<Eigen::Index>(cellIdx),
+            static_cast<Eigen::Index>(cellIdx)
+        ) += std::max(suspOmega, S(0.0)) * cellVolume;
 
         vectorB(static_cast<Eigen::Index>(cellIdx)) +=
             std::max(-suspOmega, S(0.0)) * omega_[cellIdx] * cellVolume;
@@ -495,17 +508,17 @@ void kOmegaSST::updateOmegaWallFunctionBoundaryValues()
             );
 
         // Viscous sublayer
-        Scalar omegaVis = S(6.0) * nu_ / (const_.beta1 * y * y);
+        Scalar omegaVis = S(6.0) * nu_ / (coeffs_.beta1 * y * y);
 
         // Log-region
         Scalar sqrtK =
             std::sqrt(std::max(k_[cellIdx], S(0.0)));
 
-        Scalar omegaLog = sqrtK / (Cmu25_ * const_.kappa * y + vSmallValue);
+        Scalar omegaLog = sqrtK / (Cmu25_ * coeffs_.kappa * y + vSmallValue);
 
-        Scalar yPlus = Cmu25_ * y * sqrtK / nu_;
+        Scalar yPlusFace = Cmu25_ * y * sqrtK / nu_;
 
-        Scalar omegaWallValue = (yPlus < yPlusLam_) ? omegaVis : omegaLog;
+        Scalar omegaWallValue = (yPlusFace < yPlusLam_) ? omegaVis : omegaLog;
 
         omegaWallFunctionFaceValues_[face.idx()] =
             std::max(omegaWallValue, omegaMin_);
@@ -547,7 +560,11 @@ void kOmegaSST::applyOmegaWallCellValues()
 
 void kOmegaSST::solveKEquation
 (
-    const FaceFluxField& flowRateFace
+    const FaceFluxField& flowRateFace,
+    const ScalarField& f1,
+    const ScalarField& productionK,
+    const ScalarField& divUField,
+    const VectorField& gradK
 )
 {
     if (debug_)
@@ -565,7 +582,7 @@ void kOmegaSST::solveKEquation
 
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Scalar sigmaK = blend(F1_[cellIdx], const_.sigmaK1, const_.sigmaK2);
+        Scalar sigmaK = blend(f1[cellIdx], coeffs_.sigmaK1, coeffs_.sigmaK2);
 
         GammaK[cellIdx] = nu_ + sigmaK * nut_[cellIdx];
     }
@@ -580,15 +597,15 @@ void kOmegaSST::solveKEquation
         .convScheme = std::cref(kConvectionScheme_),
         .Gamma      = std::cref(GammaK),
         .GammaFace  = std::nullopt,
-        .source     = k_source,
-        .gradPhi    = gradK_,
+        .source     = kSource,
+        .gradPhi    = gradK,
         .gradScheme = gradientScheme_
     };
 
     matrixConstruct_->buildMatrix(equationK);
 
-    auto& A_matrix = matrixConstruct_->matrixA();
-    auto& b_vector = matrixConstruct_->vectorB();
+    auto& matrixA = matrixConstruct_->matrixA();
+    auto& vectorB = matrixConstruct_->vectorB();
 
     // Add k source terms
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -599,22 +616,29 @@ void kOmegaSST::solveKEquation
         Scalar Pk =
             std::min
             (
-                productionK_[cellIdx],
-                const_.c1 * const_.betaStar * k_[cellIdx] * omega_[cellIdx]
+                productionK[cellIdx],
+                coeffs_.c1 * coeffs_.betaStar * k_[cellIdx] * omega_[cellIdx]
             );
 
-        b_vector(static_cast<Eigen::Index>(cellIdx)) += Pk * cellVolume;
+        vectorB(static_cast<Eigen::Index>(cellIdx)) += Pk * cellVolume;
 
         // Destruction term: -β*·kω
-        const Scalar destruction = const_.betaStar * omega_[cellIdx];
-        A_matrix.coeffRef(static_cast<Eigen::Index>(cellIdx), static_cast<Eigen::Index>(cellIdx)) += destruction * cellVolume;
+        const Scalar destruction = coeffs_.betaStar * omega_[cellIdx];
+        matrixA.coeffRef
+        (
+            static_cast<Eigen::Index>(cellIdx),
+            static_cast<Eigen::Index>(cellIdx)
+        ) += destruction * cellVolume;
 
         // -(2/3)*divU SuSp term (continuity correction)
-        Scalar suspK = (S(2.0) / S(3.0)) * divU_[cellIdx];
-        A_matrix.coeffRef(static_cast<Eigen::Index>(cellIdx), static_cast<Eigen::Index>(cellIdx)) +=
-            std::max(suspK, S(0.0)) * cellVolume;
+        Scalar suspK = (S(2.0) / S(3.0)) * divUField[cellIdx];
+        matrixA.coeffRef
+        (
+            static_cast<Eigen::Index>(cellIdx),
+            static_cast<Eigen::Index>(cellIdx)
+        ) += std::max(suspK, S(0.0)) * cellVolume;
 
-        b_vector(static_cast<Eigen::Index>(cellIdx)) +=
+        vectorB(static_cast<Eigen::Index>(cellIdx)) +=
             std::max(-suspK, S(0.0)) * k_[cellIdx] * cellVolume;
     }
 
@@ -622,14 +646,9 @@ void kOmegaSST::solveKEquation
     matrixConstruct_->relax(alphaK_, k_);
 
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
-    k_solution(k_.data(), static_cast<Eigen::Index>(numCells));
+    kSolution(k_.data(), static_cast<Eigen::Index>(numCells));
 
-    kSolver_.solveWithBiCGSTAB
-    (
-        k_solution,
-        A_matrix,
-        b_vector
-    );
+    kSolver_.solveWithBiCGSTAB(kSolution, matrixA, vectorB);
 }
 
 void kOmegaSST::updateNutWallFace()
@@ -646,22 +665,22 @@ void kOmegaSST::updateNutWallFace()
             std::max
             (
                 std::abs(dot(face.dPf(), face.normal())),
-                vSmallValue
+                minWallDist_
             );
 
         Scalar sqrtK =
             std::sqrt(std::max(k_[cellIdx], S(0.0)));
 
-        Scalar yPlus = Cmu25_ * sqrtK * y / nu_;
+        Scalar yPlusFace = Cmu25_ * sqrtK * y / nu_;
 
-        if (yPlus > yPlusLam_)
+        if (yPlusFace > yPlusLam_)
         {
             // Log layer: nutw = nu * (yPlus*kappa/ln(E*yPlus) - 1)
             Scalar nutw =
                 nu_
               * (
-                    yPlus * const_.kappa
-                  / std::log(std::max(const_.E * yPlus, S(1.0)))
+                    yPlusFace * coeffs_.kappa
+                  / std::log(std::max(coeffs_.E * yPlusFace, S(1.0)))
                   - S(1.0)
                 );
 
@@ -671,7 +690,11 @@ void kOmegaSST::updateNutWallFace()
     }
 }
 
-void kOmegaSST::calculateTurbulentViscosity()
+void kOmegaSST::updateTurbulentViscosity
+(
+    const ScalarField& f23,
+    const ScalarField& strainRateField
+)
 {
     // SST turbulent viscosity:
     // nut = a1*k / max(a1*omega, b1*F23*sqrt(S2))
@@ -686,23 +709,23 @@ void kOmegaSST::calculateTurbulentViscosity()
 
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Scalar strainMag = strainRate_[cellIdx];
+        Scalar strainMag = strainRateField[cellIdx];
 
         Scalar denominator =
             std::max
             (
-                const_.a1 * omega_[cellIdx],
-                const_.b1 * F23_[cellIdx] * strainMag
+                coeffs_.a1 * omega_[cellIdx],
+                f23[cellIdx] * strainMag
             );
 
         nut_[cellIdx] =
-            const_.a1 * k_[cellIdx] / (denominator + vSmallValue);
+            coeffs_.a1 * k_[cellIdx] / (denominator + vSmallValue);
 
         nut_[cellIdx] = std::max(nut_[cellIdx], S(0.0));
     }
 }
 
-void kOmegaSST::calculateWallShearStress
+void kOmegaSST::updateWallShearStress
 (
     const VectorField& U
 )
@@ -716,8 +739,7 @@ void kOmegaSST::calculateWallShearStress
     // Non-wall faces have zero shear stress
     wallShearStress_.setAll(S(0.0));
 
-    constexpr Scalar minWallDistance = S(1e-20);
-    constexpr Scalar maxWallShearStress = S(1000.0);
+    constexpr Scalar maxKinematicShearStress = S(1000.0);
 
     for (size_t faceIdx : wallFunctionFaceIndices_)
     {
@@ -728,7 +750,7 @@ void kOmegaSST::calculateWallShearStress
             std::max
             (
                 std::abs(dot(face.dPf(), face.normal())),
-                minWallDistance
+                minWallDist_
             );
 
         // Project velocity onto wall plane (tangential component)
@@ -741,48 +763,48 @@ void kOmegaSST::calculateWallShearStress
         // Compute y+ to determine layer treatment
         Scalar sqrtK =
             std::sqrt(std::max(k_[cellIdx], S(0.0)));
-        Scalar yPlus = Cmu25_ * sqrtK * y / nu_;
+        Scalar yPlusFace = Cmu25_ * sqrtK * y / nu_;
 
         Scalar tau;
-        if (yPlus < yPlusLam_)
+        if (yPlusFace < yPlusLam_)
         {
-            // Viscous sublayer: tau = rho * nu * U_tan / y
-            tau = rho_ * nu_ * U_tan_mag / (y + vSmallValue);
+            // Viscous sublayer: tau/rho = nu * U_tan / y
+            tau = nu_ * U_tan_mag / (y + minWallDist_);
         }
         else
         {
-            // Log layer: tau = rho * uTau^2 = rho * Cmu^0.5 * k
-            tau = rho_ * Cmu25_ * Cmu25_ * k_[cellIdx];
+            // Log layer: tau/rho = uTau^2 = Cmu^0.5 * k
+            tau = Cmu25_ * Cmu25_ * k_[cellIdx];
         }
 
         wallShearStress_[face.idx()] =
-            std::min(tau, maxWallShearStress);
+            std::min(tau, maxKinematicShearStress);
     }
 }
 
-void kOmegaSST::calculateBlendingFunctions()
+ScalarField kOmegaSST::F1(const ScalarField& CDkOmega) const
 {
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
+    ScalarField f1;
+
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Scalar y = wallDistance_[cellIdx];
+        Scalar y = std::max(wallDistance_[cellIdx], vSmallValue);
         Scalar sqrtK = std::sqrt(k_[cellIdx]);
 
-        // Avoid division by zero
-        y = std::max(y, vSmallValue);
-        omega_[cellIdx] = std::max(omega_[cellIdx], omegaMin_);
+        // Read-only safe omega for division
+        Scalar omegaSafe = std::max(omega_[cellIdx], omegaMin_);
 
-        // Arguments for blending functions
         Scalar arg11 =
-            sqrtK / (const_.betaStar * omega_[cellIdx] * y);
+            sqrtK / (coeffs_.betaStar * omegaSafe * y);
         Scalar arg12 =
-            S(500.0) * nu_ / (omega_[cellIdx] * y * y);
+            S(500.0) * nu_ / (omegaSafe * y * y);
 
         // Cross-diffusion for blending function (clipped to positive)
-        Scalar CDkw = std::max(CDkOmega_[cellIdx], S(1e-10));
+        Scalar CDkw = std::max(CDkOmega[cellIdx], S(1e-10));
 
         Scalar arg13 =
-            S(4.0) * const_.sigmaOmega2 * k_[cellIdx]
+            S(4.0) * coeffs_.sigmaOmega2 * k_[cellIdx]
           / (CDkw * y * y);
 
         Scalar arg1 =
@@ -793,65 +815,95 @@ void kOmegaSST::calculateBlendingFunctions()
             );
 
         Scalar arg1Sq = arg1 * arg1;
-        F1_[cellIdx] = std::tanh(arg1Sq * arg1Sq);
+        f1[cellIdx] = std::tanh(arg1Sq * arg1Sq);
+    }
 
-        Scalar arg2 = std::min
+    return f1;
+}
+
+ScalarField kOmegaSST::F2() const
+{
+    const size_t numCells = mesh_.numCells();
+    ScalarField f2;
+
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    {
+        Scalar y = std::max(wallDistance_[cellIdx], vSmallValue);
+        Scalar sqrtK = std::sqrt(k_[cellIdx]);
+        Scalar omegaSafe = std::max(omega_[cellIdx], omegaMin_);
+
+        Scalar arg12 = S(500.0) * nu_ / (omegaSafe * y * y);
+
+        Scalar arg2 =
+            std::min
             (
                 std::max
                 (
                     S(2.0) * sqrtK
-                  / (const_.betaStar * omega_[cellIdx] * y),
+                  / (coeffs_.betaStar * omegaSafe * y),
                     arg12
                 ),
                 S(100.0)
             );
 
-        F2_[cellIdx] = std::tanh(arg2 * arg2);
+        f2[cellIdx] = std::tanh(arg2 * arg2);
     }
+
+    return f2;
 }
 
-void kOmegaSST::calculateProductionTerms()
+kOmegaSST::ProductionTerms kOmegaSST::productionTerms
+(
+    const ScalarField& f1,
+    const ScalarField& f23,
+    const ScalarField& strainRateField
+) const
 {
     size_t numCells = mesh_.numCells();
 
+    ProductionTerms P;
+
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Scalar strainMag = strainRate_[cellIdx];
+        Scalar strainMag = strainRateField[cellIdx];
         Scalar strainSq = strainMag * strainMag;
 
         // SST Pk by nut limiter
         Scalar PkbyNutLimit =
-            (const_.c1 / const_.a1) * const_.betaStar * omega_[cellIdx]
+            (coeffs_.c1 / coeffs_.a1) * coeffs_.betaStar * omega_[cellIdx]
           * std::max
             (
-                const_.a1 * omega_[cellIdx],
-                const_.b1 * F23_[cellIdx] * strainMag
+                coeffs_.a1 * omega_[cellIdx],
+                f23[cellIdx] * strainMag
             );
 
         Scalar PkByNut = std::min(strainSq, PkbyNutLimit);
 
         // k production = nut * S² (unlimited)
-        productionK_[cellIdx] = nut_[cellIdx] * strainSq;
+        P.k[cellIdx] = nut_[cellIdx] * strainSq;
 
         // omega production = gamma * GbyNu
         Scalar gamma =
-            blend(F1_[cellIdx], const_.gamma1, const_.gamma2);
+            blend(f1[cellIdx], coeffs_.gamma1, coeffs_.gamma2);
 
-        productionOmega_[cellIdx] = gamma * PkByNut;
+        P.omega[cellIdx] = gamma * PkByNut;
     }
+
+    return P;
 }
 
 void kOmegaSST::overrideWallCellProduction
 (
-    const VectorField& U
+    const VectorField& U,
+    ScalarField& productionK
 )
 {
-    const size_t numCells = allCells_.size();
+    const size_t numCells = mesh_.numCells();
 
-    std::vector<Scalar> GwallAccum(numCells, S(0.0));
+    ScalarField wallProductionAccum;
+    wallProductionAccum.setAll(S(0.0));
+
     std::vector<char> hasWallOverride(numCells, 0);
-
-    constexpr Scalar minWallDistance = S(1e-20);
 
     for (size_t faceIdx : wallFunctionFaceIndices_)
     {
@@ -868,16 +920,16 @@ void kOmegaSST::overrideWallCellProduction
             std::max
             (
                 std::abs(dot(face.dPf(), face.normal())),
-                minWallDistance
+                minWallDist_
             );
 
         Scalar sqrtK =
             std::sqrt(std::max(k_[cellIdx], S(0.0)));
 
-        Scalar yPlus = Cmu25_ * y * sqrtK / nu_;
+        Scalar yPlusFace = Cmu25_ * y * sqrtK / nu_;
 
         // Viscous sublayer: keep interior G unchanged
-        if (yPlus < yPlusLam_)
+        if (yPlusFace < yPlusLam_)
         {
             continue;
         }
@@ -887,17 +939,17 @@ void kOmegaSST::overrideWallCellProduction
 
         Scalar uStar = Cmu25_ * sqrtK;
         Scalar uPlus =
-            std::log(std::max(const_.E * yPlus, S(1.0)))
-          / const_.kappa;
+            std::log(std::max(coeffs_.E * yPlusFace, S(1.0)))
+          / coeffs_.kappa;
 
         Scalar GwallArg =
             uStar * magGradUw * y / (uPlus + vSmallValue);
 
         Scalar Gwall =
             GwallArg * GwallArg
-          / (nu_ * const_.kappa * yPlus + vSmallValue);
+          / (nu_ * coeffs_.kappa * yPlusFace + vSmallValue);
 
-        GwallAccum[cellIdx] += faceWeight * Gwall;
+        wallProductionAccum[cellIdx] += faceWeight * Gwall;
         hasWallOverride[cellIdx] = 1;
     }
 
@@ -909,17 +961,18 @@ void kOmegaSST::overrideWallCellProduction
         // Blend wall production with interior production using
         // wallCellFraction (wall area / total boundary area)
         Scalar f = wallCellFraction_[i];
-        productionK_[cellIdx] =
-            std::lerp(productionK_[cellIdx], GwallAccum[cellIdx], f);
+        productionK[cellIdx] =
+            std::lerp(productionK[cellIdx], wallProductionAccum[cellIdx], f);
     }
 }
 
-void kOmegaSST::calculateStrainRate
+ScalarField kOmegaSST::strainRate
 (
     std::span<const VectorField> gradU
-)
+) const
 {
     size_t numCells = mesh_.numCells();
+    ScalarField out;
 
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
@@ -931,71 +984,75 @@ void kOmegaSST::calculateStrainRate
         Scalar S13 = S(0.5) * (gradU[0][cellIdx].z() + gradU[2][cellIdx].x());
         Scalar S23 = S(0.5) * (gradU[1][cellIdx].z() + gradU[2][cellIdx].y());
 
-        strainRate_[cellIdx] = std::sqrt
+        out[cellIdx] = std::sqrt
             (
                 S(2.0) * (S11*S11 + S22*S22 + S33*S33
               + S(2.0) * (S12*S12 + S13*S13 + S23*S23))
             );
     }
+
+    return out;
 }
 
-void kOmegaSST::calculateGradients
+VectorField kOmegaSST::gradientK() const
+{
+    size_t numCells = mesh_.numCells();
+    VectorField gK;
+
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    {
+        gK[cellIdx] = gradientScheme_.cellGradient("k", k_, cellIdx);
+    }
+
+    gradientScheme_.limitGradient("k", k_, gK);
+
+    return gK;
+}
+
+VectorField kOmegaSST::gradientOmega() const
+{
+    size_t numCells = mesh_.numCells();
+    VectorField gO;
+
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    {
+        gO[cellIdx] =
+            gradientScheme_.cellGradient("omega", omega_, cellIdx);
+    }
+
+    gradientScheme_.limitGradient("omega", omega_, gO);
+
+    return gO;
+}
+
+ScalarField kOmegaSST::crossDiffusion
 (
-    bool computeGradK,
-    bool computeGradOmega
-)
+    const VectorField& gK,
+    const VectorField& gO
+) const
 {
     size_t numCells = mesh_.numCells();
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-    {
-        if (computeGradK)
-        {
-            gradK_[cellIdx] = gradientScheme_.cellGradient("k",k_,cellIdx);
-        }
-
-        if (computeGradOmega)
-        {
-            gradOmega_[cellIdx] =
-                gradientScheme_.cellGradient
-                (
-                    "omega",
-                    omega_,
-                    cellIdx
-                );
-        }
-    }
-
-    // Apply Barth-Jespersen cell-based gradient limiting
-    if (computeGradK)
-    {
-        gradientScheme_.limitGradient("k", k_, gradK_);
-    }
-    if (computeGradOmega)
-    {
-        gradientScheme_.limitGradient("omega", omega_, gradOmega_);
-    }
-}
-
-void kOmegaSST::calculateCrossDiffusion()
-{
-    size_t numCells = mesh_.numCells();
+    ScalarField CD;
 
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        CDkOmega_[cellIdx] =
-            S(2.0) * const_.sigmaOmega2
-          * dot(gradK_[cellIdx], gradOmega_[cellIdx])
-          / (omega_[cellIdx] + vSmallValue);
+        CD[cellIdx] =
+            S(2.0) * coeffs_.sigmaOmega2
+          * dot(gK[cellIdx], gO[cellIdx])
+          / std::max(omega_[cellIdx], omegaMin_);
     }
+
+    return CD;
 }
 
-void kOmegaSST::computeDivU
+ScalarField kOmegaSST::divU
 (
     const FaceFluxField& flowRateFace
-)
+) const
 {
     const size_t numCells = mesh_.numCells();
-    divU_.setAll(S(0.0));
+    ScalarField divUField;
+    divUField.setAll(S(0.0));
 
     for (const auto& face : mesh_.faces())
     {
@@ -1004,26 +1061,29 @@ void kOmegaSST::computeDivU
 
         if (face.isBoundary())
         {
-            divU_[owner] += flux;
+            divUField[owner] += flux;
         }
         else
         {
             size_t neighbor = face.neighborCell().value();
-            divU_[owner]    += flux;
-            divU_[neighbor] -= flux;
+            divUField[owner]    += flux;
+            divUField[neighbor] -= flux;
         }
     }
 
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        divU_[cellIdx] /= mesh_.cells()[cellIdx].volume();
+        divUField[cellIdx] /= mesh_.cells()[cellIdx].volume();
     }
+
+    return divUField;
 }
 
-
-void kOmegaSST::F3()
+ScalarField kOmegaSST::F3() const
 {
     const size_t numCells = mesh_.numCells();
+    ScalarField f3;
+
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         Scalar y = std::max(wallDistance_[cellIdx], S(1e-12));
@@ -1035,44 +1095,53 @@ void kOmegaSST::F3()
                 S(10.0)
             );
         Scalar arg3Sq = arg3 * arg3;
-        F3_[cellIdx] = S(1.0) - std::tanh(arg3Sq * arg3Sq);
+        f3[cellIdx] = S(1.0) - std::tanh(arg3Sq * arg3Sq);
     }
+
+    return f3;
 }
 
-void kOmegaSST::F23()
+ScalarField kOmegaSST::F23
+(
+    const ScalarField& f2,
+    const ScalarField& f3
+) const
 {
     const size_t numCells = mesh_.numCells();
+    ScalarField f23;
+
     if (useF3_)
     {
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-    {
-        if (!useF3_)
+        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
-            F23_[cellIdx] = F2_[cellIdx];
-        }
-        else
-        {
-            F23_[cellIdx] = F2_[cellIdx] * F3_[cellIdx];
+            f23[cellIdx] = f2[cellIdx] * f3[cellIdx];
         }
     }
+    else
+    {
+        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+        {
+            f23[cellIdx] = f2[cellIdx];
+        }
+    }
+
+    return f23;
 }
 
-void kOmegaSST::calculateYPlus()
+void kOmegaSST::updateYPlus()
 {
     yPlus_.setAll(S(0.0));
 
-    constexpr Scalar minWallDistance = S(1e-20);
-
     for (size_t faceIdx : wallFunctionFaceIndices_)
     {
-        const auto& face = allFaces_[faceIdx];
+        const auto& face = mesh_.faces()[faceIdx];
         size_t cellIdx = face.ownerCell();
 
         const Scalar y =
             std::max
             (
                 std::abs(dot(face.dPf(), face.normal())),
-                minWallDistance
+                minWallDist_
             );
 
         Scalar sqrtK =
@@ -1128,7 +1197,7 @@ void kOmegaSST::logFieldDiagnostics() const
     Scalar oMin = omega_[0];
     Scalar oMax = omega_[0];
     Scalar oSum = S(0.0);
-    
+
     Scalar nMin = nut_[0];
     Scalar nMax = nut_[0];
     Scalar nSum = S(0.0);
