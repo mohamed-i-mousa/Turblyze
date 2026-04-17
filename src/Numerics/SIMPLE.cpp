@@ -91,7 +91,7 @@ void SIMPLE::solve()
 
         solveMomentumEquations();
 
-        calculateRhieChowFlowRate();
+        updateRhieChowFlowRate();
 
         solvePressureCorrection();
 
@@ -381,7 +381,7 @@ void SIMPLE::solveMomentumEquations()
     }
 }
 
-void SIMPLE::calculateRhieChowFlowRate()
+void SIMPLE::updateRhieChowFlowRate()
 {
     size_t numFaces = mesh_.numFaces();
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
@@ -693,9 +693,9 @@ void SIMPLE::solveTurbulence()
 bool SIMPLE::checkConvergence()
 {
     // Compute raw residuals
-    Scalar massImbalance = calculateMassImbalance();
-    Scalar velocityResidual = calculateVelocityResidual();
-    Scalar pressureResidual = calculatePressureResidual();
+    Scalar massImbalance = this->massImbalance();
+    Scalar velocityResidual = this->velocityResidual();
+    Scalar pressureResidual = this->pressureResidual();
 
     // Store first-iteration references for scaling
     if (massImbalance0_ < vSmallValue)
@@ -782,7 +782,7 @@ ScalarField SIMPLE::extractComponent
     return result;
 }
 
-Scalar SIMPLE::calculateMassImbalance() const
+Scalar SIMPLE::massImbalance() const
 {
     // Dimensionless normalized continuity residual per cell, averaged
     Scalar totalNormImbalance = 0.0;
@@ -809,7 +809,7 @@ Scalar SIMPLE::calculateMassImbalance() const
     return totalNormImbalance / S(std::max<size_t>(1, numCells));
 }
 
-Scalar SIMPLE::calculateVelocityResidual() const
+Scalar SIMPLE::velocityResidual() const
 {
     // Normalized residual: ||U - U_prev||_2 / (||U_prev||_2 + eps)
     Scalar num = 0.0;
@@ -829,7 +829,7 @@ Scalar SIMPLE::calculateVelocityResidual() const
     return num / den;
 }
 
-Scalar SIMPLE::calculatePressureResidual() const
+Scalar SIMPLE::pressureResidual() const
 {
     // Normalize p' RMS by RMS(p)
     Scalar sumP2 = 0.0;

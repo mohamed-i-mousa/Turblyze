@@ -360,8 +360,8 @@ private:
     /// Solve momentum equations for each velocity component
     void solveMomentumEquations();
 
-    /// Calculate face mass fluxes using Rhie-Chow interpolation
-    void calculateRhieChowFlowRate();
+    /// Update face mass fluxes using Rhie-Chow interpolation
+    void updateRhieChowFlowRate();
 
     /// Assemble and solve the pressure correction Poisson equation
     void solvePressureCorrection();
@@ -395,14 +395,14 @@ private:
         Component component
     );
 
-    /// Calculate mass imbalance across domain
-    Scalar calculateMassImbalance() const;
+    /// Compute mass imbalance across domain
+    Scalar massImbalance() const;
 
-    /// Calculate velocity residual
-    Scalar calculateVelocityResidual() const;
+    /// Compute velocity residual
+    Scalar velocityResidual() const;
 
-    /// Calculate pressure residual
-    Scalar calculatePressureResidual() const;
+    /// Compute pressure residual
+    Scalar pressureResidual() const;
 
     /**
      * @brief Calculate transpose gradient source term for momentum equations
