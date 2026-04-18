@@ -928,9 +928,12 @@ void kOmegaSST::overrideWallCellProduction
 
         Scalar yPlusFace = Cmu25_ * y * sqrtK / nu_;
 
-        // Viscous sublayer: keep interior G unchanged
         if (yPlusFace < yPlusLam_)
         {
+            // Viscous sublayer contribute interior G so weights stay normalised
+            wallProductionAccum[cellIdx] +=
+                faceWeight * productionK[cellIdx];
+            hasWallOverride[cellIdx] = 1;
             continue;
         }
 
