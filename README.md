@@ -211,6 +211,25 @@ The solver prints precision mode at runtime via `SCALAR_MODE`.
 ### Source Organization (`src/`)
 Mirrors header organization with corresponding `.cpp` implementations.
 
+## Documentation
+
+Browsable HTML API documentation is generated from the Doxygen comments in the source via:
+
+```bash
+doxygen Doxyfile
+```
+
+Output is written to `docs/doxygen/html/`. Open `docs/doxygen/html/index.html` in a browser to navigate classes, call graphs, and collaboration diagrams. The `docs/doxygen/` tree is generated and is not tracked in git — regenerate it locally after pulling changes.
+
+Requires `doxygen` and (for diagrams) `graphviz`:
+```bash
+# macOS
+brew install doxygen graphviz
+
+# Ubuntu/Debian
+sudo apt install doxygen graphviz
+```
+
 ## Numerical Method Validation
 
 ### Tested and Verified Components
