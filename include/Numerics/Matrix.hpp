@@ -58,7 +58,7 @@ public:
      * @brief Get assembled sparse matrix A (const)
      * @return Const reference to coefficient matrix
      */
-    const Eigen::SparseMatrix<Scalar>& matrixA() const noexcept
+    [[nodiscard]] const Eigen::SparseMatrix<Scalar>& matrixA() const noexcept
     {
         return matrixA_;
     }
@@ -67,7 +67,7 @@ public:
      * @brief Get assembled sparse matrix A (non-const)
      * @return Mutable reference to coefficient matrix
      */
-    Eigen::SparseMatrix<Scalar>& matrixA() noexcept
+    [[nodiscard]] Eigen::SparseMatrix<Scalar>& matrixA() noexcept
     {
         return matrixA_;
     }
@@ -76,7 +76,7 @@ public:
      * @brief Get right-hand side vector b (const)
      * @return Const reference to RHS vector
      */
-    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&
+    [[nodiscard]] const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&
     vectorB() const noexcept
     {
         return vectorB_;
@@ -86,7 +86,7 @@ public:
      * @brief Get right-hand side vector b (non-const)
      * @return Mutable reference to RHS vector
      */
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& vectorB() noexcept
+    [[nodiscard]] Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& vectorB() noexcept
     {
         return vectorB_;
     }
@@ -184,7 +184,7 @@ private:
      * @param component Component index for vector BCs (0=x, 1=y, 2=z)
      * @return Scalar boundary value
      */
-    static Scalar extractBoundaryScalar
+    [[nodiscard]] static Scalar extractBoundaryScalar
     (
         const BoundaryData& bc,
         std::optional<int> component

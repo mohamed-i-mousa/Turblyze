@@ -87,16 +87,17 @@ void writeWallBoundaryData
  * @param velocity Input velocity vector field
  * @return Scalar field containing velocity magnitude at each cell
  */
-[[nodiscard("Computed derived field needed for visualization output")]]
-ScalarField computeVelocityMagnitude(const VectorField& velocity);
+[[nodiscard]] ScalarField velocityMagnitude
+(
+    const VectorField& velocity
+);
 
 /**
  * @brief Compute vorticity magnitude field from vorticity vector field
  * @param vorticity Input vorticity vector field
  * @return Scalar field containing vorticity magnitude at each cell
  */
-[[nodiscard("Computed derived field needed for visualization output")]]
-ScalarField computeVorticityMagnitude
+[[nodiscard]] ScalarField vorticityMagnitude
 (
     const VectorField& vorticity
 );
@@ -114,8 +115,7 @@ ScalarField computeVorticityMagnitude
  * @param gradUz Gradient of z-velocity component
  * @return Scalar field containing Q-criterion at each cell
  */
-[[nodiscard("Computed derived field needed for visualization output")]]
-ScalarField computeQCriterion
+[[nodiscard]] ScalarField QCriterion
 (
     const VectorField& gradUx,
     const VectorField& gradUy,
@@ -134,8 +134,7 @@ ScalarField computeQCriterion
  * @param gradUz Gradient of z-velocity component
  * @return Scalar field containing strain rate magnitude at each cell
  */
-[[nodiscard("Computed derived field needed for visualization output")]]
-ScalarField computeStrainRateMagnitude
+[[nodiscard]] ScalarField strainRateMagnitude
 (
     const VectorField& gradUx,
     const VectorField& gradUy,

@@ -57,50 +57,73 @@ public:
         faceCount_ = faces_.size();
     }
 
+    /// Copy constructor and assignment  
     Mesh(const Mesh&) = delete;
     Mesh& operator=(const Mesh&) = delete;
 
-    Mesh(Mesh&&) = default;
-    Mesh& operator=(Mesh&&) = default;
+    /// Move constructor and assignment
+    Mesh(Mesh&&) noexcept = default;
+    Mesh& operator=(Mesh&&) noexcept = default;
+
+    /// Destructor
+    ~Mesh() = default;
 
 // Const accessor methods
 
     /// Read-only view of node coordinates
-    std::span<const Vector> nodes() const noexcept { return nodes_; }
+    [[nodiscard]] std::span<const Vector> nodes() const noexcept
+    {
+        return nodes_;
+    }
 
     /// Read-only view of faces
-    std::span<const Face> faces() const noexcept { return faces_; }
+    [[nodiscard]] std::span<const Face> faces() const noexcept
+    {
+        return faces_;
+    }
 
     /// Read-only view of cells
-    std::span<const Cell> cells() const noexcept{ return cells_; }
+    [[nodiscard]] std::span<const Cell> cells() const noexcept
+    {
+        return cells_;
+    }
 
     /// Read-only view of boundary patches
-    std::span<const BoundaryPatch> patches() const noexcept{ return patches_; }
+    [[nodiscard]] std::span<const BoundaryPatch> patches() const noexcept
+    {
+        return patches_;
+    }
 
 // Mutable accessor methods (during prepareMesh() only)
 
     /// Mutable view of faces
-    std::span<Face> faces() noexcept { return faces_; }
+    [[nodiscard]] std::span<Face> faces() noexcept
+    {
+        return faces_;
+    }
 
     /// Mutable view of cells
-    std::span<Cell> cells() noexcept { return cells_; }
+    [[nodiscard]] std::span<Cell> cells() noexcept
+    {
+        return cells_;
+    }
 
 // Size accessor methods
 
     /// Number of nodes in the mesh
-    size_t numNodes() const noexcept { return nodes_.size(); }
+    [[nodiscard]] size_t numNodes() const noexcept { return nodes_.size(); }
 
     /// Number of faces in the mesh
-    size_t numFaces() const noexcept { return faces_.size(); }
+    [[nodiscard]] size_t numFaces() const noexcept { return faces_.size(); }
 
     /// Number of cells in the mesh
-    size_t numCells() const noexcept { return cells_.size(); }
+    [[nodiscard]] size_t numCells() const noexcept { return cells_.size(); }
 
     /// Cell count at startup (used by CellData/FaceData)
-    static size_t cellCount() noexcept { return cellCount_; }
+    [[nodiscard]] static size_t cellCount() noexcept { return cellCount_; }
 
     /// Face count at startup (used by CellData/FaceData)
-    static size_t faceCount() noexcept { return faceCount_; }
+    [[nodiscard]] static size_t faceCount() noexcept { return faceCount_; }
 
 private:
 

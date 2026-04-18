@@ -13,7 +13,7 @@
 #include "Face.hpp"
 #include "CellData.hpp"
 
-
+/// Forward declaration
 class BoundaryConditions;
 
 /**
@@ -22,8 +22,7 @@ class BoundaryConditions;
  * @param field Cell-centered scalar field
  * @return Interpolated scalar value at face
  */
-[[nodiscard("Interpolated face value required for computation")]]
-Scalar interpolateToFace
+[[nodiscard]] Scalar interpolateToFace
 (
     const Face& face,
     const ScalarField& field
@@ -37,8 +36,7 @@ Scalar interpolateToFace
  *
  * For boundary faces, returns owner cell value (zero-gradient assumption).
  */
-[[nodiscard("Interpolated face value required for computation")]]
-Vector interpolateToFace
+[[nodiscard]] Vector interpolateToFace
 (
     const Face& face,
     const VectorField& field
@@ -52,8 +50,7 @@ Vector interpolateToFace
  * @param fieldName Name of field for BC lookup (e.g., "U")
  * @return Interpolated vector value with proper BC handling
  */
-[[nodiscard("Interpolated face value required for computation")]]
-Vector interpolateToFace
+[[nodiscard]] Vector interpolateToFace
 (
     const Face& face,
     const VectorField& field,

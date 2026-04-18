@@ -956,8 +956,7 @@ void CFDApplication::postProcess()
          << std::endl << "--- 6. Post-Processing Results ---" << std::endl;
 
     // Calculate velocity magnitude
-    ScalarField velocityMagnitude =
-        VtkWriter::computeVelocityMagnitude(velocity);
+    ScalarField velocityMag = VtkWriter::velocityMagnitude(velocity);
 
     if (velocity.size() == 0)
     {
@@ -973,7 +972,7 @@ void CFDApplication::postProcess()
 
     for (size_t cellIdx = 0; cellIdx < velocity.size(); ++cellIdx)
     {
-        Scalar vmag = velocityMagnitude[cellIdx];
+        Scalar vmag = velocityMag[cellIdx];
         maximumVelocity = std::max(maximumVelocity, vmag);
         averageVelocity += vmag;
 
@@ -1007,8 +1006,7 @@ void CFDApplication::exportResults()
     const ScalarField& pressure = solver_->pressure();
 
     // Calculate velocity magnitude
-    ScalarField velocityMagnitude =
-        VtkWriter::computeVelocityMagnitude(velocity);
+    ScalarField velocityMag = VtkWriter::velocityMagnitude(velocity);
 
     // Prepare scalar fields for export
     std::map<std::string, const ScalarField*>
@@ -1016,7 +1014,7 @@ void CFDApplication::exportResults()
 
     scalarFieldsToVtk["pressure"] = &pressure;
 
-    scalarFieldsToVtk["velocityMagnitude"] = &velocityMagnitude;
+    scalarFieldsToVtk["velocityMagnitude"] = &velocityMag;
 
     // Add turbulence fields if available
     if (turbulenceEnabled_)

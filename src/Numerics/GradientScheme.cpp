@@ -305,7 +305,7 @@ Vector GradientScheme::faceGradient
     if (face.isBoundary())
     {
         return
-            calculateBoundaryFaceGradient
+            boundaryFaceGradient
             (
                 fieldName,
                 phi,
@@ -362,7 +362,7 @@ Vector GradientScheme::averageFaceGradient
     return gP * gradPhiP + gN * gradPhiN;
 }
 
-Vector GradientScheme::calculateBoundaryFaceGradient
+Vector GradientScheme::boundaryFaceGradient
 (
     const std::string& fieldName,
     const ScalarField& phi,

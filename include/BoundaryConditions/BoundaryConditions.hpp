@@ -127,7 +127,8 @@ public:
      * @brief Set wall function boundary condition type
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field
-     * @param wallType The wall function type (K_WALL_FUNCTION, OMEGA_WALL_FUNCTION, or NUT_WALL_FUNCTION)
+     * @param wallType The wall function type (K_WALL_FUNCTION,
+     *                 OMEGA_WALL_FUNCTION, or NUT_WALL_FUNCTION)
      */
     void setWallFunctionType
     (
@@ -144,19 +145,22 @@ public:
      * @return Reference to the found patch
      * @note Terminates the program if patch not found
      */
-    const BoundaryPatch& patch(const std::string& name) const;
+    [[nodiscard]] const BoundaryPatch& patch(const std::string& name) const;
 
     /**
      * @brief Get all boundary patches
      * @return Const reference to vector of boundary patches
      */
-    const std::vector<BoundaryPatch>& patches() const { return patches_; }
+    [[nodiscard]] const std::vector<BoundaryPatch>& patches() const
+    {
+        return patches_;
+    }
 
     /**
      * @brief Get number of patches
      * @return Number of boundary patches
      */
-    size_t numPatches() const { return patches_.size(); }
+    [[nodiscard]] size_t numPatches() const { return patches_.size(); }
 
     /**
      * @brief Get boundary condition for a field on a patch
@@ -165,7 +169,7 @@ public:
      * @return Reference to boundary data
      * @note Terminates the program if not found
      */
-    const BoundaryData& fieldBC
+    [[nodiscard]] const BoundaryData& fieldBC
     (
         const std::string& patchName,
         const std::string& fieldName
@@ -180,8 +184,7 @@ public:
      *        a scalar from a vector BC (0=x, 1=y, 2=z)
      * @return Boundary value based on boundary condition
      */
-    [[nodiscard("Computed boundary face value needed for discretization")]]
-    Scalar boundaryFaceValue
+    [[nodiscard]] Scalar boundaryFaceValue
     (
         const std::string& fieldName,
         const ScalarField& phi,
@@ -197,8 +200,7 @@ public:
      * @return Boundary vector value based on boundary condition
      * @note Defaults to zero-gradient if no BC is specified for the face
      */
-    [[nodiscard("Computed boundary face value needed for discretization")]]
-    Vector boundaryVectorFaceValue
+    [[nodiscard]] Vector boundaryVectorFaceValue
     (
         const std::string& fieldName,
         const VectorField& phi,
@@ -220,7 +222,7 @@ public:
      * @note Terminates the program if unknown BC type
      * @note It's used in printSummary
      */
-    static std::string bcTypeToString(BCType bctype);
+    [[nodiscard]] static std::string bcTypeToString(BCType bctype);
 
     /**
      * @brief Validate that all patch names in boundary data

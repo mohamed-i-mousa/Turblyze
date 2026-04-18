@@ -52,6 +52,14 @@ public:
         const ConvectionScheme& omegaScheme
     );
 
+    /// Copy constructor and assignment
+    kOmegaSST(const kOmegaSST&) = delete;
+    kOmegaSST& operator=(const kOmegaSST&) = delete;
+
+    /// Move constructor and assignment
+    kOmegaSST(kOmegaSST&&) = delete;
+    kOmegaSST& operator=(kOmegaSST&&) = delete;
+
     /// Destructor
     ~kOmegaSST();
 

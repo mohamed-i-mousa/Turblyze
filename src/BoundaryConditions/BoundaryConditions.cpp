@@ -401,7 +401,7 @@ void BoundaryConditions::printSummary() const
 
         std::cout
             << "  Number of Faces         : "
-            << meshPatch.numberOfBoundaryFaces() << '\n';
+            << meshPatch.numBoundaryFaces() << '\n';
 
         auto patchBCIterator =
             patchBoundaryData_.find(meshPatch.patchName());

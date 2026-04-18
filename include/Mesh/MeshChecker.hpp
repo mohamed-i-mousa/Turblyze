@@ -72,7 +72,7 @@ private:
      * @param faceNormal Face normal vector (unit vector)
      * @return Cosine of angle between cell centers line and face normal
      */
-    Scalar calculateFaceOrthogonality
+    [[nodiscard]] Scalar faceOrthogonality
     (
         const Vector& ownerCellCentroid,
         const Vector& neighborCellCentroid,
@@ -86,7 +86,7 @@ private:
      * @param neighborCellCentroid Neighbor cell center
      * @return Skewness value
      */
-    Scalar calculateFaceSkewness
+    [[nodiscard]] Scalar faceSkewness
     (
         const Face& face,
         const Vector& ownerCellCentroid,
@@ -99,7 +99,7 @@ private:
      * @param ownerCellCentroid Owner cell center
      * @return Boundary skewness value
      */
-    Scalar calculateBoundarySkewness
+    [[nodiscard]] Scalar boundaryFaceSkewness
     (
         const Face& face,
         const Vector& ownerCellCentroid
@@ -110,7 +110,7 @@ private:
      * @param cell Cell object
      * @return Aspect ratio (1.0 = perfect cube, higher = elongated)
      */
-    Scalar calculateCellAspectRatio(const Cell& cell) const;
+    [[nodiscard]] Scalar cellAspectRatio(const Cell& cell) const;
 
     /**
      * @brief Validate mesh connectivity indices are in range

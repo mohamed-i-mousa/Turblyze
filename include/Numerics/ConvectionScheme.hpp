@@ -56,6 +56,15 @@
 class ConvectionScheme
 {
 public:
+
+    /// Copy constructor and assignment
+    ConvectionScheme(const ConvectionScheme&) = delete;
+    ConvectionScheme& operator=(const ConvectionScheme&) = delete;
+
+    /// Move constructor and assignment
+    ConvectionScheme(ConvectionScheme&&) = delete;
+    ConvectionScheme& operator=(ConvectionScheme&&) = delete;
+
     /// Default destructor
     virtual ~ConvectionScheme() = default;
 
@@ -82,8 +91,10 @@ public:
      * schemes add an explicit correction term to the RHS to achieve improved
      * accuracy while maintaining a stable implicit discretization.
      */
-    [[nodiscard("Computed flux coefficients are needed for matrix assembly")]]
-    static FluxCoefficients getFluxCoefficients(Scalar flowRate) noexcept
+    [[nodiscard]] static FluxCoefficients getFluxCoefficients
+    (
+        Scalar flowRate
+    ) noexcept
     {
         return
         {
@@ -103,9 +114,7 @@ public:
      *         UpwindScheme returns 0; higher-order schemes return the
      *         explicit correction term added to the RHS.
      */
-    
-    [[nodiscard("Computed correction is needed for matrix assembly")]]
-    virtual Scalar calculateCorrection
+    [[nodiscard]] virtual Scalar calculateCorrection
     (
         const Face& face,
         const ScalarField& phi,
@@ -113,6 +122,11 @@ public:
         const Vector& gradPhiN,
         Scalar flowRate
     ) const = 0;
+
+protected:
+
+    /// Default constructor (only derived classes may construct)
+    ConvectionScheme() = default;
 };
 
 

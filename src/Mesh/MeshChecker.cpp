@@ -85,8 +85,7 @@ void MeshChecker::check() const
             // Boundary face: calculate skewness only
             const Cell& ownerCell = mesh_.cells()[face.ownerCell()];
 
-            Scalar skew = 
-                calculateBoundarySkewness(face, ownerCell.centroid());
+            Scalar skew = boundaryFaceSkewness(face, ownerCell.centroid());
 
             if (skew > maxSkewness)
             {
@@ -108,7 +107,7 @@ void MeshChecker::check() const
 
             // Non-orthogonality (angle in degrees)
             Scalar ortho =
-                calculateFaceOrthogonality
+                faceOrthogonality
                 (
                     ownerCell.centroid(),
                     neighborCell.centroid(),
@@ -134,7 +133,7 @@ void MeshChecker::check() const
 
             // Skewness
             Scalar skew =
-                calculateFaceSkewness
+                faceSkewness
                 (
                     face,
                     ownerCell.centroid(),
@@ -198,7 +197,7 @@ void MeshChecker::check() const
         }
 
         // Calculate aspect ratio
-        Scalar aspectRatio = calculateCellAspectRatio(cell);
+        Scalar aspectRatio = cellAspectRatio(cell);
         if (aspectRatio > maxAspectRatio)
         {
             maxAspectRatio = aspectRatio;
@@ -482,7 +481,7 @@ void MeshChecker::printIndicesList
 }
 
 
-Scalar MeshChecker::calculateFaceOrthogonality
+Scalar MeshChecker::faceOrthogonality
 (
     const Vector& ownerCellCentroid,
     const Vector& neighborCellCentroid,
@@ -499,7 +498,7 @@ Scalar MeshChecker::calculateFaceOrthogonality
 }
 
 
-Scalar MeshChecker::calculateFaceSkewness
+Scalar MeshChecker::faceSkewness
 (
     const Face& face,
     const Vector& ownerCellCentroid,
@@ -542,7 +541,7 @@ Scalar MeshChecker::calculateFaceSkewness
 }
 
 
-Scalar MeshChecker::calculateBoundarySkewness
+Scalar MeshChecker::boundaryFaceSkewness
 (
     const Face& face,
     const Vector& ownerCellCentroid
@@ -581,7 +580,7 @@ Scalar MeshChecker::calculateBoundarySkewness
 }
 
 
-Scalar MeshChecker::calculateCellAspectRatio
+Scalar MeshChecker::cellAspectRatio
 (
     const Cell& cell
 ) const

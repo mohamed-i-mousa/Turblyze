@@ -65,25 +65,31 @@ public:
      * @brief Get number of cells in the field
      * @return Number of cells
      */
-    size_t size() const noexcept { return internalField_.size(); }
+    [[nodiscard]] size_t size() const noexcept
+    {
+        return internalField_.size();
+    }
 
     /**
      * @brief Get pointer to field storage
      * @return Pointer to first element
      */
-    T* data() noexcept { return internalField_.data(); }
+    [[nodiscard]] T* data() noexcept { return internalField_.data(); }
 
     /**
      * @brief Get const pointer to field storage
      * @return Const pointer to first element
      */
-    const T* data() const noexcept { return internalField_.data(); }
+    [[nodiscard]] const T* data() const noexcept
+    {
+        return internalField_.data();
+    }
 
     /// Iterator access (range-based for loops)
-    auto begin() noexcept { return internalField_.begin(); }
-    auto end() noexcept { return internalField_.end(); }
-    auto begin() const noexcept { return internalField_.begin(); }
-    auto end() const noexcept { return internalField_.end(); }
+    [[nodiscard]] auto begin() noexcept { return internalField_.begin(); }
+    [[nodiscard]] auto end() noexcept { return internalField_.end(); }
+    [[nodiscard]] auto begin() const noexcept { return internalField_.begin(); }
+    [[nodiscard]] auto end() const noexcept { return internalField_.end(); }
 
 // Operator methods
 

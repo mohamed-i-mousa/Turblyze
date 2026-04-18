@@ -56,6 +56,14 @@ public:
         const ConvectionSchemes& convSchemes
     );
 
+    /// Copy constructor and assignment
+    SIMPLE(const SIMPLE&) = delete;
+    SIMPLE& operator=(const SIMPLE&) = delete;
+
+    /// Move constructor and assignment
+    SIMPLE(SIMPLE&&) = delete;
+    SIMPLE& operator=(SIMPLE&&) = delete;
+
     /// Destructor (defined for forward-declared types)
     ~SIMPLE();
 
@@ -85,13 +93,13 @@ public:
      * @brief Get velocity field
      * @return Const reference to velocity vector field
      */
-    const VectorField& velocity() const noexcept { return U_; }
+    [[nodiscard]] const VectorField& velocity() const noexcept { return U_; }
 
     /**
      * @brief Get pressure field
      * @return Const reference to pressure scalar field
      */
-    const ScalarField& pressure() const noexcept { return p_; }
+    [[nodiscard]] const ScalarField& pressure() const noexcept { return p_; }
 
 // Setter methods
 
@@ -185,14 +193,16 @@ public:
      * @brief Get constraint system
      * @return Reference to constraint system
      */
-    [[nodiscard("Constraint system needed for applying fixed-value cells")]]
-    Constraint& constraintSystem() noexcept { return *constraintSystem_; }
+    [[nodiscard]] Constraint& constraintSystem() noexcept
+    {
+        return *constraintSystem_;
+    }
 
     /**
      * @brief Get turbulent kinetic energy field
      * @return Reference to k field
      */
-    const ScalarField& turbulentKineticEnergy() const noexcept
+    [[nodiscard]] const ScalarField& turbulentKineticEnergy() const noexcept
     {
         return turbulenceModel_->k();
     }
@@ -201,7 +211,7 @@ public:
      * @brief Get specific dissipation rate field
      * @return Reference to omega field
      */
-    const ScalarField& specificDissipationRate() const noexcept
+    [[nodiscard]] const ScalarField& specificDissipationRate() const noexcept
     {
         return turbulenceModel_->omega();
     }
@@ -210,7 +220,7 @@ public:
      * @brief Get turbulent viscosity field
      * @return Reference to nut field
      */
-    const ScalarField& turbulentViscosity() const noexcept
+    [[nodiscard]] const ScalarField& turbulentViscosity() const noexcept
     {
         return turbulenceModel_->turbulentViscosity();
     }
@@ -219,7 +229,7 @@ public:
      * @brief Get wall distance field
      * @return Reference to wall distance field
      */
-    const ScalarField& wallDistance() const noexcept
+    [[nodiscard]] const ScalarField& wallDistance() const noexcept
     {
         return turbulenceModel_->wallDistance();
     }
@@ -228,7 +238,7 @@ public:
      * @brief Get y+ field
      * @return Reference to y+ field
      */
-    const FaceData<Scalar>& yPlus() const noexcept
+    [[nodiscard]] const FaceData<Scalar>& yPlus() const noexcept
     {
         return turbulenceModel_->yPlus();
     }
@@ -237,7 +247,7 @@ public:
      * @brief Get wall shear stress field
      * @return Reference to wall shear stress field
      */
-    const FaceData<Scalar>& wallShearStress() const noexcept
+    [[nodiscard]] const FaceData<Scalar>& wallShearStress() const noexcept
     {
         return turbulenceModel_->wallShearStress();
     }

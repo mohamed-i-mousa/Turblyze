@@ -40,19 +40,16 @@ public:
         int maxIterations = 1000
     );
 
-    /**
-     * @brief Copy configuration to a new solver instance
-     * @param other Source solver to copy configuration from
-     * @note Copies tolerance, iterations, preconditioner parameters, and
-     * debug flag only. Eigen solver state (bicgstab_, pcg_) is not copied —
-     * the new instance builds its own on first solve call.
-     */
+    /// Copy constructor and assignment
     LinearSolver(const LinearSolver& other);
     LinearSolver& operator=(const LinearSolver& other);
 
-    /// Deleted — Eigen types are not moveable
+    /// Move constructor and assignment
     LinearSolver(LinearSolver&&) = delete;
     LinearSolver& operator=(LinearSolver&&) = delete;
+
+    /// Destructor
+    ~LinearSolver() = default; 
 
 // Preconditioner configuration
 
@@ -99,16 +96,16 @@ public:
 // Accessors
 
     /// Get field name for this solver
-    const std::string& fieldName() const noexcept
+    [[nodiscard]] const std::string& fieldName() const noexcept
     {
         return fieldName_;
     }
 
     /// Get absolute tolerance
-    Scalar tolerance() const noexcept { return tolerance_; }
+    [[nodiscard]] Scalar tolerance() const noexcept { return tolerance_; }
 
     /// Get maximum iterations
-    int maxIterations() const noexcept
+    [[nodiscard]] int maxIterations() const noexcept
     {
         return maxIterations_;
     }

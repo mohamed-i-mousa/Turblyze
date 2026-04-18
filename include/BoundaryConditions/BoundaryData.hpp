@@ -91,52 +91,58 @@ public:
      * @brief Get boundary condition type
      * @return Current BC type
      */
-    BCType type() const noexcept { return type_; }
+    [[nodiscard]] BCType type() const noexcept { return type_; }
 
     /**
      * @brief Get value type
      * @return Type of boundary value (scalar/vector)
      */
-    BCValueType valueType() const noexcept { return valueType_; }
+    [[nodiscard]] BCValueType valueType() const noexcept { return valueType_; }
 
     /**
      * @brief Get scalar value
      * @return Current scalar boundary value
      */
-    Scalar scalarValue() const noexcept { return scalarValue_; }
+    [[nodiscard]] Scalar scalarValue() const noexcept { return scalarValue_; }
 
     /**
      * @brief Get vector value
      * @return Current vector boundary value
      */
-    const Vector& vectorValue() const noexcept { return vectorValue_; }
+    [[nodiscard]] const Vector& vectorValue() const noexcept
+    {
+        return vectorValue_;
+    }
 
     /**
      * @brief Get scalar gradient
      * @return Current scalar boundary gradient
      */
-    Scalar scalarGradient() const noexcept { return scalarGradient_; }
+    [[nodiscard]] Scalar scalarGradient() const noexcept
+    {
+        return scalarGradient_;
+    }
 
     /**
      * @brief Get fixed scalar value
      * @return Fixed scalar value
      * @note Terminates the program if not a fixed scalar value BC
      */
-    Scalar fixedScalarValue() const;
+    [[nodiscard]] Scalar fixedScalarValue() const;
 
     /**
      * @brief Get fixed vector value
      * @return Fixed vector value
      * @note Terminates the program if not a fixed vector value BC
      */
-    const Vector& fixedVectorValue() const;
+    [[nodiscard]] const Vector& fixedVectorValue() const;
 
     /**
      * @brief Get fixed scalar gradient
      * @return Fixed scalar gradient (normal component)
      * @note Terminates the program if not a fixed scalar gradient BC
      */
-    Scalar fixedScalarGradient() const;
+    [[nodiscard]] Scalar fixedScalarGradient() const;
 
 private:
 

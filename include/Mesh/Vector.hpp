@@ -70,19 +70,19 @@ public:
      * @brief Get X component
      * @return X component value
      */
-    Scalar x() const noexcept { return x_; }
+    [[nodiscard]] Scalar x() const noexcept { return x_; }
 
     /**
      * @brief Get Y component
      * @return Y component value
      */
-    Scalar y() const noexcept { return y_; }
+    [[nodiscard]] Scalar y() const noexcept { return y_; }
 
     /**
      * @brief Get Z component
      * @return Z component value
      */
-    Scalar z() const noexcept { return z_; }
+    [[nodiscard]] Scalar z() const noexcept { return z_; }
 
 // Operator methods
 
@@ -219,8 +219,7 @@ public:
      * @brief Calculates squared magnitude of vector
      * @return Squared magnitude (x² + y² + z²)
      */
-    [[nodiscard("Squared magnitude of the vector has to be returned")]]
-    Scalar magnitudeSquared() const noexcept
+    [[nodiscard]] Scalar magnitudeSquared() const noexcept
     {
         return x_ * x_ + y_ * y_ + z_ * z_;
     }
@@ -229,8 +228,7 @@ public:
      * @brief Calculates magnitude (length) of vector
      * @return Vector magnitude
      */
-    [[nodiscard("Magnitude of the vector has to be returned")]]
-    Scalar magnitude() const noexcept
+    [[nodiscard]] Scalar magnitude() const noexcept
     {
         return std::sqrt(magnitudeSquared());
     }
@@ -240,10 +238,10 @@ public:
      * @return Normalized vector
      * @note Terminates the program if vector has zero magnitude
      */
-    [[nodiscard("Normalized vector has to be returned")]]
-    Vector normalized() const
+    [[nodiscard]] Vector normalized() const
     {
         Scalar mag = magnitude();
+        
         if (mag < vSmallValue)
         {
             FatalError("Division by zero in Vector::normalized");

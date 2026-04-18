@@ -87,13 +87,13 @@ public:
      * @brief Get cell identifier
      * @return Unique cell ID
      */
-    size_t idx() const noexcept { return idx_; }
+    [[nodiscard]] size_t idx() const noexcept { return idx_; }
 
     /**
      * @brief Get bounding face indices
      * @return Vector of face indices
      */
-    std::span<const size_t> faceIndices() const noexcept
+    [[nodiscard]] std::span<const size_t> faceIndices() const noexcept
     {
         return faceIndices_;
     }
@@ -102,7 +102,7 @@ public:
      * @brief Get neighboring cell indices
      * @return Vector of neighbor cell indices
      */
-    std::span<const size_t> neighborCellIndices() const noexcept
+    [[nodiscard]] std::span<const size_t> neighborCellIndices() const noexcept
     {
         return neighborCellIndices_;
     }
@@ -111,19 +111,25 @@ public:
      * @brief Get face normal direction signs
      * @return Vector of signs (+1/-1)
      */
-    std::span<const int8_t> faceSigns() const noexcept { return faceSigns_; }
+    [[nodiscard]] std::span<const int8_t> faceSigns() const noexcept
+    {
+        return faceSigns_;
+    }
 
     /**
      * @brief Get cell centroid
      * @return Cell center coordinates
      */
-    const Vector& centroid() const noexcept { return centroid_; }
+    [[nodiscard]] const Vector& centroid() const noexcept
+    {
+        return centroid_;
+    }
 
     /**
      * @brief Get cell volume
      * @return Cell volume value
      */
-    Scalar volume() const noexcept { return volume_; }
+    [[nodiscard]] Scalar volume() const noexcept { return volume_; }
 
     /**
      * @brief Check if geometric properties calculated

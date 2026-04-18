@@ -67,13 +67,13 @@ StrainTensor computeStrainTensor
     const Vector& gradUz
 );
 
-Vector computeFaceCentroid
+Vector faceCentroid
 (
     std::span<const size_t> faceNodes,
     std::span<const Vector> allNodes
 );
 
-Vector computeFaceNormal
+Vector faceNormal
 (
     std::span<const size_t> faceNodes,
     std::span<const Vector> allNodes
@@ -536,17 +536,17 @@ void writeWallBoundaryData
 
 // ******************* Public API: Derived Field Computation *******************
 
-ScalarField computeVelocityMagnitude(const VectorField& velocity)
+ScalarField velocityMagnitude(const VectorField& velocity)
 {
     return computeMagnitude(velocity);
 }
 
-ScalarField computeVorticityMagnitude(const VectorField& vorticity)
+ScalarField vorticityMagnitude(const VectorField& vorticity)
 {
     return computeMagnitude(vorticity);
 }
 
-ScalarField computeQCriterion
+ScalarField QCriterion
 (
     const VectorField& gradUx,
     const VectorField& gradUy,
@@ -584,7 +584,7 @@ ScalarField computeQCriterion
     return qCriterion;
 }
 
-ScalarField computeStrainRateMagnitude
+ScalarField strainRateMagnitude
 (
     const VectorField& gradUx,
     const VectorField& gradUy,
@@ -775,7 +775,7 @@ StrainTensor computeStrainTensor
 
 // *************** Internal Helper Methods: Geometric Utilities ****************
 
-Vector computeFaceCentroid
+Vector faceCentroid
 (
     std::span<const size_t> faceNodes,
     std::span<const Vector> allNodes
@@ -789,7 +789,7 @@ Vector computeFaceCentroid
     return centroid / S(faceNodes.size());
 }
 
-Vector computeFaceNormal
+Vector faceNormal
 (
     std::span<const size_t> faceNodes,
     std::span<const Vector> allNodes
@@ -882,10 +882,10 @@ std::vector<vtkIdType> orderHexahedronNodes
     }
 
     // Determine face orientation using face normals
-    Vector bottomNormal = computeFaceNormal(bottomFace, allNodes);
-    Vector topNormal = computeFaceNormal(topFace, allNodes);
-    Vector bottomCentroid = computeFaceCentroid(bottomFace, allNodes);
-    Vector topCentroid = computeFaceCentroid(topFace, allNodes);
+    Vector bottomNormal = faceNormal(bottomFace, allNodes);
+    Vector topNormal = faceNormal(topFace, allNodes);
+    Vector bottomCentroid = faceCentroid(bottomFace, allNodes);
+    Vector topCentroid = faceCentroid(topFace, allNodes);
 
     Vector bottomToCenter = centroid - bottomCentroid;
     Vector topToCenter = centroid - topCentroid;
@@ -900,10 +900,10 @@ std::vector<vtkIdType> orderHexahedronNodes
     std::vector<size_t> orderedBottomNodes = bottomFace;
 
     // Check winding and reverse if needed
-    Vector testNormal = computeFaceNormal(orderedBottomNodes, allNodes);
+    Vector testNormal = faceNormal(orderedBottomNodes, allNodes);
 
     Vector outwardDir =
-        computeFaceCentroid(orderedBottomNodes, allNodes) - centroid;
+        faceCentroid(orderedBottomNodes, allNodes) - centroid;
 
     if (dot(testNormal, outwardDir) < 0)
     {
@@ -1063,11 +1063,11 @@ std::vector<vtkIdType> orderWedgeNodes
     centroid /= 6.0;
 
     // Compute face centroids and normals for triangular faces
-    Vector tri0Centroid = computeFaceCentroid(triangularFaces[0], allNodes);
-    Vector tri1Centroid = computeFaceCentroid(triangularFaces[1], allNodes);
+    Vector tri0Centroid = faceCentroid(triangularFaces[0], allNodes);
+    Vector tri1Centroid = faceCentroid(triangularFaces[1], allNodes);
 
-    Vector tri0Normal = computeFaceNormal(triangularFaces[0], allNodes);
-    Vector tri1Normal = computeFaceNormal(triangularFaces[1], allNodes);
+    Vector tri0Normal = faceNormal(triangularFaces[0], allNodes);
+    Vector tri1Normal = faceNormal(triangularFaces[1], allNodes);
 
     // Check which triangle is more "inward" pointing relative to centroid
     Vector tri0ToCenter = centroid - tri0Centroid;
@@ -1159,10 +1159,10 @@ std::vector<vtkIdType> orderWedgeNodes
     std::vector<size_t> orderedBottomNodes = bottomTri;
 
     // Ensure proper winding by checking normal direction
-    Vector testNormal = computeFaceNormal(orderedBottomNodes, allNodes);
+    Vector testNormal = faceNormal(orderedBottomNodes, allNodes);
 
     Vector outwardDir =
-        computeFaceCentroid(orderedBottomNodes, allNodes) - centroid;
+        faceCentroid(orderedBottomNodes, allNodes) - centroid;
     if (dot(testNormal, outwardDir) < 0)
     {
         // Reverse winding to make it outward-pointing
@@ -1281,10 +1281,10 @@ std::vector<vtkIdType> orderPyramidNodes
     // (outward-pointing normal when viewed from outside)
     std::vector<size_t> orderedBase = baseFace;
     Vector testNormal =
-        computeFaceNormal(orderedBase, allNodes);
+        faceNormal(orderedBase, allNodes);
 
     Vector outwardDir =
-        computeFaceCentroid(orderedBase, allNodes) - centroid;
+        faceCentroid(orderedBase, allNodes) - centroid;
 
     if (dot(testNormal, outwardDir) < 0)
     {

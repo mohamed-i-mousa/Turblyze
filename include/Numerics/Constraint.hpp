@@ -33,10 +33,17 @@ public:
         ScalarField& pressureField
     ) noexcept;
 
-    /// Copy and Move Semantics
+    /// Copy constructor and assignment
     Constraint(const Constraint&) = delete;
     Constraint& operator=(const Constraint&) = delete;
-    
+
+    /// Move constructor and assignment
+    Constraint(Constraint&&) = delete;
+    Constraint& operator=(Constraint&&) = delete;
+
+    /// Destructor
+    ~Constraint() = default;
+
 // Setter methods
 
     /**
@@ -67,15 +74,13 @@ public:
      * @brief Apply velocity field constraints
      * @return Number of cells where constraints were applied
      */
-    [[nodiscard("Constrained cells count needed for diagnostics")]]
-    size_t applyVelocityConstraints() noexcept;
+    [[nodiscard]] size_t applyVelocityConstraints() noexcept;
 
     /**
      * @brief Apply pressure field constraints
      * @return Number of cells where constraints were applied
      */
-    [[nodiscard("Constrained cells count needed for diagnostics")]]
-    size_t applyPressureConstraints() noexcept;
+    [[nodiscard]] size_t applyPressureConstraints() noexcept;
 
 private:
 

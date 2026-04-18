@@ -83,7 +83,7 @@ public:
      * @brief Get number of faces in this boundary patch
      * @return Number of boundary faces
      */
-    size_t numberOfBoundaryFaces() const noexcept
+    [[nodiscard]] size_t numBoundaryFaces() const noexcept
     {
         return lastFaceIdx_ - firstFaceIdx_ + 1;
     }
@@ -92,31 +92,40 @@ public:
      * @brief Get patch name
      * @return Patch name
      */
-    const std::string& patchName() const noexcept { return patchName_; }
+    [[nodiscard]] const std::string& patchName() const noexcept
+    {
+        return patchName_;
+    }
 
     /**
      * @brief Get patch type
      * @return Mapped patch type
      */
-    PatchType type() const noexcept { return type_; }
+    [[nodiscard]] PatchType type() const noexcept { return type_; }
 
     /**
      * @brief Get zone identifier
      * @return Zone ID from mesh file
      */
-    size_t zoneIdx() const noexcept { return zoneIdx_; }
+    [[nodiscard]] size_t zoneIdx() const noexcept { return zoneIdx_; }
 
     /**
      * @brief Get first face index
      * @return Index of first face in patch
      */
-    size_t firstFaceIdx() const noexcept { return firstFaceIdx_; }
+    [[nodiscard]] size_t firstFaceIdx() const noexcept
+    {
+        return firstFaceIdx_;
+    }
 
     /**
      * @brief Get last face index
      * @return Index of last face in patch
      */
-    size_t lastFaceIdx() const noexcept { return lastFaceIdx_; }
+    [[nodiscard]] size_t lastFaceIdx() const noexcept
+    {
+        return lastFaceIdx_;
+    }
 
 private:
 

@@ -142,13 +142,13 @@ public:
      * @brief Get face identifier
      * @return Unique face ID
      */
-    size_t idx() const noexcept { return idx_; }
+    [[nodiscard]] size_t idx() const noexcept { return idx_; }
 
     /**
      * @brief Get node connectivity
      * @return Vector of node indices
      */
-    std::span<const size_t> nodeIndices() const noexcept
+    [[nodiscard]] std::span<const size_t> nodeIndices() const noexcept
     {
         return nodeIndices_;
     }
@@ -157,13 +157,13 @@ public:
      * @brief Get owner cell index
      * @return Index of owner cell
      */
-    size_t ownerCell() const noexcept { return ownerCell_; }
+    [[nodiscard]] size_t ownerCell() const noexcept { return ownerCell_; }
 
     /**
      * @brief Get neighbor cell index
      * @return Optional neighbor cell index
      */
-    const std::optional<size_t>& neighborCell() const noexcept
+    [[nodiscard]] const std::optional<size_t>& neighborCell() const noexcept
     {
         return neighborCell_;
     }
@@ -172,56 +172,65 @@ public:
      * @brief Get face centroid
      * @return Face center coordinates
      */
-    const Vector& centroid() const noexcept { return centroid_; }
+    [[nodiscard]] const Vector& centroid() const noexcept { return centroid_; }
 
     /**
      * @brief Get face normal vector
      * @return Unit normal vector
      */
-    const Vector& normal() const noexcept { return normal_; }
+    [[nodiscard]] const Vector& normal() const noexcept { return normal_; }
 
     /**
      * @brief Get face area (projected area) for flux calculations
      * @return Face area magnitude (projected area for non-planar faces)
      */
-    Scalar projectedArea() const noexcept { return projectedArea_; }
+    [[nodiscard]] Scalar projectedArea() const noexcept
+    {
+        return projectedArea_;
+    }
 
     /**
      * @brief Get face contact area (actual wetted surface area)
      * @return Contact area (sum of sub-triangle areas for non-planar faces)
      * @note Used for wall shear stress, heat transfer, and friction drag
      */
-    Scalar contactArea() const noexcept { return contactArea_; }
+    [[nodiscard]] Scalar contactArea() const noexcept { return contactArea_; }
 
     /**
      * @brief Get owner cell distance vector
      * @return Vector from owner to face
      */
-    const Vector& dPf() const noexcept { return dPf_; }
+    [[nodiscard]] const Vector& dPf() const noexcept { return dPf_; }
 
     /**
      * @brief Get neighbor cell distance vector
      * @return Optional vector from neighbor to face
      */
-    const std::optional<Vector>& dNf() const noexcept { return dNf_; }
+    [[nodiscard]] const std::optional<Vector>& dNf() const noexcept
+    {
+        return dNf_;
+    }
 
     /**
      * @brief Get owner cell distance magnitude
      * @return Distance from owner to face
      */
-    Scalar dPfMag() const noexcept { return dPfMag_; }
+    [[nodiscard]] Scalar dPfMag() const noexcept { return dPfMag_; }
 
     /**
      * @brief Get neighbor cell distance magnitude
      * @return Optional distance from neighbor to face
      */
-    const std::optional<Scalar>& dNfMag() const noexcept { return dNfMag_; }
+    [[nodiscard]] const std::optional<Scalar>& dNfMag() const noexcept
+    {
+        return dNfMag_;
+    }
 
     /**
      * @brief Check if geometric properties calculated
      * @return True if geometry computed
      */
-    bool geometricPropertiesCalculated() const noexcept
+    [[nodiscard]] bool geometricPropertiesCalculated() const noexcept
     {
         return geometricPropertiesCalculated_;
     }
@@ -230,7 +239,7 @@ public:
      * @brief Check if distance properties calculated
      * @return True if distance vectors and magnitudes computed
      */
-    bool distancePropertiesCalculated() const noexcept
+    [[nodiscard]] bool distancePropertiesCalculated() const noexcept
     {
         return distancePropertiesCalculated_;
     }
@@ -250,7 +259,7 @@ public:
      * @note Terminates the program if face has zero area (collinear nodes)
      * @return FaceIntegrals for cell volume/centroid computation
      */
-    FaceIntegrals calculateGeometricProperties
+    [[nodiscard]] FaceIntegrals calculateGeometricProperties
     (
         std::span<const Vector> allNodes
     );
@@ -271,13 +280,19 @@ public:
      * @brief Check if this is a boundary face
      * @return True if face is on domain boundary
      */
-    bool isBoundary() const noexcept { return !neighborCell_.has_value(); }
+    [[nodiscard]] bool isBoundary() const noexcept
+    {
+        return !neighborCell_.has_value();
+    }
 
     /**
      * @brief Get the boundary patch this face belongs to
      * @return Optional reference to owning patch (nullopt if unlinked)
      */
-    const OptionalRef<BoundaryPatch>& patch() const noexcept { return patch_; }
+    [[nodiscard]] const OptionalRef<BoundaryPatch>& patch() const noexcept
+    {
+        return patch_;
+    }
 
     /**
      * @brief Flip the face normal direction
@@ -344,7 +359,12 @@ private:
      * @param c Third vertex coordinate along one axis
      * @return a² + b² + c² + ab + ac + bc
      */
-    static Scalar secondMoment(Scalar a, Scalar b, Scalar c) noexcept
+    [[nodiscard]] static Scalar secondMoment
+    (
+        Scalar a,
+        Scalar b,
+        Scalar c
+    ) noexcept
     {
         return a*a + b*b + c*c + a*b + a*c + b*c;
     }
