@@ -427,7 +427,7 @@ void Matrix::setValues
         const size_t cellIdx = cellIndices[i];
         const Scalar f = hasFractions ? fractions[i] : S(1.0);
 
-        if (f < vSmallValue)
+        if (f < rootSmallValue_)
         {
             continue;
         }
@@ -439,7 +439,7 @@ void Matrix::setValues
                 static_cast<Eigen::Index>(cellIdx)
             );
 
-        if (f > S(1.0) - vSmallValue)
+        if (f > S(1.0) - rootSmallValue_)
         {
             for 
             (

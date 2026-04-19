@@ -144,6 +144,10 @@ private:
     /// Relaxation factor from last relax() call (0 = not relaxed)
     Scalar lastRelaxationFactor_ = S(0.0);
 
+    /// Threshold below which f/(1-f) overflows
+    Scalar rootSmallValue_ = std::sqrt(smallValue);
+
+
 // Private methods
 
     /**
