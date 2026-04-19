@@ -94,13 +94,13 @@ public:
      *
      * @param U Current velocity field
      * @param flowRateFace Face volume flow rates
-     * @param gradU Pre-computed velocity gradients {gradUx, gradUy, gradUz}
+     * @param gradU Pre-computed velocity gradient tensor field
      */
     void solve
     (
         const VectorField& U,
         const FaceFluxField& flowRateFace,
-        std::span<const VectorField> gradU
+        const TensorField& gradU
     );
 
 // Accessor methods
@@ -386,11 +386,11 @@ private:
 // Transient-quantity producers (return by value)
 
     /**
-     * @brief Compute strain rate magnitude from velocity gradients
-     * @param gradU Vector of velocity gradient fields
+     * @brief Compute strain rate magnitude from velocity gradient tensor
+     * @param gradU Velocity gradient tensor field
      * @return Strain rate magnitude per cell
      */
-    ScalarField strainRate(std::span<const VectorField> gradU) const;
+    ScalarField strainRate(const TensorField& gradU) const;
 
     /// Compute limited cell gradient of k
     VectorField gradientK() const;

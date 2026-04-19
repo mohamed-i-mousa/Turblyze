@@ -25,6 +25,7 @@ find_package(VTK REQUIRED COMPONENTS
 add_executable(${PROJECT_NAME}
     src/main.cpp
     src/Mesh/Vector.cpp
+    src/Mesh/Tensor.cpp
     src/Mesh/Face.cpp
     src/Mesh/Cell.cpp
     src/Mesh/CellData.cpp

@@ -40,3 +40,4 @@ void CellData<T>::printSummary(size_t itemsToShow) const
 
 template class CellData<Vector>;
 template class CellData<Scalar>;
+template class CellData<Tensor>;

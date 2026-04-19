@@ -99,7 +99,7 @@ void kOmegaSST::solve
 (
     const VectorField& U,
     const FaceFluxField& flowRateFace,
-    std::span<const VectorField> gradU
+    const TensorField& gradU
 )
 {
     boundTurbulenceFields();
@@ -971,7 +971,7 @@ void kOmegaSST::overrideWallCellProduction
 
 ScalarField kOmegaSST::strainRate
 (
-    std::span<const VectorField> gradU
+    const TensorField& gradU
 ) const
 {
     size_t numCells = mesh_.numCells();
@@ -980,18 +980,8 @@ ScalarField kOmegaSST::strainRate
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         // S = sqrt(2 * S_ij * S_ij) where S_ij = 0.5*(du_i/dx_j + du_j/dx_i)
-        Scalar S11 = gradU[0][cellIdx].x();
-        Scalar S22 = gradU[1][cellIdx].y();
-        Scalar S33 = gradU[2][cellIdx].z();
-        Scalar S12 = S(0.5) * (gradU[0][cellIdx].y() + gradU[1][cellIdx].x());
-        Scalar S13 = S(0.5) * (gradU[0][cellIdx].z() + gradU[2][cellIdx].x());
-        Scalar S23 = S(0.5) * (gradU[1][cellIdx].z() + gradU[2][cellIdx].y());
-
-        out[cellIdx] = std::sqrt
-            (
-                S(2.0) * (S11*S11 + S22*S22 + S33*S33
-              + S(2.0) * (S12*S12 + S13*S13 + S23*S23))
-            );
+        Scalar symmMagSq = gradU[cellIdx].symm().magnitudeSquared();
+        out[cellIdx] = std::sqrt(S(2.0) * symmMagSq);
     }
 
     return out;

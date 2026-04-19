@@ -57,3 +57,18 @@ class BoundaryConditions;
     const BoundaryConditions& bcManager,
     const std::string& fieldName
 );
+
+/**
+ * @brief Linear interpolation of tensor field to face
+ * @param face Face for interpolation
+ * @param field Cell-centered tensor field
+ * @return Interpolated tensor value at face
+ *
+ * For boundary faces, callers must handle BCs explicitly; this
+ * overload terminates the program if called on a boundary face.
+ */
+[[nodiscard]] Tensor interpolateToFace
+(
+    const Face& face,
+    const TensorField& field
+);

@@ -86,3 +86,25 @@ Vector interpolateToFace
 
     return (S(1.0) - wN) * field[P] + wN * field[N];
 }
+
+Tensor interpolateToFace
+(
+    const Face& face,
+    const TensorField& field
+)
+{
+    if (face.isBoundary())
+    {
+        FatalError
+        (
+            "interpolateToFace (no BC) must not be "
+            "called on boundary faces"
+        );
+    }
+
+    const size_t P = face.ownerCell();
+    const size_t N = face.neighborCell().value();
+    const Scalar wN = faceWeight(face);
+
+    return (S(1.0) - wN) * field[P] + wN * field[N];
+}

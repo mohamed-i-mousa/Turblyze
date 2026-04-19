@@ -271,15 +271,29 @@ void SIMPLE::solveMomentumEquations()
     // Reset interpolated diagonals accumulator
     DUf_.setAll(0.0);
 
-    // Compute velocity gradients directly into pre-allocated fields
+    // Compute per-row velocity gradients and assemble the tensor field.
+    // Row VectorFields feed the scalar momentum TransportEquations;
+    // gradU_ (TensorField) is reused by the transpose source and the
+    // turbulence model.
+    VectorField gradUx_row;
+    VectorField gradUy_row;
+    VectorField gradUz_row;
+
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        gradU_[0][cellIdx] =
+        gradUx_row[cellIdx] =
             gradientScheme_.cellGradient("U", Ux, cellIdx, nullptr, 0);
-        gradU_[1][cellIdx] =
+        gradUy_row[cellIdx] =
             gradientScheme_.cellGradient("U", Uy, cellIdx, nullptr, 1);
-        gradU_[2][cellIdx] =
+        gradUz_row[cellIdx] =
             gradientScheme_.cellGradient("U", Uz, cellIdx, nullptr, 2);
+
+        gradU_[cellIdx] = Tensor::fromRows
+        (
+            gradUx_row[cellIdx],
+            gradUy_row[cellIdx],
+            gradUz_row[cellIdx]
+        );
     }
 
     // Add transpose gradient source term
@@ -316,7 +330,7 @@ void SIMPLE::solveMomentumEquations()
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace),
         .source         = UxSource,
-        .gradPhi        = gradU_[0],
+        .gradPhi        = gradUx_row,
         .gradScheme     = gradientScheme_,
         .componentIdx   = 0
     };
@@ -331,7 +345,7 @@ void SIMPLE::solveMomentumEquations()
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace),
         .source         = UySource,
-        .gradPhi        = gradU_[1],
+        .gradPhi        = gradUy_row,
         .gradScheme     = gradientScheme_,
         .componentIdx   = 1
     };
@@ -346,7 +360,7 @@ void SIMPLE::solveMomentumEquations()
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace),
         .source         = UzSource,
-        .gradPhi        = gradU_[2],
+        .gradPhi        = gradUz_row,
         .gradScheme     = gradientScheme_,
         .componentIdx   = 2
     };
@@ -644,12 +658,14 @@ void SIMPLE::solveTurbulence()
 
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
-            gradU_[0][cellIdx] =
+            Vector gUx =
                 gradientScheme_.cellGradient("U", Ux, cellIdx, nullptr, 0);
-            gradU_[1][cellIdx] =
+            Vector gUy =
                 gradientScheme_.cellGradient("U", Uy, cellIdx, nullptr, 1);
-            gradU_[2][cellIdx] =
+            Vector gUz =
                 gradientScheme_.cellGradient("U", Uz, cellIdx, nullptr, 2);
+
+            gradU_[cellIdx] = Tensor::fromRows(gUx, gUy, gUz);
         }
 
         const auto& kField = turbulenceModel_->k();
@@ -865,73 +881,28 @@ void SIMPLE::calculateTransposeGradientSource
 
         Scalar nuEfff = nuEffFace[faceIdx];
 
+        // Columns of the transposed velocity-gradient tensor are the
+        // rows of grad(U). Flux for component j is:
+        //   nuEff_f * dot(gradU_f.col(j), Sf)
         if (face.isBoundary())
         {
-            // For boundary faces, use owner cell gradients
-            Vector gradTx =
-                buildGradientTransposeColumn
-                (
-                    gradU_[0][ownerIdx],
-                    gradU_[1][ownerIdx],
-                    gradU_[2][ownerIdx],
-                    Component::X
-                );
+            // For boundary faces, use the owner cell tensor directly
+            const Tensor& gradUf = gradU_[ownerIdx];
 
-            Vector gradTy =
-                buildGradientTransposeColumn
-                (
-                    gradU_[0][ownerIdx],
-                    gradU_[1][ownerIdx],
-                    gradU_[2][ownerIdx],
-                    Component::Y
-                );
-
-            Vector gradTz =
-                buildGradientTransposeColumn
-                (
-                    gradU_[0][ownerIdx],
-                    gradU_[1][ownerIdx],
-                    gradU_[2][ownerIdx],
-                    Component::Z
-                );
-
-            // Flux contribution: ν_eff_f * (∇U)^T · Sf
-            transposeSourceX[ownerIdx] += nuEfff * dot(gradTx, Sf);
-            transposeSourceY[ownerIdx] += nuEfff * dot(gradTy, Sf);
-            transposeSourceZ[ownerIdx] += nuEfff * dot(gradTz, Sf);
+            transposeSourceX[ownerIdx] += nuEfff * dot(gradUf.col(0), Sf);
+            transposeSourceY[ownerIdx] += nuEfff * dot(gradUf.col(1), Sf);
+            transposeSourceZ[ownerIdx] += nuEfff * dot(gradUf.col(2), Sf);
         }
         else
         {
-            // Internal face: interpolate gradients to face
+            // Internal face: interpolate tensor to face
             const size_t neighborIdx = face.neighborCell().value();
 
-            Vector gradUxf = interpolateToFace(face, gradU_[0]);
-            Vector gradUyf = interpolateToFace(face, gradU_[1]);
-            Vector gradUzf = interpolateToFace(face, gradU_[2]);
+            Tensor gradUf = interpolateToFace(face, gradU_);
 
-            // Build transpose gradient columns
-            Vector gradTx =
-                buildGradientTransposeColumn
-                (
-                    gradUxf, gradUyf, gradUzf, Component::X
-                );
-
-            Vector gradTy =
-                buildGradientTransposeColumn
-                (
-                    gradUxf, gradUyf, gradUzf, Component::Y
-                );
-
-            Vector gradTz =
-                buildGradientTransposeColumn
-                (
-                    gradUxf, gradUyf, gradUzf, Component::Z
-                );
-
-            // Flux contribution: ν_eff_f * (∇U)^T · Sf
-            Scalar fluxX = nuEfff * dot(gradTx, Sf);
-            Scalar fluxY = nuEfff * dot(gradTy, Sf);
-            Scalar fluxZ = nuEfff * dot(gradTz, Sf);
+            Scalar fluxX = nuEfff * dot(gradUf.col(0), Sf);
+            Scalar fluxY = nuEfff * dot(gradUf.col(1), Sf);
+            Scalar fluxZ = nuEfff * dot(gradUf.col(2), Sf);
 
             transposeSourceX[ownerIdx] += fluxX;
             transposeSourceY[ownerIdx] += fluxY;
@@ -994,19 +965,3 @@ void SIMPLE::solveMomentumComponent
     }
 }
 
-Vector SIMPLE::buildGradientTransposeColumn
-(
-    const Vector& gradUx,
-    const Vector& gradUy,
-    const Vector& gradUz,
-    Component component
-) const noexcept
-{
-    switch (component)
-    {
-        case Component::X: return Vector(gradUx.x(), gradUy.x(), gradUz.x());
-        case Component::Y: return Vector(gradUx.y(), gradUy.y(), gradUz.y());
-        case Component::Z: return Vector(gradUx.z(), gradUy.z(), gradUz.z());
-    }
-    return Vector{};
-}

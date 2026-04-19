@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include <array>
 #include <vector>
 #include <memory>
 
@@ -347,9 +346,9 @@ private:
     /// Pressure correction gradient field
     VectorField gradPCorr_;
 
-    /// Velocity gradients (shared between momentum,
+    /// Velocity gradient tensor field (shared between momentum,
     /// transpose source, turbulence)
-    std::array<VectorField, 3> gradU_;
+    TensorField gradU_;
 
     /// Matrix constructor and solver object
     std::unique_ptr<Matrix> matrixConstruct_ = nullptr;
@@ -455,25 +454,4 @@ private:
         const ScalarField& componentPrev
     );
 
-    /**
-     * @brief Build gradient transpose vector from velocity gradients
-     *
-     * @details Constructs the transpose gradient columns:
-     * - X: [∂u/∂x, ∂v/∂x, ∂w/∂x]
-     * - Y: [∂u/∂y, ∂v/∂y, ∂w/∂y]
-     * - Z: [∂u/∂z, ∂v/∂z, ∂w/∂z]
-     *
-     * @param gradUx Gradient of x-velocity
-     * @param gradUy Gradient of y-velocity
-     * @param gradUz Gradient of z-velocity
-     * @param component Which column of the transpose to build
-     * @return Vector representing the transpose gradient column
-     */
-    Vector buildGradientTransposeColumn
-    (
-        const Vector& gradUx,
-        const Vector& gradUy,
-        const Vector& gradUz,
-        Component component
-    ) const noexcept;
 };

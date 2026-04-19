@@ -25,6 +25,7 @@
 
 #include "Scalar.hpp"
 #include "Vector.hpp"
+#include "Tensor.hpp"
 #include "Mesh.hpp"
 
 
@@ -129,3 +130,6 @@ using ScalarField = CellData<Scalar>;
 
 /// Type alias for general vector fields
 using VectorField = CellData<Vector>;
+
+/// Type alias for general tensor fields
+using TensorField = CellData<Tensor>;

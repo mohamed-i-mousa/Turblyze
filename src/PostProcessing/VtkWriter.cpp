@@ -41,31 +41,7 @@ namespace VtkWriter
 
 // ******************** Internal Types and Forward Declarations *****************
 
-struct StrainTensor
-{
-    Scalar S_11;
-    Scalar S_22;
-    Scalar S_33;
-    Scalar S_12;
-    Scalar S_13;
-    Scalar S_23;
-
-    constexpr Scalar normSquared() const noexcept
-    {
-        return
-            S_11*S_11 + S_22*S_22 + S_33*S_33
-          + 2.0 * (S_12*S_12 + S_13*S_13 + S_23*S_23);
-    }
-};
-
 ScalarField computeMagnitude(const VectorField& field);
-
-StrainTensor computeStrainTensor
-(
-    const Vector& gradUx,
-    const Vector& gradUy,
-    const Vector& gradUz
-);
 
 Vector faceCentroid
 (
@@ -557,28 +533,13 @@ ScalarField QCriterion
 
     for (size_t i = 0; i < gradUx.size(); ++i)
     {
-        // Compute strain rate tensor using helper function
-        StrainTensor S = computeStrainTensor(gradUx[i], gradUy[i], gradUz[i]);
+        // Q = 0.5 * (||Omega||^2 - ||S||^2)
+        Tensor gradU = Tensor::fromRows(gradUx[i], gradUy[i], gradUz[i]);
 
-        // Extract velocity gradient tensor components for rotation tensor
-        Scalar dUxdy = gradUx[i].y();
-        Scalar dUxdz = gradUx[i].z();
-        Scalar dUydx = gradUy[i].x();
-        Scalar dUydz = gradUy[i].z();
-        Scalar dUzdx = gradUz[i].x();
-        Scalar dUzdy = gradUz[i].y();
+        Scalar sMagSq = gradU.symm().magnitudeSquared();
+        Scalar oMagSq = gradU.skew().magnitudeSquared();
 
-        // Anti-symmetric rotation rate tensor
-        // (Omega_ij = 0.5 * (du_i/dx_j - du_j/dx_i))
-        Scalar Omega_12 = 0.5 * (dUxdy - dUydx);
-        Scalar Omega_13 = 0.5 * (dUxdz - dUzdx);
-        Scalar Omega_23 = 0.5 * (dUydz - dUzdy);
-
-        // Q-criterion = 0.5 * (||Omega||^2 - ||S||^2)
-        Scalar omegaNormSq =
-            2.0 * (Omega_12*Omega_12 + Omega_13*Omega_13 + Omega_23*Omega_23);
-
-        qCriterion[i] = 0.5 * (omegaNormSq - S.normSquared());
+        qCriterion[i] = S(0.5) * (oMagSq - sMagSq);
     }
 
     return qCriterion;
@@ -595,11 +556,16 @@ ScalarField strainRateMagnitude
 
     for (size_t idx = 0; idx < gradUx.size(); ++idx)
     {
-        // Compute strain rate tensor using helper function
-        StrainTensor S = computeStrainTensor(gradUx[idx], gradUy[idx], gradUz[idx]);
-
         // Strain rate magnitude = sqrt(2 * S_ij * S_ij)
-        strainRateMag[idx] = std::sqrt(2.0 * S.normSquared());
+        Tensor gradU = Tensor::fromRows
+        (
+            gradUx[idx],
+            gradUy[idx],
+            gradUz[idx]
+        );
+
+        Scalar symmMagSq = gradU.symm().magnitudeSquared();
+        strainRateMag[idx] = std::sqrt(S(2.0) * symmMagSq);
     }
 
     return strainRateMag;
@@ -738,39 +704,6 @@ ScalarField computeMagnitude(const VectorField& field)
         magnitude[idx] = field[idx].magnitude();
     }
     return magnitude;
-}
-
-StrainTensor computeStrainTensor
-(
-    const Vector& gradUx,
-    const Vector& gradUy,
-    const Vector& gradUz
-)
-{
-    StrainTensor S;
-
-    // Extract velocity gradient tensor components
-    Scalar dUxdx = gradUx.x();
-    Scalar dUxdy = gradUx.y();
-    Scalar dUxdz = gradUx.z();
-
-    Scalar dUydx = gradUy.x();
-    Scalar dUydy = gradUy.y();
-    Scalar dUydz = gradUy.z();
-
-    Scalar dUzdx = gradUz.x();
-    Scalar dUzdy = gradUz.y();
-    Scalar dUzdz = gradUz.z();
-
-    // Symmetric strain rate tensor: S_ij = 0.5 * (du_i/dx_j + du_j/dx_i)
-    S.S_11 = dUxdx;
-    S.S_22 = dUydy;
-    S.S_33 = dUzdz;
-    S.S_12 = 0.5 * (dUxdy + dUydx);
-    S.S_13 = 0.5 * (dUxdz + dUzdx);
-    S.S_23 = 0.5 * (dUydz + dUzdy);
-
-    return S;
 }
 
 // *************** Internal Helper Methods: Geometric Utilities ****************
