@@ -28,7 +28,8 @@ LinearSolver::LinearSolver
 // *********************************** Copy ***********************************
 
 LinearSolver::LinearSolver(const LinearSolver& other)
-:   fieldName_(other.fieldName_),
+:   
+    fieldName_(other.fieldName_),
     tolerance_(other.tolerance_),
     maxIterations_(other.maxIterations_),
     ilutFillFactor_(other.ilutFillFactor_),
@@ -68,20 +69,19 @@ void LinearSolver::solveWithBiCGSTAB
         FatalError("BiCGSTAB: x and B size mismatch");
     }
 
-    // Configure and analyze once — parameters and sparsity are fixed
+    bicgstab_.setMaxIterations(maxIterations_);
+    bicgstab_.setTolerance(tolerance_);
+    bicgstab_.preconditioner().setFillfactor(ilutFillFactor_);
+    bicgstab_.preconditioner().setDroptol(ilutDropTol_);
+
+    // Sparsity analysis — run only once
     if (!solverInitialized_)
     {
-        bicgstab_.setMaxIterations(maxIterations_);
-        bicgstab_.setTolerance(tolerance_);
-        bicgstab_.preconditioner().setFillfactor(ilutFillFactor_);
-        bicgstab_.preconditioner().setDroptol(ilutDropTol_);
-        
         bicgstab_.analyzePattern(A);
-
         solverInitialized_ = true;
     }
 
-    // Numeric factorization must run each call — coefficients change
+    // Numeric factorization — coefficients change
     bicgstab_.factorize(A);
 
     if (bicgstab_.info() != Eigen::Success)
@@ -121,19 +121,18 @@ void LinearSolver::solveWithPCG
         FatalError("PCG: x and B size mismatch");
     }
 
-    // Configure and analyze once — parameters and sparsity are fixed
+    pcg_.setMaxIterations(maxIterations_);
+    pcg_.setTolerance(tolerance_);
+    pcg_.preconditioner().setInitialShift(icInitialShift_);
+
+    // Sparsity analysis
     if (!solverInitialized_)
     {
-        pcg_.setMaxIterations(maxIterations_);
-        pcg_.setTolerance(tolerance_);
-        pcg_.preconditioner().setInitialShift(icInitialShift_);
-
         pcg_.analyzePattern(A);
-
         solverInitialized_ = true;
     }
 
-    // Numeric factorization must run each call — coefficients change
+    // Numeric factorization
     pcg_.factorize(A);
 
     if (pcg_.info() != Eigen::Success)

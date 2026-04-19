@@ -768,6 +768,11 @@ void CFDApplication::configureSolver()
                 USection.lookupOrDefault<Scalar>("tolerance", S(1e-8)),
                 USection.lookupOrDefault<int>("maxIter", 1000)
             );
+            momentumSolver.setILUTParameters
+            (
+                USection.lookupOrDefault<int>("fillFactor", 5),
+                USection.lookupOrDefault<Scalar>("dropTol", S(1e-3))
+            );
             momentumSolver.setDebug(debug_);
             solver_->setMomentumSolver(momentumSolver);
 
@@ -831,6 +836,18 @@ void CFDApplication::configureSolver()
                 ("maxIter", 1000)
               : 1000
             );
+            kSolver.setILUTParameters
+            (
+                solvers.hasSection("k")
+              ? solvers.section("k").lookupOrDefault<int>
+                ("fillFactor", 5)
+              : 5,
+
+                solvers.hasSection("k")
+              ? solvers.section("k").lookupOrDefault<Scalar>
+                ("dropTol", S(1e-3))
+              : S(1e-3)
+            );
 
             LinearSolver omegaSolver
             (
@@ -844,6 +861,18 @@ void CFDApplication::configureSolver()
               ? solvers.section("omega").lookupOrDefault<int>
                 ("maxIter", 1000)
               : 1000
+            );
+            omegaSolver.setILUTParameters
+            (
+                solvers.hasSection("omega")
+              ? solvers.section("omega").lookupOrDefault<int>
+                ("fillFactor", 5)
+              : 5,
+
+                solvers.hasSection("omega")
+              ? solvers.section("omega").lookupOrDefault<Scalar>
+                ("dropTol", S(1e-3))
+              : S(1e-3)
             );
 
             kSolver.setDebug(debug_);
