@@ -38,6 +38,14 @@ public:
      */
     explicit CFDApplication(const std::string& caseFilePath);
 
+    /// Copy constructor and assignment 
+    CFDApplication(const CFDApplication&) = delete;
+    CFDApplication& operator=(const CFDApplication&) = delete;
+
+    /// Move constructor and assignment
+    CFDApplication(CFDApplication&&) noexcept = default;
+    CFDApplication& operator=(CFDApplication&&) noexcept = default;
+
     /// Destructor
     ~CFDApplication();
 
