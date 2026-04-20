@@ -335,6 +335,7 @@ std::string BoundaryConditions::bcTypeToString(BCType bctype)
 
 void BoundaryConditions::validatePatchNames() const
 {
+    // std::set guarantees uniqueness
     std::set<std::string> validNames;
 
     for (const auto& patch : patches_)
