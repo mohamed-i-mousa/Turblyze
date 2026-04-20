@@ -50,7 +50,10 @@ public:
      * @brief Set velocity field constraints
      * @param maxVelocity Maximum allowed velocity magnitude
      */
-    void setVelocityConstraints(Scalar maxVelocity) noexcept;
+    void setVelocityConstraints(Scalar maxVelocity) noexcept
+    {
+        maxVelocityMagnitude_ = std::abs(maxVelocity);
+    }
 
     /**
      * @brief Set pressure field constraints

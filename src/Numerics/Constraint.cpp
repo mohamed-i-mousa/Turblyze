@@ -19,10 +19,8 @@ Constraint::Constraint
     p_(pressureField)
 {}
 
-void Constraint::setVelocityConstraints(Scalar maxVelocity) noexcept
-{
-    maxVelocityMagnitude_ = std::abs(maxVelocity);
-}
+
+// ****************************** Setter Methods ******************************
 
 void Constraint::setPressureConstraints
 (
