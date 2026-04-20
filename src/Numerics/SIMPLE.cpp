@@ -31,8 +31,6 @@ SIMPLE::SIMPLE
     convectionSchemes_(convSchemes)
 {}
 
-SIMPLE::~SIMPLE() = default;
-
 
 // ****************************** Setter Methods ******************************
 
@@ -48,11 +46,6 @@ void SIMPLE::setTurbulenceSolvers
         turbulenceModel_->omegaSolverSettings() = omegaSolver;
     }
 }
-
-
-// ******************************* Accessor Methods ****************************
-
-
 
 
 // ******************************* Public Methods ******************************
@@ -145,8 +138,18 @@ void SIMPLE::initialize
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = mesh_.faces()[faceIdx];
-        Vector Uf = interpolateToFace(face, U_, bcManager_, "U");
-        Vector Sf = face.normal() * face.projectedArea();
+
+        Vector Uf;
+        if (face.isBoundary())
+        {
+            Uf = bcManager_.boundaryVectorFaceValue("U", U_, face);
+        }
+        else
+        {
+            Uf = interpolateToFace(face, U_);
+        }
+
+        const Vector Sf = face.normal() * face.projectedArea();
         RhieChowFlowRate_[faceIdx] = dot(Uf, Sf);
     }
 
@@ -417,7 +420,7 @@ void SIMPLE::updateRhieChowFlowRate()
         const size_t N = face.neighborCell().value();
 
         // Linear-interpolated velocity at face
-        const Vector UfLinear = interpolateToFace(face, U_, bcManager_, "U");
+        const Vector UfLinear = interpolateToFace(face, U_);
 
         const Vector gradPAvgf = interpolateToFace(face, gradP_);
 
@@ -548,7 +551,7 @@ void SIMPLE::correctVelocity()
         }
         else
         {
-            UAvgf_[faceIdx] = interpolateToFace(face, U_, bcManager_, "U");
+            UAvgf_[faceIdx] = interpolateToFace(face, U_);
         }
     }
 }
@@ -964,4 +967,3 @@ void SIMPLE::solveMomentumComponent
         }
     }
 }
-

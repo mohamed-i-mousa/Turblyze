@@ -1,74 +1,54 @@
 /******************************************************************************
  * @file LinearInterpolation.hpp
- * @brief Linear interpolation functions for face value reconstruction
+ * @brief Linear interpolation of a cell-centered field to internal faces
  *
- * @details Provides distance-weighted linear interpolation from cell centers
- * to face centers. Supports both Scalar and Vector fields with optional
- * BC handling.
- * Uses phif = phiP * wP + phiN * wN with geometric weighting.
+ * @details Distance-weighted linear interpolation of CellData<T> from owner
+ * and neighbour cell centres to the shared face. Boundary-face values are
+ * the caller's responsibility — use BoundaryConditions::boundaryVectorFaceValue
+ * (or the analogous helper for scalar/tensor fields) before invoking this
+ * function.
  *****************************************************************************/
 
 #pragma once
 
 #include "Face.hpp"
 #include "CellData.hpp"
+#include "ErrorHandler.hpp"
 
-/// Forward declaration
-class BoundaryConditions;
-
-/**
- * @brief Linear interpolation of scalar field to face
- * @param face Face for interpolation
- * @param field Cell-centered scalar field
- * @return Interpolated scalar value at face
- */
-[[nodiscard]] Scalar interpolateToFace
-(
-    const Face& face,
-    const ScalarField& field
-);
+/// Distance weight for the neighbour cell: wN = dP / (dP + dN).
+[[nodiscard]] inline Scalar faceWeight(const Face& face)
+{
+    const Scalar dP = face.dPfMag();
+    const Scalar dN = face.dNfMag().value();
+    return dP / (dP + dN);
+}
 
 /**
- * @brief Linear interpolation of vector field to face
- * @param face Face for interpolation
- * @param field Cell-centered vector field
- * @return Interpolated vector value at face
- *
- * For boundary faces, returns owner cell value (zero-gradient assumption).
+ * @brief Linear interpolation of a cell-centered field to an internal face
+ * @param face Internal face (FatalError if boundary)
+ * @param field Cell-centered field of type Scalar, Vector, or Tensor
+ * @return Face-centered value
+ * @note Callers must resolve boundary-face values themselves.
  */
-[[nodiscard]] Vector interpolateToFace
+template<typename T>
+[[nodiscard]] T interpolateToFace
 (
     const Face& face,
-    const VectorField& field
-);
+    const CellData<T>& field
+)
+{
+    if (face.isBoundary())
+    {
+        FatalError
+        (
+            "interpolateToFace must not be called on boundary "
+            "faces; resolve BC values at the call site"
+        );
+    }
 
-/**
- * @brief Linear interpolation of vector field with BC handling
- * @param face Face for interpolation
- * @param field Cell-centered vector field
- * @param bcManager Boundary condition manager
- * @param fieldName Name of field for BC lookup (e.g., "U")
- * @return Interpolated vector value with proper BC handling
- */
-[[nodiscard]] Vector interpolateToFace
-(
-    const Face& face,
-    const VectorField& field,
-    const BoundaryConditions& bcManager,
-    const std::string& fieldName
-);
+    const size_t P = face.ownerCell();
+    const size_t N = face.neighborCell().value();
+    const Scalar wN = faceWeight(face);
 
-/**
- * @brief Linear interpolation of tensor field to face
- * @param face Face for interpolation
- * @param field Cell-centered tensor field
- * @return Interpolated tensor value at face
- *
- * For boundary faces, callers must handle BCs explicitly; this
- * overload terminates the program if called on a boundary face.
- */
-[[nodiscard]] Tensor interpolateToFace
-(
-    const Face& face,
-    const TensorField& field
-);
+    return (S(1.0) - wN) * field[P] + wN * field[N];
+}

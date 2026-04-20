@@ -40,7 +40,6 @@ add_executable(${PROJECT_NAME}
     src/Numerics/LinearSolvers.cpp
     src/Numerics/SIMPLE.cpp
     src/Numerics/Constraint.cpp
-    src/Numerics/LinearInterpolation.cpp
     src/Models/kOmegaSST.cpp
     src/PostProcessing/VtkWriter.cpp
     src/Case/CaseReader.cpp

@@ -64,7 +64,7 @@ public:
     SIMPLE& operator=(SIMPLE&&) = delete;
 
     /// Destructor (defined for forward-declared types)
-    ~SIMPLE();
+    ~SIMPLE() = default;
 
     /// Main SIMPLE algorithm execution
     void solve();
