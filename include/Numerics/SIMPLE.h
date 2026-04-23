@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file SIMPLE.hpp
+ * @file SIMPLE.h
  * @brief SIMPLE algorithm for incompressible Navier-Stokes equations
  *
  * @details This header implements the Semi-Implicit Method for Pressure-Linked
@@ -23,17 +23,17 @@
 #include <vector>
 #include <memory>
 
-#include "Mesh.hpp"
-#include "BoundaryConditions.hpp"
-#include "CellData.hpp"
-#include "FaceData.hpp"
-#include "GradientScheme.hpp"
-#include "ConvectionScheme.hpp"
-#include "Matrix.hpp"
-#include "LinearSolvers.hpp"
-#include "ErrorHandler.hpp"
-#include "kOmegaSST.hpp"
-#include "Constraint.hpp"
+#include "Mesh.h"
+#include "BoundaryConditions.h"
+#include "CellData.h"
+#include "FaceData.h"
+#include "GradientScheme.h"
+#include "ConvectionScheme.h"
+#include "Matrix.h"
+#include "LinearSolvers.h"
+#include "ErrorHandler.h"
+#include "kOmegaSST.h"
+#include "Constraint.h"
 
 
 class SIMPLE

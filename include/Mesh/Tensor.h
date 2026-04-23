@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file Tensor.hpp
+ * @file Tensor.h
  * @brief 3x3 tensor class for geometric and mathematical operations
  *
  * @details This header defines a 3x3 tensor class used for velocity
@@ -20,9 +20,9 @@
 #include <cstddef>
 #include <iosfwd>
 
-#include "Scalar.hpp"
-#include "Vector.hpp"
-#include "ErrorHandler.hpp"
+#include "Scalar.h"
+#include "Vector.h"
+#include "ErrorHandler.h"
 
 
 class Tensor

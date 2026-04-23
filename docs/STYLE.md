@@ -1,14 +1,14 @@
 # C++ Code Style Guide
 
-Style conventions for Turblyze (C++20). These rules apply to all `.hpp`
+Style conventions for Turblyze (C++20). These rules apply to all `.h`
 and `.cpp` files in `include/` and `src/`.
 
 ## File Headers
 
-**Header files (.hpp)** use the extended form with `@class` and description:
+**Header files (.h)** use the extended form with `@class` and description:
 ```cpp
 /******************************************************************************
- * @file BoundaryPatch.hpp
+ * @file BoundaryPatch.h
  * @brief Boundary patch representation and mesh connectivity management
  *
  * This header defines the BoundaryPatch class, which represents a set of
@@ -35,7 +35,7 @@ and `.cpp` files in `include/` and `src/`.
 
 ## Section Separators
 
-**Header files (.hpp)** use plain comment separators inside classes:
+**Header files (.h)** use plain comment separators inside classes:
 ```cpp
 // Setter methods
 
@@ -55,7 +55,7 @@ and `.cpp` files in `include/` and `src/`.
 
 All documentation lives in **headers only**. Source files have no Doxygen on method implementations.
 
-**In headers (.hpp)** — full Doxygen `/** */` blocks on every method declaration:
+**In headers (.h)** — full Doxygen `/** */` blocks on every method declaration:
 ```cpp
 /**
  * @brief Calculate boundary face value for scalar field
@@ -143,7 +143,7 @@ else
 ```
 
 ## Error Handling
-Two macros from `ErrorHandler.hpp` for all error reporting:
+Two macros from `ErrorHandler.h` for all error reporting:
 
 **Fatal errors** (unrecoverable — prints message with file/line and aborts):
 ```cpp

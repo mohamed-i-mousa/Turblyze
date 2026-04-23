@@ -3,12 +3,12 @@
  * @brief Implementation of case file parser
  *****************************************************************************/
 
-#include "CaseReader.hpp"
+#include "CaseReader.h"
 
 #include <fstream>
 #include <iostream>
 
-#include "ErrorHandler.hpp"
+#include "ErrorHandler.h"
 
 // ************************** Constructor/Destructor **************************
 

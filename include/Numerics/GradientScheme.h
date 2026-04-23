@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file GradientScheme.hpp
+ * @file GradientScheme.h
  * @brief Gradient computation schemes for finite volume discretization
  *
  * @details This header defines the GradientScheme class, which provides 
@@ -23,11 +23,11 @@
 #include <string>
 #include <optional>
 
-#include "Scalar.hpp"
-#include "Mesh.hpp"
-#include "BoundaryConditions.hpp"
-#include "CellData.hpp"
-#include "FaceData.hpp"
+#include "Scalar.h"
+#include "Mesh.h"
+#include "BoundaryConditions.h"
+#include "CellData.h"
+#include "FaceData.h"
 
 
 class GradientScheme

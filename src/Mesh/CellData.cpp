@@ -3,11 +3,11 @@
  * @brief Implementation of cell-centered data containers
  *****************************************************************************/
 
-#include "CellData.hpp"
+#include "CellData.h"
 
 #include <iostream>
 
-#include "ErrorHandler.hpp"
+#include "ErrorHandler.h"
 
 
 // ***************************** Helper Methods ******************************

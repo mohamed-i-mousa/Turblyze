@@ -3,7 +3,7 @@
  * @brief Stream output for the Tensor class
  *****************************************************************************/
 
-#include "Tensor.hpp"
+#include "Tensor.h"
 
 #include <iomanip>
 #include <ostream>

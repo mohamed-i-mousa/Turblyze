@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file Scalar.hpp
+ * @file Scalar.h
  * @brief Floating-point precision configuration and tolerance definitions
  * 
  * @details This file defines the Scalar type used throughout the CFD solver 

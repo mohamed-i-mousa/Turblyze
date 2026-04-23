@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file CaseReader.hpp
+ * @file CaseReader.h
  * @brief Parser for the case file
  *
  * @details This header defines the CaseReader class, which parses the input
@@ -25,9 +25,9 @@
 #include <charconv>
 #include <cctype>
 
-#include "Scalar.hpp"
-#include "Vector.hpp"
-#include "ErrorHandler.hpp"
+#include "Scalar.h"
+#include "Vector.h"
+#include "ErrorHandler.h"
 
 
 class CaseReader

@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file OptionalRef.hpp
+ * @file OptionalRef.h
  * @brief Non-owning optional reference alias
  *
  * @details Defines OptionalRef<T> — a std::optional holding a

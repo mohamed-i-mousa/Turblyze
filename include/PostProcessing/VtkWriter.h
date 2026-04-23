@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file VtkWriter.hpp
+ * @file VtkWriter.h
  * @brief VTK (Visualization Toolkit) File Writer
  *
  * @details This header defines the VtkWriter namespace, a collection of
@@ -25,10 +25,10 @@
 #include <vector>
 #include <map>
 
-#include "Scalar.hpp"
-#include "Mesh.hpp"
-#include "CellData.hpp"
-#include "FaceData.hpp"
+#include "Scalar.h"
+#include "Mesh.h"
+#include "CellData.h"
+#include "FaceData.h"
 
 
 namespace VtkWriter

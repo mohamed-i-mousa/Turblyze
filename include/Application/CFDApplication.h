@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file CFDApplication.hpp
+ * @file CFDApplication.h
  * @brief Top-level application driver for the CFD solver
  *
  * @details This header defines the CFDApplication class, which manages the
@@ -19,10 +19,10 @@
 #include <string>
 #include <memory>
 
-#include "Scalar.hpp"
-#include "Mesh.hpp"
-#include "BoundaryConditions.hpp"
-#include "ConvectionScheme.hpp"
+#include "Scalar.h"
+#include "Mesh.h"
+#include "BoundaryConditions.h"
+#include "ConvectionScheme.h"
 
 class GradientScheme;
 class SIMPLE;

@@ -3,9 +3,9 @@
  * @brief Implementation of convection discretization schemes
  *****************************************************************************/
 
-#include "ConvectionSchemes.hpp"
+#include "ConvectionSchemes.h"
 
-#include "LinearInterpolation.hpp"
+#include "LinearInterpolation.h"
 
 
 // **************************** Central Difference ****************************

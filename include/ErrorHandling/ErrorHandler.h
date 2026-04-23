@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file ErrorHandler.hpp
+ * @file ErrorHandler.h
  * @brief Fatal error and warning functions for program diagnostics
  *
  * Provides two functions for error reporting:

@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file kOmegaSST.hpp
+ * @file kOmegaSST.h
  * @brief k-omega SST Shear Stress Transport Turbulence Model Implementation
  *
  * @details This header file defines the KOmegaSST class, which implements the
@@ -26,14 +26,14 @@
 #include <vector>
 #include <memory>
 
-#include "Scalar.hpp"
-#include "Mesh.hpp"
-#include "CellData.hpp"
-#include "FaceData.hpp"
-#include "BoundaryConditions.hpp"
-#include "GradientScheme.hpp"
-#include "ConvectionSchemes.hpp"
-#include "LinearSolvers.hpp"
+#include "Scalar.h"
+#include "Mesh.h"
+#include "CellData.h"
+#include "FaceData.h"
+#include "BoundaryConditions.h"
+#include "GradientScheme.h"
+#include "ConvectionSchemes.h"
+#include "LinearSolvers.h"
 
 /// Forward declaration
 class Matrix;

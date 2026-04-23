@@ -3,9 +3,9 @@
  * @brief Implementation of boundary condition data storage and retrieval
  *****************************************************************************/
 
-#include "BoundaryData.hpp"
+#include "BoundaryData.h"
 
-#include "ErrorHandler.hpp"
+#include "ErrorHandler.h"
 
 
 // ****************************** Setter Methods ******************************

@@ -3,13 +3,13 @@
  * @brief Implementation of boundary conditions management system
  *****************************************************************************/
 
-#include "BoundaryConditions.hpp"
+#include "BoundaryConditions.h"
 
 #include <iostream>
 #include <utility>
 #include <set>
 
-#include "ErrorHandler.hpp"
+#include "ErrorHandler.h"
 
 
 // ****************************** Setter Methods ******************************

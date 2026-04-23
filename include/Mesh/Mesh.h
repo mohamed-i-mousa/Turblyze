@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file Mesh.hpp
+ * @file Mesh.h
  * @brief Owning mesh data and lightweight view provider
  *
  * @details This header defines the Mesh class, which owns all mesh data
@@ -20,10 +20,10 @@
 #include <cstddef>
 #include <vector>
 
-#include "Vector.hpp"
-#include "Face.hpp"
-#include "Cell.hpp"
-#include "BoundaryPatch.hpp"
+#include "Vector.h"
+#include "Face.h"
+#include "Cell.h"
+#include "BoundaryPatch.h"
 
 
 class Mesh

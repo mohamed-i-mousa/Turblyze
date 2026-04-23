@@ -3,7 +3,7 @@
  * @brief Implementation of gradient reconstruction schemes
  *****************************************************************************/
 
-#include "GradientScheme.hpp"
+#include "GradientScheme.h"
 
 #include <iostream>
 #include <cmath>
@@ -12,7 +12,7 @@
 #include <eigen3/Eigen/Cholesky>
 #include <eigen3/Eigen/LU>
 
-#include "ErrorHandler.hpp"
+#include "ErrorHandler.h"
 
 
 // ****************************** Constructor ******************************

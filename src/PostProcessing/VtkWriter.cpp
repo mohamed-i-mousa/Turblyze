@@ -4,7 +4,7 @@
  *****************************************************************************/
 
 // Own header
-#include "VtkWriter.hpp"
+#include "VtkWriter.h"
 
 // VTK includes
 #include <vtkPoints.h>
@@ -31,9 +31,9 @@
 #include <cmath>
 
 // Header includes
-#include "Mesh.hpp"
-#include "BoundaryPatch.hpp"
-#include "ErrorHandler.hpp"
+#include "Mesh.h"
+#include "BoundaryPatch.h"
+#include "ErrorHandler.h"
 
 
 namespace VtkWriter

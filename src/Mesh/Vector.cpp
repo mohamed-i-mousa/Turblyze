@@ -3,7 +3,7 @@
  * @brief Stream output for the Vector class
  *****************************************************************************/
 
-#include "Vector.hpp"
+#include "Vector.h"
 
 #include <ostream>
 #include <iomanip>

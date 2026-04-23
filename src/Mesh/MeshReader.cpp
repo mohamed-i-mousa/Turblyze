@@ -3,7 +3,7 @@
  * @brief Implementation of the MeshReader class for Fluent mesh files
  *****************************************************************************/
 
-#include "MeshReader.hpp"
+#include "MeshReader.h"
 
 #include <iostream>
 #include <fstream>
@@ -11,7 +11,7 @@
 #include <algorithm>
 #include <charconv>
 
-#include "ErrorHandler.hpp"
+#include "ErrorHandler.h"
 
 
 // ******************************* Constructor ********************************

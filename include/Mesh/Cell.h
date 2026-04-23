@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file Cell.hpp
+ * @file Cell.h
  * @brief Represents a computational cell in the mesh
  *
  * @details This header defines the Cell class, which represents a finite
@@ -20,9 +20,9 @@
 #include <vector>
 #include <span>
 
-#include "Scalar.hpp"
-#include "Vector.hpp"
-#include "Face.hpp"
+#include "Scalar.h"
+#include "Vector.h"
+#include "Face.h"
 
 
 class Cell

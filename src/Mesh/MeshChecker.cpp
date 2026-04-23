@@ -3,7 +3,7 @@
  * @brief Mesh quality assessment utilities
  *****************************************************************************/
 
-#include "MeshChecker.hpp"
+#include "MeshChecker.h"
 
 #include <iostream>
 #include <iomanip>
@@ -11,7 +11,7 @@
 #include <cmath>
 #include <numbers>
 
-#include "ErrorHandler.hpp"
+#include "ErrorHandler.h"
 
 
 // ****************************** Public Methods ******************************

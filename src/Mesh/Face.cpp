@@ -3,13 +3,13 @@
  * @brief Implementation of face geometric properties and operations
  *****************************************************************************/
 
-#include "Face.hpp"
+#include "Face.h"
 
 #include <cmath>
 #include <ostream>
 #include <iomanip>
 
-#include "ErrorHandler.hpp"
+#include "ErrorHandler.h"
 
 
 // ************************ Geometric Property Methods ************************

@@ -3,13 +3,13 @@
  * @brief Implementation of cell geometric properties and operations
  *****************************************************************************/
 
-#include "Cell.hpp"
+#include "Cell.h"
 
 #include <cmath>
 #include <ostream>
 #include <iomanip>
 
-#include "ErrorHandler.hpp"
+#include "ErrorHandler.h"
 
 
 // *********************** Geometric Property Methods ***********************

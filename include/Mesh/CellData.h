@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file CellData.hpp
+ * @file CellData.h
  * @brief Template container for cell-centered field data storage
  * 
  * @details This header defines a generic template class for storing field 
@@ -23,10 +23,10 @@
 #include <span>
 #include <vector>
 
-#include "Scalar.hpp"
-#include "Vector.hpp"
-#include "Tensor.hpp"
-#include "Mesh.hpp"
+#include "Scalar.h"
+#include "Vector.h"
+#include "Tensor.h"
+#include "Mesh.h"
 
 
 template<typename T>

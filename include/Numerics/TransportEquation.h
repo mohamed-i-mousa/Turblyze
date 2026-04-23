@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file TransportEquation.hpp
+ * @file TransportEquation.h
  * @brief Data bundle describing a scalar transport equation
  *
  * @details This header defines OptionalRef and TransportEquation.
@@ -22,11 +22,11 @@
 #include <string>
 #include <optional>
 
-#include "CellData.hpp"
-#include "FaceData.hpp"
-#include "ConvectionSchemes.hpp"
-#include "GradientScheme.hpp"
-#include "OptionalRef.hpp"
+#include "CellData.h"
+#include "FaceData.h"
+#include "ConvectionSchemes.h"
+#include "GradientScheme.h"
+#include "OptionalRef.h"
 
 
 struct TransportEquation

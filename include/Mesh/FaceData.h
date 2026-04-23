@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file FaceData.hpp
+ * @file FaceData.h
  * @brief Template container for face-centered field data storage
  *
  * @details This header defines a generic template class for storing field
@@ -23,9 +23,9 @@
 #include <span>
 #include <vector>
 
-#include "Scalar.hpp"
-#include "Vector.hpp"
-#include "Mesh.hpp"
+#include "Scalar.h"
+#include "Vector.h"
+#include "Mesh.h"
 
 
 template<typename T>

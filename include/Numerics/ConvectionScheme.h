@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file ConvectionScheme.hpp
+ * @file ConvectionScheme.h
  * @brief Per-equation convection scheme container
  *
  * @class ConvectionScheme groups per-equation scheme selections (momentum, k,
@@ -11,7 +11,7 @@
 
 #include <memory>
 
-#include "ConvectionSchemes.hpp"
+#include "ConvectionSchemes.h"
 
 
 class ConvectionScheme

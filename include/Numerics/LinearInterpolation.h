@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file LinearInterpolation.hpp
+ * @file LinearInterpolation.h
  * @brief Linear interpolation of a cell-centered field to internal faces
  *
  * @details Distance-weighted linear interpolation of CellData<T> from owner
@@ -11,9 +11,9 @@
 
 #pragma once
 
-#include "Face.hpp"
-#include "CellData.hpp"
-#include "ErrorHandler.hpp"
+#include "Face.h"
+#include "CellData.h"
+#include "ErrorHandler.h"
 
 /// Distance weight for the neighbour cell: wN = dP / (dP + dN).
 [[nodiscard]] inline Scalar faceWeight(const Face& face)

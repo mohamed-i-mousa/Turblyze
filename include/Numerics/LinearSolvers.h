@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file LinearSolvers.hpp
+ * @file LinearSolvers.h
  * @brief Iterative solver for sparse linear systems
  * 
  * @details This class provides configurable solvers with preconditioners for 
@@ -20,7 +20,7 @@
 #include <eigen3/Eigen/SparseCore>
 #include <eigen3/Eigen/IterativeLinearSolvers>
 
-#include "Scalar.hpp"
+#include "Scalar.h"
 
 
 class LinearSolver

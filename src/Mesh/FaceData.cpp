@@ -3,11 +3,11 @@
  * @brief Implementation of face-centered data containers
  *****************************************************************************/
 
-#include "FaceData.hpp"
+#include "FaceData.h"
 
 #include <iostream>
 
-#include "ErrorHandler.hpp"
+#include "ErrorHandler.h"
 
 // ***************************** Helper Methods *****************************
 

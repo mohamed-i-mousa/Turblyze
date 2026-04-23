@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file Matrix.hpp
+ * @file Matrix.h
  * @brief Matrix assembly for finite volume discretization
  *
  * @details This header defines: TransportEquation struct and the Matrix class.
@@ -26,9 +26,9 @@
 
 #include <eigen3/Eigen/SparseCore>
 
-#include "Mesh.hpp"
-#include "BoundaryConditions.hpp"
-#include "TransportEquation.hpp"
+#include "Mesh.h"
+#include "BoundaryConditions.h"
+#include "TransportEquation.h"
 
 
 class Matrix

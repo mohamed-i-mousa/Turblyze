@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file BoundaryData.hpp
+ * @file BoundaryData.h
  * @brief Boundary condition data storage and type management
  *
  * @details This header defines the BoundaryData class, which acts as a data
@@ -21,8 +21,8 @@
 
 #pragma once
 
-#include "Scalar.hpp"
-#include "Vector.hpp"
+#include "Scalar.h"
+#include "Vector.h"
 
 
 enum class BCType

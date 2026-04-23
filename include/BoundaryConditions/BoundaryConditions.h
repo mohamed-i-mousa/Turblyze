@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file BoundaryConditions.hpp
+ * @file BoundaryConditions.h
  * @brief Manages boundary conditions for the CFD solver
  *
  * @details This class provides functionality to set up, store, and apply
@@ -23,12 +23,12 @@
 #include <optional>
 #include <span>
 
-#include "Scalar.hpp"
-#include "Vector.hpp"
-#include "Face.hpp"
-#include "BoundaryPatch.hpp"
-#include "BoundaryData.hpp"
-#include "CellData.hpp"
+#include "Scalar.h"
+#include "Vector.h"
+#include "Face.h"
+#include "BoundaryPatch.h"
+#include "BoundaryData.h"
+#include "CellData.h"
 
 
 class BoundaryConditions

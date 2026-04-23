@@ -3,11 +3,11 @@
  * @brief Implementation of constraint handling for CFD fields
  *****************************************************************************/
 
-#include "Constraint.hpp"
+#include "Constraint.h"
 
 #include <cmath>
 
-#include "ErrorHandler.hpp"
+#include "ErrorHandler.h"
 
 Constraint::Constraint
 (

@@ -22,19 +22,19 @@ This document explains the internal architecture and implementation details of t
 
 **Headers (`include/`):**
 - **`Application/`**: top-level driver
-  - `CFDApplication.hpp`
+  - `CFDApplication.h`
 - **`Mesh/`**: geometry, fields, fundamental types, mesh I/O
-  - `Face.hpp`, `Cell.hpp`, `CellData.hpp`, `FaceData.hpp`, `Scalar.hpp`, `Vector.hpp`, `MeshReader.hpp`, `MeshChecker.hpp`
+  - `Face.h`, `Cell.h`, `CellData.h`, `FaceData.h`, `Scalar.h`, `Vector.h`, `MeshReader.h`, `MeshChecker.h`
 - **`BoundaryConditions/`**: patch metadata and physical BC configuration
-  - `BoundaryPatch.hpp`, `BoundaryData.hpp`, `BoundaryConditions.hpp`
+  - `BoundaryPatch.h`, `BoundaryData.h`, `BoundaryConditions.h`
 - **`Numerics/`**: discretization and algebraic system
-  - `GradientScheme.hpp`, `ConvectionScheme.hpp`, `Matrix.hpp`, `LinearSolvers.hpp`, `SIMPLE.hpp`, `LinearInterpolation.hpp`, `Constraint.hpp`
+  - `GradientScheme.h`, `ConvectionScheme.h`, `Matrix.h`, `LinearSolvers.h`, `SIMPLE.h`, `LinearInterpolation.h`, `Constraint.h`
 - **`Models/`**: turbulence
-  - `kOmegaSST.hpp`
+  - `kOmegaSST.h`
 - **`PostProcessing/`**: output
-  - `VtkWriter.hpp`
+  - `VtkWriter.h`
 - **`Case/`**: case system
-  - `CaseReader.hpp`: OpenFOAM-style case file parser
+  - `CaseReader.h`: OpenFOAM-style case file parser
 
 **Sources (`src/`):**
 - Corresponding `.cpp` implementations for all headers
@@ -46,7 +46,7 @@ This document explains the internal architecture and implementation details of t
 ### Scalar precision
 - `Scalar` is aliased to `double` by default via `PROJECT_USE_DOUBLE_PRECISION` (set in `CMakeLists.txt`).
 - Switch to float by removing that definition. The program prints the mode via `SCALAR_MODE`.
-- Global tolerances in `include/Mesh/Scalar.hpp` (e.g., `DIVISION_TOLERANCE`, `EQUALITY_TOLERANCE`, `AREA_TOLERANCE`, `VOLUME_TOLERANCE`, `GRADIENT_TOLERANCE`).
+- Global tolerances in `include/Mesh/Scalar.h` (e.g., `DIVISION_TOLERANCE`, `EQUALITY_TOLERANCE`, `AREA_TOLERANCE`, `VOLUME_TOLERANCE`, `GRADIENT_TOLERANCE`).
 
 ### Vector
 - Simple 3D vector with arithmetic, `dot`, `cross`, `magnitude`, normalization, and stream IO.
@@ -440,7 +440,7 @@ Used by: `Face`, `Cell`, `BoundaryData`, `BoundaryPatch`, `CellData<T>`, `FaceDa
 2) Optionally add high-order face value and correction methods (see CDS/SOU) and integrate as deferred-correction in `Matrix`.
 
 ### Add a new boundary condition
-1) **Extend enums**: Add new type to `BCType` enum in `BoundaryData.hpp`
+1) **Extend enums**: Add new type to `BCType` enum in `BoundaryData.h`
 2) **Update BoundaryData**: Add setters/getters for new BC type
 3) **Extend evaluation**: Update `calculateBoundaryFaceValue()` and `calculateBoundaryFaceGradient()`
 4) **Matrix integration**: Update boundary handling in `Matrix::buildMatrix()`
@@ -568,7 +568,7 @@ gradMag * maxDistance < 10.0 * phiRange  // Gradient limiting
 The solver uses `CaseReader` for runtime configuration instead of hard-coded parameters.
 
 ### CaseReader Implementation
-- **Location**: `include/Case/CaseReader.hpp` and `src/Case/CaseReader.cpp`
+- **Location**: `include/Case/CaseReader.h` and `src/Case/CaseReader.cpp`
 - **Parser**: OpenFOAM-style format with nested sections
 - **Features**:
   - Type-safe template-based lookups: `lookup<Scalar>("keyword")`

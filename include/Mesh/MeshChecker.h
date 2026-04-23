@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file MeshChecker.hpp
+ * @file MeshChecker.h
  * @brief Mesh quality assessment and diagnostic utilities
  *
  * @details This header provides mesh quality checking functions that analyze
@@ -19,8 +19,8 @@
 
 #include <vector>
 
-#include "Scalar.hpp"
-#include "Mesh.hpp"
+#include "Scalar.h"
+#include "Mesh.h"
 
 
 class MeshChecker

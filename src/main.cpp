@@ -14,8 +14,8 @@
 #include <iomanip>
 #include <chrono>
 
-#include "Scalar.hpp"
-#include "CFDApplication.hpp"
+#include "Scalar.h"
+#include "CFDApplication.h"
 
 
 int main(int argc, char* argv[])

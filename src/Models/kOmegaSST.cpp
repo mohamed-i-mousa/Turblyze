@@ -8,8 +8,8 @@
 #include <iostream>
 #include <limits>
 
-#include "kOmegaSST.hpp"
-#include "Matrix.hpp"
+#include "kOmegaSST.h"
+#include "Matrix.h"
 
 // ************************* Constructor & Destructor *************************
 

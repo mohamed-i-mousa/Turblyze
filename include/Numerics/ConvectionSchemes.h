@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file ConvectionSchemes.hpp
+ * @file ConvectionSchemes.h
  * @brief Abstract base class and concrete schemes for convection discretization
  *
  * @details This header defines the convection scheme hierarchy for
@@ -36,11 +36,11 @@
 
 #include <algorithm>
 
-#include "Scalar.hpp"
-#include "Vector.hpp"
-#include "Face.hpp"
-#include "CellData.hpp"
-#include "ErrorHandler.hpp"
+#include "Scalar.h"
+#include "Vector.h"
+#include "Face.h"
+#include "CellData.h"
+#include "ErrorHandler.h"
 
 
 class ConvectionSchemes

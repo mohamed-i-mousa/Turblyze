@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file Constraint.hpp
+ * @file Constraint.h
  * @brief Field constraint system for CFD solution stability
  *
  * @details This header defines the Constraint class to apply constraints on
@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include "CellData.hpp"
+#include "CellData.h"
 
 
 class Constraint

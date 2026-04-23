@@ -3,7 +3,7 @@
  * @brief Top-level application driver for the CFD solver
  *****************************************************************************/
 
-#include "CFDApplication.hpp"
+#include "CFDApplication.h"
 
 #include <iostream>
 #include <map>
@@ -11,16 +11,16 @@
 #include <algorithm>
 #include <cmath>
 
-#include "CaseReader.hpp"
-#include "GradientScheme.hpp"
-#include "SIMPLE.hpp"
-#include "kOmegaSST.hpp"
-#include "MeshReader.hpp"
-#include "MeshChecker.hpp"
-#include "VtkWriter.hpp"
-#include "LinearSolvers.hpp"
-#include "Constraint.hpp"
-#include "ErrorHandler.hpp"
+#include "CaseReader.h"
+#include "GradientScheme.h"
+#include "SIMPLE.h"
+#include "kOmegaSST.h"
+#include "MeshReader.h"
+#include "MeshChecker.h"
+#include "VtkWriter.h"
+#include "LinearSolvers.h"
+#include "Constraint.h"
+#include "ErrorHandler.h"
 
 
 // ******************************* Constructor *******************************

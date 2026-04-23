@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file Face.hpp
+ * @file Face.h
  * @brief Represents a face in the computational mesh
  *
  * @details This header defines the Face class, which is fundamental in
@@ -26,10 +26,10 @@
 #include <optional>
 #include <span>
 
-#include "Scalar.hpp"
-#include "Vector.hpp"
-#include "OptionalRef.hpp"
-#include "BoundaryPatch.hpp"
+#include "Scalar.h"
+#include "Vector.h"
+#include "OptionalRef.h"
+#include "BoundaryPatch.h"
 
 
 struct FaceIntegrals

@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file Vector.hpp
+ * @file Vector.h
  * @brief 3D vector class for geometric and mathematical operations in CFD
  *
  * @details This header defines a 3D vector class that serves as the foundation
@@ -20,8 +20,8 @@
 #include <cmath>
 #include <iosfwd>
 
-#include "Scalar.hpp"
-#include "ErrorHandler.hpp"
+#include "Scalar.h"
+#include "ErrorHandler.h"
 
 
 class Vector

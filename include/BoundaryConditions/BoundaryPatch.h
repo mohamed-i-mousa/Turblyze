@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file BoundaryPatch.hpp
+ * @file BoundaryPatch.h
  * @brief Boundary patch representation and mesh connectivity management
  *
  * @details This header defines the BoundaryPatch class, which represents a

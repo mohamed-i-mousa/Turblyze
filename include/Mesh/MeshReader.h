@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file MeshReader.hpp
+ * @file MeshReader.h
  * @brief Fluent mesh file reader for ANSYS mesh files
  *
  * @details This header defines the MeshReader class which reads mesh data
@@ -32,10 +32,10 @@
 #include <vector>
 #include <iosfwd>
 
-#include "Scalar.hpp"
-#include "Face.hpp"
-#include "Cell.hpp"
-#include "BoundaryPatch.hpp"
+#include "Scalar.h"
+#include "Face.h"
+#include "Cell.h"
+#include "BoundaryPatch.h"
 
 
 class MeshReader

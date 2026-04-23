@@ -200,13 +200,13 @@ The solver prints precision mode at runtime via `SCALAR_MODE`.
 ## Project Structure
 
 ### Header Organization (`include/`)
-- **`Application/`**: Top-level driver (`CFDApplication.hpp`)
-- **`Mesh/`**: Geometric entities (`Face.hpp`, `Cell.hpp`), data containers (`CellData.hpp`, `FaceData.hpp`), fundamental types (`Scalar.hpp`, `Vector.hpp`), I/O (`MeshReader.hpp`, `MeshChecker.hpp`)
-- **`BoundaryConditions/`**: BC system (`BoundaryConditions.hpp`, `BoundaryData.hpp`, `BoundaryPatch.hpp`)
-- **`Numerics/`**: Schemes (`GradientScheme.hpp`, `ConvectionScheme.hpp`), matrix assembly (`Matrix.hpp`), solvers (`LinearSolvers.hpp`, `SIMPLE.hpp`), interpolation (`LinearInterpolation.hpp`), constraints (`Constraint.hpp`)
-- **`Models/`**: Turbulence modeling (`kOmegaSST.hpp`)
-- **`PostProcessing/`**: Output (`VtkWriter.hpp`)
-- **`Case/`**: Case file system (`CaseReader.hpp`)
+- **`Application/`**: Top-level driver (`CFDApplication.h`)
+- **`Mesh/`**: Geometric entities (`Face.h`, `Cell.h`), data containers (`CellData.h`, `FaceData.h`), fundamental types (`Scalar.h`, `Vector.h`), I/O (`MeshReader.h`, `MeshChecker.h`)
+- **`BoundaryConditions/`**: BC system (`BoundaryConditions.h`, `BoundaryData.h`, `BoundaryPatch.h`)
+- **`Numerics/`**: Schemes (`GradientScheme.h`, `ConvectionScheme.h`), matrix assembly (`Matrix.h`), solvers (`LinearSolvers.h`, `SIMPLE.h`), interpolation (`LinearInterpolation.h`), constraints (`Constraint.h`)
+- **`Models/`**: Turbulence modeling (`kOmegaSST.h`)
+- **`PostProcessing/`**: Output (`VtkWriter.h`)
+- **`Case/`**: Case file system (`CaseReader.h`)
 
 ### Source Organization (`src/`)
 Mirrors header organization with corresponding `.cpp` implementations.
