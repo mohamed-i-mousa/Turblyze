@@ -22,13 +22,13 @@ SIMPLE::SIMPLE
     const Mesh& mesh,
     const BoundaryConditions& bc,
     const GradientScheme& gradScheme,
-    const ConvectionSchemes& convSchemes
+    const ConvectionScheme& convSchemes
 ) 
 :
     mesh_(mesh),
     bcManager_(bc),
     gradientScheme_(gradScheme),
-    convectionSchemes_(convSchemes)
+    convectionScheme_(convSchemes)
 {}
 
 
@@ -161,8 +161,8 @@ void SIMPLE::initialize
                 mesh_,
                 bcManager_,
                 gradientScheme_,
-                convectionSchemes_.k(),
-                convectionSchemes_.omega()
+                convectionScheme_.k(),
+                convectionScheme_.omega()
             );
 
         turbulenceModel_->setDebug(debug_);
@@ -329,7 +329,7 @@ void SIMPLE::solveMomentumEquations()
         .fieldName      = "U",
         .phi            = Ux,
         .flowRate       = std::cref(RhieChowFlowRatePrev_),
-        .convScheme     = std::cref(convectionSchemes_.momentum()),
+        .convScheme     = std::cref(convectionScheme_.momentum()),
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace),
         .source         = UxSource,
@@ -344,7 +344,7 @@ void SIMPLE::solveMomentumEquations()
         .fieldName      = "U",
         .phi            = Uy,
         .flowRate       = std::cref(RhieChowFlowRatePrev_),
-        .convScheme     = std::cref(convectionSchemes_.momentum()),
+        .convScheme     = std::cref(convectionScheme_.momentum()),
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace),
         .source         = UySource,
@@ -359,7 +359,7 @@ void SIMPLE::solveMomentumEquations()
         .fieldName      = "U",
         .phi            = Uz,
         .flowRate       = std::cref(RhieChowFlowRatePrev_),
-        .convScheme     = std::cref(convectionSchemes_.momentum()),
+        .convScheme     = std::cref(convectionScheme_.momentum()),
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace),
         .source         = UzSource,

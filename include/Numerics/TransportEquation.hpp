@@ -24,7 +24,7 @@
 
 #include "CellData.hpp"
 #include "FaceData.hpp"
-#include "ConvectionScheme.hpp"
+#include "ConvectionSchemes.hpp"
 #include "GradientScheme.hpp"
 #include "OptionalRef.hpp"
 
@@ -48,7 +48,7 @@ struct TransportEquation
     OptionalRef<FaceFluxField> flowRate = std::nullopt;
 
     /// Convection discretization scheme (nullopt = no convection)
-    OptionalRef<ConvectionScheme> convScheme = std::nullopt;
+    OptionalRef<ConvectionSchemes> convScheme = std::nullopt;
 
 // Diffusion: div(Gamma * grad(phi))
 

@@ -3,14 +3,14 @@
  * @brief Implementation of convection discretization schemes
  *****************************************************************************/
 
-#include "ConvectionScheme.hpp"
+#include "ConvectionSchemes.hpp"
 
 #include "LinearInterpolation.hpp"
 
 
-// ************************* Central Difference *************************
+// **************************** Central Difference ****************************
 
-Scalar CentralDifferenceScheme::calculateCorrection
+Scalar CentralDifferenceScheme::correction
 (
     const Face& face,
     const ScalarField& phi,
@@ -31,9 +31,9 @@ Scalar CentralDifferenceScheme::calculateCorrection
 }
 
 
-// ************************* Second-Order Upwind *************************
+// **************************** Second-Order Upwind ***************************
 
-Scalar SecondOrderUpwindScheme::calculateCorrection
+Scalar SecondOrderUpwindScheme::correction
 (
     const Face& face,
     const ScalarField& /*phi*/,
@@ -54,7 +54,7 @@ Scalar SecondOrderUpwindScheme::calculateCorrection
 
 // ********************************** Upwind **********************************
 
-Scalar UpwindScheme::calculateCorrection
+Scalar UpwindScheme::correction
 (
     const Face& /*face*/,
     const ScalarField& /*phi*/,

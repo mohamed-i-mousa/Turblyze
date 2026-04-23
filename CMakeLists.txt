@@ -35,7 +35,7 @@ add_executable(${PROJECT_NAME}
     src/BoundaryConditions/BoundaryData.cpp
     src/BoundaryConditions/BoundaryConditions.cpp
     src/Numerics/GradientScheme.cpp
-    src/Numerics/ConvectionScheme.cpp
+    src/Numerics/ConvectionSchemes.cpp
     src/Numerics/Matrix.cpp
     src/Numerics/LinearSolvers.cpp
     src/Numerics/SIMPLE.cpp

@@ -52,7 +52,7 @@ public:
         const Mesh& mesh,
         const BoundaryConditions& bc,
         const GradientScheme& gradScheme,
-        const ConvectionSchemes& convSchemes
+        const ConvectionScheme& convSchemes
     );
 
     /// Copy constructor and assignment
@@ -259,7 +259,7 @@ private:
     const Mesh& mesh_;
     const BoundaryConditions& bcManager_;
     const GradientScheme& gradientScheme_;
-    const ConvectionSchemes& convectionSchemes_;
+    const ConvectionScheme& convectionScheme_;
 
 // Physical properties
 

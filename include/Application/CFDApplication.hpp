@@ -85,14 +85,14 @@ private:
      * @return Unique pointer to created scheme
      * @note Terminates the program if name is unknown
      */
-    static std::unique_ptr<ConvectionScheme>
+    static std::unique_ptr<ConvectionSchemes>
     createConvectionScheme(const std::string& name);
 
     /**
      * @brief Parse convection schemes from case file
-     * @return Populated ConvectionSchemes container
+     * @return Populated ConvectionScheme container
      */
-    ConvectionSchemes parseConvectionSchemes();
+    ConvectionScheme parseConvectionSchemes();
 
 // Private members
 
@@ -152,6 +152,6 @@ private:
     /// Solver components
     BoundaryConditions bcManager_;
     std::unique_ptr<GradientScheme> gradScheme_;
-    ConvectionSchemes convectionSchemes_;
+    ConvectionScheme convectionSchemes_;
     std::unique_ptr<SIMPLE> solver_;
 };

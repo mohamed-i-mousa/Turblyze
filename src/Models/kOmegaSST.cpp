@@ -18,15 +18,16 @@ kOmegaSST::kOmegaSST
     const Mesh& mesh,
     const BoundaryConditions& bc,
     const GradientScheme& gradientScheme,
-    const ConvectionScheme& kScheme,
-    const ConvectionScheme& omegaScheme
+    const ConvectionSchemes& kScheme,
+    const ConvectionSchemes& omegaScheme
 )
 :
     mesh_(mesh),
     bcManager_(bc),
     gradientScheme_(gradientScheme),
     kConvectionScheme_(kScheme),
-    omegaConvectionScheme_(omegaScheme)
+    omegaConvectionScheme_(omegaScheme),
+    matrixConstruct_(std::make_unique<Matrix>(mesh_, bcManager_))
 {
     matrixConstruct_ = std::make_unique<Matrix>(mesh_, bcManager_);
 

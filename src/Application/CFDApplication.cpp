@@ -1127,7 +1127,7 @@ void CFDApplication::exportResults()
 
 // ************************* createConvectionScheme ***********************
 
-std::unique_ptr<ConvectionScheme>
+std::unique_ptr<ConvectionSchemes>
 CFDApplication::createConvectionScheme(const std::string& name)
 {
     if (name == "Upwind")
@@ -1151,11 +1151,11 @@ CFDApplication::createConvectionScheme(const std::string& name)
 
 // ************************ parseConvectionSchemes ************************
 
-ConvectionSchemes CFDApplication::parseConvectionSchemes()
+ConvectionScheme CFDApplication::parseConvectionSchemes()
 {
     const auto& schemesDict = caseReader_->section("numericalSchemes");
 
-    ConvectionSchemes schemes;
+    ConvectionScheme schemes;
 
     if (schemesDict.hasSection("convection"))
     {

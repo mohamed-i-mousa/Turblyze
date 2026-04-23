@@ -221,7 +221,7 @@ void Matrix::assembleInternalFace
     {
         Scalar flowRate = equation.flowRate->get()[face.idx()];
 
-        auto [aP, aN] = ConvectionScheme::getFluxCoefficients(flowRate);
+        auto [aP, aN] = ConvectionSchemes::getFluxCoefficients(flowRate);
 
         aPConv = aP;
         aNConv = aN;
@@ -262,7 +262,7 @@ void Matrix::assembleInternalFace
     if (equation.convScheme)
     {
         Scalar deferredCorrection =
-            equation.convScheme->get().calculateCorrection
+            equation.convScheme->get().correction
             (
                 face,
                 equation.phi,

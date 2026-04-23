@@ -32,7 +32,7 @@
 #include "FaceData.hpp"
 #include "BoundaryConditions.hpp"
 #include "GradientScheme.hpp"
-#include "ConvectionScheme.hpp"
+#include "ConvectionSchemes.hpp"
 #include "LinearSolvers.hpp"
 
 /// Forward declaration
@@ -48,8 +48,8 @@ public:
         const Mesh& mesh,
         const BoundaryConditions& bc,
         const GradientScheme& gradScheme,
-        const ConvectionScheme& kScheme,
-        const ConvectionScheme& omegaScheme
+        const ConvectionSchemes& kScheme,
+        const ConvectionSchemes& omegaScheme
     );
 
     /// Copy constructor and assignment
@@ -238,10 +238,10 @@ private:
     const GradientScheme& gradientScheme_;
 
     /// Reference to k convection scheme
-    const ConvectionScheme& kConvectionScheme_;
+    const ConvectionSchemes& kConvectionScheme_;
 
     /// Reference to omega convection scheme
-    const ConvectionScheme& omegaConvectionScheme_;
+    const ConvectionSchemes& omegaConvectionScheme_;
 
 // Turbulence fields
 
