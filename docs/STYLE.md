@@ -200,6 +200,69 @@ std::cerr << "\n" << "Error: " << msg << "\n";
 - **Local variables**: camelCase (e.g., `cellVolume`, `faceArea`)
 - **Type aliases**: PascalCase (e.g., `VectorField`, `ScalarField`)
 
+## Special Member Functions
+
+### Declaration order
+
+Always declare special members in this order inside the class `public` section:
+
+```cpp
+/// Copy constructor and assignment — <reason>
+ClassName(const ClassName&) = delete;
+ClassName& operator=(const ClassName&) = delete;
+
+/// Move constructor and assignment — <reason>
+ClassName(ClassName&&) = delete;
+ClassName& operator=(ClassName&&) = delete;
+
+/// Destructor
+~ClassName() noexcept = default;
+```
+
+The brief reason on the `///` comment documents *why* the operation is restricted:
+- `Not copyable (const T& members)` — reference members cannot be rebound
+- `Not movable (const T& members)` — same
+- `Not movable (self-referential Eigen solver)` — unsafe default move
+
+### Choosing the right rule
+
+| Member type | Copy | Move | Destructor |
+|---|---|---|---|
+| `const T&` or `T&` reference | `= delete` | `= delete` | `= default` (noexcept) |
+| `std::unique_ptr<T>` | `= delete` | `= default` | `= default` (noexcept) |
+| Eigen iterative solver | `= default` (custom) | `= delete` | `= default` (noexcept) |
+| No non-trivial members | *(declare none — rule of zero)* | | |
+
+**Rule of zero**: If the compiler-generated defaults are correct, declare nothing.
+Applies to value-only classes (`Face`, `Cell`, `BoundaryData`).
+
+**Rule of five**: Whenever one special member is declared, declare all five.
+Declaring only some leaves the class in a partially specified state that
+surprises readers and may silently break under future refactors.
+
+### `{}` vs `()` in initializer lists
+
+Prefer `{}` over `()` for member initialization in constructor initializer lists.
+`{}` prevents narrowing conversions and makes intent explicit:
+
+```cpp
+// Preferred
+ClassName(int n, Scalar tol)
+:
+    count_{n},
+    tolerance_{tol}
+{}
+
+// Acceptable only when initializer_list constructor would be selected instead
+// (e.g. std::vector fill constructor: vector(n, value) ≠ vector{n, value})
+internalField_(Mesh::cellCount(), T{})
+```
+
+Initializer list order must match member declaration order exactly.
+Members absent from the list are initialized in declaration order before
+the listed ones — omitting a member is not an order violation, but all
+*listed* members must appear in the same relative sequence as their declarations.
+
 ## Stream Output Alignment
 
 All stream insertion operators (`<<`) must align at **column 4** (position 4 from line start), following OpenFOAM conventions. This creates visual alignment of the `<<` symbols themselves.

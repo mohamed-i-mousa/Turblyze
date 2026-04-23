@@ -35,9 +35,6 @@ class BoundaryConditions
 {
 public:
 
-    /// Default constructor
-    BoundaryConditions() = default;
-
 // Setter methods
 
     /**

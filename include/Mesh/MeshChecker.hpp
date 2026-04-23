@@ -36,6 +36,17 @@ public:
         mesh_(mesh)
     {}
 
+    /// Copy constructor and assignment - Not copyable (const T& member)
+    MeshChecker(const MeshChecker&) = delete;
+    MeshChecker& operator=(const MeshChecker&) = delete;
+
+    /// Move constructor and assignment - Not movable (const T& member)
+    MeshChecker(MeshChecker&&) = delete;
+    MeshChecker& operator=(MeshChecker&&) = delete;
+
+    /// Destructor
+    ~MeshChecker() noexcept = default;
+
     /// Perform mesh quality checks and report statistics
     void check() const;
 

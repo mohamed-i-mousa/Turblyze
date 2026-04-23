@@ -57,7 +57,7 @@ public:
         faceCount_ = faces_.size();
     }
 
-    /// Copy constructor and assignment  
+    /// Copy constructor and assignment - Not copyable (copy is expensive)
     Mesh(const Mesh&) = delete;
     Mesh& operator=(const Mesh&) = delete;
 
@@ -66,7 +66,7 @@ public:
     Mesh& operator=(Mesh&&) noexcept = default;
 
     /// Destructor
-    ~Mesh() = default;
+    ~Mesh() noexcept = default;
 
 // Const accessor methods
 

@@ -45,6 +45,17 @@ public:
         const BoundaryConditions& bc
     );
 
+    /// Copy constructor and assignment - Not copyable (const T& members)
+    GradientScheme(const GradientScheme&) = delete;
+    GradientScheme& operator=(const GradientScheme&) = delete;
+
+    /// Move constructor and assignment - Not movable (const T& members)
+    GradientScheme(GradientScheme&&) = delete;
+    GradientScheme& operator=(GradientScheme&&) = delete;
+
+    /// Destructor
+    ~GradientScheme() noexcept = default;
+
     /**
      * @brief Calculate gradient at a single cell using least-squares.
      * @param fieldName Name of the field for BC lookup

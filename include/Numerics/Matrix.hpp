@@ -46,6 +46,17 @@ public:
         const BoundaryConditions& boundaryConds
     ) noexcept;
 
+    /// Copy constructor and assignment - Not copyable (const T& members)
+    Matrix(const Matrix&) = delete;
+    Matrix& operator=(const Matrix&) = delete;
+
+    /// Move constructor and assignment - Not movable (const T& members)
+    Matrix(Matrix&&) = delete;
+    Matrix& operator=(Matrix&&) = delete;
+
+    /// Destructor
+    ~Matrix() noexcept = default;
+
     /**
      * @brief Build transport equation matrix
      * @param equation Transport equation data

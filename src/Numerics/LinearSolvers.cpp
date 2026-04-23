@@ -28,14 +28,15 @@ LinearSolver::LinearSolver
 // *********************************** Copy ***********************************
 
 LinearSolver::LinearSolver(const LinearSolver& other)
-:   
-    fieldName_(other.fieldName_),
-    tolerance_(other.tolerance_),
-    maxIterations_(other.maxIterations_),
-    ilutFillFactor_(other.ilutFillFactor_),
-    ilutDropTol_(other.ilutDropTol_),
-    icInitialShift_(other.icInitialShift_),
-    debug_(other.debug_)
+:
+    fieldName_{other.fieldName_},
+    tolerance_{other.tolerance_},
+    maxIterations_{other.maxIterations_},
+    ilutFillFactor_{other.ilutFillFactor_},
+    ilutDropTol_{other.ilutDropTol_},
+    icInitialShift_{other.icInitialShift_},
+    solverInitialized_{false},
+    debug_{other.debug_}
 {}
 
 LinearSolver& LinearSolver::operator=(const LinearSolver& other)

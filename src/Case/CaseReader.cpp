@@ -13,8 +13,9 @@
 // ************************** Constructor/Destructor **************************
 
 CaseReader::CaseReader(const std::string& filename)
+:
+    currentFile_{filename}
 {
-    currentFile_ = filename;
     parseFile(filename);
 }
 

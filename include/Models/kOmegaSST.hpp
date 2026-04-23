@@ -52,16 +52,16 @@ public:
         const ConvectionSchemes& omegaScheme
     );
 
-    /// Copy constructor and assignment
+    /// Copy constructor and assignment - Not copyable (const T& members)
     kOmegaSST(const kOmegaSST&) = delete;
     kOmegaSST& operator=(const kOmegaSST&) = delete;
 
-    /// Move constructor and assignment
+    /// Move constructor and assignment - Not movable (const T& members)
     kOmegaSST(kOmegaSST&&) = delete;
     kOmegaSST& operator=(kOmegaSST&&) = delete;
 
     /// Destructor
-    ~kOmegaSST();
+    ~kOmegaSST() noexcept;
 
     /**
      * @brief Initialize turbulence fields with initial conditions

@@ -55,16 +55,16 @@ public:
         const ConvectionScheme& convSchemes
     );
 
-    /// Copy constructor and assignment
+    /// Copy constructor and assignment - Not copyable (const T& members)
     SIMPLE(const SIMPLE&) = delete;
     SIMPLE& operator=(const SIMPLE&) = delete;
 
-    /// Move constructor and assignment
+    /// Move constructor and assignment - Not movable (const T& members)
     SIMPLE(SIMPLE&&) = delete;
     SIMPLE& operator=(SIMPLE&&) = delete;
 
-    /// Destructor (defined for forward-declared types)
-    ~SIMPLE() = default;
+    /// Destructor
+    ~SIMPLE() noexcept = default;
 
     /// Main SIMPLE algorithm execution
     void solve();

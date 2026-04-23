@@ -38,7 +38,7 @@ public:
      */
     explicit CFDApplication(const std::string& caseFilePath);
 
-    /// Copy constructor and assignment 
+    /// Copy constructor and assignment - Not copyable (unique_ptr members)
     CFDApplication(const CFDApplication&) = delete;
     CFDApplication& operator=(const CFDApplication&) = delete;
 

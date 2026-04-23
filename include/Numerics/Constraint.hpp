@@ -33,16 +33,16 @@ public:
         ScalarField& pressureField
     ) noexcept;
 
-    /// Copy constructor and assignment
+    /// Copy constructor and assignment - Not copyable (reference member)
     Constraint(const Constraint&) = delete;
     Constraint& operator=(const Constraint&) = delete;
 
-    /// Move constructor and assignment
+    /// Move constructor and assignment - Not movable (reference member)
     Constraint(Constraint&&) = delete;
     Constraint& operator=(Constraint&&) = delete;
 
     /// Destructor
-    ~Constraint() = default;
+    ~Constraint() noexcept = default;
 
 // Setter methods
 

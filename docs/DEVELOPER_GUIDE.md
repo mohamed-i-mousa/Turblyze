@@ -347,6 +347,80 @@ Class `kOmegaSST`:
 - Many algorithms include small epsilons to guard against degeneracy.
 
 
+## Class ownership patterns
+
+Every class in Turblyze declares all five special members explicitly when any one of them is non-default. The three recurring patterns are:
+
+### Pattern 1 — Non-owning reference member (rule of five, all deleted)
+
+Classes that hold `const T&` or `T&` members borrow an object they do not own.
+References cannot be rebound, so copy/move operations are meaningless.
+
+```cpp
+/// Copy constructor and assignment — Not copyable (const T& members)
+GradientScheme(const GradientScheme&) = delete;
+GradientScheme& operator=(const GradientScheme&) = delete;
+
+/// Move constructor and assignment — Not movable (const T& members)
+GradientScheme(GradientScheme&&) = delete;
+GradientScheme& operator=(GradientScheme&&) = delete;
+
+/// Destructor
+~GradientScheme() noexcept = default;
+```
+
+Used by: `GradientScheme`, `Matrix`, `MeshChecker`, `kOmegaSST`, `SIMPLE`, `LinearInterpolation`.
+
+### Pattern 2 — Unique-ownership member (rule of five, copy deleted, move defaulted)
+
+Classes holding `std::unique_ptr` members can be moved but not copied.
+`unique_ptr` destructs automatically; no manual delete needed.
+
+```cpp
+/// Copy constructor and assignment — Not copyable (unique_ptr members)
+ConvectionScheme(const ConvectionScheme&) = delete;
+ConvectionScheme& operator=(const ConvectionScheme&) = delete;
+
+/// Move constructor and assignment
+ConvectionScheme(ConvectionScheme&&) = default;
+ConvectionScheme& operator=(ConvectionScheme&&) = default;
+
+/// Destructor
+~ConvectionScheme() noexcept = default;
+```
+
+Used by: `ConvectionScheme`.
+
+### Pattern 3 — Eigen iterative solver member (rule of five, move deleted, copy customized)
+
+Eigen's `BiCGSTAB` and `ConjugateGradient` hold a `generic_matrix_wrapper` that
+stores a `Ref<>` pointing to a dummy member — the default move leaves that `Ref<>`
+dangling. Copy is provided manually to reset `solverInitialized_` to `false` in the
+new instance (the copied solver must re-analyze its own sparsity pattern).
+
+```cpp
+/// Copy constructor and assignment — Customized for Eigen members
+LinearSolver(const LinearSolver& other);
+LinearSolver& operator=(const LinearSolver& other);
+
+/// Move constructor and assignment — deleted: Eigen iterative solver move
+/// is unsound for un-analysed instances (self-referential internal wrapper)
+LinearSolver(LinearSolver&&) = delete;
+LinearSolver& operator=(LinearSolver&&) = delete;
+
+/// Destructor
+~LinearSolver() noexcept = default;
+```
+
+### Pattern 4 — Rule of zero
+
+Classes with only value or standard-library members (e.g. `std::vector`, `std::string`,
+`Scalar`) that are fully copyable and movable by the compiler.
+Declare nothing; the compiler generates correct defaults.
+
+Used by: `Face`, `Cell`, `BoundaryData`, `BoundaryPatch`, `CellData<T>`, `FaceData<T>`.
+
+
 ## Extending the codebase (recipes)
 
 ### Add a new scalar transport equation

@@ -50,9 +50,6 @@ class BoundaryData
 {
 public:
 
-    /// Default constructor
-    BoundaryData() noexcept = default;
-
 // Setter methods
 
     /**

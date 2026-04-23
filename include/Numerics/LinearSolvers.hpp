@@ -40,16 +40,17 @@ public:
         int maxIterations = 1000
     );
 
-    /// Copy constructor and assignment
+    /// Copy constructor and assignment - Customized for Eigen members
     LinearSolver(const LinearSolver& other);
     LinearSolver& operator=(const LinearSolver& other);
 
-    /// Move constructor and assignment
+    /// Move constructor and assignment - deleted: Eigen iterative solver move
+    /// is unsound for un-analysed instances (self-referential internal wrapper)
     LinearSolver(LinearSolver&&) = delete;
     LinearSolver& operator=(LinearSolver&&) = delete;
 
     /// Destructor
-    ~LinearSolver() = default; 
+    ~LinearSolver() noexcept = default; 
 
 // Preconditioner configuration
 

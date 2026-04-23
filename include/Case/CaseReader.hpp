@@ -40,7 +40,7 @@ public:
      */
     explicit CaseReader(const std::string& filename);
 
-    /// Constructor for sections
+    /// Default constructor for sections
     CaseReader() noexcept = default;
 
 // Accessor methods

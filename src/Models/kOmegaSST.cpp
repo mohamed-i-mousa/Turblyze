@@ -29,8 +29,6 @@ kOmegaSST::kOmegaSST
     omegaConvectionScheme_(omegaScheme),
     matrixConstruct_(std::make_unique<Matrix>(mesh_, bcManager_))
 {
-    matrixConstruct_ = std::make_unique<Matrix>(mesh_, bcManager_);
-
     if (debug_)
     {
         std::cout
@@ -39,7 +37,7 @@ kOmegaSST::kOmegaSST
     }
 }
 
-kOmegaSST::~kOmegaSST() = default;
+kOmegaSST::~kOmegaSST() noexcept = default;
 
 
 // ****************************** Public Methods ******************************
