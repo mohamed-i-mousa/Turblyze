@@ -300,12 +300,13 @@ public:
      */
     [[nodiscard]] Tensor transpose() const noexcept
     {
-        return Tensor
-        (
-            xx_, yx_, zx_,
-            xy_, yy_, zy_,
-            xz_, yz_, zz_
-        );
+        return
+            Tensor
+            (
+                xx_, yx_, zx_,
+                xy_, yy_, zy_,
+                xz_, yz_, zz_
+            );
     }
 
     /**
@@ -318,12 +319,13 @@ public:
         Scalar sxz = S(0.5) * (xz_ + zx_);
         Scalar syz = S(0.5) * (yz_ + zy_);
 
-        return Tensor
-        (
-            xx_, sxy, sxz,
-            sxy, yy_, syz,
-            sxz, syz, zz_
-        );
+        return
+            Tensor
+            (
+                xx_, sxy, sxz,
+                sxy, yy_, syz,
+                sxz, syz, zz_
+            );
     }
 
     /**
@@ -336,12 +338,13 @@ public:
         Scalar axz = S(0.5) * (xz_ - zx_);
         Scalar ayz = S(0.5) * (yz_ - zy_);
 
-        return Tensor
-        (
-            S(0.0),  axy,     axz,
-            -axy,    S(0.0),  ayz,
-            -axz,    -ayz,    S(0.0)
-        );
+        return
+            Tensor
+            (
+                S(0.0),  axy,     axz,
+                -axy,    S(0.0),  ayz,
+                -axz,    -ayz,    S(0.0)
+            );
     }
 
     /**
@@ -359,9 +362,10 @@ public:
      */
     [[nodiscard]] Scalar magnitudeSquared() const noexcept
     {
-        return xx_ * xx_ + xy_ * xy_ + xz_ * xz_
-             + yx_ * yx_ + yy_ * yy_ + yz_ * yz_
-             + zx_ * zx_ + zy_ * zy_ + zz_ * zz_;
+        return 
+            xx_ * xx_ + xy_ * xy_ + xz_ * xz_
+          + yx_ * yx_ + yy_ * yy_ + yz_ * yz_
+          + zx_ * zx_ + zy_ * zy_ + zz_ * zz_;
     }
 
 private:
@@ -386,9 +390,10 @@ private:
     const Tensor& B
 ) noexcept
 {
-    return A.xx() * B.xx() + A.xy() * B.xy() + A.xz() * B.xz()
-         + A.yx() * B.yx() + A.yy() * B.yy() + A.yz() * B.yz()
-         + A.zx() * B.zx() + A.zy() * B.zy() + A.zz() * B.zz();
+    return 
+        A.xx() * B.xx() + A.xy() * B.xy() + A.xz() * B.xz()
+      + A.yx() * B.yx() + A.yy() * B.yy() + A.yz() * B.yz()
+      + A.zx() * B.zx() + A.zy() * B.zy() + A.zz() * B.zz();
 }
 
 /**
@@ -403,12 +408,13 @@ private:
     const Vector& b
 ) noexcept
 {
-    return Tensor
-    (
-        a.x() * b.x(), a.x() * b.y(), a.x() * b.z(),
-        a.y() * b.x(), a.y() * b.y(), a.y() * b.z(),
-        a.z() * b.x(), a.z() * b.y(), a.z() * b.z()
-    );
+    return 
+        Tensor
+        (
+            a.x() * b.x(), a.x() * b.y(), a.x() * b.z(),
+            a.y() * b.x(), a.y() * b.y(), a.y() * b.z(),
+            a.z() * b.x(), a.z() * b.y(), a.z() * b.z()
+        );
 }
 
 /**
