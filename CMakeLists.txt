@@ -24,22 +24,22 @@ find_package(VTK REQUIRED COMPONENTS
 # --- List your source files ---
 add_executable(${PROJECT_NAME}
     src/main.cpp
-    src/Mesh/Vector.cpp
-    src/Mesh/Tensor.cpp
+    src/Primitives/Vector.cpp
+    src/Primitives/Tensor.cpp
     src/Mesh/Face.cpp
     src/Mesh/Cell.cpp
-    src/Mesh/CellData.cpp
-    src/Mesh/FaceData.cpp
     src/Mesh/MeshReader.cpp
     src/Mesh/MeshChecker.cpp
+    src/Fields/CellData.cpp
+    src/Fields/FaceData.cpp
     src/BoundaryConditions/BoundaryData.cpp
     src/BoundaryConditions/BoundaryConditions.cpp
-    src/Numerics/GradientScheme.cpp
-    src/Numerics/ConvectionSchemes.cpp
-    src/Numerics/Matrix.cpp
-    src/Numerics/LinearSolvers.cpp
-    src/Numerics/SIMPLE.cpp
-    src/Numerics/Constraint.cpp
+    src/Schemes/GradientScheme.cpp
+    src/Schemes/ConvectionSchemes.cpp
+    src/LinearSystem/Matrix.cpp
+    src/LinearSystem/LinearSolvers.cpp
+    src/Solver/SIMPLE.cpp
+    src/Solver/Constraint.cpp
     src/Models/kOmegaSST.cpp
     src/PostProcessing/VtkWriter.cpp
     src/Case/CaseReader.cpp
@@ -48,14 +48,17 @@ add_executable(${PROJECT_NAME}
 
 # --- Include directories ---
 target_include_directories(${PROJECT_NAME} PUBLIC
-    include/ErrorHandling/
-    include/Mesh/
-    include/BoundaryConditions/
-    include/Numerics/
-    include/Models/
-    include/PostProcessing/
-    include/Case/
-    include/Application/
+    src/Mesh/
+    src/Primitives/
+    src/Fields/
+    src/BoundaryConditions/
+    src/Schemes/
+    src/Models/
+    src/Case/
+    src/Application/
+    src/PostProcessing/
+    src/Solver/
+    src/LinearSystem/
 )
 
 # Set output directory for executable

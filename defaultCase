@@ -3,7 +3,7 @@
 // ============================================================================
 mesh
 {
-    file            ../inputFiles/channel.msh;
+    file            ../inputFiles/sphere.msh;
     checkQuality    true;
 }
 
@@ -21,7 +21,7 @@ physicalProperties
 // ============================================================================
 initialConditions
 {
-    U               (0 0 -10.0);     // Initial velocity [m/s]
+    U               (0 0 -20.0);     // Initial velocity [m/s]
     p               0;              // Initial pressure [Pa]
 }
 
@@ -35,12 +35,17 @@ boundaryConditions
         inlet
         {
             type        fixedValue;
-            value       (0 0 -10.0);
+            value       (0 0 -20.0);
         }
 
         outlet
         {
             type        zeroGradient;
+        }
+
+        sphere           
+        { 
+            type        noSlip; 
         }
 
         wall1           
@@ -76,7 +81,12 @@ boundaryConditions
             type        fixedValue;
             value       0;
         }
-     
+
+        sphere           
+        { 
+            type        zeroGradient; 
+        }
+
         wall1           
         { 
             type        zeroGradient; 
@@ -110,7 +120,12 @@ boundaryConditions
         {
             type        zeroGradient;
         }
-     
+
+        sphere           
+        { 
+            type        kWallFunction; 
+        }
+
         wall1           
         { 
             type        kWallFunction; 
@@ -144,7 +159,12 @@ boundaryConditions
         {
             type        zeroGradient;
         }
-     
+
+        sphere           
+        { 
+            type        omegaWallFunction; 
+        }
+
         wall1           
         { 
             type        omegaWallFunction; 
@@ -178,6 +198,11 @@ boundaryConditions
             type        zeroGradient;
         }
 
+        sphere           
+        { 
+            type        nutWallFunction; 
+        }
+
         wall1           
         { 
             type        nutWallFunction; 
@@ -209,7 +234,7 @@ numericalSchemes
     convection
     {
         default     Upwind;
-        U           SecondOrderUpwind;
+        U           Upwind;
         k           Upwind;
         omega       Upwind;
     }
@@ -220,7 +245,7 @@ numericalSchemes
 // ============================================================================
 SIMPLE
 {
-    numIterations           600;        // Maximum iterations
+    numIterations           500;        // Maximum iterations
     convergenceTolerance    1e-3;       // Convergence criterion (scaled residuals)
 
     relaxationFactors
@@ -258,7 +283,7 @@ linearSolvers
     {
         solver          BiCGSTAB;
         preconditioner  ILUT;
-        tolerance       1e-6;
+        tolerance       1e-8;
         maxIter         100;
     }
 
@@ -266,7 +291,7 @@ linearSolvers
     {
         solver          BiCGSTAB;
         preconditioner  ILUT;
-        tolerance       1e-6;
+        tolerance       1e-18;
         maxIter         100;
     }
 }
@@ -306,8 +331,8 @@ constraints
 // ============================================================================
 output
 {
-    filename        ../outputFiles.nosync/channel.vtu;
-    debug           false;      // Enable verbose console output
+    filename        ../outputFiles.nosync/sphere.vtu;
+    debug           true;      // Enable verbose console output
 }
 
 // ============================================================================
