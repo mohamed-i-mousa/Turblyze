@@ -40,7 +40,11 @@ following the OpenFOAM convention.
 - **`src/Models/`**: turbulence modeling
   - `kOmegaSST.h/.cpp`
 - **`src/PostProcessing/`**: output
-  - `VtkWriter.h/.cpp`
+  - `VtkWriter.h/.cpp` (`.vtu` unstructured grid writer)
+  - `VtkCellOrdering.h/.cpp` (internal hex/wedge/pyramid node ordering)
+  - `VtkBoundaryWriter.h/.cpp` (`.vtp` wall boundary writer)
+  - `DerivedFields.h/.cpp` (velocity/vorticity magnitude, Q-criterion, strain rate)
+  - `PvdTimeSeries.h/.cpp` (PVD transient collection file helpers)
 - **`src/Case/`**: OpenFOAM-style case file parser
   - `CaseReader.h/.cpp`
 - **`src/Application/`**: top-level driver
