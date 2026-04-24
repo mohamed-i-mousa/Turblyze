@@ -9,10 +9,12 @@
 
 #pragma once
 
-#include <optional>
 #include <functional>
+#include <optional>
+#include <type_traits>
 
 
 /// Non-owning optional reference (absent = std::nullopt)
 template<typename T>
+requires std::is_object_v<T>
 using OptionalRef = std::optional<std::reference_wrapper<const T>>;
