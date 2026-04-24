@@ -20,25 +20,32 @@ This document explains the internal architecture and implementation details of t
 
 ### Architecture overview (Current Structure)
 
-**Headers (`include/`):**
-- **`Application/`**: top-level driver
-  - `CFDApplication.h`
-- **`Mesh/`**: geometry, fields, fundamental types, mesh I/O
-  - `Face.h`, `Cell.h`, `CellData.h`, `FaceData.h`, `Scalar.h`, `Vector.h`, `MeshReader.h`, `MeshChecker.h`
-- **`BoundaryConditions/`**: patch metadata and physical BC configuration
-  - `BoundaryPatch.h`, `BoundaryData.h`, `BoundaryConditions.h`
-- **`Numerics/`**: discretization and algebraic system
-  - `GradientScheme.h`, `ConvectionScheme.h`, `Matrix.h`, `LinearSolvers.h`, `SIMPLE.h`, `LinearInterpolation.h`, `Constraint.h`
-- **`Models/`**: turbulence
-  - `kOmegaSST.h`
-- **`PostProcessing/`**: output
-  - `VtkWriter.h`
-- **`Case/`**: case system
-  - `CaseReader.h`: OpenFOAM-style case file parser
+Headers (`.h`) and implementations (`.cpp`) live together in the same folder under `src/`,
+following the OpenFOAM convention.
 
-**Sources (`src/`):**
-- Corresponding `.cpp` implementations for all headers
-- `main.cpp`: complete end-to-end example case that loads configuration from case file
+- **`src/Primitives/`**: foundation types with no mesh-specific semantics
+  - `Scalar.h`, `Vector.h/.cpp`, `Tensor.h/.cpp`, `OptionalRef.h`, `ErrorHandler.h`
+- **`src/Mesh/`**: mesh topology — geometric entities and mesh I/O
+  - `BoundaryPatch.h`, `Face.h/.cpp`, `Cell.h/.cpp`, `Mesh.h`, `MeshReader.h/.cpp`, `MeshChecker.h/.cpp`
+- **`src/Fields/`**: typed field containers used by all layers
+  - `CellData.h/.cpp`, `FaceData.h/.cpp`
+- **`src/BoundaryConditions/`**: patch metadata and physical BC configuration
+  - `BoundaryData.h/.cpp`, `BoundaryConditions.h/.cpp`
+- **`src/Schemes/`**: discretization schemes
+  - `ConvectionScheme.h`, `ConvectionSchemes.h/.cpp`, `GradientScheme.h/.cpp`, `LinearInterpolation.h`
+- **`src/LinearSystem/`**: algebraic system assembly and solving
+  - `Matrix.h/.cpp`, `LinearSolvers.h/.cpp`, `TransportEquation.h`
+- **`src/Solver/`**: SIMPLE pressure–velocity algorithm and field constraints
+  - `SIMPLE.h/.cpp`, `Constraint.h/.cpp`
+- **`src/Models/`**: turbulence modeling
+  - `kOmegaSST.h/.cpp`
+- **`src/PostProcessing/`**: output
+  - `VtkWriter.h/.cpp`
+- **`src/Case/`**: OpenFOAM-style case file parser
+  - `CaseReader.h/.cpp`
+- **`src/Application/`**: top-level driver
+  - `CFDApplication.h/.cpp`
+- **`src/main.cpp`**: entry point — loads configuration and runs the solver
 
 
 ## Core data structures
@@ -46,7 +53,7 @@ This document explains the internal architecture and implementation details of t
 ### Scalar precision
 - `Scalar` is aliased to `double` by default via `PROJECT_USE_DOUBLE_PRECISION` (set in `CMakeLists.txt`).
 - Switch to float by removing that definition. The program prints the mode via `SCALAR_MODE`.
-- Global tolerances in `include/Mesh/Scalar.h` (e.g., `DIVISION_TOLERANCE`, `EQUALITY_TOLERANCE`, `AREA_TOLERANCE`, `VOLUME_TOLERANCE`, `GRADIENT_TOLERANCE`).
+- Global tolerances in `src/Primitives/Scalar.h` (e.g., `smallValue`, `vSmallValue`, `largeValue`).
 
 ### Vector
 - Simple 3D vector with arithmetic, `dot`, `cross`, `magnitude`, normalization, and stream IO.
@@ -568,7 +575,7 @@ gradMag * maxDistance < 10.0 * phiRange  // Gradient limiting
 The solver uses `CaseReader` for runtime configuration instead of hard-coded parameters.
 
 ### CaseReader Implementation
-- **Location**: `include/Case/CaseReader.h` and `src/Case/CaseReader.cpp`
+- **Location**: `src/Case/CaseReader.h` and `src/Case/CaseReader.cpp`
 - **Parser**: OpenFOAM-style format with nested sections
 - **Features**:
   - Type-safe template-based lookups: `lookup<Scalar>("keyword")`

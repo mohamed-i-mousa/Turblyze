@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file ConvectionScheme.cpp
+ * @file ConvectionSchemes.cpp
  * @brief Implementation of convection discretization schemes
  *****************************************************************************/
 

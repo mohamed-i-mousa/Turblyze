@@ -1,7 +1,7 @@
 # C++ Code Style Guide
 
 Style conventions for Turblyze (C++20). These rules apply to all `.h`
-and `.cpp` files in `include/` and `src/`.
+and `.cpp` files under `src/`.
 
 ## File Headers
 
