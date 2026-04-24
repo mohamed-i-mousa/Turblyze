@@ -18,6 +18,8 @@
 #include "MeshReader.h"
 #include "MeshChecker.h"
 #include "VtkWriter.h"
+#include "VtkBoundaryWriter.h"
+#include "DerivedFields.h"
 #include "LinearSolvers.h"
 #include "Constraint.h"
 #include "ErrorHandler.h"
@@ -286,16 +288,6 @@ void CFDApplication::prepareMesh()
         std::cout
             << "Geometric properties calculated for cells."
             << std::endl;
-    }
-
-    // Write cell geometry data for verification
-    if (debug_)
-    {
-        VtkWriter::writeCellGeometryData
-        (
-            "../outputFiles.nosync/cell_geometry_turblyze.txt",
-            mesh_
-        );
     }
 
     std::vector<Vector> cellCentroids(mesh_.numCells());
@@ -985,7 +977,7 @@ void CFDApplication::postProcess()
          << std::endl << "--- 6. Post-Processing Results ---" << std::endl;
 
     // Calculate velocity magnitude
-    ScalarField velocityMag = VtkWriter::velocityMagnitude(velocity);
+    ScalarField velocityMag = VTK::velocityMagnitude(velocity);
 
     if (velocity.size() == 0)
     {
@@ -1035,7 +1027,7 @@ void CFDApplication::exportResults()
     const ScalarField& pressure = solver_->pressure();
 
     // Calculate velocity magnitude
-    ScalarField velocityMag = VtkWriter::velocityMagnitude(velocity);
+    ScalarField velocityMag = VTK::velocityMagnitude(velocity);
 
     // Prepare scalar fields for export
     std::map<std::string, const ScalarField*>
@@ -1076,7 +1068,7 @@ void CFDApplication::exportResults()
             << std::endl;
     }
 
-    VtkWriter::writeVtkUnstructuredGrid
+    VTK::writeVtkUnstructuredGrid
     (
         vtuFilename,
         mesh_,
@@ -1108,7 +1100,7 @@ void CFDApplication::exportResults()
         wallScalarFields["wallShearStress"] =
             &solver_->wallShearStress();
 
-        VtkWriter::writeWallBoundaryData
+        VTK::writeWallBoundaryData
         (
             vtpFilename,
             mesh_,

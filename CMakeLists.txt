@@ -42,6 +42,10 @@ add_executable(${PROJECT_NAME}
     src/Solver/Constraint.cpp
     src/Models/kOmegaSST.cpp
     src/PostProcessing/VtkWriter.cpp
+    src/PostProcessing/VtkCellOrdering.cpp
+    src/PostProcessing/VtkBoundaryWriter.cpp
+    src/PostProcessing/DerivedFields.cpp
+    src/PostProcessing/PvdTimeSeries.cpp
     src/Case/CaseReader.cpp
     src/Application/CFDApplication.cpp
 )
