@@ -26,6 +26,7 @@ add_executable(${PROJECT_NAME}
     src/main.cpp
     src/Primitives/Vector.cpp
     src/Primitives/Tensor.cpp
+    src/Primitives/Logger.cpp
     src/Mesh/Face.cpp
     src/Mesh/Cell.cpp
     src/Mesh/MeshReader.cpp

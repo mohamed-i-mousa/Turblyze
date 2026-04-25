@@ -534,9 +534,40 @@ gradMag * maxDistance < 10.0 * phiRange  // Gradient limiting
 ### Debugging Strategies
 
 #### Adding Debug Output
-1. **Method Tracing**: Add entry/exit logging for key methods
-2. **Parameter Logging**: Log input parameters and intermediate calculations
-3. **Validation Checks**: Add assertions for mathematical consistency
+
+There are two categories of debug output, with different conventions:
+
+**Per-iteration solver output** (residual rows, field statistics, scaled
+residuals, iteration banners): route through the `Logger` namespace in
+`src/Primitives/Logger.h`. Do not add raw `std::cout` to the iteration
+loop. Helpers available:
+
+- `Logger::iterationHeader(n)` / `Logger::iterationFooter()` — frame the
+  iteration block with `===`/`---` rules.
+- `Logger::residualTableHeader()` / `Logger::residualRow(equation, solver,
+  iters, lsResidual)` — column-aligned residual table. The equation label
+  is supplied by the caller (e.g. `SIMPLE` passes `"Ux"`/`"Uy"`/`"Uz"`/
+  `"p'"`; `kOmegaSST` passes `"k"`/`"omega"`), reading
+  `LinearSolver::lastIterations()` and `lastResidual()`.
+- `Logger::subsection(title)` + `Logger::scalarStat(name, min, max, mean)`
+  — grouped field statistics blocks.
+- `Logger::scaledResidual(name, value)` — one row of the convergence
+  block.
+
+All helpers are stateless; callers guard each call with their own
+`debug_` flag. `StreamStateGuard` (in `Logger.h`) is the canonical
+pattern when you do need to manipulate `std::cout` flags directly — it
+saves and restores `flags()` and `precision()` so changes cannot leak
+into unrelated output.
+
+**Ad-hoc method tracing** (one-off debugging during development of a new
+algorithm or while diagnosing an incident): plain `std::cout` is fine.
+Strip it before committing if it isn't gated by a persistent flag.
+
+1. **Method Tracing**: Add entry/exit logging for key methods (ad-hoc).
+2. **Parameter Logging**: Log input parameters and intermediate
+   calculations (ad-hoc).
+3. **Validation Checks**: Add assertions for mathematical consistency.
 4. **Performance Monitoring**: Track solver iterations and convergence
 
 #### Common Issues and Solutions
