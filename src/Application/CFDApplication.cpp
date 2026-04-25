@@ -765,7 +765,6 @@ void CFDApplication::configureSolver()
                 USection.lookupOrDefault<int>("fillFactor", 5),
                 USection.lookupOrDefault<Scalar>("dropTol", S(1e-3))
             );
-            momentumSolver.setDebug(debug_);
             solver_->setMomentumSolver(momentumSolver);
 
             if (debug_)
@@ -796,7 +795,6 @@ void CFDApplication::configureSolver()
                 pSection.lookupOrDefault<Scalar>("initialShift", S(1e-2));
 
             pressureSolver.setICParameters(initialShift);
-            pressureSolver.setDebug(debug_);
             solver_->setPressureSolver(pressureSolver);
 
             if (debug_)
@@ -867,8 +865,6 @@ void CFDApplication::configureSolver()
               : S(1e-3)
             );
 
-            kSolver.setDebug(debug_);
-            omegaSolver.setDebug(debug_);
             solver_->setTurbulenceSolvers(kSolver, omegaSolver);
         }
     }

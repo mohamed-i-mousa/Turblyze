@@ -35,8 +35,7 @@ LinearSolver::LinearSolver(const LinearSolver& other)
     ilutFillFactor_{other.ilutFillFactor_},
     ilutDropTol_{other.ilutDropTol_},
     icInitialShift_{other.icInitialShift_},
-    solverInitialized_{false},
-    debug_{other.debug_}
+    solverInitialized_{false}
 {}
 
 LinearSolver& LinearSolver::operator=(const LinearSolver& other)
@@ -49,7 +48,6 @@ LinearSolver& LinearSolver::operator=(const LinearSolver& other)
         ilutFillFactor_  = other.ilutFillFactor_;
         ilutDropTol_     = other.ilutDropTol_;
         icInitialShift_  = other.icInitialShift_;
-        debug_           = other.debug_;
         solverInitialized_ = false;
     }
     return *this;
@@ -97,15 +95,8 @@ void LinearSolver::solveWithBiCGSTAB
 
     x = bicgstab_.solveWithGuess(B, x);
 
-    if (debug_)
-    {
-        std::cout
-            << "  [" << fieldName_ << "] BiCGSTAB: "
-            << bicgstab_.iterations() << " iterations"
-            << ", residual = " << std::scientific
-            << bicgstab_.error() << std::fixed
-            << std::endl;
-    }
+    lastIterations_ = static_cast<int>(bicgstab_.iterations());
+    lastResidual_   = bicgstab_.error();
 }
 
 // ******************************* PCG Solver *******************************
@@ -148,13 +139,6 @@ void LinearSolver::solveWithPCG
 
     x = pcg_.solveWithGuess(B, x);
 
-    if (debug_)
-    {
-        std::cout
-            << "  [" << fieldName_ << "] PCG: "
-            << pcg_.iterations() << " iterations"
-            << ", residual = " << std::scientific
-            << pcg_.error() << std::fixed
-            << std::endl;
-    }
+    lastIterations_ = static_cast<int>(pcg_.iterations());
+    lastResidual_   = pcg_.error();
 }

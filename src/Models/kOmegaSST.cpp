@@ -9,6 +9,7 @@
 #include <limits>
 
 #include "kOmegaSST.h"
+#include "Logger.h"
 #include "Matrix.h"
 
 // ************************* Constructor & Destructor *************************
@@ -370,13 +371,6 @@ void kOmegaSST::solveOmegaEquation
     const VectorField& gradOmega
 )
 {
-    if (debug_)
-    {
-        std::cout
-            << "  Solving omega transport equation (relaxation = "
-            << alphaOmega_ << ")..." << std::endl;
-    }
-
     size_t numCells = mesh_.numCells();
 
     ScalarField GammaOmega;
@@ -476,17 +470,21 @@ void kOmegaSST::solveOmegaEquation
     omegaSolution(omega_.data(), static_cast<Eigen::Index>(numCells));
 
     omegaSolver_.solveWithBiCGSTAB(omegaSolution, matrixA, vectorB);
+
+    if (debug_)
+    {
+        Logger::residualRow
+        (
+            "omega",
+            "BiCGSTAB",
+            omegaSolver_.lastIterations(),
+            omegaSolver_.lastResidual()
+        );
+    }
 }
 
 void kOmegaSST::updateOmegaWallFunctionBoundaryValues()
 {
-    if (debug_)
-    {
-        std::cout
-            << "  Updating omega wall-function boundary values..."
-            << std::endl;
-    }
-
     omegaWallFunctionFaceValues_.setAll
     (
         std::numeric_limits<Scalar>::quiet_NaN()
@@ -566,14 +564,6 @@ void kOmegaSST::solveKEquation
     const VectorField& gradK
 )
 {
-    if (debug_)
-    {
-        std::cout
-            << "  Solving k transport equation"
-            << " (relaxation = "
-            << alphaK_ << ")..." << std::endl;
-    }
-
     size_t numCells = mesh_.numCells();
 
     // Construct transport matrix for k
@@ -648,6 +638,17 @@ void kOmegaSST::solveKEquation
     kSolution(k_.data(), static_cast<Eigen::Index>(numCells));
 
     kSolver_.solveWithBiCGSTAB(kSolution, matrixA, vectorB);
+
+    if (debug_)
+    {
+        Logger::residualRow
+        (
+            "k",
+            "BiCGSTAB",
+            kSolver_.lastIterations(),
+            kSolver_.lastResidual()
+        );
+    }
 }
 
 void kOmegaSST::updateNutWallFace()
@@ -697,13 +698,6 @@ void kOmegaSST::updateTurbulentViscosity
 {
     // SST turbulent viscosity:
     // nut = a1*k / max(a1*omega, b1*F23*sqrt(S2))
-    if (debug_)
-    {
-        std::cout
-            << "  Calculating turbulent viscosity..."
-            << std::endl;
-    }
-
     size_t numCells = mesh_.numCells();
 
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -729,12 +723,6 @@ void kOmegaSST::updateWallShearStress
     const VectorField& U
 )
 {
-    if (debug_)
-    {
-        std::cout
-            << "  Calculating wall shear stress..." << std::endl;
-    }
-
     // Non-wall faces have zero shear stress
     wallShearStress_.setAll(S(0.0));
 
@@ -1211,19 +1199,8 @@ void kOmegaSST::logFieldDiagnostics() const
 
     Scalar n = S(numCells);
 
-    std::cout
-        << std::scientific
-        << "  Turbulence: k     [min, max, mean] = ["
-        << kMin << ", " << kMax << ", "
-        << kSum / n << ']' << std::endl;
-
-    std::cout
-        << "  Turbulence: omega [min, max, mean] = ["
-        << oMin << ", " << oMax << ", "
-        << oSum / n << ']' << std::endl;
-
-    std::cout
-        << "  Turbulence: nut   [min, max, mean] = ["
-        << nMin << ", " << nMax << ", "
-        << nSum / n << ']' << std::endl;
+    Logger::subsection("Turbulence field statistics");
+    Logger::scalarStat("k",     kMin, kMax, kSum / n);
+    Logger::scalarStat("omega", oMin, oMax, oSum / n);
+    Logger::scalarStat("nut",   nMin, nMax, nSum / n);
 }

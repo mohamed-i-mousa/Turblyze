@@ -88,12 +88,6 @@ public:
      */
     void setMaxIterations(int maxIter) noexcept { maxIterations_ = maxIter; }
 
-    /**
-     * @brief Enable or disable debug logging after each solve
-     * @param debug True to print iteration count and residual
-     */
-    void setDebug(bool debug) noexcept { debug_ = debug; }
-
 // Accessors
 
     /// Get field name for this solver
@@ -109,6 +103,18 @@ public:
     [[nodiscard]] int maxIterations() const noexcept
     {
         return maxIterations_;
+    }
+
+    /// Iterations performed by the last solve call (BiCGSTAB or PCG)
+    [[nodiscard]] int lastIterations() const noexcept
+    {
+        return lastIterations_;
+    }
+
+    /// Final relative residual reported by the last solve call
+    [[nodiscard]] Scalar lastResidual() const noexcept
+    {
+        return lastResidual_;
     }
 
 // Solver methods
@@ -166,8 +172,11 @@ private:
     /// Whether solver parameters and sparsity pattern have been initialized
     bool solverInitialized_ = false;
 
-    /// Enable debug logging of iteration count and residual after each solve
-    bool debug_ = false;
+    /// Iterations performed by the most recent solve call
+    int lastIterations_ = 0;
+
+    /// Final residual reported by the most recent solve call
+    Scalar lastResidual_ = S(0.0);
 
     /// BiCGSTAB solver with ILUT preconditioner
     Eigen::BiCGSTAB

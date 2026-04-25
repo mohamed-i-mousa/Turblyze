@@ -10,6 +10,7 @@
 #include <algorithm>
 
 #include "LinearInterpolation.h"
+#include "Logger.h"
 #include "Scalar.h"
 #include "kOmegaSST.h"
 #include "Constraint.h"
@@ -69,8 +70,15 @@ void SIMPLE::solve()
 
     while (!converged && iteration < maxIterations_)
     {
-        std::cout
-            << " Iteration " << iteration + 1;
+        if (debug_)
+        {
+            Logger::iterationHeader(iteration + 1);
+            Logger::residualTableHeader();
+        }
+        else
+        {
+            std::cout << " Iteration " << iteration + 1 << std::endl;
+        }
 
         UPrev_ = U_;
         UAvgPrevf_ = UAvgf_;
@@ -97,6 +105,11 @@ void SIMPLE::solve()
         solveTurbulence();
 
         converged = checkConvergence();
+
+        if (debug_)
+        {
+            Logger::iterationFooter();
+        }
 
         iteration++;
     }
@@ -500,6 +513,18 @@ void SIMPLE::solvePressureCorrection()
 
     pressureSolver_.solveWithPCG(pCorrSolution, matrixA, vectorB);
 
+    if (debug_)
+    {
+        Logger::residualRow
+        (
+            "p'",
+            "PCG",
+            pressureSolver_.lastIterations(),
+            pressureSolver_.lastResidual()
+        );
+    }
+
+    #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         gradPCorr_[cellIdx] =
@@ -645,13 +670,6 @@ void SIMPLE::solveTurbulence()
 {
     if (turbulenceModel_)
     {
-        if (debug_)
-        {
-            std::cout
-                << "  Solving turbulence equations..."
-                << std::endl;
-        }
-
         // Recompute velocity gradients from corrected velocity
         size_t numCells = mesh_.numCells();
 
@@ -752,15 +770,19 @@ bool SIMPLE::checkConvergence()
         converged = converged
             && (scaledK < tolerance_)
             && (scaledOmega < tolerance_);
+    }
 
-        std::cout
-            << " - Mass: " << std::scientific
-            << scaledMass
-            << ", Velocity: " << scaledVelocity
-            << ", Pressure: " << scaledPressure
-            << ", k: " << scaledK
-            << ", omega: " << scaledOmega
-            << std::fixed << std::endl;
+    if (debug_)
+    {
+        Logger::subsection("Scaled residuals");
+        Logger::scaledResidual("mass",     scaledMass);
+        Logger::scaledResidual("velocity", scaledVelocity);
+        Logger::scaledResidual("pressure", scaledPressure);
+        if (turbulenceModel_)
+        {
+            Logger::scaledResidual("k",     scaledK);
+            Logger::scaledResidual("omega", scaledOmega);
+        }
     }
     else
     {
@@ -768,8 +790,14 @@ bool SIMPLE::checkConvergence()
             << " - Mass: " << std::scientific
             << scaledMass
             << ", Velocity: " << scaledVelocity
-            << ", Pressure: " << scaledPressure
-            << std::fixed << std::endl;
+            << ", Pressure: " << scaledPressure;
+        if (turbulenceModel_)
+        {
+            std::cout
+                << ", k: " << scaledK
+                << ", omega: " << scaledOmega;
+        }
+        std::cout << std::fixed << std::endl;
     }
 
     return converged;
@@ -955,6 +983,17 @@ void SIMPLE::solveMomentumComponent
         matrixA,
         vectorB
     );
+
+    if (debug_)
+    {
+        Logger::residualRow
+        (
+            componentName(component),
+            "BiCGSTAB",
+            momentumSolver_.lastIterations(),
+            momentumSolver_.lastResidual()
+        );
+    }
 
     // Write solved component back to velocity VectorField
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
