@@ -5,8 +5,6 @@
 
 #include "LinearSolvers.h"
 
-#include <iostream>
-
 #include "ErrorHandler.h"
 
 
@@ -32,8 +30,6 @@ LinearSolver::LinearSolver(const LinearSolver& other)
     fieldName_{other.fieldName_},
     tolerance_{other.tolerance_},
     maxIterations_{other.maxIterations_},
-    ilutFillFactor_{other.ilutFillFactor_},
-    ilutDropTol_{other.ilutDropTol_},
     icInitialShift_{other.icInitialShift_},
     solverInitialized_{false}
 {}
@@ -45,10 +41,10 @@ LinearSolver& LinearSolver::operator=(const LinearSolver& other)
         fieldName_       = other.fieldName_;
         tolerance_       = other.tolerance_;
         maxIterations_   = other.maxIterations_;
-        ilutFillFactor_  = other.ilutFillFactor_;
-        ilutDropTol_     = other.ilutDropTol_;
         icInitialShift_  = other.icInitialShift_;
         solverInitialized_ = false;
+        lastIterations_    = 0;
+        lastResidual_      = S(0.0);
     }
     return *this;
 }
@@ -59,7 +55,7 @@ LinearSolver& LinearSolver::operator=(const LinearSolver& other)
 void LinearSolver::solveWithBiCGSTAB
 (
     Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
-    const Eigen::SparseMatrix<Scalar>& A,
+    const Eigen::SparseMatrix<Scalar, Eigen::RowMajor>& A,
     const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
 )
 {
@@ -70,8 +66,6 @@ void LinearSolver::solveWithBiCGSTAB
 
     bicgstab_.setMaxIterations(maxIterations_);
     bicgstab_.setTolerance(tolerance_);
-    bicgstab_.preconditioner().setFillfactor(ilutFillFactor_);
-    bicgstab_.preconditioner().setDroptol(ilutDropTol_);
 
     // Sparsity analysis — run only once
     if (!solverInitialized_)
@@ -104,7 +98,7 @@ void LinearSolver::solveWithBiCGSTAB
 void LinearSolver::solveWithPCG
 (
     Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
-    const Eigen::SparseMatrix<Scalar>& A,
+    const Eigen::SparseMatrix<Scalar, Eigen::RowMajor>& A,
     const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
 )
 {

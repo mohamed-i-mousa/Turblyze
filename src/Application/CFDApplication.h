@@ -58,6 +58,9 @@ private:
 
     /// Parse all configuration from case file
     void loadCase();
+    
+    /// Initialize Eigen threading and report OpenMP thread count
+    void initParallelism();
 
     /// Read mesh, compute geometry, correct normals, check quality
     void prepareMesh();
@@ -135,6 +138,9 @@ private:
 
     /// Mesh configuration
     bool checkQuality_ = true;
+
+    /// OpenMP thread count (must be > 0; defaults to 1 = serial)
+    int numThreads_ = 1;
 
     /// Output configuration
     std::string vtkOutputFilename_;

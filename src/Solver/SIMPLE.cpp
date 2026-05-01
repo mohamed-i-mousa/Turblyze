@@ -9,6 +9,8 @@
 #include <iostream>
 #include <algorithm>
 
+#include <omp.h>
+
 #include "LinearInterpolation.h"
 #include "Logger.h"
 #include "Scalar.h"
@@ -85,6 +87,8 @@ void SIMPLE::solve()
         RhieChowFlowRatePrev_ = RhieChowFlowRate_;
 
         size_t numCells = mesh_.numCells();
+        
+        #pragma omp parallel for schedule(static)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
             gradP_[cellIdx] = gradientScheme_.cellGradient("p", p_, cellIdx);
@@ -148,6 +152,8 @@ void SIMPLE::initialize
 
     // Initialize RhieChowFlowRate_ with linear interpolation
     size_t numFaces = mesh_.numFaces();
+
+    #pragma omp parallel for schedule(static)
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = mesh_.faces()[faceIdx];
@@ -229,6 +235,7 @@ void SIMPLE::solveMomentumEquations()
     DU_.setAll(0.0);
 
     // Build effective viscosity and pressure gradient source
+    #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         if (turbulenceModel_)
@@ -250,6 +257,7 @@ void SIMPLE::solveMomentumEquations()
     // Build face-based effective viscosity
     FaceData<Scalar> nuEffFace(nu_);
 
+    #pragma omp parallel for schedule(static)
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = mesh_.faces()[faceIdx];
@@ -295,6 +303,7 @@ void SIMPLE::solveMomentumEquations()
     VectorField gradUy_row;
     VectorField gradUz_row;
 
+    #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         gradUx_row[cellIdx] =
@@ -328,6 +337,7 @@ void SIMPLE::solveMomentumEquations()
         );
 
         // Add transpose gradient contribution to momentum source terms
+        #pragma omp parallel for schedule(static)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
             UxSource[cellIdx] += transposeSourceX[cellIdx];
@@ -383,6 +393,7 @@ void SIMPLE::solveMomentumEquations()
     solveMomentumComponent(Component::Z, equationUz, UzPrev);
 
     // Calculate DUf_ field using complete DU_
+    #pragma omp parallel for schedule(static)
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = mesh_.faces()[faceIdx];
@@ -414,6 +425,8 @@ void SIMPLE::solveMomentumEquations()
 void SIMPLE::updateRhieChowFlowRate()
 {
     size_t numFaces = mesh_.numFaces();
+    
+    #pragma omp parallel for schedule(static)
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = mesh_.faces()[faceIdx];
@@ -463,6 +476,7 @@ void SIMPLE::solvePressureCorrection()
 
     VectorField gradPCorrPrecomputed;
 
+    #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         gradPCorrPrecomputed[cellIdx] =
@@ -472,6 +486,7 @@ void SIMPLE::solvePressureCorrection()
     // Compute mass imbalance source term
     ScalarField massImbalance;
 
+    #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         Scalar net = S(0.0);
@@ -535,6 +550,8 @@ void SIMPLE::solvePressureCorrection()
 void SIMPLE::correctVelocity()
 {
     size_t numCells = mesh_.numCells();
+    
+    #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         U_[cellIdx].setX
@@ -565,6 +582,8 @@ void SIMPLE::correctVelocity()
 
     // Update face velocities
     size_t numFaces = mesh_.numFaces();
+    
+    #pragma omp parallel for schedule(static)
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = mesh_.faces()[faceIdx];
@@ -586,6 +605,8 @@ void SIMPLE::correctPressure()
     Scalar sumSq = 0.0;
 
     size_t numCells = mesh_.numCells();
+    
+    #pragma omp parallel for schedule(static) reduction(+:sumSq)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         sumSq += pCorr_[cellIdx] * pCorr_[cellIdx];
@@ -594,6 +615,7 @@ void SIMPLE::correctPressure()
     lastPressureCorrectionRMS_ = std::sqrt(sumSq / S(numCells));
 
     // Apply pressure correction
+    #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         p_[cellIdx] += alphaP_ * pCorr_[cellIdx];
@@ -618,6 +640,8 @@ void SIMPLE::correctFlowRate()
 {
     // Update mass flux on faces
     size_t numFaces = mesh_.numFaces();
+    
+    #pragma omp parallel for schedule(static)
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = mesh_.faces()[faceIdx];
@@ -677,6 +701,7 @@ void SIMPLE::solveTurbulence()
         ScalarField Uy = extractComponent(U_, Component::Y);
         ScalarField Uz = extractComponent(U_, Component::Z);
 
+        #pragma omp parallel for schedule(static)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
             Vector gUx =
@@ -694,6 +719,8 @@ void SIMPLE::solveTurbulence()
 
         ScalarField kPrev;
         ScalarField omegaPrev;
+        
+        #pragma omp parallel for schedule(static)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
             kPrev[cellIdx] = kField[cellIdx];
@@ -707,6 +734,9 @@ void SIMPLE::solveTurbulence()
         Scalar kPrevSq = 0.0;
         Scalar omDiffSq = 0.0;
         Scalar omPrevSq = 0.0;
+        
+        #pragma omp parallel for schedule(static) \
+            reduction(+:kDiffSq, kPrevSq, omDiffSq, omPrevSq)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
             Scalar dk = kField[cellIdx] - kPrev[cellIdx];
@@ -816,6 +846,7 @@ ScalarField SIMPLE::extractComponent
 
     ScalarField result;
 
+    #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         switch (component)
@@ -835,6 +866,8 @@ Scalar SIMPLE::massImbalance() const
     Scalar totalNormImbalance = 0.0;
 
     size_t numCells = mesh_.numCells();
+    
+    #pragma omp parallel for schedule(static) reduction(+:totalNormImbalance)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         Scalar net = 0.0;
@@ -863,6 +896,8 @@ Scalar SIMPLE::velocityResidual() const
     Scalar den = 0.0;
 
     size_t numCells = mesh_.numCells();
+    
+    #pragma omp parallel for schedule(static) reduction(+:num, den)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Vector d = U_[cellIdx] - UPrev_[cellIdx];
@@ -882,6 +917,8 @@ Scalar SIMPLE::pressureResidual() const
     Scalar sumP2 = 0.0;
 
     size_t numCells = mesh_.numCells();
+    
+    #pragma omp parallel for schedule(static) reduction(+:sumP2)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         sumP2 += p_[cellIdx] * p_[cellIdx];
@@ -900,49 +937,47 @@ void SIMPLE::calculateTransposeGradientSource
     ScalarField& transposeSourceZ
 )
 {
-    transposeSourceX.setAll(0.0);
-    transposeSourceY.setAll(0.0);
-    transposeSourceZ.setAll(0.0);
+    const size_t numCells = mesh_.numCells();
 
-    for (size_t faceIdx = 0; faceIdx < mesh_.numFaces(); ++faceIdx)
+    #pragma omp parallel for schedule(static)
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        const Face& face = mesh_.faces()[faceIdx];
-        const size_t ownerIdx = face.ownerCell();
-        Vector Sf = face.normal() * face.projectedArea();
+        Scalar sumX = S(0.0);
+        Scalar sumY = S(0.0);
+        Scalar sumZ = S(0.0);
 
-        Scalar nuEfff = nuEffFace[faceIdx];
+        const auto& cell = mesh_.cells()[cellIdx];
+        const auto& faceIndices = cell.faceIndices();
+        const auto& faceSigns = cell.faceSigns();
 
-        // Columns of the transposed velocity-gradient tensor are the
-        // rows of grad(U). Flux for component j is:
-        //   nuEff_f * dot(gradU_f.col(j), Sf)
-        if (face.isBoundary())
+        for (size_t j = 0; j < faceIndices.size(); ++j)
         {
-            // For boundary faces, use the owner cell tensor directly
-            const Tensor& gradUf = gradU_[ownerIdx];
+            const size_t faceIdx = faceIndices[j];
+            const Scalar sign = S(faceSigns[j]);
+            const Face& face = mesh_.faces()[faceIdx];
 
-            transposeSourceX[ownerIdx] += nuEfff * dot(gradUf.col(0), Sf);
-            transposeSourceY[ownerIdx] += nuEfff * dot(gradUf.col(1), Sf);
-            transposeSourceZ[ownerIdx] += nuEfff * dot(gradUf.col(2), Sf);
+            const Vector Sf =
+                face.normal() * face.projectedArea() * sign;
+            const Scalar nuEfff = nuEffFace[faceIdx];
+
+            Tensor gradUf;
+            if (face.isBoundary())
+            {
+                gradUf = gradU_[cellIdx];
         }
         else
         {
-            // Internal face: interpolate tensor to face
-            const size_t neighborIdx = face.neighborCell().value();
+                gradUf = interpolateToFace(face, gradU_);
+            }
 
-            Tensor gradUf = interpolateToFace(face, gradU_);
-
-            Scalar fluxX = nuEfff * dot(gradUf.col(0), Sf);
-            Scalar fluxY = nuEfff * dot(gradUf.col(1), Sf);
-            Scalar fluxZ = nuEfff * dot(gradUf.col(2), Sf);
-
-            transposeSourceX[ownerIdx] += fluxX;
-            transposeSourceY[ownerIdx] += fluxY;
-            transposeSourceZ[ownerIdx] += fluxZ;
-
-            transposeSourceX[neighborIdx] -= fluxX;
-            transposeSourceY[neighborIdx] -= fluxY;
-            transposeSourceZ[neighborIdx] -= fluxZ;
+            sumX += nuEfff * dot(gradUf.col(0), Sf);
+            sumY += nuEfff * dot(gradUf.col(1), Sf);
+            sumZ += nuEfff * dot(gradUf.col(2), Sf);
         }
+
+        transposeSourceX[cellIdx] = sumX;
+        transposeSourceY[cellIdx] = sumY;
+        transposeSourceZ[cellIdx] = sumZ;
     }
 }
 
@@ -965,6 +1000,7 @@ void SIMPLE::solveMomentumComponent
     // DU_ is identical for all 3 momentum components — compute only once
     if (component == Component::X)
     {
+        #pragma omp parallel for schedule(static)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
             DU_[cellIdx] =
@@ -996,6 +1032,7 @@ void SIMPLE::solveMomentumComponent
     }
 
     // Write solved component back to velocity VectorField
+    #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         switch (component)

@@ -69,7 +69,8 @@ public:
      * @brief Get assembled sparse matrix A (const)
      * @return Const reference to coefficient matrix
      */
-    [[nodiscard]] const Eigen::SparseMatrix<Scalar>& matrixA() const noexcept
+    [[nodiscard]] const Eigen::SparseMatrix<Scalar, Eigen::RowMajor>&
+    matrixA() const noexcept
     {
         return matrixA_;
     }
@@ -78,7 +79,8 @@ public:
      * @brief Get assembled sparse matrix A (non-const)
      * @return Mutable reference to coefficient matrix
      */
-    [[nodiscard]] Eigen::SparseMatrix<Scalar>& matrixA() noexcept
+    [[nodiscard]] Eigen::SparseMatrix<Scalar, Eigen::RowMajor>&
+    matrixA() noexcept
     {
         return matrixA_;
     }
@@ -97,7 +99,8 @@ public:
      * @brief Get right-hand side vector b (non-const)
      * @return Mutable reference to RHS vector
      */
-    [[nodiscard]] Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& vectorB() noexcept
+    [[nodiscard]] Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&
+    vectorB() noexcept
     {
         return vectorB_;
     }
@@ -142,7 +145,7 @@ private:
     const BoundaryConditions& bcManager_;
 
     /// Sparse linear system components
-    Eigen::SparseMatrix<Scalar> matrixA_;
+    Eigen::SparseMatrix<Scalar, Eigen::RowMajor> matrixA_;
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> vectorB_;
 
     /// Triplet storage for efficient sparse matrix assembly
@@ -167,30 +170,33 @@ private:
     void clear();
 
     /**
-     * @brief Reserve triplet list capacity based on mesh topology
-     */
-    void reserveTripletList();
-
-    /**
      * @brief Assemble internal face contributions
      * @param face Internal face to process
      * @param equation Transport equation data
+     * @param triplets Output triplet list (thread-local buffer)
+     * @param localB Output RHS contributions (thread-local buffer)
      */
     void assembleInternalFace
     (
         const Face& face,
-        const TransportEquation& equation
+        const TransportEquation& equation,
+        std::vector<Eigen::Triplet<Scalar>>& triplets,
+        Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& localB
     );
 
     /**
      * @brief Assemble boundary face contributions
      * @param face Boundary face to process
      * @param equation Transport equation data
+     * @param triplets Output triplet list (thread-local buffer)
+     * @param localB Output RHS contributions (thread-local buffer)
      */
     void assembleBoundaryFace
     (
         const Face& face,
-        const TransportEquation& equation
+        const TransportEquation& equation,
+        std::vector<Eigen::Triplet<Scalar>>& triplets,
+        Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& localB
     );
 
     /**

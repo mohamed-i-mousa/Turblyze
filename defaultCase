@@ -1,4 +1,12 @@
 // ============================================================================
+// Parallelism
+// ============================================================================
+parallelism
+{
+    numThreads      4;      // OpenMP thread count (must be > 0)
+}
+
+// ============================================================================
 // Mesh Configuration
 // ============================================================================
 mesh
@@ -265,7 +273,7 @@ linearSolvers
     U   // Momentum equations
     {
         solver          BiCGSTAB;       // Bi-Conjugate Gradient Stabilized
-        preconditioner  ILUT;           // Incomplete LU with Threshold
+        preconditioner  Jacobi;         // Diagonal — parallel-friendly
         tolerance       1e-6;           // Eigen |r|/|b| tolerance
         maxIter         100;            // Maximum iterations
     }
@@ -282,7 +290,7 @@ linearSolvers
     k   // Turbulent kinetic energy
     {
         solver          BiCGSTAB;
-        preconditioner  ILUT;
+        preconditioner  Jacobi;
         tolerance       1e-8;
         maxIter         100;
     }
@@ -290,7 +298,7 @@ linearSolvers
     omega   // Specific dissipation rate
     {
         solver          BiCGSTAB;
-        preconditioner  ILUT;
+        preconditioner  Jacobi;
         tolerance       1e-18;
         maxIter         100;
     }
@@ -332,7 +340,7 @@ constraints
 output
 {
     filename        ../outputFiles.nosync/sphere.vtu;
-    debug           true;      // Enable verbose console output
+    debug           false;      // Enable verbose console output
 }
 
 // ============================================================================

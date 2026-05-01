@@ -8,6 +8,8 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+
+#include <omp.h>
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Cholesky>
 #include <eigen3/Eigen/LU>
@@ -37,13 +39,13 @@ void GradientScheme::precomputeInverseATA()
     const size_t numCells = mesh_.numCells();
     invATA_.resize(numCells);
 
-    Eigen::Matrix<Scalar,3,3> ATA;
-    Eigen::Matrix<Scalar,3,1> rVector;
-
     size_t degenerateCells = 0;
 
+    #pragma omp parallel for schedule(static) reduction(+:degenerateCells)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
+        Eigen::Matrix<Scalar,3,3> ATA;
+        Eigen::Matrix<Scalar,3,1> rVector;
         const Cell& cell = mesh_.cells()[cellIdx];
 
         ATA.setZero();
@@ -229,7 +231,10 @@ void GradientScheme::limitGradient
     std::optional<int> componentIdx
 ) const
 {
-    for (size_t cellIdx = 0; cellIdx < mesh_.numCells(); ++cellIdx)
+    const size_t numCells = mesh_.numCells();
+    
+    #pragma omp parallel for schedule(static)
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Cell& cell = mesh_.cells()[cellIdx];
         Scalar phiP = phi[cellIdx];
