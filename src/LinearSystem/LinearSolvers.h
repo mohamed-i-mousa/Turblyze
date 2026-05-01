@@ -9,9 +9,9 @@
  * @class LinearSolver
  *
  * The LinearSolver class provides:
- * - BiCGSTAB solver with ILUT preconditioner for momentum and turbulence
+ * - BiCGSTAB solver with Jacobi (diagonal) preconditioner
  * - PCG solver with Incomplete Cholesky for pressure correction
- * - Configurable convergence tolerances and preconditioner parameters
+ * - Configurable convergence tolerances
  *****************************************************************************/
 
 #pragma once
@@ -53,17 +53,6 @@ public:
     ~LinearSolver() noexcept = default; 
 
 // Preconditioner configuration
-
-    /**
-     * @brief Configure ILUT preconditioner for BiCGSTAB solver
-     * @param fillFactor Maximum fill-in factor
-     * @param dropTol Drop tolerance for small entries during factorization
-     */
-    void setILUTParameters(int fillFactor, Scalar dropTol) noexcept
-    {
-        ilutFillFactor_ = fillFactor;
-        ilutDropTol_ = dropTol;
-    }
 
     /**
      * @brief Configure Incomplete Cholesky preconditioner for PCG solver
@@ -120,7 +109,7 @@ public:
 // Solver methods
 
     /**
-     * @brief Solve sparse system using BiCGSTAB with ILUT
+     * @brief Solve sparse system using BiCGSTAB with Jacobi preconditioner
      * @param x Solution vector
      * @param A Sparse coefficient matrix
      * @param B Right-hand side vector
@@ -130,7 +119,7 @@ public:
     void solveWithBiCGSTAB
     (
         Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
-        const Eigen::SparseMatrix<Scalar>& A,
+        const Eigen::SparseMatrix<Scalar, Eigen::RowMajor>& A,
         const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
     );
 
@@ -145,7 +134,7 @@ public:
     void solveWithPCG
     (
         Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
-        const Eigen::SparseMatrix<Scalar>& A,
+        const Eigen::SparseMatrix<Scalar, Eigen::RowMajor>& A,
         const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
     );
     
@@ -160,12 +149,6 @@ private:
     /// Maximum solver iterations before failure
     int maxIterations_;
 
-    /// ILUT fill factor (controls memory vs accuracy)
-    int ilutFillFactor_ = 5;
-
-    /// ILUT drop tolerance for small entries
-    Scalar ilutDropTol_ = S(1e-3);
-
     /// Incomplete Cholesky initial shift parameter
     Scalar icInitialShift_ = S(1e-3);
 
@@ -178,15 +161,18 @@ private:
     /// Final residual reported by the most recent solve call
     Scalar lastResidual_ = S(0.0);
 
-    /// BiCGSTAB solver with ILUT preconditioner
+    /// BiCGSTAB solver with Jacobi (diagonal) preconditioner — parallel-friendly
     Eigen::BiCGSTAB
-    <Eigen::SparseMatrix<Scalar>, Eigen::IncompleteLUT<Scalar>>
+    <
+        Eigen::SparseMatrix<Scalar, Eigen::RowMajor>,
+        Eigen::DiagonalPreconditioner<Scalar>
+    >
     bicgstab_;
 
     /// PCG solver with Incomplete Cholesky preconditioner
     Eigen::ConjugateGradient
     <
-        Eigen::SparseMatrix<Scalar>,
+        Eigen::SparseMatrix<Scalar, Eigen::RowMajor>,
         Eigen::Lower|Eigen::Upper,
         Eigen::IncompleteCholesky<Scalar>
     >

@@ -11,6 +11,9 @@
 #include <algorithm>
 #include <cmath>
 
+#include <omp.h>
+#include <eigen3/Eigen/Core>
+
 #include "CaseReader.h"
 #include "GradientScheme.h"
 #include "SIMPLE.h"
@@ -40,6 +43,7 @@ CFDApplication::~CFDApplication() = default;
 void CFDApplication::run()
 {
     loadCase();
+    initParallelism();
     prepareMesh();
     setupBoundaryConditions();
     configureSolver();
@@ -61,6 +65,26 @@ void CFDApplication::loadCase()
     // Extract mesh configuration
     const auto& mesh = caseReader_->section("mesh");
     checkQuality_ = mesh.lookupOrDefault<bool>("checkQuality", true);
+
+    // Extract parallelism settings
+    if (caseReader_->hasSection("parallelism"))
+    {
+        const auto& parallelism = caseReader_->section("parallelism");
+        const int n = parallelism.lookupOrDefault<int>("numThreads", 1);
+
+        if (n <= 0)
+        {
+            Warning
+            (
+                "parallelism.numThreads must be a positive integer; "
+                "defaulting to 1 (serial)."
+            );
+        }
+        else
+        {
+            numThreads_ = n;
+        }
+    }
 
     // Extract physical properties
     const auto& physicalProperties =
@@ -171,6 +195,18 @@ void CFDApplication::loadCase()
                 presConstraint.lookup<Scalar>("maxPressure");
         }
     }
+}
+
+
+// ****************************** initParallelism *****************************
+
+void CFDApplication::initParallelism()
+{
+    omp_set_num_threads(numThreads_);
+    Eigen::setNbThreads(numThreads_);
+
+    std::cout
+        << "OpenMP threads: " << numThreads_ << std::endl;
 }
 
 
@@ -760,11 +796,6 @@ void CFDApplication::configureSolver()
                 USection.lookupOrDefault<Scalar>("tolerance", S(1e-8)),
                 USection.lookupOrDefault<int>("maxIter", 1000)
             );
-            momentumSolver.setILUTParameters
-            (
-                USection.lookupOrDefault<int>("fillFactor", 5),
-                USection.lookupOrDefault<Scalar>("dropTol", S(1e-3))
-            );
             solver_->setMomentumSolver(momentumSolver);
 
             if (debug_)
@@ -826,19 +857,6 @@ void CFDApplication::configureSolver()
                 ("maxIter", 1000)
               : 1000
             );
-            kSolver.setILUTParameters
-            (
-                solvers.hasSection("k")
-              ? solvers.section("k").lookupOrDefault<int>
-                ("fillFactor", 5)
-              : 5,
-
-                solvers.hasSection("k")
-              ? solvers.section("k").lookupOrDefault<Scalar>
-                ("dropTol", S(1e-3))
-              : S(1e-3)
-            );
-
             LinearSolver omegaSolver
             (
                 "omega",
@@ -852,19 +870,6 @@ void CFDApplication::configureSolver()
                 ("maxIter", 1000)
               : 1000
             );
-            omegaSolver.setILUTParameters
-            (
-                solvers.hasSection("omega")
-              ? solvers.section("omega").lookupOrDefault<int>
-                ("fillFactor", 5)
-              : 5,
-
-                solvers.hasSection("omega")
-              ? solvers.section("omega").lookupOrDefault<Scalar>
-                ("dropTol", S(1e-3))
-              : S(1e-3)
-            );
-
             solver_->setTurbulenceSolvers(kSolver, omegaSolver);
         }
     }

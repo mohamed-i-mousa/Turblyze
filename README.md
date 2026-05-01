@@ -19,6 +19,8 @@ A 3D incompressible CFD solver implementing the SIMPLE algorithm with k-omega SS
 
 - **Wall Distance Calculation**: Mesh wave iterative propagation for accurate turbulence modeling
 
+- **Shared-Memory Parallelism (OpenMP)**: All major compute loops (matrix assembly, gradient reconstruction, cell-update sweeps, turbulence transport) use OpenMP. Eigen's `BiCGSTAB` and `ConjugateGradient` solvers also use OpenMP via a RowMajor sparse-matrix layout. Thread count is set via `parallelism.numThreads` in the case file.
+
 - **VTK Export**: Comprehensive output including all flow variables and turbulence quantities
 
 - **Precision Control**: Configurable single (float) or double precision arithmetic
@@ -44,8 +46,22 @@ sudo apt install build-essential cmake libeigen3-dev libvtk9-dev
 
 #### Installation on MacOS:
 ```bash
-brew install cmake eigen vtk
+brew install cmake eigen vtk libomp
 ```
+
+> **Note (OpenMP setup)**: The `CMakeLists.txt` is tailored to two configurations
+> out of the box:
+> - **Linux with GCC/Clang** — OpenMP ships with the compiler; nothing to do.
+> - **Apple Silicon macOS with AppleClang + Homebrew `libomp`** — the build
+>   wires in `-Xpreprocessor -fopenmp` and the libomp path
+>   `/opt/homebrew/opt/libomp` (hardcoded). Run `brew install libomp` first.
+>
+> If you are using a different setup (Intel Mac, Homebrew GCC, Homebrew
+> LLVM/Clang, Intel oneAPI, MSVC, cross-compiler, custom libomp install, …),
+> remove or adapt the `if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")` block
+> in `CMakeLists.txt` so that the stock `find_package(OpenMP REQUIRED)` can
+> discover your compiler's native OpenMP runtime. On Intel Macs the only
+> change needed is updating `LIBOMP_PREFIX` to `/usr/local/opt/libomp`.
 
 #### VTK Configuration Issues:
 If CMake cannot locate VTK automatically:
@@ -71,6 +87,20 @@ make -j$(nproc)
 # Debug build
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 make -j$(nproc)
+```
+
+### Build Options
+| Option                          | Default | Effect                                              |
+|---------------------------------|---------|-----------------------------------------------------|
+| `TURBLYZE_USE_DOUBLE_PRECISION` | `ON`    | Defines `PROJECT_USE_DOUBLE_PRECISION` (double `Scalar`); turn `OFF` for single precision. |
+| `TURBLYZE_NATIVE_ARCH`          | `ON`    | Adds `-march=native` in Release. Turn `OFF` for portable / cluster-deployable binaries. |
+
+```bash
+# Single-precision Release build
+cmake -DCMAKE_BUILD_TYPE=Release -DTURBLYZE_USE_DOUBLE_PRECISION=OFF ..
+
+# Portable (no -march=native) Release build
+cmake -DCMAKE_BUILD_TYPE=Release -DTURBLYZE_NATIVE_ARCH=OFF ..
 ```
 
 The executable `Turblyze` will be generated in the `build/` directory.

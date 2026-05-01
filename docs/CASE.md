@@ -324,3 +324,20 @@ output
   export statistics. When `false`, only essential output is
   shown (phase headers, iteration residuals, convergence
   status, flow statistics, and error/warning messages).
+
+### 11. parallelism (Optional)
+Shared-memory parallelism settings.
+
+```cpp
+parallelism
+{
+    numThreads      4;      // Optional: number of OpenMP threads (default: 1)
+}
+```
+
+**Notes**:
+- When omitted, the solver runs single-threaded
+- Sets the thread count for all OpenMP loops (matrix assembly, gradient
+  reconstruction, cell-update sweeps, turbulence transport) and Eigen's
+  sparse solvers
+- Section can appear anywhere in the case file — parsing is order-independent

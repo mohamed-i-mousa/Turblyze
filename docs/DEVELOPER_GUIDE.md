@@ -296,6 +296,123 @@ struct TransportEquation
 `relax(α, φ_prev)` performs Patankar-style implicit relaxation by scaling the diagonal and adjusting RHS with the previous state.
 
 
+## Parallelization (OpenMP)
+
+The solver uses shared-memory OpenMP. Every major loop is annotated with
+`#pragma omp parallel for`. There is **no domain decomposition** — that is an
+MPI concept. OpenMP threads share the same address space and operate on the
+full mesh simultaneously.
+
+### Eigen RowMajor requirement
+
+`Eigen::BiCGSTAB` only parallelizes its sparse matrix-vector product when the
+matrix is stored **row-major**. The column-major default produces single-threaded
+solves even with `-fopenmp` active — silently. `Matrix.h` therefore declares:
+
+```cpp
+Eigen::SparseMatrix<Scalar, Eigen::RowMajor> matrixA_;
+```
+
+**Never change this to the Eigen default `ColMajor`.** The same type must be
+propagated through `LinearSolvers.h` (all BiCGSTAB / PCG declarations). The
+`ConjugateGradient` solver additionally requires `Lower|Upper` UpLo — that is
+already set in `LinearSolvers.h` and must be preserved.
+
+### Matrix assembly — per-thread buffer pattern
+
+`Matrix::buildMatrix` loops over all faces. Internal faces write to *both* owner
+and neighbor cells, so a naive parallel face loop would race on `tripletList_`
+and `vectorB_`. The chosen strategy is thread-local buffers + serial merge:
+
+```cpp
+// T tracks parallelism.numThreads via the OpenMP runtime
+// (set in CFDApplication::initParallelism via omp_set_num_threads)
+const int T = omp_get_max_threads();
+std::vector<std::vector<Triplet>> tlsTriplets(T);
+std::vector<VectorB> tlsB(T, VectorB::Zero(numCells));
+
+#pragma omp parallel
+{
+    auto& triplets = tlsTriplets[omp_get_thread_num()];
+    auto& localB = tlsB[omp_get_thread_num()];
+
+    #pragma omp for schedule(static)
+    for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
+        assembleFace(faceIdx, triplets, localB, equation);
+}
+
+// serial merge — O(numFaces), not on the hot path
+for (auto& v : tlsTriplets)
+    tripletList_.insert(tripletList_.end(), move_iterator(v.begin()), ...);
+for (const auto& v : tlsB) vectorB_ += v;
+
+matrixA_.setFromTriplets(...);
+```
+
+The `assembleInternalFace` and `assembleBoundaryFace` helpers receive the
+thread-local `triplets` and `localB` by reference; they never touch any shared
+state.
+
+`Matrix::setValues` is deliberately left serial — it processes a small number
+of constrained cells (typically wall patches) and has irregular neighbor
+accesses that do not amortize thread-launch overhead.
+
+### Face loops that write two cells — scatter vs gather
+
+Any face loop that accumulates into `field[ownerIdx]` **and** `field[neighborIdx]`
+is a scatter loop with a write race. There are two safe approaches:
+
+1. **Per-thread buffer (used in Matrix)**: allocate one copy of the output
+   array per thread, reduce after the parallel region.
+2. **Rewrite as a per-cell gather (preferred for simple accumulations)**:
+   loop over cells instead of faces; inside each cell loop, iterate
+   `cell.faceIndices()` + `cell.faceSigns()` to sum face contributions.
+
+`SIMPLE::calculateTransposeGradientSource` and `kOmegaSST::computeDivU`
+use the gather approach. Prefer gather for new code — it is race-free, avoids
+temporary allocations, and often has better cache behavior.
+
+### What is and is not parallel
+
+| Component | Parallel? | Notes |
+|---|---|---|
+| SpMV inside BiCGSTAB/PCG | YES | RowMajor partitions rows across threads |
+| Dot products / norms in BiCGSTAB | YES | Eigen OpenMP reduction |
+| ILUT triangular solve (precond apply) | **NO** | Inherently sequential; hard ceiling on solver speedup |
+| Incomplete Cholesky apply | **NO** | Same |
+| Matrix assembly (face loop) | YES | Per-thread buffer pattern |
+| `Matrix::relax()` | YES | Per-row, no neighbor writes |
+| `Matrix::setValues()` | NO | Small; left serial intentionally |
+| SIMPLE cell-update loops | YES | Per-cell, no neighbor writes |
+| Gradient precomputation | YES | Per-cell LLT, no shared write |
+| `limitGradient` | YES | Per-cell |
+| kOmegaSST cell loops | YES | Per-cell |
+| `updateWallDistance` | NO | Iterative wave propagation with owner+neighbor writes; runs once at startup |
+
+### Adding OpenMP to new loops
+
+Follow this checklist before adding `#pragma omp parallel for`:
+
+1. **Check write destinations.** If a loop writes only to `array[loopIdx]`,
+   it is race-free — add the pragma directly.
+2. **Check reductions.** If the loop accumulates a scalar (residual, norm),
+   use `reduction(+:varName)` on the pragma.
+3. **Watch for face loops.** Any loop over faces that writes to owner *and*
+   neighbor is a scatter race. Rewrite as per-cell gather (preferred) or use
+   the per-thread buffer pattern.
+4. **Do not nest parallel regions.** `GradientScheme::cellGradient` is called
+   from within parallel cell loops; it must remain serial.
+5. **Verify with ThreadSanitizer** on a small mesh after each new parallel
+   region: `g++ -fsanitize=thread ...`.
+
+### macOS / Apple Clang note
+
+Apple's stock Clang omits OpenMP. `CMakeLists.txt` detects this and sets the
+Homebrew libomp prefix and `-Xpreprocessor -fopenmp` flags automatically before
+calling `find_package(OpenMP REQUIRED)`. This shim is macOS-only; it is guarded
+by `if(APPLE)` and does not affect Linux builds.
+
+
 ## SIMPLE algorithm
 
 Entry point: `SIMPLE::solve()` performs the outer iteration until convergence or `maxIterations`:
@@ -569,6 +686,7 @@ Strip it before committing if it isn't gated by a persistent flag.
    calculations (ad-hoc).
 3. **Validation Checks**: Add assertions for mathematical consistency.
 4. **Performance Monitoring**: Track solver iterations and convergence
+   via `Logger::residualRow` rather than inline prints.
 
 #### Common Issues and Solutions
 
@@ -623,6 +741,7 @@ The solver uses `CaseReader` for runtime configuration instead of hard-coded par
 The default `defaultCase` file is organized into logical sections:
 
 ```cpp
+parallelism { numThreads int; }
 mesh { file path; checkQuality bool; }
 physicalProperties { rho scalar; mu scalar; }
 initialConditions { U vector; p scalar; }
