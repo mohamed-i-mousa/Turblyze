@@ -152,6 +152,7 @@ public:
         {
             FatalError("setPhysicalProperties: density must be positive");
         }
+
         rho_ = rho;
         mu_  = mu;
         nu_  = mu / rho;
@@ -264,7 +265,7 @@ private:
 
 // Private members
 
-    /// Mesh view (nodes, faces, cells)
+// Mesh & Numerical
     const Mesh& mesh_;
     const BoundaryConditions& bcManager_;
     const GradientScheme& gradientScheme_;
@@ -274,34 +275,42 @@ private:
 
     /// Fluid density
     Scalar rho_ = S(1.225);
+
     /// Dynamic viscosity
     Scalar mu_ = S(1.7894e-5);
+
     /// Kinematic viscosity
     Scalar nu_ = S(1.7894e-5/1.225);
 
-/// Algorithm parameters
+// Algorithm parameters
 
     /// Under-relaxation factor for velocity
     Scalar alphaU_ = S(0.7);
+
     /// Under-relaxation factor for pressure
     Scalar alphaP_= S(0.3);
+
     /// Under-relaxation factor for k
     Scalar alphaK_ = S(0.5);
+
     /// Under-relaxation factor for omega
     Scalar alphaOmega_ = S(0.5);
+
     /// Maximum number of iterations
     int maxIterations_ = 500;
+
     /// Convergence tolerance
     Scalar tolerance_ = S(1e-3);
 
-    /// Enable verbose console output
-    bool debug_ = false;
+/// Turbulence and constraints
 
     /// Turbulence model
     std::unique_ptr<kOmegaSST> turbulenceModel_ = nullptr;
 
     /// Field constraint system
     std::unique_ptr<Constraint> constraintSystem_ = nullptr;
+
+// Solution fields
 
     /// Velocity field
     VectorField U_;
@@ -311,20 +320,6 @@ private:
 
     /// Pressure correction field
     ScalarField pCorr_;
-
-    /// Track pressure correction RMS before reset
-    Scalar lastPressureCorrectionRMS_ = S(1e9);
-
-    /// Track turbulence field changes between iterations
-    Scalar lastKResidual_ = S(1e9);
-    Scalar lastOmegaResidual_ = S(1e9);
-
-    /// First-iteration reference values for scaled residuals
-    Scalar massImbalance0_ = S(0.0);
-    Scalar velocityResidual0_ = S(0.0);
-    Scalar pressureResidual0_ = S(0.0);
-    Scalar kResidual0_ = S(0.0);
-    Scalar omegaResidual0_ = S(0.0);
 
     /// Velocity from previous iteration
     VectorField UPrev_;
@@ -355,8 +350,7 @@ private:
     /// Pressure correction gradient field
     VectorField gradPCorr_;
 
-    /// Velocity gradient tensor field (shared between momentum,
-    /// transpose source, turbulence)
+    /// Velocity gradient tensor field
     TensorField gradU_;
 
     /// Matrix constructor and solver object
@@ -367,6 +361,26 @@ private:
 
     /// Linear solver for pressure correction equation
     LinearSolver pressureSolver_ = LinearSolver("pCorr", S(1e-6), 1000);
+
+// Residual tracking for convergence
+
+    /// Track pressure correction RMS before reset
+    Scalar lastPressureCorrectionRMS_ = S(1e9);
+
+    /// Track turbulence field changes between iterations
+    Scalar lastKResidual_ = S(1e9);
+    Scalar lastOmegaResidual_ = S(1e9);
+
+    /// First-iteration reference values for scaled residuals
+    Scalar massImbalance0_ = S(0.0);
+    Scalar velocityResidual0_ = S(0.0);
+    Scalar pressureResidual0_ = S(0.0);
+    Scalar kResidual0_ = S(0.0);
+    Scalar omegaResidual0_ = S(0.0);
+
+// Enable verbose console output
+
+    bool debug_ = false;
 
 // Private types
 
@@ -437,7 +451,7 @@ private:
      * @param transposeSourceY Output: y-momentum source term
      * @param transposeSourceZ Output: z-momentum source term
      */
-    void calculateTransposeGradientSource
+    void transposeGradientSource
     (
         const FaceData<Scalar>& nuEffFace,
         ScalarField& transposeSourceX,

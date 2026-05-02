@@ -3,15 +3,12 @@
  * @brief Implementation of VTK cell node-ordering helpers
  *****************************************************************************/
 
-// Own header
 #include "VtkCellOrdering.h"
 
-// STL includes
 #include <algorithm>
 #include <set>
 #include <unordered_map>
 
-// Header includes
 #include "Scalar.h"
 
 
@@ -69,7 +66,7 @@ std::vector<vtkIdType> orderHexahedronNodes
     {
         if (faceNodes.size() != 4)
         {
-            return orderedNodes; // Not a standard hex
+            return orderedNodes; // Not a hex
         }
     }
 
