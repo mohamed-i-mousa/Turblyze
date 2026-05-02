@@ -251,6 +251,15 @@ public:
         return turbulenceModel_->wallShearStress();
     }
 
+    /**
+     * @brief Whether the meshWave wall-distance loop converged during init
+     * @return True if convergence reached before the iteration cap
+     */
+    [[nodiscard]] bool wallDistanceConverged() const noexcept
+    {
+        return turbulenceModel_ && turbulenceModel_->wallDistanceConverged();
+    }
+
 private:
 
 // Private members

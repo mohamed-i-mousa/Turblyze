@@ -136,6 +136,15 @@ public:
     }
 
     /**
+     * @brief Whether the meshWave wall-distance loop converged
+     * @return True if maxChange fell below tolerance before the iteration cap
+     */
+    [[nodiscard]] bool wallDistanceConverged() const noexcept
+    {
+        return wallDistanceConverged_;
+    }
+
+    /**
      * @brief Get yPlus field
      * @return Const reference to yPlus field
      */
@@ -307,6 +316,9 @@ private:
 
     /// Optional SST F3 switch
     bool useF3_ = false;
+
+    /// Whether the meshWave wall-distance loop converged within maxIterations
+    bool wallDistanceConverged_ = false;
 
     /// Positive floor for k
     Scalar kMin_ = S(smallValue);
