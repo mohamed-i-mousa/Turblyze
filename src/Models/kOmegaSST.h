@@ -8,12 +8,11 @@
  * independence of the k-epsilon model in the far field.
  *
  * @class kOmegaSST
- *
  * The model solves two transport equations:
  * - Turbulent kinetic energy
  * - Specific dissipation rate
  *
- * Key features:
+ * Features:
  * - Automatic switching between k-omega and k-epsilon formulations
  * - Enhanced near-wall treatment with proper wall functions
  * - Wall distance calculation using iterative propagation approach
@@ -261,7 +260,13 @@ private:
     ScalarField omega_{S(1.0)};
 
     /// Turbulent kinematic viscosity
-    ScalarField nut_;
+    ScalarField nut_{S(0.0)};
+
+    /// k production term (mutated by productionTerms())
+    ScalarField Pk_;
+
+    /// Omega production term (mutated by productionTerms())
+    ScalarField POmega_;
 
     /// Distance to nearest wall
     ScalarField wallDistance_{S(1.0)};
@@ -282,8 +287,10 @@ private:
     FaceData<Scalar> nutWall_;
 
     /// Dynamic omega wall-function values on faces
-    FaceData<Scalar> omegaWallFunctionFaceValues_{
-        std::numeric_limits<Scalar>::quiet_NaN()};
+    FaceData<Scalar> omegaWallFunctionFaceValues_
+    {
+        std::numeric_limits<Scalar>::quiet_NaN()
+    };
 
     /// Area-based weight per wall face (face area / total wall area of cell)
     FaceData<Scalar> wallFaceWeight_;
@@ -317,7 +324,7 @@ private:
     /// Optional SST F3 switch
     bool useF3_ = false;
 
-    /// Whether the meshWave wall-distance loop converged within maxIterations
+    /// meshWave wall-distance loop convergence flag
     bool wallDistanceConverged_ = false;
 
     /// Positive floor for k
@@ -370,6 +377,15 @@ private:
     void updateNutWallFace();
 
     /**
+     * @brief Initialize turbulent viscosity with simple k/omega estimate
+     *
+     * @details
+     * Used at startup before the first momentum solve, when strain rate
+     * and F23 are not yet available for the full SST limited form.
+     */
+    void initializeTurbulentViscosity();
+
+    /**
      * @brief Update SST turbulent viscosity with limiter
      * @param f23 F2 or F2*F3 blending selector
      * @param strainRateField Strain rate magnitude
@@ -412,14 +428,14 @@ private:
 
     /**
      * @brief Compute cross-diffusion term from k and omega gradients
-     * @param gK Cell gradient of k
-     * @param gO Cell gradient of omega
+     * @param gradK Cell gradient of k
+     * @param gradOmega Cell gradient of omega
      * @return Cross-diffusion field
      */
     ScalarField crossDiffusion
     (
-        const VectorField& gK,
-        const VectorField& gO
+        const VectorField& gradK,
+        const VectorField& gradOmega
     ) const;
 
     /**
@@ -452,26 +468,18 @@ private:
 
 // Transport equation solvers
 
-    /// k and omega production term pair
-    struct ProductionTerms
-    {
-        ScalarField k;
-        ScalarField omega;
-    };
-
     /**
      * @brief Compute k and omega production terms
      * @param f1 SST F1 blending function
      * @param f23 F2 or F2*F3 blending selector
      * @param strainRateField Strain rate magnitude
-     * @return Cell-centred production fields for k and omega
      */
-    ProductionTerms productionTerms
+    void productionTerms
     (
         const ScalarField& f1,
         const ScalarField& f23,
         const ScalarField& strainRateField
-    ) const;
+    );
 
     /**
      * @brief Override k production at wall-adjacent cells

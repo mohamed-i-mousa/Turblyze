@@ -3,10 +3,8 @@
  * @brief Implementation of VTK UnstructuredGrid writer
  *****************************************************************************/
 
-// Own header
 #include "VtkWriter.h"
 
-// VTK includes
 #include <vtkCellData.h>
 #include <vtkCellType.h>
 #include <vtkDoubleArray.h>
@@ -15,12 +13,10 @@
 #include <vtkUnstructuredGrid.h>
 #include <vtkXMLUnstructuredGridWriter.h>
 
-// STL includes
 #include <iostream>
 #include <unordered_set>
 #include <vector>
 
-// Header includes
 #include "VtkCellOrdering.h"
 
 

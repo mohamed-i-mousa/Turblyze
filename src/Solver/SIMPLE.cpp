@@ -56,8 +56,7 @@ void SIMPLE::setTurbulenceSolvers
 void SIMPLE::solve()
 {
     std::cout
-        << "\n=== Starting SIMPLE Loop ===" << std::endl
-        << std::endl;
+        << "\n=== Starting SIMPLE Loop ===\n" << std::endl;
 
     // Reset first-iteration residual references for clean convergence tracking
     massImbalance0_    = S(0.0);
@@ -87,7 +86,7 @@ void SIMPLE::solve()
         RhieChowFlowRatePrev_ = RhieChowFlowRate_;
 
         size_t numCells = mesh_.numCells();
-        
+
         #pragma omp parallel for schedule(static)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
@@ -142,8 +141,6 @@ void SIMPLE::initialize
 )
 {
     matrixConstruct_ = std::make_unique<Matrix>(mesh_, bcManager_);
-
-    // Initialize constraint system
     constraintSystem_ = std::make_unique<Constraint>(U_, p_);
 
     U_.setAll(initialVelocity);
@@ -157,8 +154,8 @@ void SIMPLE::initialize
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = mesh_.faces()[faceIdx];
-
         Vector Uf;
+        
         if (face.isBoundary())
         {
             Uf = bcManager_.boundaryVectorFaceValue("U", U_, face);
@@ -284,28 +281,25 @@ void SIMPLE::solveMomentumEquations()
     DUf_.setAll(0.0);
 
     // Compute per-row velocity gradients and assemble the tensor field.
-    // Row VectorFields feed the scalar momentum TransportEquations;
-    // gradU_ (TensorField) is reused by the transpose source and the
-    // turbulence model.
-    VectorField gradUx_row;
-    VectorField gradUy_row;
-    VectorField gradUz_row;
+    VectorField gradUx;
+    VectorField gradUy;
+    VectorField gradUz;
 
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        gradUx_row[cellIdx] =
+        gradUx[cellIdx] =
             gradientScheme_.cellGradient("U", Ux, cellIdx, nullptr, 0);
-        gradUy_row[cellIdx] =
+        gradUy[cellIdx] =
             gradientScheme_.cellGradient("U", Uy, cellIdx, nullptr, 1);
-        gradUz_row[cellIdx] =
+        gradUz[cellIdx] =
             gradientScheme_.cellGradient("U", Uz, cellIdx, nullptr, 2);
 
         gradU_[cellIdx] = Tensor::fromRows
         (
-            gradUx_row[cellIdx],
-            gradUy_row[cellIdx],
-            gradUz_row[cellIdx]
+            gradUx[cellIdx],
+            gradUy[cellIdx],
+            gradUz[cellIdx]
         );
     }
 
@@ -316,7 +310,7 @@ void SIMPLE::solveMomentumEquations()
         ScalarField transposeSourceY;
         ScalarField transposeSourceZ;
 
-        calculateTransposeGradientSource
+        transposeGradientSource
         (
             nuEffFace,
             transposeSourceX,
@@ -344,7 +338,7 @@ void SIMPLE::solveMomentumEquations()
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace),
         .source         = UxSource,
-        .gradPhi        = gradUx_row,
+        .gradPhi        = gradUx,
         .gradScheme     = gradientScheme_,
         .componentIdx   = 0
     };
@@ -359,7 +353,7 @@ void SIMPLE::solveMomentumEquations()
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace),
         .source         = UySource,
-        .gradPhi        = gradUy_row,
+        .gradPhi        = gradUy,
         .gradScheme     = gradientScheme_,
         .componentIdx   = 1
     };
@@ -374,7 +368,7 @@ void SIMPLE::solveMomentumEquations()
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace),
         .source         = UzSource,
-        .gradPhi        = gradUz_row,
+        .gradPhi        = gradUz,
         .gradScheme     = gradientScheme_,
         .componentIdx   = 2
     };
@@ -413,7 +407,7 @@ void SIMPLE::solveMomentumEquations()
 void SIMPLE::updateRhieChowFlowRate()
 {
     size_t numFaces = mesh_.numFaces();
-    
+
     #pragma omp parallel for schedule(static)
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
@@ -538,7 +532,7 @@ void SIMPLE::solvePressureCorrection()
 void SIMPLE::correctVelocity()
 {
     size_t numCells = mesh_.numCells();
-    
+
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
@@ -570,7 +564,7 @@ void SIMPLE::correctVelocity()
 
     // Update face velocities
     size_t numFaces = mesh_.numFaces();
-    
+
     #pragma omp parallel for schedule(static)
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
@@ -593,7 +587,7 @@ void SIMPLE::correctPressure()
     Scalar sumSq = 0.0;
 
     size_t numCells = mesh_.numCells();
-    
+
     #pragma omp parallel for schedule(static) reduction(+:sumSq)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
@@ -628,7 +622,7 @@ void SIMPLE::correctFlowRate()
 {
     // Update mass flux on faces
     size_t numFaces = mesh_.numFaces();
-    
+
     #pragma omp parallel for schedule(static)
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
@@ -707,7 +701,7 @@ void SIMPLE::solveTurbulence()
 
         ScalarField kPrev;
         ScalarField omegaPrev;
-        
+
         #pragma omp parallel for schedule(static)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
@@ -722,7 +716,7 @@ void SIMPLE::solveTurbulence()
         Scalar kPrevSq = 0.0;
         Scalar omDiffSq = 0.0;
         Scalar omPrevSq = 0.0;
-        
+
         #pragma omp parallel for schedule(static) \
             reduction(+:kDiffSq, kPrevSq, omDiffSq, omPrevSq)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -766,24 +760,26 @@ bool SIMPLE::checkConvergence()
     }
 
     // Scale by first-iteration values
-    Scalar scaledMass = massImbalance
-        / (massImbalance0_ + vSmallValue);
-    Scalar scaledVelocity = velocityResidual
-        / (velocityResidual0_ + vSmallValue);
-    Scalar scaledPressure = pressureResidual
-        / (pressureResidual0_ + vSmallValue);
+    Scalar scaledMass = massImbalance / (massImbalance0_ + vSmallValue);
+
+    Scalar scaledVelocity =
+        velocityResidual / (velocityResidual0_ + vSmallValue);
+
+    Scalar scaledPressure =
+        pressureResidual / (pressureResidual0_ + vSmallValue);
 
     bool converged =
         (scaledMass < tolerance_)
      && (scaledVelocity < tolerance_)
      && (scaledPressure < tolerance_);
 
+    Scalar scaledK = S(0.0);
+    Scalar scaledOmega = S(0.0);
+
     if (turbulenceModel_)
     {
-        Scalar scaledK = lastKResidual_
-            / (kResidual0_ + vSmallValue);
-        Scalar scaledOmega = lastOmegaResidual_
-            / (omegaResidual0_ + vSmallValue);
+        scaledK = lastKResidual_ / (kResidual0_ + vSmallValue);
+        scaledOmega = lastOmegaResidual_ / (omegaResidual0_ + vSmallValue);
 
         converged = converged
             && (scaledK < tolerance_)
@@ -854,7 +850,7 @@ Scalar SIMPLE::massImbalance() const
     Scalar totalNormImbalance = 0.0;
 
     size_t numCells = mesh_.numCells();
-    
+
     #pragma omp parallel for schedule(static) reduction(+:totalNormImbalance)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
@@ -884,7 +880,7 @@ Scalar SIMPLE::velocityResidual() const
     Scalar den = 0.0;
 
     size_t numCells = mesh_.numCells();
-    
+
     #pragma omp parallel for schedule(static) reduction(+:num, den)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
@@ -917,7 +913,7 @@ Scalar SIMPLE::pressureResidual() const
     return lastPressureCorrectionRMS_ / (pRms + vSmallValue);
 }
 
-void SIMPLE::calculateTransposeGradientSource
+void SIMPLE::transposeGradientSource
 (
     const FaceData<Scalar>& nuEffFace,
     ScalarField& transposeSourceX,
@@ -952,9 +948,9 @@ void SIMPLE::calculateTransposeGradientSource
             if (face.isBoundary())
             {
                 gradUf = gradU_[cellIdx];
-        }
-        else
-        {
+            }
+            else
+            {
                 gradUf = interpolateToFace(face, gradU_);
             }
 
@@ -1010,9 +1006,17 @@ void SIMPLE::solveMomentumComponent
 
     if (debug_)
     {
+        const char* label = "U*";
+        switch (component)
+        {
+            case Component::X: label = "Ux"; break;
+            case Component::Y: label = "Uy"; break;
+            case Component::Z: label = "Uz"; break;
+        }
+
         Logger::residualRow
         (
-            componentName(component),
+            label,
             "BiCGSTAB",
             momentumSolver_.lastIterations(),
             momentumSolver_.lastResidual()
