@@ -30,7 +30,6 @@ LinearSolver::LinearSolver(const LinearSolver& other)
     fieldName_{other.fieldName_},
     tolerance_{other.tolerance_},
     maxIterations_{other.maxIterations_},
-    icInitialShift_{other.icInitialShift_},
     solverInitialized_{false}
 {}
 
@@ -38,10 +37,9 @@ LinearSolver& LinearSolver::operator=(const LinearSolver& other)
 {
     if (this != &other)
     {
-        fieldName_       = other.fieldName_;
-        tolerance_       = other.tolerance_;
-        maxIterations_   = other.maxIterations_;
-        icInitialShift_  = other.icInitialShift_;
+        fieldName_         = other.fieldName_;
+        tolerance_         = other.tolerance_;
+        maxIterations_     = other.maxIterations_;
         solverInitialized_ = false;
         lastIterations_    = 0;
         lastResidual_      = S(0.0);
@@ -109,7 +107,6 @@ void LinearSolver::solveWithPCG
 
     pcg_.setMaxIterations(maxIterations_);
     pcg_.setTolerance(tolerance_);
-    pcg_.preconditioner().setInitialShift(icInitialShift_);
 
     // Sparsity analysis
     if (!solverInitialized_)
