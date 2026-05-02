@@ -31,14 +31,7 @@ kOmegaSST::kOmegaSST
     kConvectionScheme_(kScheme),
     omegaConvectionScheme_(omegaScheme),
     matrixConstruct_(std::make_unique<Matrix>(mesh_, bcManager_))
-{
-    if (debug_)
-    {
-        std::cout
-            << "k-omega SST turbulence model initialized with "
-            << mesh_.numCells() << " cells." << std::endl;
-    }
-}
+{}
 
 kOmegaSST::~kOmegaSST() noexcept = default;
 
@@ -57,14 +50,6 @@ void kOmegaSST::initialize
     nu_ = nu;
     alphaK_ = alphaK;
     alphaOmega_ = alphaOmega;
-
-    if (debug_)
-    {
-        std::cout
-            << std::endl
-            << "=== Initializing k-omega SST Turbulence Model ==="
-            << std::endl;
-    }
 
     yPlusLam();
 
@@ -91,12 +76,6 @@ void kOmegaSST::initialize
 
     // Compute wall-function nut for first momentum solve
     updateNutWallFace();
-
-    if (debug_)
-    {
-        std::cout
-            << "Turbulence fields initialized successfully." << std::endl;
-    }
 }
 
 void kOmegaSST::solve
@@ -160,12 +139,7 @@ void kOmegaSST::yPlusLam()
 
 void kOmegaSST::updateWallDistance()
 {
-    if (debug_)
-    {
-        std::cout
-            << "  Computing wall distance using meshWave method..."
-            << std::endl;
-    }
+    wallDistanceConverged_ = false;
 
     // Initialize: large sentinel distance, zero wall point
     wallDistance_.setAll(S(1e10));
@@ -250,19 +224,6 @@ void kOmegaSST::updateWallDistance()
         {
             break;
         }
-
-        if (iter == maxIterations - 1)
-        {
-            std::cout
-                << "  WARNING: Reached max iterations without convergence"
-                << std::endl;
-        }
-    }
-
-    if (debug_)
-    {
-        std::cout
-            << "  Wall distance calculation completed." << std::endl;
     }
 }
 

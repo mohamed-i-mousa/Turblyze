@@ -60,13 +60,58 @@ private:
 namespace Logger
 {
     /**
+     * @brief Print a generic 80-char framed banner with the given title
+     * @param title Title text shown on the second line of the banner
+     */
+    void sectionHeader(const std::string& title);
+
+    /**
      * @brief Print the per-iteration banner
      * @param n Iteration number
      */
     void iterationHeader(int n);
 
-    /// Print the closing rule that terminates an iteration block
+    /// Print the closing rule that terminates a framed block
     void iterationFooter();
+
+    /// Print the column header row for the linear solver configuration table
+    void linearSolverConfigHeader();
+
+    /**
+     * @brief Print one row of the linear solver configuration table
+     * @param equation Label for the equation column ("U", "p", "k", "omega")
+     * @param solver Solver name ("BiCGSTAB", "PCG")
+     * @param tolerance Linear solver tolerance
+     * @param maxIters Linear solver iteration cap
+     */
+    void linearSolverConfigRow
+    (
+        const std::string& equation,
+        const std::string& solver,
+        Scalar tolerance,
+        int maxIters
+    );
+
+    /**
+     * @brief Print one indented "label  value" row with a Scalar value
+     * @param label Row label (left-justified, padded to 24 chars)
+     * @param value Scalar value, printed in scientific notation
+     */
+    void keyValue(const std::string& label, Scalar value);
+
+    /**
+     * @brief Print one indented "label  value" row with an int value
+     * @param label Row label (left-justified, padded to 24 chars)
+     * @param value Integer value, right-aligned to 12 chars
+     */
+    void keyValue(const std::string& label, int value);
+
+    /**
+     * @brief Print one indented "label  value" row with a string value
+     * @param label Row label (left-justified, padded to 24 chars)
+     * @param value String value (e.g. "kOmegaSST", "[-1e5, 1e5] Pa")
+     */
+    void keyValue(const std::string& label, const std::string& value);
 
     /// Print the column header row for the table
     void residualTableHeader();

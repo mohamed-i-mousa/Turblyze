@@ -195,18 +195,6 @@ void SIMPLE::initialize
                 alphaK_,
                 alphaOmega_
             );
-
-        if (debug_)
-        {
-            std::cout
-                << "k-omega SST turbulence model initialized." << std::endl;
-        }
-    }
-
-    if (debug_)
-    {
-        std::cout
-            << "SIMPLE algorithm is initialized!" << std::endl;
     }
 }
 

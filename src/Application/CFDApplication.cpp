@@ -26,6 +26,9 @@
 #include "LinearSolvers.h"
 #include "Constraint.h"
 #include "ErrorHandler.h"
+#include "Logger.h"
+#include <sstream>
+#include <iomanip>
 
 
 // ******************************* Constructor *******************************
@@ -738,9 +741,6 @@ void CFDApplication::setupBoundaryConditions()
 
 void CFDApplication::configureSolver()
 {
-    std::cout
-        << std::endl << "--- 3. Initializing SIMPLE Solver ---" << std::endl;
-
     gradScheme_ =
         std::make_unique<GradientScheme>(mesh_, bcManager_);
 
@@ -753,17 +753,8 @@ void CFDApplication::configureSolver()
             convectionSchemes_
         );
 
-    // Set debug mode before any output-producing calls
     solver_->setDebug(debug_);
 
-    if (debug_ && turbulenceEnabled_)
-    {
-        std::cout
-            << "Turbulence modeling enabled: "
-            << turbulenceModel_ << std::endl;
-    }
-
-    // Initialize all solution fields
     solver_->
         initialize
         (
@@ -776,147 +767,63 @@ void CFDApplication::configureSolver()
 
     solver_->setPhysicalProperties(rho_, mu_);
 
-    // Configure SIMPLE parameters
     solver_->setRelaxationFactors(alphaU_, alphaP_, alphaK_, alphaOmega_);
     solver_->setConvergenceTolerance(convergenceTolerance_);
     solver_->setMaxIterations(maxIterations_);
 
-    // Configure linear solvers from case file
+    // Linear solver settings
+    Scalar uTol     = S(1e-8); int uMaxIter     = 1000;
+    Scalar pTol     = S(1e-6); int pMaxIter     = 1000;
+    Scalar kTol     = S(1e-6); int kMaxIter     = 1000;
+    Scalar omegaTol = S(1e-6); int omegaMaxIter = 1000;
+
     if (caseReader_->hasSection("linearSolvers"))
     {
         const auto& solvers = caseReader_->section("linearSolvers");
 
-        // Momentum solver (U)
         if (solvers.hasSection("U"))
         {
-            const auto& USection = solvers.section("U");
-            LinearSolver momentumSolver
-            (
-                "momentum",
-                USection.lookupOrDefault<Scalar>("tolerance", S(1e-8)),
-                USection.lookupOrDefault<int>("maxIter", 1000)
-            );
-            solver_->setMomentumSolver(momentumSolver);
-
-            if (debug_)
-            {
-                std::cout
-                    << "  Momentum solver: tolerance="
-                    << USection.lookupOrDefault<Scalar>(
-                        "tolerance", S(1e-8))
-                    << ", maxIter="
-                    << USection.lookupOrDefault<int>(
-                        "maxIter", 1000)
-                    << std::endl;
-            }
+            const auto& s = solvers.section("U");
+            uTol = s.lookupOrDefault<Scalar>("tolerance", uTol);
+            uMaxIter = s.lookupOrDefault<int>("maxIter", uMaxIter);
         }
-
-        // Pressure solver (p)
         if (solvers.hasSection("p"))
         {
-            const auto& pSection = solvers.section("p");
-            LinearSolver pressureSolver
-            (
-                "pCorr",
-                pSection.lookupOrDefault<Scalar>("tolerance", S(1e-6)),
-                pSection.lookupOrDefault<int>("maxIter", 1000)
-            );
-
-            Scalar initialShift =
-                pSection.lookupOrDefault<Scalar>("initialShift", S(1e-2));
-
-            pressureSolver.setICParameters(initialShift);
-            solver_->setPressureSolver(pressureSolver);
-
-            if (debug_)
-            {
-                std::cout
-                    << "  Pressure solver: tolerance="
-                    << pSection.lookupOrDefault<Scalar>(
-                        "tolerance", S(1e-6))
-                    << ", maxIter="
-                    << pSection.lookupOrDefault<int>(
-                        "maxIter", 1000)
-                    << std::endl;
-            }
+            const auto& s = solvers.section("p");
+            pTol = s.lookupOrDefault<Scalar>("tolerance", pTol);
+            pMaxIter = s.lookupOrDefault<int>("maxIter", pMaxIter);
         }
-
-        // Turbulence solvers (k, omega)
-        if (turbulenceEnabled_)
+        if (turbulenceEnabled_ && solvers.hasSection("k"))
         {
-            LinearSolver kSolver
-            (
-                "k",
-                solvers.hasSection("k")
-              ? solvers.section("k").lookupOrDefault<Scalar>
-                ("tolerance", S(1e-6))
-              : S(1e-6),
-
-                solvers.hasSection("k")
-              ? solvers.section("k").lookupOrDefault<int>
-                ("maxIter", 1000)
-              : 1000
-            );
-            LinearSolver omegaSolver
-            (
-                "omega",
-                solvers.hasSection("omega")
-              ? solvers.section("omega").lookupOrDefault<Scalar>
-                ("tolerance", S(1e-6))
-              : S(1e-6),
-
-                solvers.hasSection("omega")
-              ? solvers.section("omega").lookupOrDefault<int>
-                ("maxIter", 1000)
-              : 1000
-            );
-            solver_->setTurbulenceSolvers(kSolver, omegaSolver);
+            const auto& s = solvers.section("k");
+            kTol = s.lookupOrDefault<Scalar>("tolerance", kTol);
+            kMaxIter = s.lookupOrDefault<int>("maxIter", kMaxIter);
+        }
+        if (turbulenceEnabled_ && solvers.hasSection("omega"))
+        {
+            const auto& s = solvers.section("omega");
+            omegaTol = s.lookupOrDefault<Scalar>("tolerance", omegaTol);
+            omegaMaxIter = s.lookupOrDefault<int>("maxIter", omegaMaxIter);
         }
     }
 
-    if (debug_)
+    solver_->setMomentumSolver(LinearSolver("momentum", uTol, uMaxIter));
+    solver_->setPressureSolver(LinearSolver("pCorr", pTol, pMaxIter));
+
+    if (turbulenceEnabled_)
     {
-        std::cout
-            << "SIMPLE parameters:" << std::endl;
-        std::cout
-            << "  Max iterations: " << maxIterations_
-            << std::endl;
-        std::cout
-            << "  Convergence tolerance: "
-            << convergenceTolerance_ << std::endl;
-        std::cout
-            << "  Velocity relaxation: " << alphaU_
-            << std::endl;
-        std::cout
-            << "  Pressure relaxation: " << alphaP_
-            << std::endl;
-
-        if (turbulenceEnabled_)
-        {
-            std::cout
-                << "  k relaxation: " << alphaK_
-                << std::endl;
-            std::cout
-                << "  omega relaxation: " << alphaOmega_
-                << std::endl;
-        }
+        solver_->setTurbulenceSolvers
+        (
+            LinearSolver("k", kTol, kMaxIter),
+            LinearSolver("omega", omegaTol, omegaMaxIter)
+        );
     }
 
-    // Configure field constraints
     Constraint& constraintSystem = solver_->constraintSystem();
 
     if (velocityConstraintEnabled_)
     {
-        constraintSystem.setVelocityConstraints(
-            maxVelocityConstraint_);
-
-        if (debug_)
-        {
-            std::cout
-                << "Velocity constraint enabled: max = "
-                << maxVelocityConstraint_ << " m/s"
-                << std::endl;
-        }
+        constraintSystem.setVelocityConstraints(maxVelocityConstraint_);
     }
     if (pressureConstraintEnabled_)
     {
@@ -925,15 +832,6 @@ void CFDApplication::configureSolver()
             minPressureConstraint_,
             maxPressureConstraint_
         );
-
-        if (debug_)
-        {
-            std::cout
-                << "Pressure constraint enabled: ["
-                << minPressureConstraint_
-                << ", " << maxPressureConstraint_
-                << "] Pa" << std::endl;
-        }
     }
     constraintSystem.enableConstraints
     (
@@ -941,8 +839,68 @@ void CFDApplication::configureSolver()
         pressureConstraintEnabled_
     );
 
-    std::cout
-        << "SIMPLE solver initialized." << std::endl;
+    // Framed Phase 3 summary — always printed, regardless of debug mode
+    Logger::sectionHeader("Initializing SIMPLE Solver");
+
+    Logger::subsection("Linear solvers");
+    Logger::linearSolverConfigHeader();
+    Logger::linearSolverConfigRow("U", "BiCGSTAB", uTol, uMaxIter);
+    Logger::linearSolverConfigRow("p", "PCG", pTol, pMaxIter);
+    if (turbulenceEnabled_)
+    {
+        Logger::linearSolverConfigRow("k", "BiCGSTAB", kTol, kMaxIter);
+        Logger::linearSolverConfigRow("omega", "BiCGSTAB", omegaTol, omegaMaxIter);
+    }
+
+    Logger::subsection("SIMPLE controls");
+    Logger::keyValue("Max iterations", maxIterations_);
+    Logger::keyValue("Convergence tolerance", convergenceTolerance_);
+    Logger::keyValue("Velocity relaxation", alphaU_);
+    Logger::keyValue("Pressure relaxation", alphaP_);
+    if (turbulenceEnabled_)
+    {
+        Logger::keyValue("k relaxation", alphaK_);
+        Logger::keyValue("omega relaxation", alphaOmega_);
+    }
+
+    if (velocityConstraintEnabled_ || pressureConstraintEnabled_)
+    {
+        Logger::subsection("Field constraints");
+        if (velocityConstraintEnabled_)
+        {
+            std::ostringstream os;
+            os << std::scientific << std::setprecision(6)
+               << maxVelocityConstraint_ << " m/s";
+            Logger::keyValue("Velocity max", os.str());
+        }
+        if (pressureConstraintEnabled_)
+        {
+            std::ostringstream os;
+            os << "[" << std::scientific << std::setprecision(6)
+               << minPressureConstraint_ << ", "
+               << maxPressureConstraint_ << "] Pa";
+            Logger::keyValue("Pressure range", os.str());
+        }
+    }
+
+    if (turbulenceEnabled_)
+    {
+        Logger::subsection("Turbulence initialization");
+        Logger::keyValue("Model", turbulenceModel_);
+        Logger::keyValue
+        (
+            "Wall distance",
+            std::string
+            {
+                solver_->wallDistanceConverged()
+              ? "meshWave converged"
+              : "meshWave hit iteration cap (results may be degraded)"
+            }
+        );
+        Logger::keyValue("Fields initialized", std::string{"k, omega, nut"});
+    }
+
+    Logger::iterationFooter();
 }
 
 
