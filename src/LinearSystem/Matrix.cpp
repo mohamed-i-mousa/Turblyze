@@ -33,10 +33,10 @@ Matrix::Matrix
 
     matrixA_.resize
     (
-        static_cast<Eigen::Index>(numCells),
-        static_cast<Eigen::Index>(numCells)
+        eIdx(numCells),
+        eIdx(numCells)
     );
-    vectorB_.resize(static_cast<Eigen::Index>(numCells));
+    vectorB_.resize(eIdx(numCells));
 }
 
 
@@ -46,18 +46,15 @@ void Matrix::buildMatrix(const TransportEquation& equation)
 {
     clear();
 
-    using VectorB = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
-
     const size_t numCells = mesh_.numCells();
     const size_t numFaces = mesh_.numFaces();
-    const Eigen::Index numCellsIdx = static_cast<Eigen::Index>(numCells);
+    const Eigen::Index numCellsIdx = eIdx(numCells);
 
     // Cell-source contribution: race-free per-cell write directly to vectorB_
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        vectorB_(static_cast<Eigen::Index>(cellIdx)) +=
-            equation.source[cellIdx];
+        vectorB_(eIdx(cellIdx)) += equation.source[cellIdx];
     }
 
     // Each thread has its own triplet vector and RHS vector
@@ -71,8 +68,8 @@ void Matrix::buildMatrix(const TransportEquation& equation)
     std::vector<std::vector<Eigen::Triplet<Scalar>>>
     tlsTriplets(static_cast<size_t>(T));
 
-    std::vector<VectorB>
-    tlsB(static_cast<size_t>(T), VectorB::Zero(numCellsIdx));
+    std::vector<Vec>
+    tlsB(static_cast<size_t>(T), Vec::Zero(numCellsIdx));
 
     #pragma omp parallel
     {
@@ -133,7 +130,7 @@ void Matrix::relax(Scalar alpha, const ScalarField& phiPrev)
 
     const Eigen::Index numCells = matrixA_.rows();
 
-    if (static_cast<Eigen::Index>(phiPrev.size()) != numCells)
+    if (eIdx(phiPrev.size()) != numCells)
     {
         FatalError
         (
@@ -208,7 +205,7 @@ void Matrix::assembleInternalFace
     const Face& face,
     const TransportEquation& equation,
     std::vector<Eigen::Triplet<Scalar>>& triplets,
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& localB
+    Vec& localB
 )
 {
     const size_t ownerIdx = face.ownerCell();
@@ -299,8 +296,8 @@ void Matrix::assembleInternalFace
 
     Scalar nonOrthogonalFlux = Gammaf * dot(gradPhif, Tf);
 
-    localB(static_cast<Eigen::Index>(ownerIdx))    += nonOrthogonalFlux;
-    localB(static_cast<Eigen::Index>(neighborIdx)) -= nonOrthogonalFlux;
+    localB(eIdx(ownerIdx)) += nonOrthogonalFlux;
+    localB(eIdx(neighborIdx)) -= nonOrthogonalFlux;
 
     // Deferred correction (explicit, convection only)
     if (equation.convScheme)
@@ -315,8 +312,8 @@ void Matrix::assembleInternalFace
                 equation.flowRate->get()[face.idx()]
             );
 
-        localB(static_cast<Eigen::Index>(ownerIdx))    -= deferredCorrection;
-        localB(static_cast<Eigen::Index>(neighborIdx)) += deferredCorrection;
+        localB(eIdx(ownerIdx)) -= deferredCorrection;
+        localB(eIdx(neighborIdx)) += deferredCorrection;
     }
 }
 
@@ -325,7 +322,7 @@ void Matrix::assembleBoundaryFace
     const Face& face,
     const TransportEquation& equation,
     std::vector<Eigen::Triplet<Scalar>>& triplets,
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& localB
+    Vec& localB
 )
 {
     const size_t ownerIdx = face.ownerCell();
@@ -383,13 +380,13 @@ void Matrix::assembleBoundaryFace
 
         // Diffusion contribution
         triplets.emplace_back(ownerIdx, ownerIdx, aDiff);
-        localB(static_cast<Eigen::Index>(ownerIdx)) += aDiff * phiB;
+        localB(eIdx(ownerIdx)) += aDiff * phiB;
 
         // Convection contribution
         if (equation.flowRate)
         {
             Scalar aConv = equation.flowRate->get()[face.idx()];
-            localB(static_cast<Eigen::Index>(ownerIdx)) -= aConv * phiB;
+            localB(eIdx(ownerIdx)) -= aConv * phiB;
         }
 
         // Non-orthogonal correction
@@ -409,7 +406,7 @@ void Matrix::assembleBoundaryFace
         Scalar nonOrthogonalFlux =
             Gammaf * dot(gradPhif, Tf);
 
-        localB(static_cast<Eigen::Index>(ownerIdx)) += nonOrthogonalFlux;
+        localB(eIdx(ownerIdx)) += nonOrthogonalFlux;
     }
     else if
     (
@@ -436,7 +433,7 @@ void Matrix::assembleBoundaryFace
             Vector dCb = face.centroid() - mesh_.cells()[ownerIdx].centroid();
 
             Scalar correction = aConv * dot(gradPhib, dCb);
-            localB(static_cast<Eigen::Index>(ownerIdx)) -= correction;
+            localB(eIdx(ownerIdx)) -= correction;
         }
         // No convection + zero gradient = no contribution
     }
@@ -481,20 +478,20 @@ void Matrix::setValues
         const Scalar diag =
             matrixA_.coeff
             (
-                static_cast<Eigen::Index>(cellIdx),
-                static_cast<Eigen::Index>(cellIdx)
+                eIdx(cellIdx),
+                eIdx(cellIdx)
             );
 
         if (f > S(1.0) - rootSmallValue_)
         {
-            const Eigen::Index c = static_cast<Eigen::Index>(cellIdx);
+            const Eigen::Index c = eIdx(cellIdx);
 
             for
             (
                 size_t neighborIdx : mesh_.cells()[cellIdx].neighborCellIndices()
             )
             {
-                const Eigen::Index r = static_cast<Eigen::Index>(neighborIdx);
+                const Eigen::Index r = eIdx(neighborIdx);
 
                 const Scalar coupling = matrixA_.coeff(r, c);
                 if (coupling != S(0.0))
@@ -520,11 +517,11 @@ void Matrix::setValues
 
             matrixA_.coeffRef
             (
-                static_cast<Eigen::Index>(cellIdx),
-                static_cast<Eigen::Index>(cellIdx)
+                eIdx(cellIdx),
+                eIdx(cellIdx)
             ) += coeff;
             
-            vectorB_(static_cast<Eigen::Index>(cellIdx)) += coeff * values[i];
+            vectorB_(eIdx(cellIdx)) += coeff * values[i];
         }
     }
 }

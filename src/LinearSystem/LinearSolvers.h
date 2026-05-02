@@ -21,6 +21,14 @@
 #include "Scalar.h"
 
 
+// Eigen type reductions for readability
+using SparseMatrix = Eigen::SparseMatrix<Scalar, Eigen::RowMajor>;
+using Vec = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
+using VecRef = Eigen::Ref<Vec>;
+using JacobiPreconditioner = Eigen::DiagonalPreconditioner<Scalar>;
+static constexpr int LowerUpper = Eigen::Lower | Eigen::Upper;
+
+
 class LinearSolver
 {
 public:
@@ -48,7 +56,7 @@ public:
     LinearSolver& operator=(LinearSolver&&) = delete;
 
     /// Destructor
-    ~LinearSolver() noexcept = default; 
+    ~LinearSolver() noexcept = default;
 
 // Setters
 
@@ -105,9 +113,9 @@ public:
      */
     void solveWithBiCGSTAB
     (
-        Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
-        const Eigen::SparseMatrix<Scalar, Eigen::RowMajor>& A,
-        const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
+        VecRef x,
+        const SparseMatrix& A,
+        const Vec& B
     );
 
     /**
@@ -120,9 +128,9 @@ public:
      */
     void solveWithPCG
     (
-        Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
-        const Eigen::SparseMatrix<Scalar, Eigen::RowMajor>& A,
-        const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
+        VecRef x,
+        const SparseMatrix& A,
+        const Vec& B
     );
     
 private:
@@ -145,20 +153,9 @@ private:
     /// Final residual reported by the most recent solve call
     Scalar lastResidual_ = S(0.0);
 
-    /// BiCGSTAB solver with Jacobi (diagonal) preconditioner — parallel-friendly
-    Eigen::BiCGSTAB
-    <
-        Eigen::SparseMatrix<Scalar, Eigen::RowMajor>,
-        Eigen::DiagonalPreconditioner<Scalar>
-    >
-    bicgstab_;
+    /// BiCGSTAB solver with Jacobi (diagonal) preconditioner
+    Eigen::BiCGSTAB<SparseMatrix, JacobiPreconditioner> bicgstab_;
 
-    /// PCG solver with Incomplete Cholesky preconditioner
-    Eigen::ConjugateGradient
-    <
-        Eigen::SparseMatrix<Scalar, Eigen::RowMajor>,
-        Eigen::Lower|Eigen::Upper,
-        Eigen::IncompleteCholesky<Scalar>
-    >
-    pcg_;
+    /// PCG solver with Jacobi (diagonal) preconditioner
+    Eigen::ConjugateGradient<SparseMatrix, LowerUpper, JacobiPreconditioner> pcg_;
 };
