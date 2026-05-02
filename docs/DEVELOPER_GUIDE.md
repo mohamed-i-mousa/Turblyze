@@ -379,7 +379,6 @@ temporary allocations, and often has better cache behavior.
 | SpMV inside BiCGSTAB/PCG | YES | RowMajor partitions rows across threads |
 | Dot products / norms in BiCGSTAB | YES | Eigen OpenMP reduction |
 | ILUT triangular solve (precond apply) | **NO** | Inherently sequential; hard ceiling on solver speedup |
-| Incomplete Cholesky apply | **NO** | Same |
 | Matrix assembly (face loop) | YES | Per-thread buffer pattern |
 | `Matrix::relax()` | YES | Per-row, no neighbor writes |
 | `Matrix::setValues()` | NO | Small; left serial intentionally |
@@ -461,7 +460,7 @@ Class `kOmegaSST`:
 
 ## Linear solvers
 
-`LinearSolver` provides both `solveWithBiCGSTAB()` (ILUT preconditioner) and `solveWithPCG()` (Incomplete Cholesky preconditioner):
+`LinearSolver` provides both `solveWithBiCGSTAB()` (ILUT preconditioner) and `solveWithPCG()` (Jacobi preconditioner):
 - Per-field solver instances with independent convergence parameters.
 - Configurable absolute tolerance, relative tolerance, and max iterations.
 - Optional exact RMS residual computation with convergence diagnostics.

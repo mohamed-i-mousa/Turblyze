@@ -229,11 +229,10 @@ linearSolvers
     p   // Pressure equation
     {
         solver              PCG;
-        preconditioner      IncompleteCholesky;
+        preconditioner      Jacobi;
         tolerance           1e-6;
         relTol              0.05;
         maxIter             1000;
-        initialShift        1.0;
         computeResiduals    false;
     }
 

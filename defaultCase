@@ -281,10 +281,9 @@ linearSolvers
     p   // Pressure correction equation
     {
         solver          PCG;            // Preconditioned Conjugate Gradient
-        preconditioner  IncompleteCholesky;
+        preconditioner  Jacobi;         // Diagonal — parallel-friendly
         tolerance       1e-6;
         maxIter         100;
-        initialShift    1e-3;           // Conditioning factor
     }
 
     k   // Turbulent kinetic energy

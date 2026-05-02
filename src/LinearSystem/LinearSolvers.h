@@ -7,10 +7,8 @@
  * independent convergence parameters and preconditioner settings.
  *
  * @class LinearSolver
- *
- * The LinearSolver class provides:
  * - BiCGSTAB solver with Jacobi (diagonal) preconditioner
- * - PCG solver with Incomplete Cholesky for pressure correction
+ * - PCG solver with Jacobi (diagonal) preconditioner for pressure correction
  * - Configurable convergence tolerances
  *****************************************************************************/
 
@@ -51,17 +49,6 @@ public:
 
     /// Destructor
     ~LinearSolver() noexcept = default; 
-
-// Preconditioner configuration
-
-    /**
-     * @brief Configure Incomplete Cholesky preconditioner for PCG solver
-     * @param initialShift Initial shift parameter for numerical stability
-     */
-    void setICParameters(Scalar initialShift) noexcept
-    {
-        icInitialShift_ = initialShift;
-    }
 
 // Setters
 
@@ -124,7 +111,7 @@ public:
     );
 
     /**
-     * @brief Solve sparse system using PCG with Incomplete Cholesky
+     * @brief Solve sparse system using PCG with Jacobi preconditioner
      * @param x Solution vector
      * @param A Sparse coefficient matrix (must be SPD)
      * @param B Right-hand side vector
@@ -148,9 +135,6 @@ private:
 
     /// Maximum solver iterations before failure
     int maxIterations_;
-
-    /// Incomplete Cholesky initial shift parameter
-    Scalar icInitialShift_ = S(1e-3);
 
     /// Whether solver parameters and sparsity pattern have been initialized
     bool solverInitialized_ = false;
