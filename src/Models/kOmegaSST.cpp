@@ -222,6 +222,7 @@ void kOmegaSST::updateWallDistance()
 
         if (maxChange < tolerance)
         {
+            wallDistanceConverged_ = true;
             break;
         }
     }
@@ -377,7 +378,7 @@ void kOmegaSST::solveOmegaEquation
         Scalar cellVolume = mesh_.cells()[cellIdx].volume();
 
         // Production term: Pk * gamma / nut
-        vectorB(static_cast<Eigen::Index>(cellIdx)) +=
+        vectorB(eIdx(cellIdx)) +=
             productionOmega[cellIdx] * cellVolume;
 
         // Destruction term: -β·ω² (implicit: β·ω on diagonal)
@@ -385,8 +386,8 @@ void kOmegaSST::solveOmegaEquation
             blend(f1[cellIdx], coeffs_.beta1, coeffs_.beta2);
         matrixA.coeffRef
         (
-            static_cast<Eigen::Index>(cellIdx),
-            static_cast<Eigen::Index>(cellIdx)
+            eIdx(cellIdx),
+            eIdx(cellIdx)
         ) += beta * omega_[cellIdx] * cellVolume;
 
         // Cross-diffusion: linearization of (1-F1)*CDkOmega
@@ -398,13 +399,13 @@ void kOmegaSST::solveOmegaEquation
         {
             matrixA.coeffRef
             (
-                static_cast<Eigen::Index>(cellIdx),
-                static_cast<Eigen::Index>(cellIdx)
+                eIdx(cellIdx),
+                eIdx(cellIdx)
             ) += -CDkOmegaLineared * cellVolume;
         }
         else
         {
-            vectorB(static_cast<Eigen::Index>(cellIdx)) +=
+            vectorB(eIdx(cellIdx)) +=
                 CDkOmegaLineared * omega_[cellIdx] * cellVolume;
         }
 
@@ -415,11 +416,11 @@ void kOmegaSST::solveOmegaEquation
 
         matrixA.coeffRef
         (
-            static_cast<Eigen::Index>(cellIdx),
-            static_cast<Eigen::Index>(cellIdx)
+            eIdx(cellIdx),
+            eIdx(cellIdx)
         ) += std::max(suspOmega, S(0.0)) * cellVolume;
 
-        vectorB(static_cast<Eigen::Index>(cellIdx)) +=
+        vectorB(eIdx(cellIdx)) +=
             std::max(-suspOmega, S(0.0)) * omega_[cellIdx] * cellVolume;
     }
 
@@ -435,7 +436,7 @@ void kOmegaSST::solveOmegaEquation
     );
 
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
-    omegaSolution(omega_.data(), static_cast<Eigen::Index>(numCells));
+    omegaSolution(omega_.data(), eIdx(numCells));
 
     omegaSolver_.solveWithBiCGSTAB(omegaSolution, matrixA, vectorB);
 
@@ -579,25 +580,25 @@ void kOmegaSST::solveKEquation
                 coeffs_.c1 * coeffs_.betaStar * k_[cellIdx] * omega_[cellIdx]
             );
 
-        vectorB(static_cast<Eigen::Index>(cellIdx)) += Pk * cellVolume;
+        vectorB(eIdx(cellIdx)) += Pk * cellVolume;
 
         // Destruction term: -β*·kω
         const Scalar destruction = coeffs_.betaStar * omega_[cellIdx];
         matrixA.coeffRef
         (
-            static_cast<Eigen::Index>(cellIdx),
-            static_cast<Eigen::Index>(cellIdx)
+            eIdx(cellIdx),
+            eIdx(cellIdx)
         ) += destruction * cellVolume;
 
         // -(2/3)*divU SuSp term (continuity correction)
         Scalar suspK = (S(2.0) / S(3.0)) * divUField[cellIdx];
         matrixA.coeffRef
         (
-            static_cast<Eigen::Index>(cellIdx),
-            static_cast<Eigen::Index>(cellIdx)
+            eIdx(cellIdx),
+            eIdx(cellIdx)
         ) += std::max(suspK, S(0.0)) * cellVolume;
 
-        vectorB(static_cast<Eigen::Index>(cellIdx)) +=
+        vectorB(eIdx(cellIdx)) +=
             std::max(-suspK, S(0.0)) * k_[cellIdx] * cellVolume;
     }
 
@@ -605,7 +606,7 @@ void kOmegaSST::solveKEquation
     matrixConstruct_->relax(alphaK_, k_);
 
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
-    kSolution(k_.data(), static_cast<Eigen::Index>(numCells));
+    kSolution(k_.data(), eIdx(numCells));
 
     kSolver_.solveWithBiCGSTAB(kSolution, matrixA, vectorB);
 

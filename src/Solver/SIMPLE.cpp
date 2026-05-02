@@ -512,7 +512,7 @@ void SIMPLE::solvePressureCorrection()
     pCorr_.setAll(S(0.0));
 
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
-    pCorrSolution(pCorr_.data(), static_cast<Eigen::Index>(numCells));
+    pCorrSolution(pCorr_.data(), eIdx(numCells));
 
     pressureSolver_.solveWithPCG(pCorrSolution, matrixA, vectorB);
 
@@ -993,13 +993,13 @@ void SIMPLE::solveMomentumComponent
         {
             DU_[cellIdx] =
                 mesh_.cells()[cellIdx].volume()
-              / (matrixA.coeff(static_cast<Eigen::Index>(cellIdx), static_cast<Eigen::Index>(cellIdx)) + vSmallValue);
+              / (matrixA.coeff(eIdx(cellIdx), eIdx(cellIdx)) + vSmallValue);
         }
     }
 
     // Map phi directly as Eigen vector (zero-copy solve)
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
-    solutionMap(eq.phi.data(), static_cast<Eigen::Index>(numCells));
+    solutionMap(eq.phi.data(), eIdx(numCells));
 
     momentumSolver_.solveWithBiCGSTAB
     (

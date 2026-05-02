@@ -52,10 +52,9 @@ LinearSolver& LinearSolver::operator=(const LinearSolver& other)
 
 void LinearSolver::solveWithBiCGSTAB
 (
-    Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
-    const Eigen::SparseMatrix<Scalar, Eigen::RowMajor>& A,
-    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
-)
+    VecRef x,
+    const SparseMatrix& A,
+    const Vec& B)
 {
     if (x.size() != B.size())
     {
@@ -95,9 +94,9 @@ void LinearSolver::solveWithBiCGSTAB
 
 void LinearSolver::solveWithPCG
 (
-    Eigen::Ref<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>> x,
-    const Eigen::SparseMatrix<Scalar, Eigen::RowMajor>& A,
-    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& B
+    VecRef x,
+    const SparseMatrix& A,
+    const Vec& B
 )
 {
     if (x.size() != B.size())

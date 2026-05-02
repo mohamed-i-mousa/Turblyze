@@ -35,6 +35,10 @@ class Matrix
 {
 public:
 
+    // Eigen type reductions for readability
+    using SparseMatrix = Eigen::SparseMatrix<Scalar, Eigen::RowMajor>;
+    using Vec = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
+
     /**
      * @brief Constructor for matrix assembly
      * @param mesh Mesh view (nodes, faces, cells)
@@ -69,8 +73,7 @@ public:
      * @brief Get assembled sparse matrix A (const)
      * @return Const reference to coefficient matrix
      */
-    [[nodiscard]] const Eigen::SparseMatrix<Scalar, Eigen::RowMajor>&
-    matrixA() const noexcept
+    [[nodiscard]] const SparseMatrix& matrixA() const noexcept
     {
         return matrixA_;
     }
@@ -79,8 +82,7 @@ public:
      * @brief Get assembled sparse matrix A (non-const)
      * @return Mutable reference to coefficient matrix
      */
-    [[nodiscard]] Eigen::SparseMatrix<Scalar, Eigen::RowMajor>&
-    matrixA() noexcept
+    [[nodiscard]] SparseMatrix& matrixA() noexcept
     {
         return matrixA_;
     }
@@ -89,8 +91,7 @@ public:
      * @brief Get right-hand side vector b (const)
      * @return Const reference to RHS vector
      */
-    [[nodiscard]] const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&
-    vectorB() const noexcept
+    [[nodiscard]] const Vec& vectorB() const noexcept
     {
         return vectorB_;
     }
@@ -99,8 +100,7 @@ public:
      * @brief Get right-hand side vector b (non-const)
      * @return Mutable reference to RHS vector
      */
-    [[nodiscard]] Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&
-    vectorB() noexcept
+    [[nodiscard]] Vec& vectorB() noexcept
     {
         return vectorB_;
     }
@@ -145,8 +145,8 @@ private:
     const BoundaryConditions& bcManager_;
 
     /// Sparse linear system components
-    Eigen::SparseMatrix<Scalar, Eigen::RowMajor> matrixA_;
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> vectorB_;
+    SparseMatrix matrixA_;
+    Vec vectorB_;
 
     /// Triplet storage for efficient sparse matrix assembly
     std::vector<Eigen::Triplet<Scalar>> tripletList_;
@@ -181,7 +181,7 @@ private:
         const Face& face,
         const TransportEquation& equation,
         std::vector<Eigen::Triplet<Scalar>>& triplets,
-        Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& localB
+        Vec& localB
     );
 
     /**
@@ -196,7 +196,7 @@ private:
         const Face& face,
         const TransportEquation& equation,
         std::vector<Eigen::Triplet<Scalar>>& triplets,
-        Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& localB
+        Vec& localB
     );
 
     /**
@@ -211,3 +211,13 @@ private:
         std::optional<int> component
     ) noexcept;
 };
+
+/**
+ * @brief Convert a size_t index to Eigen's signed index type
+ * @param value Unsigned index from STL/mesh containers
+ * @return Equivalent Eigen::Index for sparse-matrix/vector access
+ */
+[[nodiscard]] inline Eigen::Index eIdx(std::size_t value) noexcept
+{
+    return static_cast<Eigen::Index>(value);
+}
