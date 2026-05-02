@@ -10,16 +10,22 @@
 #include <string>
 
 
-void Logger::iterationHeader(int n)
+void Logger::sectionHeader(const std::string& title)
 {
     StreamStateGuard guard(std::cout);
     std::cout
         << "========================================"
         << "========================================"
-        << "\n Iteration " << n << "\n"
+        << "\n " << title << "\n"
         << "----------------------------------------"
         << "----------------------------------------"
         << std::endl;
+}
+
+
+void Logger::iterationHeader(int n)
+{
+    sectionHeader("Iteration " + std::to_string(n));
 }
 
 
@@ -112,6 +118,87 @@ void Logger::scaledResidual(const std::string& name, Scalar value)
         << "    "
         << std::left << std::setw(10) << name
         << std::scientific << std::setprecision(6)
+        << value
+        << std::endl;
+}
+
+
+void Logger::linearSolverConfigHeader()
+{
+    StreamStateGuard guard(std::cout);
+
+    std::cout
+        << "    "
+        << std::left  << std::setw(11) << "Equation"
+        << std::left  << std::setw(11) << "Solver"
+        << std::left  << std::setw(12) << "Tolerance"
+        << std::right << std::setw(13) << "Max Iters"
+        << std::endl;
+
+    std::cout
+        << "    "
+        << std::left  << std::setw(11) << "--------"
+        << std::left  << std::setw(11) << "--------"
+        << std::left  << std::setw(12) << "----------"
+        << std::right << std::setw(13) << "---------"
+        << std::endl;
+}
+
+
+void Logger::linearSolverConfigRow
+(
+    const std::string& equation,
+    const std::string& solver,
+    Scalar tolerance,
+    int maxIters
+)
+{
+    StreamStateGuard guard(std::cout);
+
+    std::cout
+        << "    "
+        << std::left  << std::setw(11) << equation
+        << std::left  << std::setw(11) << solver
+        << std::scientific << std::setprecision(6) << tolerance
+        << std::right << std::setw(13) << maxIters
+        << std::endl;
+}
+
+
+void Logger::keyValue(const std::string& label, Scalar value)
+{
+    StreamStateGuard guard(std::cout);
+
+    std::cout
+        << "    "
+        << std::left << std::setw(24) << label
+        << "  "
+        << std::scientific << std::setprecision(6) << value
+        << std::endl;
+}
+
+
+void Logger::keyValue(const std::string& label, int value)
+{
+    StreamStateGuard guard(std::cout);
+
+    std::cout
+        << "    "
+        << std::left  << std::setw(24) << label
+        << "  "
+        << std::right << std::setw(12) << value
+        << std::endl;
+}
+
+
+void Logger::keyValue(const std::string& label, const std::string& value)
+{
+    StreamStateGuard guard(std::cout);
+
+    std::cout
+        << "    "
+        << std::left << std::setw(24) << label
+        << "  "
         << value
         << std::endl;
 }
