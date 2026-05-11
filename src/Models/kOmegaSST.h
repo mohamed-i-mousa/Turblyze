@@ -277,6 +277,9 @@ private:
     /// Kinematic wall shear stress magnitude (tau/rho) [m^2/s^2]
     FaceData<Scalar> wallShearStress_;
 
+    /// Owner-cell to wall-face perpendicular distance
+    FaceData<Scalar> y_;
+
     /// y+
     FaceData<Scalar> yPlus_;
 
@@ -287,7 +290,7 @@ private:
     FaceData<Scalar> nutWall_;
 
     /// Dynamic omega wall-function values on faces
-    FaceData<Scalar> omegaWallFunctionFaceValues_
+    FaceData<Scalar> omegaWall_
     {
         std::numeric_limits<Scalar>::quiet_NaN()
     };
@@ -334,7 +337,7 @@ private:
     Scalar omegaMin_ = S(smallValue);
 
     /// Maximum turbulent-to-laminar viscosity ratio for omega bound
-    Scalar nutMaxCoeff_ = S(1e5);
+    Scalar maxViscosityRatio_ = S(1e5);
 
     /// Under-relaxation factor for k equation
     Scalar alphaK_ = S(0.5);
@@ -368,13 +371,13 @@ private:
     void wallFunctionWeights();
 
     /// Update dynamic omega wall-function boundary values per face
-    void updateOmegaWallFunctionBoundaryValues();
+    void updateOmegaWallValues();
 
     /// Pre-set wall-cell omega to area-weighted wall-function values
     void applyOmegaWallCellValues();
 
     /// Update wall-function nut on wall faces (nutkWallFunction)
-    void updateNutWallFace();
+    void updateNutWall();
 
     /**
      * @brief Initialize turbulent viscosity with simple k/omega estimate
@@ -393,7 +396,7 @@ private:
     void updateTurbulentViscosity
     (
         const ScalarField& f23,
-        const ScalarField& strainRateField
+        const ScalarField& strainRate
     );
 
     /**
@@ -469,16 +472,40 @@ private:
 // Transport equation solvers
 
     /**
-     * @brief Compute k and omega production terms
-     * @param f1 SST F1 blending function
-     * @param f23 F2 or F2*F3 blending selector
+     * @brief Compute k production term
      * @param strainRateField Strain rate magnitude
      */
-    void productionTerms
+    void kProduction
+    (
+        const ScalarField& strainRate
+    );
+
+    /**
+     * @brief Compute omega production term
+     * @param f1 SST F1 blending function
+     * @param strainRateField Strain rate magnitude
+     */
+    void omegaProduction
     (
         const ScalarField& f1,
+        const ScalarField& strainRate
+    );
+
+    /**
+     * @brief Limit production terms for the SST model
+     * @param productionK k-production field
+     * @param productionOmega omega-production field
+     * @param f1 SST F1 blending function
+     * @param f23 F2 or F2*F3 blending selector
+     * @param strainRate strain rate magnitude S = sqrt(2 S_ij S_ij)
+     */
+    void limitProduction
+    (
+        ScalarField& productionK,
+        ScalarField& productionOmega,
+        const ScalarField& f1,
         const ScalarField& f23,
-        const ScalarField& strainRateField
+        const ScalarField& strainRate
     );
 
     /**
@@ -535,9 +562,6 @@ private:
     {
         return f * (cInner - cOuter) + cOuter;
     }
-
-    /// Bound k and omega to physically meaningful positive values
-    void boundTurbulenceFields();
 
     /// Bound omega with viscosity-ratio limit
     void boundOmega();
