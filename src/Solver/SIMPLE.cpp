@@ -295,12 +295,13 @@ void SIMPLE::solveMomentumEquations()
         gradUz[cellIdx] =
             gradientScheme_.cellGradient("U", Uz, cellIdx, nullptr, 2);
 
-        gradU_[cellIdx] = Tensor::fromRows
-        (
-            gradUx[cellIdx],
-            gradUy[cellIdx],
-            gradUz[cellIdx]
-        );
+        gradU_[cellIdx] = 
+            Tensor::fromRows
+            (
+                gradUx[cellIdx],
+                gradUy[cellIdx],
+                gradUz[cellIdx]
+            );
     }
 
     // Add transpose gradient source term

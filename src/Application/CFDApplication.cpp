@@ -1054,10 +1054,8 @@ void CFDApplication::exportResults()
         std::map<std::string, const FaceData<Scalar>*>
         wallScalarFields;
 
-        wallScalarFields["yPlus"] =
-            &solver_->yPlus();
-        wallScalarFields["wallShearStress"] =
-            &solver_->wallShearStress();
+        wallScalarFields["yPlus"] = &solver_->yPlus();
+        wallScalarFields["wallShearStress"] = &solver_->wallShearStress();
 
         VTK::writeWallBoundaryData
         (
