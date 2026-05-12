@@ -93,6 +93,8 @@ void SIMPLE::solve()
             gradP_[cellIdx] = gradientScheme_.cellGradient("p", p_, cellIdx);
         }
 
+        gradientScheme_.limitGradient("p", p_, gradP_);
+
         solveMomentumEquations();
 
         updateRhieChowFlowRate();
@@ -294,7 +296,15 @@ void SIMPLE::solveMomentumEquations()
             gradientScheme_.cellGradient("U", Uy, cellIdx, nullptr, 1);
         gradUz[cellIdx] =
             gradientScheme_.cellGradient("U", Uz, cellIdx, nullptr, 2);
+    }
 
+    gradientScheme_.limitGradient("U", Ux, gradUx, 0);
+    gradientScheme_.limitGradient("U", Uy, gradUy, 1);
+    gradientScheme_.limitGradient("U", Uz, gradUz, 2);
+
+    #pragma omp parallel for schedule(static)
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    {
         gradU_[cellIdx] = 
             Tensor::fromRows
             (
@@ -465,6 +475,8 @@ void SIMPLE::solvePressureCorrection()
         gradPCorrPrecomputed[cellIdx] =
             gradientScheme_.cellGradient("pCorr", pCorr_, cellIdx);
     }
+
+    gradientScheme_.limitGradient("pCorr", pCorr_, gradPCorrPrecomputed);
 
     // Compute mass imbalance source term
     ScalarField massImbalance;
@@ -684,19 +696,32 @@ void SIMPLE::solveTurbulence()
         ScalarField Uy = extractComponent(U_, Component::Y);
         ScalarField Uz = extractComponent(U_, Component::Z);
 
+        VectorField gUx;
+        VectorField gUy;
+        VectorField gUz;
+
         #pragma omp parallel for schedule(static)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
-            Vector gUx =
+            gUx[cellIdx] =
                 gradientScheme_.cellGradient("U", Ux, cellIdx, nullptr, 0);
-            Vector gUy =
+            gUy[cellIdx] =
                 gradientScheme_.cellGradient("U", Uy, cellIdx, nullptr, 1);
-            Vector gUz =
+            gUz[cellIdx] =
                 gradientScheme_.cellGradient("U", Uz, cellIdx, nullptr, 2);
-
-            gradU_[cellIdx] = Tensor::fromRows(gUx, gUy, gUz);
         }
 
+        gradientScheme_.limitGradient("U", Ux, gUx, 0);
+        gradientScheme_.limitGradient("U", Uy, gUy, 1);
+        gradientScheme_.limitGradient("U", Uz, gUz, 2);
+
+        #pragma omp parallel for schedule(static)
+        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+        {
+            gradU_[cellIdx] = 
+                Tensor::fromRows(gUx[cellIdx], gUy[cellIdx], gUz[cellIdx]);
+        }
+        
         const auto& kField = turbulenceModel_->k();
         const auto& omegaField = turbulenceModel_->omega();
 
