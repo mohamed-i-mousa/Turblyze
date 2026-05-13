@@ -11,6 +11,7 @@
 #include <omp.h>
 
 #include "ErrorHandler.h"
+#include "LinearInterpolation.h"
 
 // ************************* Constructor & Destructor *************************
 
@@ -198,6 +199,36 @@ Scalar Matrix::extractBoundaryScalar
 }
 
 
+Scalar Matrix::faceDiffusionCoefficient
+(
+    const Face& face,
+    const TransportEquation& equation
+) const
+{
+    if (equation.Gamma)
+    {
+        const auto& gamma = equation.Gamma->get();
+
+        if (face.isBoundary())
+        {
+            return gamma[face.ownerCell()];
+        }
+
+        return interpolateToFace(face, gamma);
+    }
+
+    if (!equation.GammaFace.has_value())
+    {
+        FatalError
+        (
+            "faceDiffusionCoefficient: equation has no Gamma or GammaFace"
+        );
+    }
+
+    return equation.GammaFace->get()[face.idx()];
+}
+
+
 // ***************** Transport Equation Assembly Helpers ******************
 
 void Matrix::assembleInternalFace
@@ -223,34 +254,7 @@ void Matrix::assembleInternalFace
     // Orthogonal component (over-relaxed)
     Vector Ef = (dot(Sf, Sf) / dot(Sf, ePN)) * ePN;
 
-    // Diffusion coefficient at face
-    Scalar Gammaf;
-
-    if (equation.Gamma)
-    {
-        // Cell-based: harmonic interpolation
-        const auto& G = equation.Gamma->get();
-        Scalar dPf = face.dPfMag();
-        Scalar dNf = face.dNfMag().value();
-
-        Gammaf =
-            dPNMag
-          / ((dPf / (G[ownerIdx] + vSmallValue))
-           + (dNf / (G[neighborIdx] + vSmallValue)));
-    }
-    else
-    {
-        // Face-based: use directly
-        if (!equation.GammaFace.has_value())
-        {
-            FatalError
-            (
-                "assembleInternalFace: equation has "
-                "no Gamma or GammaFace"
-            );
-        }
-        Gammaf = equation.GammaFace->get()[face.idx()];
-    }
+    Scalar Gammaf = faceDiffusionCoefficient(face, equation);
 
     Scalar aDiff = Gammaf * Ef.magnitude() / (dPNMag + vSmallValue);
 
@@ -337,25 +341,7 @@ void Matrix::assembleBoundaryFace
 
     Vector Ef = (dot(Sf, Sf) / dot(Sf, ePf)) * ePf;
 
-    // Diffusion coefficient at boundary face
-    Scalar Gammaf;
-
-    if (equation.Gamma)
-    {
-        Gammaf = equation.Gamma->get()[ownerIdx];
-    }
-    else
-    {
-        if (!equation.GammaFace.has_value())
-        {
-            FatalError
-            (
-                "assembleBoundaryFace: equation has "
-                "no Gamma or GammaFace"
-            );
-        }
-        Gammaf = equation.GammaFace->get()[face.idx()];
-    }
+    Scalar Gammaf = faceDiffusionCoefficient(face, equation);
 
     Scalar aDiff = Gammaf * Ef.magnitude() / (dPfMag + vSmallValue);
 

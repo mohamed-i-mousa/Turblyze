@@ -210,6 +210,18 @@ private:
         const BoundaryData& bc,
         std::optional<int> component
     ) noexcept;
+
+    /**
+     * @brief Resolve the diffusion coefficient at a face.
+     * @param face Face being assembled
+     * @param equation Transport equation data
+     * @return Face diffusion coefficient
+     */
+    [[nodiscard]] Scalar faceDiffusionCoefficient
+    (
+        const Face& face,
+        const TransportEquation& equation
+    ) const;
 };
 
 /**
