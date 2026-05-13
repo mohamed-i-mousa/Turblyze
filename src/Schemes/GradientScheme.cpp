@@ -31,7 +31,6 @@ GradientScheme::GradientScheme
     precomputeInverseATA();
 }
 
-
 // ****************************** Private Methods ******************************
 
 void GradientScheme::precomputeInverseATA()
@@ -129,7 +128,6 @@ void GradientScheme::precomputeInverseATA()
     }
 }
 
-
 // ****************************** Public Methods ******************************
 
 Vector GradientScheme::cellGradient
@@ -223,6 +221,7 @@ Vector GradientScheme::cellGradient
     );
 }
 
+
 void GradientScheme::limitGradient
 (
     const std::string& fieldName,
@@ -237,11 +236,10 @@ void GradientScheme::limitGradient
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Cell& cell = mesh_.cells()[cellIdx];
-        Scalar phiP = phi[cellIdx];
 
         // Find min/max among cell P and all its neighbors
-        Scalar phiMin = phiP;
-        Scalar phiMax = phiP;
+        Scalar phiMin = phi[cellIdx];
+        Scalar phiMax = phi[cellIdx];
 
         for (size_t neighborIdx : cell.neighborCellIndices())
         {
@@ -275,16 +273,16 @@ void GradientScheme::limitGradient
         {
             const Face& face = mesh_.faces()[faceIdx];
             Vector r = face.centroid() - cell.centroid();
-            Scalar phiFace = phiP + dot(gradPhi[cellIdx], r);
-            Scalar delta = phiFace - phiP;
+            Scalar phiFace = phi[cellIdx] + dot(gradPhi[cellIdx], r);
+            Scalar delta = phiFace - phi[cellIdx];
 
-            if (delta > vSmallValue)
+            if (delta > smallValue)
             {
-                alpha = std::min(alpha, (phiMax - phiP) / delta);
+                alpha = std::min(alpha, (phiMax - phi[cellIdx]) / delta);
             }
-            else if (delta < -vSmallValue)
+            else if (delta < -smallValue)
             {
-                alpha = std::min(alpha, (phiMin - phiP) / delta);
+                alpha = std::min(alpha, (phiMin - phi[cellIdx]) / delta);
             }
         }
 
@@ -293,6 +291,7 @@ void GradientScheme::limitGradient
         gradPhi[cellIdx] = alpha * gradPhi[cellIdx];
     }
 }
+
 
 Vector GradientScheme::faceGradient
 (
@@ -341,6 +340,7 @@ Vector GradientScheme::faceGradient
     }
 }
 
+
 Vector GradientScheme::averageFaceGradient
 (
     const Face& face,
@@ -366,6 +366,7 @@ Vector GradientScheme::averageFaceGradient
 
     return gP * gradPhiP + gN * gradPhiN;
 }
+
 
 Vector GradientScheme::boundaryFaceGradient
 (
