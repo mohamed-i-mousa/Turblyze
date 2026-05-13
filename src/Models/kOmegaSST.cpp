@@ -1018,7 +1018,7 @@ VectorField kOmegaSST::gradientK() const
         gradK[cellIdx] = gradientScheme_.cellGradient("k", k_, cellIdx);
     }
 
-    //gradientScheme_.limitGradient("k", k_, gradK);
+    gradientScheme_.limitGradient("k", k_, gradK);
 
     return gradK;
 }
@@ -1036,7 +1036,7 @@ VectorField kOmegaSST::gradientOmega() const
             gradientScheme_.cellGradient("omega", omega_, cellIdx);
     }
 
-    //gradientScheme_.limitGradient("omega", omega_, gradOmega);
+    gradientScheme_.limitGradient("omega", omega_, gradOmega);
 
     return gradOmega;
 }
