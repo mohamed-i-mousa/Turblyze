@@ -206,8 +206,19 @@ Scalar BoundaryConditions::boundaryFaceValue
 
         case FIXED_GRADIENT:
         {
+            if (componentIdx)
+            {
+                FatalError
+                (
+                    "FIXED_GRADIENT is only supported for scalar fields. "
+                    "Vector fixed-gradient boundary conditions require "
+                    "per-component gradient storage."
+                );
+            }
+
             // Fixed gradient: φf = φP + grad * distance
             Scalar dn = dot(face.dPf(), face.normal());
+            
             return
                 phi[face.ownerCell()]
               + bc.fixedScalarGradient() * dn;
@@ -271,17 +282,12 @@ Vector BoundaryConditions::boundaryVectorFaceValue
 
         case FIXED_GRADIENT:
         {
-            // Fixed gradient: Uf = UP + grad * distance (per component)
-            Scalar dn = dot(face.dPf(), face.normal());
-            Scalar grad = bc.scalarGradient();
-            Vector owner = phi[face.ownerCell()];
-            return
-                Vector
-                (
-                    owner.x() + grad * dn,
-                    owner.y() + grad * dn,
-                    owner.z() + grad * dn
-                );
+            FatalError
+            (
+                "FIXED_GRADIENT is only supported for scalar fields. "
+                "Vector fixed-gradient boundary conditions require "
+                "per-component gradient storage."
+            );
         }
 
         case UNDEFINED:
