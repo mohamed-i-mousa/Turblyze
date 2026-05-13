@@ -1,8 +1,8 @@
 /******************************************************************************
  * @file Scalar.h
  * @brief Floating-point precision configuration and tolerance definitions
- * 
- * @details This file defines the Scalar type used throughout the CFD solver 
+ *
+ * @details This file defines the Scalar type used throughout the CFD solver
  * and the numerical tolerances that adapt to the chosen precision.
  * Precision is controlled via CMake configuration.
  *****************************************************************************/
@@ -31,7 +31,7 @@ constexpr Scalar smallValue = std::numeric_limits<Scalar>::epsilon();
 
 constexpr Scalar vSmallValue = std::numeric_limits<Scalar>::min();
 
-constexpr Scalar largeValue = Scalar(1.0)/smallValue;
+constexpr Scalar largeValue = Scalar(1.0) / smallValue;
 
 
 /// Numeric types that may be converted to Scalar via S()
@@ -41,8 +41,8 @@ concept ScalarLiteral =
  || std::same_as<T, int>
  || std::same_as<T, long>
  || std::same_as<T, long long>
- || std::same_as<T, int8_t>
- || std::same_as<T, size_t>;
+ || std::same_as<T, std::int8_t>
+ || std::same_as<T, std::size_t>;
 
 /**
  * @brief Type-safe scalar literal conversion function
@@ -51,7 +51,7 @@ concept ScalarLiteral =
  * @return Value converted to Scalar type
  */
 template<ScalarLiteral T>
-constexpr Scalar S(T value)
+[[nodiscard]] constexpr Scalar S(T value) noexcept
 {
     return static_cast<Scalar>(value);
 }
