@@ -408,6 +408,23 @@ void Matrix::assembleBoundaryFace
 
         localB(eIdx(ownerIdx)) += nonOrthogonalFlux;
     }
+    else if (bc.type() == FIXED_GRADIENT)
+    {
+        const Scalar gradient = bc.fixedScalarGradient(); 
+        const Scalar dn = dot(face.dPf(), face.normal());
+
+        localB(eIdx(ownerIdx)) +=
+            Gammaf * gradient * face.projectedArea();
+
+        // Boundary value for convection: phi_b = phi_P + grad * dn
+        if (equation.flowRate)
+        {
+            Scalar aConv = equation.flowRate->get()[face.idx()];
+
+            triplets.emplace_back(ownerIdx, ownerIdx, aConv);
+            localB(eIdx(ownerIdx)) -= aConv * gradient * dn;
+        }
+    }
     else if
     (
         bc.type() == ZERO_GRADIENT
@@ -422,18 +439,6 @@ void Matrix::assembleBoundaryFace
             Scalar aConv = equation.flowRate->get()[face.idx()];
 
             triplets.emplace_back(ownerIdx, ownerIdx, aConv);
-
-            // Tangential gradient correction
-            const Vector& gradPhiP = equation.gradPhi[ownerIdx];
-
-            Vector eb = face.normal();
-            Scalar normalComponent = dot(gradPhiP, eb);
-            Vector gradPhib = gradPhiP - normalComponent * eb;
-
-            Vector dCb = face.centroid() - mesh_.cells()[ownerIdx].centroid();
-
-            Scalar correction = aConv * dot(gradPhib, dCb);
-            localB(eIdx(ownerIdx)) -= correction;
         }
         // No convection + zero gradient = no contribution
     }
