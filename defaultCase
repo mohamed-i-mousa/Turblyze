@@ -298,7 +298,7 @@ linearSolvers
     {
         solver          BiCGSTAB;
         preconditioner  Jacobi;
-        tolerance       1e-18;
+        tolerance       1e-15;
         maxIter         100;
     }
 }
