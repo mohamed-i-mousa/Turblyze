@@ -36,11 +36,10 @@ int main(int argc, char* argv[])
            3D Incompressible Navier-Stokes Solver v1.0
 
   ~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~··~·~
-)" << std::endl;
+)" << '\n';
 
     std::cout
-        << "Running with precision: " << SCALAR_MODE
-        << std::endl;
+        << "Running with precision: " << SCALAR_MODE << '\n';
 
     std::cout 
         << std::fixed << std::setprecision(6);
@@ -52,14 +51,12 @@ int main(int argc, char* argv[])
         caseFile = argv[1];
 
         std::cout
-            << "Using case file: " << caseFile
-            << std::endl;
+            << "Using case file: " << caseFile << '\n';
     }
     else
     {
         std::cout
-            << "Using default case: " << caseFile
-            << std::endl;
+            << "Using default case: " << caseFile << '\n';
     }
 
     CFDApplication app(caseFile);
@@ -71,11 +68,10 @@ int main(int argc, char* argv[])
         std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime);
 
     std::cout
-        << "\n--- Simulation Complete ---" << std::endl;
+        << '\n' << "--- Simulation Complete ---" << '\n';
 
     std::cout
-        << "Total execution time: " << duration.count()
-        << " seconds" << std::endl;
+        << "Total execution time: " << duration.count() << " seconds" << '\n';
 
     return 0;
 }

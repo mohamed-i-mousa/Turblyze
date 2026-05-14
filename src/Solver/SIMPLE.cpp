@@ -17,7 +17,6 @@
 #include "kOmegaSST.h"
 #include "Constraint.h"
 
-
 // ************************ Constructor & Destructor ************************
 
 SIMPLE::SIMPLE
@@ -34,7 +33,6 @@ SIMPLE::SIMPLE
     convectionScheme_(convSchemes)
 {}
 
-
 // ****************************** Setter Methods ******************************
 
 void SIMPLE::setTurbulenceSolvers
@@ -50,13 +48,12 @@ void SIMPLE::setTurbulenceSolvers
     }
 }
 
-
 // ******************************* Public Methods ******************************
 
 void SIMPLE::solve()
 {
     std::cout
-        << "\n=== Starting SIMPLE Loop ===\n" << std::endl;
+        << '\n' << "=== Starting SIMPLE Loop ===" << '\n' << '\n';
 
     // Reset first-iteration residual references for clean convergence tracking
     massImbalance0_    = S(0.0);
@@ -78,7 +75,7 @@ void SIMPLE::solve()
         }
         else
         {
-            std::cout << " Iteration " << iteration + 1 << std::endl;
+            std::cout << " Iteration " << iteration + 1 << '\n';
         }
 
         UPrev_ = U_;
@@ -123,15 +120,16 @@ void SIMPLE::solve()
     {
         std::cout
             << "WARNING: SIMPLE algorithm did not converge after "
-            << maxIterations_ << " iterations." << std::endl;
+            << maxIterations_ << " iterations." << '\n';
     }
     else
     {
         std::cout
             << "SIMPLE algorithm converged in " << iteration
-            << " iterations." << std::endl;
+            << " iterations." << '\n';
     }
 }
+
 
 void SIMPLE::initialize
 (
@@ -196,6 +194,7 @@ void SIMPLE::initialize
             );
     }
 }
+
 
 void SIMPLE::solveMomentumEquations()
 {
@@ -415,6 +414,7 @@ void SIMPLE::solveMomentumEquations()
     }
 }
 
+
 void SIMPLE::updateRhieChowFlowRate()
 {
     size_t numFaces = mesh_.numFaces();
@@ -462,6 +462,7 @@ void SIMPLE::updateRhieChowFlowRate()
           * (RhieChowFlowRatePrev_[faceIdx] - dot(UAvgPrevf_[faceIdx], Sf));
     }
 }
+
 
 void SIMPLE::solvePressureCorrection()
 {
@@ -542,6 +543,7 @@ void SIMPLE::solvePressureCorrection()
     }
 }
 
+
 void SIMPLE::correctVelocity()
 {
     size_t numCells = mesh_.numCells();
@@ -572,7 +574,7 @@ void SIMPLE::correctVelocity()
     {
         std::cout
             << "  Applied velocity constraints to " << velocityConstraints
-            << " cells" << std::endl;
+            << " cells" << '\n';
     }
 
     // Update face velocities
@@ -594,6 +596,7 @@ void SIMPLE::correctVelocity()
         }
     }
 }
+
 
 void SIMPLE::correctPressure()
 {
@@ -624,12 +627,13 @@ void SIMPLE::correctPressure()
     {
         std::cout
             << "  Applied pressure constraints to " << pressureConstraints
-            << " cells" << std::endl;
+            << " cells" << '\n';
     }
 
     // Reset pressure correction for next iteration
     pCorr_.setAll(0.0);
 }
+
 
 void SIMPLE::correctFlowRate()
 {
@@ -684,6 +688,7 @@ void SIMPLE::correctFlowRate()
         RhieChowFlowRate_[faceIdx] -= flowRateCorrection;
     }
 }
+
 
 void SIMPLE::solveTurbulence()
 {
@@ -765,6 +770,7 @@ void SIMPLE::solveTurbulence()
     }
 }
 
+
 bool SIMPLE::checkConvergence()
 {
     // Compute raw residuals
@@ -837,12 +843,11 @@ bool SIMPLE::checkConvergence()
                 << ", k: " << scaledK
                 << ", omega: " << scaledOmega;
         }
-        std::cout << std::fixed << std::endl;
+        std::cout << std::fixed << '\n';
     }
 
     return converged;
 }
-
 
 // ****************************** Private Methods ******************************
 
@@ -869,6 +874,7 @@ ScalarField SIMPLE::extractComponent
 
     return result;
 }
+
 
 Scalar SIMPLE::massImbalance() const
 {
@@ -899,6 +905,7 @@ Scalar SIMPLE::massImbalance() const
     return totalNormImbalance / S(std::max<size_t>(1, numCells));
 }
 
+
 Scalar SIMPLE::velocityResidual() const
 {
     // Normalized residual: ||U - U_prev||_2 / (||U_prev||_2 + eps)
@@ -921,6 +928,7 @@ Scalar SIMPLE::velocityResidual() const
     return num / den;
 }
 
+
 Scalar SIMPLE::pressureResidual() const
 {
     // Normalize p' RMS by RMS(p)
@@ -938,6 +946,7 @@ Scalar SIMPLE::pressureResidual() const
 
     return lastPressureCorrectionRMS_ / (pRms + vSmallValue);
 }
+
 
 void SIMPLE::transposeGradientSource
 (
@@ -990,6 +999,7 @@ void SIMPLE::transposeGradientSource
         transposeSourceZ[cellIdx] = sumZ;
     }
 }
+
 
 void SIMPLE::solveMomentumComponent
 (

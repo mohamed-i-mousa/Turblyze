@@ -271,23 +271,23 @@ All stream insertion operators (`<<`) must align at **column 4** (position 4 fro
 
 **Short stream objects (≤4 chars):**
 ```cpp
-Info<< "Message" << value << std::endl;
-os  << "Data: " << x << ", " << y << std::endl;
-log << "Status" << std::endl;
+Info<< "Message" << value << '\n';
+os  << "Data: " << x << ", " << y << '\n';
+log << "Status" << '\n';
 ```
 
 **Longer stream objects:**
 When the stream object name plus spacing to column 4 would exceed the line, place `<<` on the next line at column 4:
 ```cpp
 std::cout
-    << "Message" << value << std::endl;
+    << "Message" << value << '\n';
 
 std::cerr
-    << "Error: " << errorMsg << std::endl;
+    << "Error: " << errorMsg << std::endl; // Explicit flush for diagnostics
 
 WarningInFunction
     << "Warning message"
-    << std::endl;
+    << std::endl; // Explicit flush for diagnostics
 ```
 
 **Multi-line continuations:**
@@ -295,8 +295,7 @@ Continuation lines indent to column 4 for the `<<` operator:
 ```cpp
 std::cout
     << "Long message part 1: " << value1
-    << " part 2: " << value2
-    << std::endl;
+    << " part 2: " << value2 << '\n';
 ```
 
 **In operator<< overloads:**
@@ -312,8 +311,17 @@ std::ostream& operator<<(std::ostream& os, const Vector& v)
 ```cpp
 std::cout
     << std::scientific << std::setprecision(6)
-    << value << " m²"
-    << std::endl;
+    << value << " m²" << '\n';
+```
+
+**Newlines:** Use `'\n'` for ordinary line endings. Use `std::endl`
+only when the flush is intentional, such as fatal errors or rare diagnostic
+messages that must be visible immediately before termination.
+
+```cpp
+// Preferred for one ordinary line
+std::cout
+    << "SIMPLE Loop" << '\n';
 ```
 
 **Rationale:** This OpenFOAM-style alignment provides visual consistency where all `<<` operators align vertically at column 4, making stream operations easy to identify while keeping code reasonably compact.

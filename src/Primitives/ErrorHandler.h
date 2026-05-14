@@ -36,10 +36,10 @@
 )
 {
     std::cerr
-        << "\n\nFATAL ERROR"
-        << "\n    " << location.file_name() << ':' << location.line()
-        << "\n    " << message
-        << '\n' << std::endl;
+        << '\n' << '\n' << "FATAL ERROR"
+        << '\n' << "    " << location.file_name() << ':' << location.line()
+        << '\n' << "    " << message
+        << std::endl;
 
     std::abort();
 }
@@ -57,6 +57,6 @@ inline void Warning
 )
 {
     std::cerr
-        << "\n[WARNING] (" << location.file_name() << ':' 
+        << '\n' << "[WARNING] (" << location.file_name() << ':'
         << location.line() << ") " << message << std::endl;
 }

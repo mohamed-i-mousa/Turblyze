@@ -236,74 +236,63 @@ void writeVtkUnstructuredGrid
 
     std::cout
         << "VTK UnstructuredGrid file written: "
-        << filename << std::endl;
+        << filename << '\n';
 
     if (debug)
     {
         std::cout
-            << "  - Number of points: "
-            << allNodes.size() << std::endl;
+            << "  - Number of points: " << allNodes.size() << '\n';
 
         std::cout
-            << "  - Number of cells: "
-            << allCells.size() << std::endl;
+            << "  - Number of cells: " << allCells.size() << '\n';
 
         std::cout
-            << "  - Cell types:" << std::endl;
+            << "  - Cell types:" << '\n';
 
         if (numTets > 0)
         {
             std::cout
-                << "    - Tetrahedra: "
-                << numTets << std::endl;
+                << "    - Tetrahedra: " << numTets << '\n';
         }
 
         if (numHexes > 0)
         {
             std::cout
-                << "    - Hexahedra: "
-                << numHexes << std::endl;
+                << "    - Hexahedra: " << numHexes << '\n';
         }
 
         if (numWedges > 0)
         {
             std::cout
-                << "    - Wedges (prisms): "
-                << numWedges << std::endl;
+                << "    - Wedges (prisms): " << numWedges << '\n';
         }
 
         if (numPyramids > 0)
         {
             std::cout
-                << "    - Pyramids: "
-                << numPyramids << std::endl;
+                << "    - Pyramids: " << numPyramids << '\n';
         }
 
         if (numConvex > 0)
         {
             std::cout
-                << "    - Convex point sets: "
-                << numConvex << std::endl;
+                << "    - Convex point sets: " << numConvex << '\n';
         }
 
         if (numWedgeOrderingFailures > 0)
         {
             std::cout
-                << "  - WARNING: "
-                << numWedgeOrderingFailures
-                << " wedge cells failed proper ordering"
-                << std::endl;
+                << "  - WARNING: " << numWedgeOrderingFailures
+                << " wedge cells failed proper ordering" << '\n';
         }
 
         std::cout
             << "  - Number of scalar fields: "
-            << scalarCellFields.size()
-            << std::endl;
+            << scalarCellFields.size() << '\n';
 
         std::cout
             << "  - Number of vector fields: "
-            << vectorCellFields.size()
-            << std::endl;
+            << vectorCellFields.size() << '\n';
     }
 }
 

@@ -59,7 +59,7 @@ void writeWallBoundaryData
     {
         std::cout
             << "No wall boundary faces found. "
-            << "Skipping wall export." << std::endl;
+            << "Skipping wall export." << '\n';
         return;
     }
 
@@ -155,21 +155,21 @@ void writeWallBoundaryData
 
     std::cout
         << "VTK PolyData wall boundary file written: "
-        << filename << std::endl;
+        << filename << '\n';
 
     if (debug)
     {
         std::cout
             << "  - Wall faces: "
-            << wallFaceIndices.size() << std::endl;
+            << wallFaceIndices.size() << '\n';
 
         std::cout
             << "  - Wall nodes: "
-            << nodeMap.size() << std::endl;
+            << nodeMap.size() << '\n';
 
         std::cout
             << "  - Scalar fields: "
-            << scalarFaceFields.size() << std::endl;
+            << scalarFaceFields.size() << '\n';
     }
 }
 

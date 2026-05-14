@@ -30,7 +30,6 @@
 #include <sstream>
 #include <iomanip>
 
-
 // ******************************* Constructor *******************************
 
 CFDApplication::CFDApplication(const std::string& caseFilePath)
@@ -39,7 +38,6 @@ CFDApplication::CFDApplication(const std::string& caseFilePath)
 {}
 
 CFDApplication::~CFDApplication() = default;
-
 
 // *********************************** run ***********************************
 
@@ -55,13 +53,12 @@ void CFDApplication::run()
     exportResults();
 }
 
-
 // ********************************* loadCase *********************************
 
 void CFDApplication::loadCase()
 {
     std::cout
-        << std::endl << "--- 0. Loading Case ---" << std::endl;
+        << '\n' << "--- 0. Loading Case ---" << '\n';
 
     caseReader_ = std::make_unique<CaseReader>(caseFilePath_);
 
@@ -156,8 +153,8 @@ void CFDApplication::loadCase()
             S(1e-4)
         );
 
-    initialK_ = initialConditions.lookupOrDefault<Scalar>("k", defaultK_);
-
+    initialK_ =
+        initialConditions.lookupOrDefault<Scalar>("k", defaultK_);
     initialOmega_ =
         initialConditions.lookupOrDefault<Scalar>("omega", defaultOmega_);
 
@@ -167,7 +164,7 @@ void CFDApplication::loadCase()
     debug_ = outputDict.lookupOrDefault<bool>("debug", false);
 
     std::cout
-        << "Case file loaded." << std::endl;
+        << "Case file loaded." << '\n';
 
     // Extract constraints (optional)
     if (caseReader_->hasSection("constraints"))
@@ -200,7 +197,6 @@ void CFDApplication::loadCase()
     }
 }
 
-
 // ****************************** initParallelism *****************************
 
 void CFDApplication::initParallelism()
@@ -209,16 +205,15 @@ void CFDApplication::initParallelism()
     Eigen::setNbThreads(numThreads_);
 
     std::cout
-        << "OpenMP threads: " << numThreads_ << std::endl;
+        << "OpenMP threads: " << numThreads_ << '\n';
 }
-
 
 // ******************************* prepareMesh *******************************
 
 void CFDApplication::prepareMesh()
 {
     std::cout
-        << std::endl << "--- 1. Reading and Preparing Mesh ---" << std::endl;
+        << '\n' << "--- 1. Reading and Preparing Mesh ---" << '\n';
 
     const auto& mesh = caseReader_->section("mesh");
     std::string meshFilePath = mesh.lookup<std::string>("file");
@@ -236,7 +231,7 @@ void CFDApplication::prepareMesh()
     std::cout
         << "Mesh Loaded: " << mesh_.numNodes() << " nodes, "
         << mesh_.numFaces() << " faces, " << mesh_.numCells()
-        << " cells." << std::endl;
+        << " cells." << '\n';
 
     std::vector<FaceIntegrals> faceIntegrals(mesh_.numFaces());
     for (size_t faceIdx = 0; faceIdx < mesh_.numFaces(); ++faceIdx)
@@ -247,8 +242,7 @@ void CFDApplication::prepareMesh()
     if (debug_)
     {
         std::cout
-            << "Geometric properties calculated for faces."
-            << std::endl;
+            << "Geometric properties calculated for faces." << '\n';
     }
 
     {
@@ -313,7 +307,7 @@ void CFDApplication::prepareMesh()
         {
             std::cout
                 << "Corrected " << flippedCount
-                << " inverted face normals." << std::endl;
+                << " inverted face normals." << '\n';
         }
     }
 
@@ -325,8 +319,7 @@ void CFDApplication::prepareMesh()
     if (debug_)
     {
         std::cout
-            << "Geometric properties calculated for cells."
-            << std::endl;
+            << "Geometric properties calculated for cells." << '\n';
     }
 
     std::vector<Vector> cellCentroids(mesh_.numCells());
@@ -344,8 +337,7 @@ void CFDApplication::prepareMesh()
     if (debug_)
     {
         std::cout
-            << "Distance properties calculated for faces."
-            << std::endl;
+            << "Distance properties calculated for faces." << '\n';
     }
 
     // Check mesh quality if requested
@@ -356,13 +348,12 @@ void CFDApplication::prepareMesh()
     }
 }
 
-
 // ************************* setupBoundaryConditions *************************
 
 void CFDApplication::setupBoundaryConditions()
 {
     std::cout
-        << std::endl << "--- 2. Setting Boundary Conditions ---" << std::endl;
+        << '\n' << "--- 2. Setting Boundary Conditions ---" << '\n';
 
     for (const auto& patch : mesh_.patches())
     {
@@ -532,7 +523,7 @@ void CFDApplication::setupBoundaryConditions()
 
                     std::cout
                         << "Inlet turbulence kinetic energy : " << value
-                        << std::endl;
+                        << '\n';
                 }
                 else
                 {
@@ -639,8 +630,7 @@ void CFDApplication::setupBoundaryConditions()
                     value = std::max(omegaValue, S(1e-4));
 
                     std::cout
-                        << "Inlet specific dissipation : " << value
-                        << std::endl;
+                        << "Inlet specific dissipation : " << value << '\n';
                 }
                 else
                 {
@@ -733,7 +723,7 @@ void CFDApplication::setupBoundaryConditions()
 
     std::cout
         << "Boundary conditions set for "
-        << mesh_.patches().size() << " patches." << std::endl;
+        << mesh_.patches().size() << " patches." << '\n';
 }
 
 
@@ -903,25 +893,23 @@ void CFDApplication::configureSolver()
     Logger::iterationFooter();
 }
 
-
 // ********************************** solve ***********************************
 
 void CFDApplication::solve()
 {
     std::cout
-        << std::endl << "--- 4. Solving Steady-State Flow with SIMPLE ---"
-        << std::endl;
+        << '\n' << "--- 4. Solving Steady-State Flow with SIMPLE ---"
+        << '\n';
 
     solver_->solve();
 }
-
 
 // ******************************** postProcess *******************************
 
 void CFDApplication::postProcess()
 {
     std::cout
-         << std::endl << "--- 5. Extracting Solution Fields ---" << std::endl;
+         << '\n' << "--- 5. Extracting Solution Fields ---" << '\n';
 
     const VectorField& velocity = solver_->velocity();
     const ScalarField& pressure = solver_->pressure();
@@ -929,11 +917,11 @@ void CFDApplication::postProcess()
     if (debug_)
     {
         std::cout
-            << "Solution extracted." << std::endl;
+            << "Solution extracted." << '\n';
     }
 
     std::cout
-         << std::endl << "--- 6. Post-Processing Results ---" << std::endl;
+         << '\n' << "--- 6. Post-Processing Results ---" << '\n';
 
     // Calculate velocity magnitude
     ScalarField velocityMag = VTK::velocityMagnitude(velocity);
@@ -962,25 +950,24 @@ void CFDApplication::postProcess()
     averageVelocity /= S(velocity.size());
 
     std::cout
-        << "Flow Statistics:" << std::endl;
+        << "Flow Statistics:" << '\n';
     std::cout
         << "  Max velocity magnitude: " << maximumVelocity
-        << " m/s" << std::endl;
+        << " m/s" << '\n';
     std::cout
         << "  Average velocity magnitude: "
-        << averageVelocity << " m/s" << std::endl;
+        << averageVelocity << " m/s" << '\n';
     std::cout
         << "  Pressure range: [" << minimumPressure
-        << ", " << maximumPressure << "] Pa" << std::endl;
+        << ", " << maximumPressure << "] Pa" << '\n';
 }
-
 
 // ****************************** exportResults *******************************
 
 void CFDApplication::exportResults()
 {
     std::cout
-         << std::endl << "--- 7. Exporting Results to VTK ---" << std::endl;
+         << '\n' << "--- 7. Exporting Results to VTK ---" << '\n';
 
     const VectorField& velocity = solver_->velocity();
     const ScalarField& pressure = solver_->pressure();
@@ -1022,9 +1009,7 @@ void CFDApplication::exportResults()
     if (debug_)
     {
         std::cout
-            << std::endl
-            << "Exporting results to VTK UnstructuredGrid..."
-            << std::endl;
+            << '\n' << "Exporting results to VTK UnstructuredGrid..." << '\n';
     }
 
     VTK::writeVtkUnstructuredGrid
@@ -1067,12 +1052,10 @@ void CFDApplication::exportResults()
     }
 
     std::cout
-        << std::endl << "=== CFD Results Exported Successfully ==="
-        << std::endl;
+        << '\n' << "=== CFD Results Exported Successfully ===" << '\n';
     std::cout
-        << "File: " << vtuFilename << std::endl;
+        << "File: " << vtuFilename << '\n';
 }
-
 
 // ************************* createConvectionScheme ***********************
 
@@ -1097,7 +1080,6 @@ CFDApplication::createConvectionScheme(const std::string& name)
     }
 }
 
-
 // ************************ parseConvectionSchemes ************************
 
 ConvectionScheme CFDApplication::parseConvectionSchemes()
@@ -1119,7 +1101,7 @@ ConvectionScheme CFDApplication::parseConvectionSchemes()
         {
             std::cout
                 << "Default convection scheme: "
-                << defaultSchemeName << std::endl;
+                << defaultSchemeName << '\n';
         }
 
         // Per-equation overrides (fall back to default if unset)
@@ -1135,7 +1117,7 @@ ConvectionScheme CFDApplication::parseConvectionSchemes()
             {
                 std::cout
                     << "Momentum convection scheme: "
-                    << uSchemeName << std::endl;
+                    << uSchemeName << '\n';
             }
         }
 
@@ -1151,7 +1133,7 @@ ConvectionScheme CFDApplication::parseConvectionSchemes()
             {
                 std::cout
                     << "k convection scheme: "
-                    << kSchemeName << std::endl;
+                    << kSchemeName << '\n';
             }
         }
 
@@ -1167,7 +1149,7 @@ ConvectionScheme CFDApplication::parseConvectionSchemes()
             {
                 std::cout
                     << "omega convection scheme: "
-                    << omegaSchemeName << std::endl;
+                    << omegaSchemeName << '\n';
             }
         }
     }

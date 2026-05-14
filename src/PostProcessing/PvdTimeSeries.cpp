@@ -30,19 +30,21 @@ void writePVDTimeSeriesHeader
         FatalError("Failed to open PVD file: " + pvdFilename);
     }
 
-    pvdFile << "<?xml version=\"1.0\"?>\n";
-    pvdFile << "<VTKFile type=\"Collection\" version=\"0.1\" "
-            << "byte_order=\"LittleEndian\">\n";
-    pvdFile << "  <Collection>\n";
-    pvdFile << "  </Collection>\n";
-    pvdFile << "</VTKFile>\n";
+    pvdFile
+        << "<?xml version=\"1.0\"?>" << '\n'
+        << "<VTKFile type=\"Collection\" version=\"0.1\" "
+        << "byte_order=\"LittleEndian\">" << '\n'
+        << "  <Collection>" << '\n'
+        << "  </Collection>" << '\n'
+        << "</VTKFile>" << '\n';
 
     pvdFile.close();
 
     std::cout
         << "PVD time series header written: "
-        << pvdFilename << std::endl;
+        << pvdFilename << '\n';
 }
+
 
 void appendPVDTimeStep
 (
@@ -86,17 +88,17 @@ void appendPVDTimeStep
         if (existingLine.find("</Collection>") != std::string::npos)
         {
             // Insert the new timestep before closing collection
-            pvdFileOut << "    <DataSet timestep=\"" << timeValue
-                      << "\" file=\"" << vtuFilename << "\"/>\n";
+            pvdFileOut
+                << "    <DataSet timestep=\"" << timeValue
+                << "\" file=\"" << vtuFilename << "\"/>" << '\n';
         }
-        pvdFileOut << existingLine << "\n";
+        pvdFileOut << existingLine << '\n';
     }
 
     pvdFileOut.close();
 
     std::cout
-        << "Added timestep " << timeValue << " to PVD file"
-        << std::endl;
+        << "Added timestep " << timeValue << " to PVD file" << '\n';
 }
 
 } // namespace VTK
