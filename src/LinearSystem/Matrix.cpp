@@ -40,7 +40,6 @@ Matrix::Matrix
     vectorB_.resize(eIdx(numCells));
 }
 
-
 // ****************************** Public Methods ******************************
 
 void Matrix::buildMatrix(const TransportEquation& equation)
@@ -122,6 +121,7 @@ void Matrix::buildMatrix(const TransportEquation& equation)
     );
 }
 
+
 void Matrix::relax(Scalar alpha, const ScalarField& phiPrev)
 {
     if (alpha <= S(0.0))
@@ -171,6 +171,7 @@ void Matrix::clear()
     vectorB_.setZero();
     lastRelaxationFactor_ = S(0.0);
 }
+
 
 Scalar Matrix::extractBoundaryScalar
 (
@@ -227,7 +228,6 @@ Scalar Matrix::faceDiffusionCoefficient
 
     return equation.GammaFace->get()[face.idx()];
 }
-
 
 // ***************** Transport Equation Assembly Helpers ******************
 
@@ -321,6 +321,7 @@ void Matrix::assembleInternalFace
     }
 }
 
+
 void Matrix::assembleBoundaryFace
 (
     const Face& face,
@@ -375,24 +376,6 @@ void Matrix::assembleBoundaryFace
             localB(eIdx(ownerIdx)) -= aConv * phiB;
         }
 
-        // Non-orthogonal correction
-        Vector Tf = Sf - Ef;
-
-        Vector gradPhif =
-            equation.gradScheme.faceGradient
-            (
-                equation.fieldName,
-                equation.phi,
-                equation.gradPhi[ownerIdx],
-                Vector{},
-                face.idx(),
-                equation.componentIdx
-            );
-
-        Scalar nonOrthogonalFlux =
-            Gammaf * dot(gradPhif, Tf);
-
-        localB(eIdx(ownerIdx)) += nonOrthogonalFlux;
     }
     else if (bc.type() == FIXED_GRADIENT)
     {
@@ -446,6 +429,7 @@ void Matrix::assembleBoundaryFace
         }
     }
 }
+
 
 void Matrix::setValues
 (
