@@ -59,14 +59,14 @@ size_t Constraint::applyVelocityConstraints() noexcept
     if (!enableVelocityConstraints_) return 0;
 
     size_t constraintApplied = 0;
-    Scalar maxMagSq = maxVelocityMagnitude_ * maxVelocityMagnitude_;
+    const Scalar maxMagSq = maxVelocityMagnitude_ * maxVelocityMagnitude_;
 
     for (size_t cellIdx = 0; cellIdx < U_.size(); ++cellIdx)
     {
-        Scalar magSq = U_[cellIdx].magnitudeSquared();
+        const Scalar magSq = U_[cellIdx].magnitudeSquared();
         if (magSq > maxMagSq)
         {
-            Scalar mag = std::sqrt(magSq);
+            const Scalar mag = std::sqrt(magSq);
             U_[cellIdx] *= maxVelocityMagnitude_ / mag;
 
             constraintApplied++;
@@ -84,7 +84,9 @@ size_t Constraint::applyPressureConstraints() noexcept
 
     for (size_t cellIdx = 0; cellIdx < p_.size(); ++cellIdx)
     {
-        Scalar clamped = std::clamp(p_[cellIdx], minPressure_, maxPressure_);
+        const Scalar clamped =
+            std::clamp(p_[cellIdx], minPressure_, maxPressure_);
+            
         if (clamped != p_[cellIdx])
         {
             p_[cellIdx] = clamped;

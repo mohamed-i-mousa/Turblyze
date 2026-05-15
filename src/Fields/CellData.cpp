@@ -18,10 +18,12 @@ void CellData<T>::printSummary(size_t itemsToShow) const
     std::cout
         << "CellData (Size: " << internalField_.size() << ")\n";
 
+    const size_t count = std::min(internalField_.size(), itemsToShow);
+
     for
     (
         size_t cellIdx = 0;
-        cellIdx < std::min(internalField_.size(),itemsToShow);
+        cellIdx < count;
         ++cellIdx
     )
     {

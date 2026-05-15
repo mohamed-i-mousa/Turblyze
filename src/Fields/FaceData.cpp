@@ -17,10 +17,12 @@ void FaceData<T>::printSummary(size_t itemsToShow) const
     std::cout
         << "FaceData (Size: " << internalField_.size() << ")\n";
 
+    const size_t count = std::min(internalField_.size(), itemsToShow);
+
     for
     (
         size_t faceIdx = 0;
-        faceIdx < std::min(internalField_.size(), itemsToShow);
+        faceIdx < count;
         ++faceIdx
     )
     {

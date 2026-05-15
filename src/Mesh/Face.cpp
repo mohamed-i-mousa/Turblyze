@@ -48,11 +48,10 @@ FaceIntegrals Face::calculateGeometricProperties
 
         centroid_ = (p1 + p2 + p3) / S(3.0);
 
-        Vector vecA = p2 - p1;
-        Vector vecB = p3 - p1;
-
-        Vector crossProd = cross(vecB, vecA);
-        Scalar crossProdMag = crossProd.magnitude();
+        const Vector vecA = p2 - p1;
+        const Vector vecB = p3 - p1;
+        const Vector crossProd = cross(vecB, vecA);
+        const Scalar crossProdMag = crossProd.magnitude();
 
         if (crossProdMag < vSmallValue)
         {
@@ -107,11 +106,10 @@ FaceIntegrals Face::calculateGeometricProperties
             const Vector& p2Tri = pCurr;
             const Vector& p3Tri = pNext;
 
-            Vector vecATri = p2Tri - p1Tri;
-            Vector vecBTri = p3Tri - p1Tri;
-
-            Vector crossProdTri = cross(vecBTri, vecATri);
-            Scalar triangleArea = S(0.5) * crossProdTri.magnitude();
+            const Vector vecATri = p2Tri - p1Tri;
+            const Vector vecBTri = p3Tri - p1Tri;
+            const Vector crossProdTri = cross(vecBTri, vecATri);
+            const Scalar triangleArea = S(0.5) * crossProdTri.magnitude();
             normalSum += crossProdTri;
 
             // Weighted integrals using each sub-triangle's normal
@@ -128,7 +126,8 @@ FaceIntegrals Face::calculateGeometricProperties
               * secondMoment(p1Tri.z(), p2Tri.z(), p3Tri.z())
               / S(12.0);
 
-            Vector triangleCentroid = (p1Tri + p2Tri + p3Tri) / S(3.0);
+            const Vector triangleCentroid =
+                (p1Tri + p2Tri + p3Tri) / S(3.0);
 
             // Volume contribution for this sub-triangle
             integrals.volume += dot(triangleCentroid, crossProdTri) / S(2.0);
@@ -162,9 +161,8 @@ void Face::calculateDistanceProperties(std::span<const Vector> cellCentroids)
     // Calculate dNf only for internal faces
     if (!isBoundary())
     {
-        size_t N = neighborCell_.value();
-
-        Vector dNfVec = centroid_ - cellCentroids[N];
+        const size_t N = neighborCell_.value();
+        const Vector dNfVec = centroid_ - cellCentroids[N];
         dNf_ = dNfVec;
         dNfMag_ = dNfVec.magnitude();
     }
@@ -177,7 +175,7 @@ std::ostream& operator<<(std::ostream& os, const Face& f)
 {
     os  << "Face(ID: " << f.idx() << ", Nodes: [";
 
-    const auto& nodes = f.nodeIndices();
+    const auto nodes = f.nodeIndices();
     for (size_t nodeIdx = 0; nodeIdx < nodes.size(); ++nodeIdx)
     {
         os  << nodes[nodeIdx]
@@ -193,8 +191,8 @@ std::ostream& operator<<(std::ostream& os, const Face& f)
     if (f.geometricPropertiesCalculated())
     {
         // save the current format
-        auto flags = os.flags();
-        auto prec = os.precision();
+        const auto flags = os.flags();
+        const auto prec = os.precision();
 
         // change format for geometric properties
         os  << std::fixed << std::setprecision(6);
@@ -216,8 +214,8 @@ std::ostream& operator<<(std::ostream& os, const Face& f)
     if (f.distancePropertiesCalculated())
     {
         // save the current format
-        auto flags = os.flags();
-        auto prec = os.precision();
+        const auto flags = os.flags();
+        const auto prec = os.precision();
 
         // change format for distance properties
         os  << std::fixed << std::setprecision(6);

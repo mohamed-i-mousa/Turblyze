@@ -135,8 +135,8 @@ void CFDApplication::loadCase()
     hydrDiameter_ =
         turbulence.lookupOrDefault<Scalar>("hydraulicDiameter", S(0.01));
 
-    Scalar lTurb = std::max(S(0.07) * hydrDiameter_, smallValue);
-    Scalar UMag = initialVelocity_.magnitude();
+    const Scalar lTurb = std::max(S(0.07) * hydrDiameter_, smallValue);
+    const Scalar UMag = initialVelocity_.magnitude();
 
     defaultK_ =
         std::max
@@ -216,7 +216,7 @@ void CFDApplication::prepareMesh()
         << '\n' << "--- 1. Reading and Preparing Mesh ---" << '\n';
 
     const auto& mesh = caseReader_->section("mesh");
-    std::string meshFilePath = mesh.lookup<std::string>("file");
+    const std::string meshFilePath = mesh.lookup<std::string>("file");
 
     MeshReader meshReader(meshFilePath);
 
@@ -252,7 +252,7 @@ void CFDApplication::prepareMesh()
         // Collect unique node indices for each cell
         for (const auto& face : mesh_.faces())
         {
-            size_t owner = face.ownerCell();
+            const size_t owner = face.ownerCell();
             for (size_t nodeIdx : face.nodeIndices())
             {
                 cellNodes[owner].insert(nodeIdx);
@@ -260,7 +260,7 @@ void CFDApplication::prepareMesh()
 
             if (!face.isBoundary())
             {
-                size_t neighbor = face.neighborCell().value();
+                const size_t neighbor = face.neighborCell().value();
 
                 for (size_t nodeIdx : face.nodeIndices())
                 {
@@ -293,7 +293,7 @@ void CFDApplication::prepareMesh()
                 const Vector& neighborCell =
                     approxCentroids[face.neighborCell().value()];
 
-                Vector dPN = neighborCell - ownerCell;
+                const Vector dPN = neighborCell - ownerCell;
 
                 if (dot(dPN, face.normal()) < 0)
                 {
@@ -387,11 +387,11 @@ void CFDApplication::setupBoundaryConditions()
         for (const auto& patchName : velocityBCs.sectionNames())
         {
             const auto& patchBC = velocityBCs.section(patchName);
-            std::string bcType = patchBC.lookup<std::string>("type");
+            const std::string bcType = patchBC.lookup<std::string>("type");
 
             if (bcType == "fixedValue")
             {
-                Vector value = patchBC.lookup<Vector>("value");
+                const Vector value = patchBC.lookup<Vector>("value");
                 bcManager_.setFixedValue(patchName, "U", value);
             }
             else if (bcType == "noSlip")
@@ -427,11 +427,11 @@ void CFDApplication::setupBoundaryConditions()
         for (const auto& patchName : pressureBCs.sectionNames())
         {
             const auto& patchBC = pressureBCs.section(patchName);
-            std::string bcType = patchBC.lookup<std::string>("type");
+            const std::string bcType = patchBC.lookup<std::string>("type");
 
             if (bcType == "fixedValue")
             {
-                Scalar value = patchBC.lookup<Scalar>("value");
+                const Scalar value = patchBC.lookup<Scalar>("value");
                 bcManager_.setFixedValue(patchName, "p", value);
                 hasFixedPressure = true;
             }
@@ -457,7 +457,7 @@ void CFDApplication::setupBoundaryConditions()
         for (const auto& patchName : pressureBCs.sectionNames())
         {
             const auto& patchBC = pressureBCs.section(patchName);
-            std::string bcType = patchBC.lookup<std::string>("type");
+            const std::string bcType = patchBC.lookup<std::string>("type");
 
             if (bcType == "fixedValue")
             {
@@ -490,11 +490,12 @@ void CFDApplication::setupBoundaryConditions()
         for (const auto& patchName : kBCs.sectionNames())
         {
             const auto& patchBC = kBCs.section(patchName);
-            std::string bcType = patchBC.lookup<std::string>("type");
+            const std::string bcType = patchBC.lookup<std::string>("type");
 
             if (bcType == "fixedValue")
             {
-                std::string valStr = patchBC.lookup<std::string>("value");
+                const std::string valStr =
+                    patchBC.lookup<std::string>("value");
 
                 Scalar value = S(0.0);
 
@@ -572,11 +573,12 @@ void CFDApplication::setupBoundaryConditions()
         for (const auto& patchName : omegaBCs.sectionNames())
         {
             const auto& patchBC = omegaBCs.section(patchName);
-            std::string bcType = patchBC.lookup<std::string>("type");
+            const std::string bcType = patchBC.lookup<std::string>("type");
 
             if (bcType == "fixedValue")
             {
-                std::string valStr = patchBC.lookup<std::string>("value");
+                const std::string valStr =
+                    patchBC.lookup<std::string>("value");
 
                 Scalar value = S(0.0);
 
@@ -678,11 +680,11 @@ void CFDApplication::setupBoundaryConditions()
         for (const auto& patchName : nutBCs.sectionNames())
         {
             const auto& patchBC = nutBCs.section(patchName);
-            std::string bcType = patchBC.lookup<std::string>("type");
+            const std::string bcType = patchBC.lookup<std::string>("type");
 
             if (bcType == "fixedValue")
             {
-                Scalar value = patchBC.lookup<Scalar>("value");
+                const Scalar value = patchBC.lookup<Scalar>("value");
                 bcManager_.setFixedValue(patchName, "nut", value);
             }
             else if (bcType == "zeroGradient")
@@ -924,7 +926,7 @@ void CFDApplication::postProcess()
          << '\n' << "--- 6. Post-Processing Results ---" << '\n';
 
     // Calculate velocity magnitude
-    ScalarField velocityMag = VTK::velocityMagnitude(velocity);
+    const ScalarField velocityMag = VTK::velocityMagnitude(velocity);
 
     if (velocity.size() == 0)
     {
@@ -940,7 +942,7 @@ void CFDApplication::postProcess()
 
     for (size_t cellIdx = 0; cellIdx < velocity.size(); ++cellIdx)
     {
-        Scalar vmag = velocityMag[cellIdx];
+        const Scalar vmag = velocityMag[cellIdx];
         maximumVelocity = std::max(maximumVelocity, vmag);
         averageVelocity += vmag;
 
@@ -973,7 +975,7 @@ void CFDApplication::exportResults()
     const ScalarField& pressure = solver_->pressure();
 
     // Calculate velocity magnitude
-    ScalarField velocityMag = VTK::velocityMagnitude(velocity);
+    const ScalarField velocityMag = VTK::velocityMagnitude(velocity);
 
     // Prepare scalar fields for export
     std::map<std::string, const ScalarField*>
@@ -1025,7 +1027,7 @@ void CFDApplication::exportResults()
     if (turbulenceEnabled_)
     {
         std::string vtpFilename = vtuFilename;
-        size_t dotPos = vtpFilename.rfind(".vtu");
+        const size_t dotPos = vtpFilename.rfind(".vtu");
 
         if (dotPos != std::string::npos)
         {
@@ -1082,7 +1084,7 @@ CFDApplication::createConvectionScheme(const std::string& name)
 
 // ************************ parseConvectionSchemes ************************
 
-ConvectionScheme CFDApplication::parseConvectionSchemes()
+ConvectionScheme CFDApplication::parseConvectionSchemes() const
 {
     const auto& schemesDict = caseReader_->section("numericalSchemes");
 
@@ -1092,7 +1094,7 @@ ConvectionScheme CFDApplication::parseConvectionSchemes()
     {
         const auto& convSec = schemesDict.section("convection");
 
-        std::string defaultSchemeName =
+        const std::string defaultSchemeName =
             convSec.lookupOrDefault<std::string>("default", "Upwind");
 
         schemes.defaultScheme = createConvectionScheme(defaultSchemeName);
@@ -1105,7 +1107,7 @@ ConvectionScheme CFDApplication::parseConvectionSchemes()
         }
 
         // Per-equation overrides (fall back to default if unset)
-        std::string uSchemeName =
+        const std::string uSchemeName =
             convSec.lookupOrDefault<std::string>("U", "");
 
         if (!uSchemeName.empty())
@@ -1121,7 +1123,7 @@ ConvectionScheme CFDApplication::parseConvectionSchemes()
             }
         }
 
-        std::string kSchemeName =
+        const std::string kSchemeName =
             convSec.lookupOrDefault<std::string>("k", "");
 
         if (!kSchemeName.empty())
@@ -1137,7 +1139,7 @@ ConvectionScheme CFDApplication::parseConvectionSchemes()
             }
         }
 
-        std::string omegaSchemeName =
+        const std::string omegaSchemeName =
             convSec.lookupOrDefault<std::string>("omega", "");
 
         if (!omegaSchemeName.empty())

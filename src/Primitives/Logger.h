@@ -52,8 +52,8 @@ public:
 private:
 
     std::ostream& os_;
-    std::ios::fmtflags flags_;
-    std::streamsize precision_;
+    const std::ios::fmtflags flags_;
+    const std::streamsize precision_;
 };
 
 

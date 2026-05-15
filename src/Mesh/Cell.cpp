@@ -27,7 +27,7 @@ void Cell::calculateGeometricProperties
 
     for (size_t faceIdx = 0; faceIdx < faceIndices_.size(); ++faceIdx)
     {
-        size_t faceIndex = faceIndices_[faceIdx];
+        const size_t faceIndex = faceIndices_[faceIdx];
         const Face& face = allFaces[faceIndex];
 
         if(!face.geometricPropertiesCalculated())
@@ -41,7 +41,7 @@ void Cell::calculateGeometricProperties
             );
         }
 
-        Scalar faceSign = S(faceSigns_[faceIdx]);
+        const Scalar faceSign = S(faceSigns_[faceIdx]);
         const FaceIntegrals& integrals = allFaceIntegrals[faceIndex];
 
         volume_ += faceSign * integrals.volume;
@@ -72,7 +72,7 @@ std::ostream& operator<<(std::ostream& os, const Cell& c)
 {
     os  << "Cell(ID: " << c.idx() << ", Faces: [";
 
-    const auto& faces = c.faceIndices();
+    const auto faces = c.faceIndices();
     for (size_t faceIdx = 0; faceIdx < faces.size(); ++faceIdx)
     {
         os  << faces[faceIdx]
@@ -81,7 +81,7 @@ std::ostream& operator<<(std::ostream& os, const Cell& c)
 
     os  << "], Neighbors: [";
 
-    const auto& neighbors = c.neighborCellIndices();
+    const auto neighbors = c.neighborCellIndices();
     for (size_t neighborIdx = 0; neighborIdx < neighbors.size(); ++neighborIdx)
     {
         os  << neighbors[neighborIdx]
@@ -93,8 +93,8 @@ std::ostream& operator<<(std::ostream& os, const Cell& c)
     if (c.geometricPropertiesCalculated())
     {
         // save current formatting
-        auto flags = os.flags();
-        auto prec = os.precision();
+        const auto flags = os.flags();
+        const auto prec = os.precision();
 
         // change formatting for geometric properties
         os  << std::fixed

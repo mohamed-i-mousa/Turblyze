@@ -36,8 +36,8 @@ void writeWallBoundaryData
     bool debug
 )
 {
-    std::span<const Vector> allNodes = mesh.nodes();
-    std::span<const Face> allFaces = mesh.faces();
+    const std::span<const Vector> allNodes = mesh.nodes();
+    const std::span<const Face> allFaces = mesh.faces();
 
     // Collect wall boundary faces
     std::vector<size_t> wallFaceIndices;
@@ -106,7 +106,7 @@ void writeWallBoundaryData
 
     for (size_t faceIdx : wallFaceIndices)
     {
-        const auto& nodeIndices = allFaces[faceIdx].nodeIndices();
+        const auto nodeIndices = allFaces[faceIdx].nodeIndices();
         const vtkIdType npts =
             static_cast<vtkIdType>(nodeIndices.size());
 
@@ -136,7 +136,7 @@ void writeWallBoundaryData
 
         for (size_t i = 0; i < wallFaceIndices.size(); ++i)
         {
-            size_t faceIdx = wallFaceIndices[i];
+            const size_t faceIdx = wallFaceIndices[i];
             dataArray->SetValue(static_cast<vtkIdType>(i), (*faceField)[faceIdx]);
         }
 

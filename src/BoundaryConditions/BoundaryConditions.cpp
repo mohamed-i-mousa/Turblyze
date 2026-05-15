@@ -119,13 +119,13 @@ const BoundaryData& BoundaryConditions::fieldBC
     const std::string& fieldName
 ) const
 {
-    auto patchIterator = patchBoundaryData_.find(patchName);
+    const auto patchIterator = patchBoundaryData_.find(patchName);
 
     if (patchIterator != patchBoundaryData_.end())
     {
         const auto& fieldMap = patchIterator->second;
 
-        auto fieldIterator = fieldMap.find(fieldName);
+        const auto fieldIterator = fieldMap.find(fieldName);
 
         if (fieldIterator != fieldMap.end())
         {
@@ -217,7 +217,7 @@ Scalar BoundaryConditions::boundaryFaceValue
             }
 
             // Fixed gradient: φf = φP + grad * distance
-            Scalar dn = dot(face.dPf(), face.normal());
+            const Scalar dn = dot(face.dPf(), face.normal());
             
             return
                 phi[face.ownerCell()]
@@ -410,7 +410,7 @@ void BoundaryConditions::printSummary() const
             << "  Number of Faces         : "
             << meshPatch.numBoundaryFaces() << '\n';
 
-        auto patchBCIterator =
+        const auto patchBCIterator =
             patchBoundaryData_.find(meshPatch.patchName());
 
         if

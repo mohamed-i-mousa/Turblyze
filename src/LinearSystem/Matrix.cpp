@@ -30,7 +30,7 @@ Matrix::Matrix
         else ++numInternalFaces_;
     }
 
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
 
     matrixA_.resize
     (
@@ -237,26 +237,26 @@ void Matrix::assembleInternalFace
     const TransportEquation& equation,
     std::vector<Eigen::Triplet<Scalar>>& triplets,
     Vec& localB
-)
+) const
 {
     const size_t ownerIdx = face.ownerCell();
     const size_t neighborIdx = face.neighborCell().value();
 
-    Vector Sf = face.normal() * face.projectedArea();
+    const Vector Sf = face.normal() * face.projectedArea();
 
-    Vector dPN =
+    const Vector dPN =
         mesh_.cells()[neighborIdx].centroid()
       - mesh_.cells()[ownerIdx].centroid();
 
-    Scalar dPNMag = dPN.magnitude();
-    Vector ePN = dPN / (dPNMag + vSmallValue);
+    const Scalar dPNMag = dPN.magnitude();
+    const Vector ePN = dPN / (dPNMag + vSmallValue);
 
     // Orthogonal component (over-relaxed)
-    Vector Ef = (dot(Sf, Sf) / dot(Sf, ePN)) * ePN;
+    const Vector Ef = (dot(Sf, Sf) / dot(Sf, ePN)) * ePN;
 
-    Scalar Gammaf = faceDiffusionCoefficient(face, equation);
+    const Scalar Gammaf = faceDiffusionCoefficient(face, equation);
 
-    Scalar aDiff = Gammaf * Ef.magnitude() / (dPNMag + vSmallValue);
+    const Scalar aDiff = Gammaf * Ef.magnitude() / (dPNMag + vSmallValue);
 
     // Convection coefficients
     Scalar aPConv = S(0.0);
@@ -264,9 +264,9 @@ void Matrix::assembleInternalFace
 
     if (equation.flowRate)
     {
-        Scalar flowRate = equation.flowRate->get()[face.idx()];
+        const Scalar flowRate = equation.flowRate->get()[face.idx()];
 
-        auto [aP, aN] = ConvectionSchemes::getFluxCoefficients(flowRate);
+        const auto [aP, aN] = ConvectionSchemes::getFluxCoefficients(flowRate);
 
         aPConv = aP;
         aNConv = aN;
@@ -282,12 +282,12 @@ void Matrix::assembleInternalFace
     triplets.emplace_back(neighborIdx, ownerIdx, -aDiff - aPConv);
 
     // Non-orthogonal correction (explicit)
-    Vector Tf = Sf - Ef;
+    const Vector Tf = Sf - Ef;
 
     const Vector& gradPhiP = equation.gradPhi[ownerIdx];
     const Vector& gradPhiN = equation.gradPhi[neighborIdx];
 
-    Vector gradPhif =
+    const Vector gradPhif =
         equation.gradScheme.faceGradient
         (
             equation.fieldName,
@@ -298,7 +298,7 @@ void Matrix::assembleInternalFace
             equation.componentIdx
         );
 
-    Scalar nonOrthogonalFlux = Gammaf * dot(gradPhif, Tf);
+    const Scalar nonOrthogonalFlux = Gammaf * dot(gradPhif, Tf);
 
     localB(eIdx(ownerIdx)) += nonOrthogonalFlux;
     localB(eIdx(neighborIdx)) -= nonOrthogonalFlux;
@@ -306,7 +306,7 @@ void Matrix::assembleInternalFace
     // Deferred correction (explicit, convection only)
     if (equation.convScheme)
     {
-        Scalar deferredCorrection =
+        const Scalar deferredCorrection =
             equation.convScheme->get().correction
             (
                 face,
@@ -328,23 +328,23 @@ void Matrix::assembleBoundaryFace
     const TransportEquation& equation,
     std::vector<Eigen::Triplet<Scalar>>& triplets,
     Vec& localB
-)
+) const
 {
     const size_t ownerIdx = face.ownerCell();
 
     const BoundaryData& bc =
         bcManager_.fieldBC(face.patch()->get().patchName(), equation.fieldName);
 
-    Vector Sf = face.normal() * face.projectedArea();
+    const Vector Sf = face.normal() * face.projectedArea();
 
     const Vector ePf = face.dPf().normalized();
     const Scalar dPfMag = face.dPfMag();
 
-    Vector Ef = (dot(Sf, Sf) / dot(Sf, ePf)) * ePf;
+    const Vector Ef = (dot(Sf, Sf) / dot(Sf, ePf)) * ePf;
 
-    Scalar Gammaf = faceDiffusionCoefficient(face, equation);
+    const Scalar Gammaf = faceDiffusionCoefficient(face, equation);
 
-    Scalar aDiff = Gammaf * Ef.magnitude() / (dPfMag + vSmallValue);
+    const Scalar aDiff = Gammaf * Ef.magnitude() / (dPfMag + vSmallValue);
 
     using enum BCType;
     if
@@ -372,7 +372,7 @@ void Matrix::assembleBoundaryFace
         // Convection contribution
         if (equation.flowRate)
         {
-            Scalar aConv = equation.flowRate->get()[face.idx()];
+            const Scalar aConv = equation.flowRate->get()[face.idx()];
             localB(eIdx(ownerIdx)) -= aConv * phiB;
         }
 
@@ -388,7 +388,7 @@ void Matrix::assembleBoundaryFace
         // Boundary value for convection: phi_b = phi_P + grad * dn
         if (equation.flowRate)
         {
-            Scalar aConv = equation.flowRate->get()[face.idx()];
+            const Scalar aConv = equation.flowRate->get()[face.idx()];
 
             triplets.emplace_back(ownerIdx, ownerIdx, aConv);
             localB(eIdx(ownerIdx)) -= aConv * gradient * dn;
@@ -405,7 +405,7 @@ void Matrix::assembleBoundaryFace
         // Zero normal gradient: only convection
         if (equation.flowRate)
         {
-            Scalar aConv = equation.flowRate->get()[face.idx()];
+            const Scalar aConv = equation.flowRate->get()[face.idx()];
 
             triplets.emplace_back(ownerIdx, ownerIdx, aConv);
         }
@@ -424,7 +424,7 @@ void Matrix::assembleBoundaryFace
 
         if (equation.flowRate)
         {
-            Scalar aConv = equation.flowRate->get()[face.idx()];
+            const Scalar aConv = equation.flowRate->get()[face.idx()];
             triplets.emplace_back(ownerIdx, ownerIdx, aConv);
         }
     }
@@ -482,13 +482,12 @@ void Matrix::setValues
         }
         else
         {
-            Scalar diagPre = diag;
-            if (lastRelaxationFactor_ > S(0.0))
-            {
-                diagPre = lastRelaxationFactor_ * diag;
-            }
+            const Scalar diagPre =
+                lastRelaxationFactor_ > S(0.0)
+              ? lastRelaxationFactor_ * diag
+              : diag;
 
-            Scalar coeff = f / (S(1.0) - f) * diagPre;
+            const Scalar coeff = f / (S(1.0) - f) * diagPre;
 
             matrixA_.coeffRef
             (

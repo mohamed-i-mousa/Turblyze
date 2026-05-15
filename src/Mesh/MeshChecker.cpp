@@ -84,7 +84,7 @@ void MeshChecker::check() const
             // Boundary face: calculate skewness only
             const Cell& ownerCell = mesh_.cells()[face.ownerCell()];
 
-            Scalar skew = boundaryFaceSkewness(face, ownerCell.centroid());
+            const Scalar skew = boundaryFaceSkewness(face, ownerCell.centroid());
 
             if (skew > maxSkewness)
             {
@@ -105,7 +105,7 @@ void MeshChecker::check() const
                 mesh_.cells()[face.neighborCell().value()];
 
             // Non-orthogonality (angle in degrees)
-            Scalar ortho =
+            const Scalar ortho =
                 faceOrthogonality
                 (
                     ownerCell.centroid(),
@@ -113,8 +113,8 @@ void MeshChecker::check() const
                     face.normal()
                 );
 
-            Scalar angleRad = std::acos(ortho);
-            Scalar angleDeg = angleRad * radToDeg;
+            const Scalar angleRad = std::acos(ortho);
+            const Scalar angleDeg = angleRad * radToDeg;
 
             totalCosAngle += ortho;
             nonOrthCount++;
@@ -131,7 +131,7 @@ void MeshChecker::check() const
             }
 
             // Skewness
-            Scalar skew =
+            const Scalar skew =
                 faceSkewness
                 (
                     face,
@@ -153,9 +153,8 @@ void MeshChecker::check() const
     }
 
     // Calculate average non-orthogonality
-    Scalar avgNonOrthogonality = std::acos(totalCosAngle / S(nonOrthCount));
-
-    avgNonOrthogonality *= radToDeg;
+    const Scalar avgNonOrthogonality =
+        std::acos(totalCosAngle / S(nonOrthCount)) * radToDeg;
 
     // Cell volume and aspect ratio statistics
     Scalar minCellVolume = mesh_.cells()[0].volume();
@@ -196,7 +195,7 @@ void MeshChecker::check() const
         }
 
         // Calculate aspect ratio
-        Scalar aspectRatio = cellAspectRatio(cell);
+        const Scalar aspectRatio = cellAspectRatio(cell);
         if (aspectRatio > maxAspectRatio)
         {
             maxAspectRatio = aspectRatio;
@@ -515,13 +514,14 @@ Scalar MeshChecker::faceSkewness
     Scalar faceCharacteristicLength = S(0.2) * dPN.magnitude() + vSmallValue;
 
     // Refine by finding max vertex extent in skewness direction
-    std::span<const size_t> nodeIndices = face.nodeIndices();
+    const std::span<const size_t> nodeIndices = face.nodeIndices();
 
     for (size_t nodeIdx : nodeIndices)
     {
-        Vector vertexToCentroid = mesh_.nodes()[nodeIdx] - face.centroid();
+        const Vector vertexToCentroid =
+            mesh_.nodes()[nodeIdx] - face.centroid();
 
-        Scalar projection =
+        const Scalar projection =
             std::abs(dot(skewnessDirection, vertexToCentroid));
 
         faceCharacteristicLength =
@@ -556,13 +556,15 @@ Scalar MeshChecker::boundaryFaceSkewness
     Scalar faceCharacteristicLength = S(0.4) * dPN.magnitude() + vSmallValue;
 
     // Refine by finding max vertex extent in skewness direction
-    std::span<const size_t> nodeIndices = face.nodeIndices();
+    const std::span<const size_t> nodeIndices = face.nodeIndices();
 
     for (size_t nodeIdx : nodeIndices)
     {
-        Vector vertexToCentroid = mesh_.nodes()[nodeIdx] - face.centroid();
+        const Vector vertexToCentroid =
+            mesh_.nodes()[nodeIdx] - face.centroid();
 
-        Scalar projection = std::abs(dot(skewnessDirection, vertexToCentroid));
+        const Scalar projection =
+            std::abs(dot(skewnessDirection, vertexToCentroid));
 
         faceCharacteristicLength =
             std::max(faceCharacteristicLength, projection);
@@ -580,7 +582,7 @@ Scalar MeshChecker::cellAspectRatio
     // Accumulate absolute face area components per direction
     Vector sumMagAreaComponents(0.0, 0.0, 0.0);
 
-    const auto& faceIndices = cell.faceIndices();
+    const auto faceIndices = cell.faceIndices();
 
     for (size_t faceIdx : faceIndices)
     {

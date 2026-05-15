@@ -12,8 +12,8 @@
 std::ostream& operator<<(std::ostream& os, const Vector& p)
 {
     // save the current format 
-    auto flags = os.flags();
-    auto prec = os.precision();
+    const auto flags = os.flags();
+    const auto prec = os.precision();
 
     // change the format for vector output
     os  << std::fixed << std::setprecision(6);

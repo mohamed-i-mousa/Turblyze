@@ -19,12 +19,12 @@ Scalar CentralDifferenceScheme::correction
     Scalar flowRate
 ) const
 {
-    Scalar phiFaceCentral = interpolateToFace(face, phi);
+    const Scalar phiFaceCentral = interpolateToFace(face, phi);
 
-    size_t upwindCell =
+    const size_t upwindCell =
         (flowRate >= S(0.0)) ? face.ownerCell() : face.neighborCell().value();
 
-    Scalar phiFaceUDS = phi[upwindCell];
+    const Scalar phiFaceUDS = phi[upwindCell];
 
     // Deferred correction: flowRate × (φ_central - φ_upwind)
     return flowRate * (phiFaceCentral - phiFaceUDS);
@@ -43,7 +43,7 @@ Scalar SecondOrderUpwindScheme::correction
 ) const
 {
     // Deferred correction: flowRate × ∇φ_upwind · d_{upwind→face}
-    Scalar correction =
+    const Scalar correction =
         (flowRate >= S(0.0))
       ? dot(gradPhiP, face.dPf())
       : dot(gradPhiN, face.dNf().value());

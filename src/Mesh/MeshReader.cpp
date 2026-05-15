@@ -131,7 +131,7 @@ void MeshReader::parseNodesSection
         ifs >> lastIdxStr;
         ifs >> zeroStrOrType;
 
-        size_t lastIdx = hexToDec(lastIdxStr);
+        const size_t lastIdx = hexToDec(lastIdxStr);
 
         nodes_.resize(lastIdx);
     }
@@ -157,13 +157,13 @@ void MeshReader::parseNodesSection
         dimensionStr.pop_back();
         dimensionStr.pop_back();
 
-        size_t startIdx = hexToDec(startIdxStr);
-        size_t endIdx = hexToDec(endIdxStr);
-        size_t dimension = hexToDec(dimensionStr);
+        const size_t startIdx = hexToDec(startIdxStr);
+        const size_t endIdx = hexToDec(endIdxStr);
+        const size_t dimension = hexToDec(dimensionStr);
 
         for (size_t idx = startIdx; idx <= endIdx; ++idx)
         {
-            size_t globalIdx = idx - 1;
+            const size_t globalIdx = idx - 1;
 
             if (globalIdx >= nodes_.size())
             {
@@ -209,7 +209,7 @@ void MeshReader::parseCellsSection
         ifs >> lastIdxStr;
         ifs >> zeroStrOrType;
 
-        size_t lastIdx = hexToDec(lastIdxStr);
+        const size_t lastIdx = hexToDec(lastIdxStr);
 
         cells_.resize(lastIdx);
     }
@@ -229,7 +229,7 @@ void MeshReader::parseFacesSection
         ifs >> lastIdxStr;
         ifs >> zeroStrOrType;
 
-        size_t lastIdx = hexToDec(lastIdxStr);
+        const size_t lastIdx = hexToDec(lastIdxStr);
 
         faces_.resize(lastIdx);
     }
@@ -256,11 +256,11 @@ void MeshReader::parseFacesSection
         elementTypeStr.pop_back();
 
         // Check mixed element section (node count included)
-        bool hasMixedElements = (elementTypeStr == "0");
+        const bool hasMixedElements = (elementTypeStr == "0");
 
-        size_t zoneIdx = hexToDec(zoneIdxStr);
-        size_t startIdx = hexToDec(startIdxStr);
-        size_t endIdx = hexToDec(endIdxStr);
+        const size_t zoneIdx = hexToDec(zoneIdxStr);
+        const size_t startIdx = hexToDec(startIdxStr);
+        const size_t endIdx = hexToDec(endIdxStr);
 
         // If not internal face zone, create a boundary patch for this zone
         if (typeStr != "2")
@@ -339,11 +339,11 @@ void MeshReader::parseFacesSection
             // node indices are everything before them.
             // If mixed elements, the first item is the
             // node count and must be skipped.
-            size_t nodeStart = hasMixedElements ? 1 : 0;
-            size_t nodeEnd   = hexItems.size() - 2;
+            const size_t nodeStart = hasMixedElements ? 1 : 0;
+            const size_t nodeEnd   = hexItems.size() - 2;
 
-            std::string_view ownerHex = hexItems[hexItems.size() - 2];
-            std::string_view neighborHex = hexItems[hexItems.size() - 1];
+            const std::string_view ownerHex = hexItems[hexItems.size() - 2];
+            const std::string_view neighborHex = hexItems[hexItems.size() - 1];
 
             for (size_t j = nodeStart; j < nodeEnd; ++j)
             {
@@ -396,7 +396,7 @@ void MeshReader::parseBoundariesSection
     // Remove leading '('
     zoneToken.erase(0, 1);
 
-    size_t zoneIdx = strToDec(zoneToken);
+    const size_t zoneIdx = strToDec(zoneToken);
 
     std::string typeString;
     ifs >> typeString;
@@ -464,7 +464,7 @@ void MeshReader::buildTopology()
          && currentFace.neighborCell().value() < cells_.size()
         )
         {
-            size_t neighborIdx = currentFace.neighborCell().value();
+            const size_t neighborIdx = currentFace.neighborCell().value();
             
             cells_[neighborIdx].addFace(faceIdx, -1);
 
@@ -545,7 +545,7 @@ size_t MeshReader::hexToDec(std::string_view hexStr)
 {
     size_t decVal = 0;
 
-    auto result =
+    const auto result =
         std::from_chars
         (
             hexStr.data(),
@@ -574,7 +574,7 @@ size_t MeshReader::strToDec(std::string_view decStr)
 {
     size_t decVal = 0;
     
-    auto result =
+    const auto result =
         std::from_chars
         (
             decStr.data(),

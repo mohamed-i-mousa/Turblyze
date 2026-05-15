@@ -192,7 +192,7 @@ public:
             FatalError("Division by zero in Vector::operator/=");
         }
 
-        Scalar inverse = S(1.0) / scalar;
+        const Scalar inverse = S(1.0) / scalar;
         x_ *= inverse;
         y_ *= inverse;
         z_ *= inverse;
@@ -240,14 +240,14 @@ public:
      */
     [[nodiscard]] Vector normalized() const
     {
-        Scalar mag = magnitude();
+        const Scalar mag = magnitude();
         
         if (mag < vSmallValue)
         {
             FatalError("Division by zero in Vector::normalized");
         }
 
-        Scalar inverse = S(1.0) / mag;
+        const Scalar inverse = S(1.0) / mag;
         return Vector(x_ * inverse, y_ * inverse, z_ * inverse);
     }
 

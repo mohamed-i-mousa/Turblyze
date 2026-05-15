@@ -21,7 +21,7 @@
 int main(int argc, char* argv[])
 {
     // Start timing the total execution
-    auto startTime = std::chrono::high_resolution_clock::now();
+    const auto startTime = std::chrono::high_resolution_clock::now();
 
     std::cout << R"(
   ~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~·~··~·~
@@ -62,9 +62,9 @@ int main(int argc, char* argv[])
     CFDApplication app(caseFile);
     app.run();
 
-    auto endTime = std::chrono::high_resolution_clock::now();
+    const auto endTime = std::chrono::high_resolution_clock::now();
 
-    auto duration = 
+    const auto duration =
         std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime);
 
     std::cout

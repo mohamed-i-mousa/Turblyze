@@ -506,7 +506,7 @@ private:
         const ScalarField& f1,
         const ScalarField& f23,
         const ScalarField& strainRate
-    );
+    ) const;
 
     /**
      * @brief Override k production at wall-adjacent cells
@@ -517,7 +517,7 @@ private:
     (
         const VectorField& U,
         ScalarField& productionK
-    );
+    ) const;
 
     /**
      * @brief Solve the omega transport equation

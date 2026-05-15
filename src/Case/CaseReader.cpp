@@ -24,7 +24,7 @@ CaseReader::CaseReader(const std::string& filename)
 
 const CaseReader& CaseReader::section(const std::string& name) const
 {
-    auto it = sections_.find(name);
+    const auto it = sections_.find(name);
     if (it == sections_.end())
     {
         FatalError("Section '" + name + "' not found");
@@ -49,7 +49,7 @@ std::vector<std::string> CaseReader::sectionNames() const
 
 void CaseReader::print(int indent) const
 {
-    std::string indentStr(static_cast<size_t>(indent) * 4, ' ');
+    const std::string indentStr(static_cast<size_t>(indent) * 4, ' ');
 
     // Print entries
     for (const auto& [key, value] : entries_)
@@ -122,7 +122,7 @@ void CaseReader::parseSection
         }
 
         // Read next token to determine if it's a section or key-value pair
-        std::string next = readToken(is);
+        const std::string next = readToken(is);
 
         if (next == "{")
         {
@@ -166,7 +166,7 @@ void CaseReader::skipCommentsAndWhitespace(std::istream& is)
 
         if (c == '/')
         {
-            auto next = is.peek();
+            const auto next = is.peek();
             if (next == '/')
             {
                 // Single-line comment
@@ -211,7 +211,7 @@ std::string CaseReader::readToken(std::istream& is)
     char c;
 
     // Check for special single-character tokens
-    int next = is.peek();
+    const int next = is.peek();
     if
     (
         next == '{'

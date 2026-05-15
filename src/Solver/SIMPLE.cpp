@@ -82,7 +82,7 @@ void SIMPLE::solve()
         UAvgPrevf_ = UAvgf_;
         RhieChowFlowRatePrev_ = RhieChowFlowRate_;
 
-        size_t numCells = mesh_.numCells();
+        const size_t numCells = mesh_.numCells();
 
         #pragma omp parallel for schedule(static)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -148,7 +148,7 @@ void SIMPLE::initialize
     UAvgf_.setAll(initialVelocity);
 
     // Initialize RhieChowFlowRate_ with linear interpolation
-    size_t numFaces = mesh_.numFaces();
+    const size_t numFaces = mesh_.numFaces();
 
     #pragma omp parallel for schedule(static)
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
@@ -198,8 +198,8 @@ void SIMPLE::initialize
 
 void SIMPLE::solveMomentumEquations()
 {
-    size_t numCells = mesh_.numCells();
-    size_t numFaces = mesh_.numFaces();
+    const size_t numCells = mesh_.numCells();
+    const size_t numFaces = mesh_.numFaces();
 
     ScalarField nuEff;
 
@@ -250,7 +250,7 @@ void SIMPLE::solveMomentumEquations()
 
         if (face.isBoundary())
         {
-            size_t ownerIdx = face.ownerCell();
+            const size_t ownerIdx = face.ownerCell();
 
             // Check for NUT_WALL_FUNCTION BC on wall faces
             if (turbulenceModel_)
@@ -417,7 +417,7 @@ void SIMPLE::solveMomentumEquations()
 
 void SIMPLE::updateRhieChowFlowRate()
 {
-    size_t numFaces = mesh_.numFaces();
+    const size_t numFaces = mesh_.numFaces();
 
     #pragma omp parallel for schedule(static)
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
@@ -445,7 +445,7 @@ void SIMPLE::updateRhieChowFlowRate()
 
         const Vector Sf = face.normal() * face.projectedArea();
 
-        Vector gradPf =
+        const Vector gradPf =
             gradientScheme_.faceGradient
             (
                 "p",
@@ -466,7 +466,7 @@ void SIMPLE::updateRhieChowFlowRate()
 
 void SIMPLE::solvePressureCorrection()
 {
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
 
     VectorField gradPCorrPrecomputed;
 
@@ -546,7 +546,7 @@ void SIMPLE::solvePressureCorrection()
 
 void SIMPLE::correctVelocity()
 {
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -567,7 +567,7 @@ void SIMPLE::correctVelocity()
         );
     }
 
-    auto velocityConstraints =
+    const auto velocityConstraints =
         constraintSystem_->applyVelocityConstraints();
 
     if (debug_ && velocityConstraints > 0)
@@ -578,7 +578,7 @@ void SIMPLE::correctVelocity()
     }
 
     // Update face velocities
-    size_t numFaces = mesh_.numFaces();
+    const size_t numFaces = mesh_.numFaces();
 
     #pragma omp parallel for schedule(static)
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
@@ -602,7 +602,7 @@ void SIMPLE::correctPressure()
 {
     Scalar sumSq = 0.0;
 
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static) reduction(+:sumSq)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -620,7 +620,7 @@ void SIMPLE::correctPressure()
     }
 
     // Apply pressure bounds constraints
-    auto pressureConstraints =
+    const auto pressureConstraints =
         constraintSystem_->applyPressureConstraints();
 
     if (debug_ && pressureConstraints > 0)
@@ -638,7 +638,7 @@ void SIMPLE::correctPressure()
 void SIMPLE::correctFlowRate()
 {
     // Update mass flux on faces
-    size_t numFaces = mesh_.numFaces();
+    const size_t numFaces = mesh_.numFaces();
 
     #pragma omp parallel for schedule(static)
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
@@ -659,19 +659,20 @@ void SIMPLE::correctFlowRate()
                 continue;
             }
 
-            Scalar gradn = dot(gradPCorr_[face.ownerCell()], face.normal());
+            const Scalar gradn =
+                dot(gradPCorr_[face.ownerCell()], face.normal());
 
-            Scalar flowRateCorrection =
+            const Scalar flowRateCorrection =
                 DU_[face.ownerCell()] * gradn * face.projectedArea();
 
             RhieChowFlowRate_[faceIdx] -= flowRateCorrection;
             continue;
         }
 
-        size_t ownerIdx = face.ownerCell();
-        size_t neighborIdx = face.neighborCell().value();
+        const size_t ownerIdx = face.ownerCell();
+        const size_t neighborIdx = face.neighborCell().value();
 
-        Vector gradPCorrf =
+        const Vector gradPCorrf =
             gradientScheme_.faceGradient
             (
                 "pCorr",
@@ -681,9 +682,10 @@ void SIMPLE::correctFlowRate()
                 faceIdx
             );
 
-        Vector Sf = face.normal() * face.projectedArea();
+        const Vector Sf = face.normal() * face.projectedArea();
 
-        Scalar flowRateCorrection = DUf_[faceIdx] * dot(gradPCorrf, Sf);
+        const Scalar flowRateCorrection =
+            DUf_[faceIdx] * dot(gradPCorrf, Sf);
 
         RhieChowFlowRate_[faceIdx] -= flowRateCorrection;
     }
@@ -695,7 +697,7 @@ void SIMPLE::solveTurbulence()
     if (turbulenceModel_)
     {
         // Recompute velocity gradients from corrected velocity
-        size_t numCells = mesh_.numCells();
+        const size_t numCells = mesh_.numCells();
 
         ScalarField Ux = extractComponent(U_, Component::X);
         ScalarField Uy = extractComponent(U_, Component::Y);
@@ -752,11 +754,11 @@ void SIMPLE::solveTurbulence()
             reduction(+:kDiffSq, kPrevSq, omDiffSq, omPrevSq)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
-            Scalar dk = kField[cellIdx] - kPrev[cellIdx];
+            const Scalar dk = kField[cellIdx] - kPrev[cellIdx];
             kDiffSq += dk * dk;
             kPrevSq += kPrev[cellIdx] * kPrev[cellIdx];
 
-            Scalar dw = omegaField[cellIdx] - omegaPrev[cellIdx];
+            const Scalar dw = omegaField[cellIdx] - omegaPrev[cellIdx];
             omDiffSq += dw * dw;
             omPrevSq += omegaPrev[cellIdx] * omegaPrev[cellIdx];
         }
@@ -774,9 +776,9 @@ void SIMPLE::solveTurbulence()
 bool SIMPLE::checkConvergence()
 {
     // Compute raw residuals
-    Scalar massImbalance = this->massImbalance();
-    Scalar velocityResidual = this->velocityResidual();
-    Scalar pressureResidual = this->pressureResidual();
+    const Scalar massImbalance = this->massImbalance();
+    const Scalar velocityResidual = this->velocityResidual();
+    const Scalar pressureResidual = this->pressureResidual();
 
     // Store first-iteration references for scaling
     if (massImbalance0_ < vSmallValue)
@@ -792,12 +794,12 @@ bool SIMPLE::checkConvergence()
     }
 
     // Scale by first-iteration values
-    Scalar scaledMass = massImbalance / (massImbalance0_ + vSmallValue);
+    const Scalar scaledMass = massImbalance / (massImbalance0_ + vSmallValue);
 
-    Scalar scaledVelocity =
+    const Scalar scaledVelocity =
         velocityResidual / (velocityResidual0_ + vSmallValue);
 
-    Scalar scaledPressure =
+    const Scalar scaledPressure =
         pressureResidual / (pressureResidual0_ + vSmallValue);
 
     bool converged =
@@ -857,7 +859,7 @@ ScalarField SIMPLE::extractComponent
     Component component
 )
 {
-    size_t numCells = V.size();
+    const size_t numCells = V.size();
 
     ScalarField result;
 
@@ -881,7 +883,7 @@ Scalar SIMPLE::massImbalance() const
     // Dimensionless normalized continuity residual per cell, averaged
     Scalar totalNormImbalance = 0.0;
 
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static) reduction(+:totalNormImbalance)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -912,7 +914,7 @@ Scalar SIMPLE::velocityResidual() const
     Scalar num = 0.0;
     Scalar den = 0.0;
 
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static) reduction(+:num, den)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -934,7 +936,7 @@ Scalar SIMPLE::pressureResidual() const
     // Normalize p' RMS by RMS(p)
     Scalar sumP2 = 0.0;
 
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
     
     #pragma omp parallel for schedule(static) reduction(+:sumP2)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -954,7 +956,7 @@ void SIMPLE::transposeGradientSource
     ScalarField& transposeSourceX,
     ScalarField& transposeSourceY,
     ScalarField& transposeSourceZ
-)
+) const
 {
     const size_t numCells = mesh_.numCells();
 
@@ -966,8 +968,8 @@ void SIMPLE::transposeGradientSource
         Scalar sumZ = S(0.0);
 
         const auto& cell = mesh_.cells()[cellIdx];
-        const auto& faceIndices = cell.faceIndices();
-        const auto& faceSigns = cell.faceSigns();
+        const auto faceIndices = cell.faceIndices();
+        const auto faceSigns = cell.faceSigns();
 
         for (size_t j = 0; j < faceIndices.size(); ++j)
         {
@@ -1015,7 +1017,7 @@ void SIMPLE::solveMomentumComponent
 
     matrixConstruct_->relax(alphaU_, componentPrev);
 
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
 
     // DU_ is identical for all 3 momentum components — compute only once
     if (component == Component::X)

@@ -95,7 +95,7 @@ private:
      * @brief Parse convection schemes from case file
      * @return Populated ConvectionScheme container
      */
-    ConvectionScheme parseConvectionSchemes();
+    ConvectionScheme parseConvectionSchemes() const;
 
 // Private members
 

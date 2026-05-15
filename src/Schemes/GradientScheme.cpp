@@ -52,12 +52,12 @@ void GradientScheme::precomputeInverseATA()
         // Neighbor cells contribution (purely geometric)
         for (size_t neighborIdx : cell.neighborCellIndices())
         {
-            Vector r =
+            const Vector r =
                 mesh_.cells()[neighborIdx].centroid()
               - cell.centroid();
 
-            Scalar rMagSqr = r.magnitudeSquared();
-            Scalar w = S(1.0) / (rMagSqr + smallValue);
+            const Scalar rMagSqr = r.magnitudeSquared();
+            const Scalar w = S(1.0) / (rMagSqr + smallValue);
 
             rVector << r.x(), r.y(), r.z();
             ATA.noalias() += w * (rVector * rVector.transpose());
@@ -70,9 +70,9 @@ void GradientScheme::precomputeInverseATA()
 
             if (!face.isBoundary()) continue;
 
-            Vector r = face.centroid() - cell.centroid();
-            Scalar rMagSqr = r.magnitudeSquared();
-            Scalar w = S(1.0) / (rMagSqr + smallValue);
+            const Vector r = face.centroid() - cell.centroid();
+            const Scalar rMagSqr = r.magnitudeSquared();
+            const Scalar w = S(1.0) / (rMagSqr + smallValue);
 
             rVector << r.x(), r.y(), r.z();
             ATA.noalias() += w * (rVector * rVector.transpose());
@@ -154,12 +154,12 @@ Vector GradientScheme::cellGradient
         }
 
         const Cell& neighbor = mesh_.cells()[neighborIdx];
-        Vector r = neighbor.centroid() - cell.centroid();
+        const Vector r = neighbor.centroid() - cell.centroid();
 
-        Scalar rMagSqr = r.magnitudeSquared();
-        Scalar w = S(1.0) / (rMagSqr + smallValue);
+        const Scalar rMagSqr = r.magnitudeSquared();
+        const Scalar w = S(1.0) / (rMagSqr + smallValue);
 
-        Scalar wDeltaPhi =
+        const Scalar wDeltaPhi =
             w * (phi[neighborIdx] - phi[cellIndex]);
 
         b0 += wDeltaPhi * r.x();
@@ -174,16 +174,18 @@ Vector GradientScheme::cellGradient
 
         if (!face.isBoundary()) continue;
 
-        Vector r = face.centroid() - cell.centroid();
-        Scalar rMagSqr = r.magnitudeSquared();
-        Scalar w = S(1.0) / (rMagSqr + smallValue);
+        const Vector r = face.centroid() - cell.centroid();
+        const Scalar rMagSqr = r.magnitudeSquared();
+        const Scalar w = S(1.0) / (rMagSqr + smallValue);
 
         Scalar phiBoundary = S(0.0);
-        bool useOverride =
+        const bool useOverride =
             boundaryFaceValues
          && face.idx() < boundaryFaceValues->size()
-         && std::isfinite(
-                (*boundaryFaceValues)[face.idx()]);
+         && std::isfinite
+            (
+                (*boundaryFaceValues)[face.idx()]
+            );
 
         if (useOverride)
         {
@@ -202,7 +204,7 @@ Vector GradientScheme::cellGradient
                 );
         }
 
-        Scalar wDeltaPhi =
+        const Scalar wDeltaPhi =
             w * (phiBoundary - phi[cellIndex]);
 
         b0 += wDeltaPhi * r.x();
@@ -254,7 +256,7 @@ void GradientScheme::limitGradient
             const Face& face = mesh_.faces()[faceIdx];
             if (!face.isBoundary()) continue;
 
-            Scalar phiBound =
+            const Scalar phiBound =
                 bcManager_.boundaryFaceValue
                 (
                     fieldName,
@@ -272,9 +274,9 @@ void GradientScheme::limitGradient
         for (size_t faceIdx : cell.faceIndices())
         {
             const Face& face = mesh_.faces()[faceIdx];
-            Vector r = face.centroid() - cell.centroid();
-            Scalar phiFace = phi[cellIdx] + dot(gradPhi[cellIdx], r);
-            Scalar delta = phiFace - phi[cellIdx];
+            const Vector r = face.centroid() - cell.centroid();
+            const Scalar phiFace = phi[cellIdx] + dot(gradPhi[cellIdx], r);
+            const Scalar delta = phiFace - phi[cellIdx];
 
             if (delta > smallValue)
             {
@@ -304,7 +306,7 @@ Vector GradientScheme::faceGradient
 ) const
 {
     const Face& face = mesh_.faces()[faceIndex];
-    size_t P = face.ownerCell();
+    const size_t P = face.ownerCell();
 
     if (face.isBoundary())
     {
@@ -320,19 +322,14 @@ Vector GradientScheme::faceGradient
     }
     else
     {
-        size_t N = face.neighborCell().value();
-
-        Vector dPN = mesh_.cells()[N].centroid() - mesh_.cells()[P].centroid();
-
-        Scalar dPNMag = dPN.magnitude();
-
-        Vector ePN = dPN / (dPNMag + vSmallValue);
-
-        Vector gradAvg = averageFaceGradient(face, gradPhiP, gradPhiN);
-
-        Scalar phiDiff = phi[N] - phi[P];
-
-        Scalar correction =
+        const size_t N = face.neighborCell().value();
+        const Vector dPN =
+            mesh_.cells()[N].centroid() - mesh_.cells()[P].centroid();
+        const Scalar dPNMag = dPN.magnitude();
+        const Vector ePN = dPN / (dPNMag + vSmallValue);
+        const Vector gradAvg = averageFaceGradient(face, gradPhiP, gradPhiN);
+        const Scalar phiDiff = phi[N] - phi[P];
+        const Scalar correction =
             (phiDiff / (dPNMag + vSmallValue))
           - dot(gradAvg, ePN);
 
@@ -357,12 +354,12 @@ Vector GradientScheme::averageFaceGradient
         );
     }
 
-    Scalar dPf = face.dPfMag();
-    Scalar dNf = face.dNfMag().value();
-    Scalar totalDist = dPf + dNf;
+    const Scalar dPf = face.dPfMag();
+    const Scalar dNf = face.dNfMag().value();
+    const Scalar totalDist = dPf + dNf;
 
-    Scalar gP = dNf / (totalDist + vSmallValue);
-    Scalar gN = dPf / (totalDist + vSmallValue);
+    const Scalar gP = dNf / (totalDist + vSmallValue);
+    const Scalar gN = dPf / (totalDist + vSmallValue);
 
     return gP * gradPhiP + gN * gradPhiN;
 }
@@ -411,21 +408,20 @@ Vector GradientScheme::boundaryFaceGradient
                     return cellGradient;
                 }
             }
-            Scalar cellValue = phi[face.ownerCell()];
-
-            Scalar dn = dot(face.dPf(), face.normal());
-
-            Scalar dPfMag = face.dPfMag();
-
+            const Scalar cellValue = phi[face.ownerCell()];
+            const Scalar dn = dot(face.dPf(), face.normal());
+            const Scalar dPfMag = face.dPfMag();
+            
             // Stabilization: clamp dn to minNormalFraction_ * ||dPf||
-            Scalar dnStabilized = std::max(dn, minNormalFraction_ * dPfMag);
+            const Scalar dnStabilized =
+                std::max(dn, minNormalFraction_ * dPfMag);
 
             // ∂φ/∂n = (φ_boundary - φ_cell) / dnStabilized
-            Scalar normalGradient =
+            const Scalar normalGradient =
                 (boundaryValue - cellValue)
               / dnStabilized;
 
-            Vector tangentialGradient =
+            const Vector tangentialGradient =
                 cellGradient
               - dot(cellGradient, face.normal())
               * face.normal();
@@ -439,7 +435,7 @@ Vector GradientScheme::boundaryFaceGradient
         case ZERO_GRADIENT:
         {
             // Zero normal gradient: retain only tangential
-            Vector tangentialGradient =
+            const Vector tangentialGradient =
                 cellGradient
               - dot(cellGradient, face.normal())
               * face.normal();
@@ -449,11 +445,11 @@ Vector GradientScheme::boundaryFaceGradient
 
         case FIXED_GRADIENT:
         {
-            Scalar specifiedGradient = bc.fixedScalarGradient();
+            const Scalar specifiedGradient = bc.fixedScalarGradient();
 
             // Project cell gradient onto tangential directions
             // and combine with specified normal gradient
-            Vector tangentialGradient =
+            const Vector tangentialGradient =
                 cellGradient
               - dot(cellGradient, face.normal())
               * face.normal();

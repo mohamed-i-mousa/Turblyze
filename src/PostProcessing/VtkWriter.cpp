@@ -34,9 +34,9 @@ void writeVtkUnstructuredGrid
     bool debug
 )
 {
-    std::span<const Vector> allNodes = mesh.nodes();
-    std::span<const Cell> allCells = mesh.cells();
-    std::span<const Face> allFaces = mesh.faces();
+    const std::span<const Vector> allNodes = mesh.nodes();
+    const std::span<const Cell> allCells = mesh.cells();
+    const std::span<const Face> allFaces = mesh.faces();
 
     // Create vtkUnstructuredGrid
     vtkSmartPointer<vtkUnstructuredGrid>
@@ -67,7 +67,7 @@ void writeVtkUnstructuredGrid
     for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
     {
         const Cell& cell = allCells[cellIdx];
-        const auto& faceIndices = cell.faceIndices();
+        const auto faceIndices = cell.faceIndices();
 
         // Collect all unique nodes and build connectivity
         std::unordered_set<size_t> uniqueNodeSet;
@@ -77,7 +77,7 @@ void writeVtkUnstructuredGrid
         for (size_t faceIdx : faceIndices)
         {
             const Face& face = allFaces[faceIdx];
-            const auto& nodeIndices = face.nodeIndices();
+            const auto nodeIndices = face.nodeIndices();
             uniqueNodeSet.insert(nodeIndices.begin(), nodeIndices.end());
             faceNodeLists.emplace_back(nodeIndices.begin(), nodeIndices.end());
         }
@@ -211,12 +211,12 @@ void writeVtkUnstructuredGrid
             if (cellIdx < vectorField->size())
             {
                 const Vector& vec = (*vectorField)[cellIdx];
-                double vecData[3] = {vec.x(), vec.y(), vec.z()};
+                const double vecData[3] = {vec.x(), vec.y(), vec.z()};
                 dataArray->SetTuple(static_cast<vtkIdType>(cellIdx), vecData);
             }
             else
             {
-                double zeroVec[3] = {0.0, 0.0, 0.0};
+                const double zeroVec[3] = {0.0, 0.0, 0.0};
                 dataArray->SetTuple(static_cast<vtkIdType>(cellIdx), zeroVec);
             }
         }

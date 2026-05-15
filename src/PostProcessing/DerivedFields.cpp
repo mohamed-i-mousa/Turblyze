@@ -52,10 +52,10 @@ ScalarField QCriterion
     for (size_t i = 0; i < gradUx.size(); ++i)
     {
         // Q = 0.5 * (||Omega||^2 - ||S||^2)
-        Tensor gradU = Tensor::fromRows(gradUx[i], gradUy[i], gradUz[i]);
+        const Tensor gradU = Tensor::fromRows(gradUx[i], gradUy[i], gradUz[i]);
 
-        Scalar sMagSq = gradU.symm().magnitudeSquared();
-        Scalar oMagSq = gradU.skew().magnitudeSquared();
+        const Scalar sMagSq = gradU.symm().magnitudeSquared();
+        const Scalar oMagSq = gradU.skew().magnitudeSquared();
 
         qCriterion[i] = S(0.5) * (oMagSq - sMagSq);
     }
@@ -75,14 +75,14 @@ ScalarField strainRateMagnitude
     for (size_t idx = 0; idx < gradUx.size(); ++idx)
     {
         // Strain rate magnitude = sqrt(2 * S_ij * S_ij)
-        Tensor gradU = Tensor::fromRows
+        const Tensor gradU = Tensor::fromRows
         (
             gradUx[idx],
             gradUy[idx],
             gradUz[idx]
         );
 
-        Scalar symmMagSq = gradU.symm().magnitudeSquared();
+        const Scalar symmMagSq = gradU.symm().magnitudeSquared();
         strainRateMag[idx] = std::sqrt(S(2.0) * symmMagSq);
     }
 

@@ -37,11 +37,11 @@ Vector faceNormal
     std::span<const Vector> allNodes
 )
 {
-    Vector v0 = allNodes[faceNodes[0]];
-    Vector v1 = allNodes[faceNodes[1]];
-    Vector v2 = allNodes[faceNodes[2]];
-    Vector edge1 = v1 - v0;
-    Vector edge2 = v2 - v0;
+    const Vector v0 = allNodes[faceNodes[0]];
+    const Vector v1 = allNodes[faceNodes[1]];
+    const Vector v2 = allNodes[faceNodes[2]];
+    const Vector edge1 = v1 - v0;
+    const Vector edge2 = v2 - v0;
     return cross(edge1, edge2);
 }
 
@@ -124,13 +124,13 @@ std::vector<vtkIdType> orderHexahedronNodes
     }
 
     // Determine face orientation using face normals
-    Vector bottomNormal = faceNormal(bottomFace, allNodes);
-    Vector topNormal = faceNormal(topFace, allNodes);
-    Vector bottomCentroid = faceCentroid(bottomFace, allNodes);
-    Vector topCentroid = faceCentroid(topFace, allNodes);
+    const Vector bottomNormal = faceNormal(bottomFace, allNodes);
+    const Vector topNormal = faceNormal(topFace, allNodes);
+    const Vector bottomCentroid = faceCentroid(bottomFace, allNodes);
+    const Vector topCentroid = faceCentroid(topFace, allNodes);
 
-    Vector bottomToCenter = centroid - bottomCentroid;
-    Vector topToCenter = centroid - topCentroid;
+    const Vector bottomToCenter = centroid - bottomCentroid;
+    const Vector topToCenter = centroid - topCentroid;
 
     // Orient so bottom face is the one with normal pointing inward
     if (dot(bottomNormal, bottomToCenter) < dot(topNormal, topToCenter))
@@ -142,9 +142,9 @@ std::vector<vtkIdType> orderHexahedronNodes
     std::vector<size_t> orderedBottomNodes = bottomFace;
 
     // Check winding and reverse if needed
-    Vector testNormal = faceNormal(orderedBottomNodes, allNodes);
+    const Vector testNormal = faceNormal(orderedBottomNodes, allNodes);
 
-    Vector outwardDir =
+    const Vector outwardDir =
         faceCentroid(orderedBottomNodes, allNodes) - centroid;
 
     if (dot(testNormal, outwardDir) < 0)
@@ -169,23 +169,23 @@ std::vector<vtkIdType> orderHexahedronNodes
         // a bottom node to a top node
         for (size_t e = 0; e < 4; ++e)
         {
-            size_t n0 = sideFace[e];
-            size_t n1 = sideFace[(e + 1) % 4];
+            const size_t n0 = sideFace[e];
+            const size_t n1 = sideFace[(e + 1) % 4];
 
-            bool n0_bottom =
+            const bool n0_bottom =
                 std::find
                 (bottomFace.begin(), bottomFace.end(), n0)
               != bottomFace.end();
 
-            bool n1_bottom =
+            const bool n1_bottom =
                 std::find
                 (bottomFace.begin(), bottomFace.end(), n1)
               != bottomFace.end();
 
-            bool n0_top =
+            const bool n0_top =
                 std::find(topFace.begin(), topFace.end(), n0) != topFace.end();
 
-            bool n1_top =
+            const bool n1_top =
                 std::find(topFace.begin(), topFace.end(), n1) != topFace.end();
 
             // If the edge connects a bottom node to a top node (vertical edge)
@@ -204,16 +204,16 @@ std::vector<vtkIdType> orderHexahedronNodes
     std::vector<size_t> orderedTopNodes(4);
     for (size_t i = 0; i < 4; ++i)
     {
-        size_t bottomNode = orderedBottomNodes[i];
+        const size_t bottomNode = orderedBottomNodes[i];
 
-        auto it = nodeConnections.find(bottomNode);
+        const auto it = nodeConnections.find(bottomNode);
         if (it == nodeConnections.end())
         {
             // Failed to find mapping — return empty to trigger fallback
             return std::vector<vtkIdType>();
         }
 
-        size_t topNode = it->second;
+        const size_t topNode = it->second;
 
         // Verify it's actually in the top face
         if
@@ -232,13 +232,13 @@ std::vector<vtkIdType> orderHexahedronNodes
     }
 
     // Verify all top nodes were mapped correctly
-    std::set<size_t> mappedTopNodes
+    const std::set<size_t> mappedTopNodes
     (
         orderedTopNodes.begin(),
         orderedTopNodes.end()
     );
 
-    std::set<size_t> expectedTopNodes(topFace.begin(), topFace.end());
+    const std::set<size_t> expectedTopNodes(topFace.begin(), topFace.end());
 
     if (mappedTopNodes != expectedTopNodes)
     {
@@ -305,18 +305,18 @@ std::vector<vtkIdType> orderWedgeNodes
     centroid /= 6.0;
 
     // Compute face centroids and normals for triangular faces
-    Vector tri0Centroid = faceCentroid(triangularFaces[0], allNodes);
-    Vector tri1Centroid = faceCentroid(triangularFaces[1], allNodes);
+    const Vector tri0Centroid = faceCentroid(triangularFaces[0], allNodes);
+    const Vector tri1Centroid = faceCentroid(triangularFaces[1], allNodes);
 
-    Vector tri0Normal = faceNormal(triangularFaces[0], allNodes);
-    Vector tri1Normal = faceNormal(triangularFaces[1], allNodes);
+    const Vector tri0Normal = faceNormal(triangularFaces[0], allNodes);
+    const Vector tri1Normal = faceNormal(triangularFaces[1], allNodes);
 
     // Check which triangle is more "inward" pointing relative to centroid
-    Vector tri0ToCenter = centroid - tri0Centroid;
-    Vector tri1ToCenter = centroid - tri1Centroid;
+    const Vector tri0ToCenter = centroid - tri0Centroid;
+    const Vector tri1ToCenter = centroid - tri1Centroid;
 
-    Scalar dot0 = dot(tri0Normal, tri0ToCenter);
-    Scalar dot1 = dot(tri1Normal, tri1ToCenter);
+    const Scalar dot0 = dot(tri0Normal, tri0ToCenter);
+    const Scalar dot1 = dot(tri1Normal, tri1ToCenter);
 
     // The face whose normal points toward the centroid is the "bottom"
     std::vector<size_t> bottomTri, topTri;
@@ -347,7 +347,7 @@ std::vector<vtkIdType> orderWedgeNodes
 
         for (size_t nid : quadNodes)
         {
-            bool inBottom =
+            const bool inBottom =
                 std::find
                 (bottomTri.begin(), bottomTri.end(), nid)
               != bottomTri.end();
@@ -371,15 +371,15 @@ std::vector<vtkIdType> orderWedgeNodes
         // nodes are connected
         for (size_t i = 0; i < 4; ++i)
         {
-            size_t n0 = quadNodes[i];
-            size_t n1 = quadNodes[(i + 1) % 4];
+            const size_t n0 = quadNodes[i];
+            const size_t n1 = quadNodes[(i + 1) % 4];
 
-            bool n0_bottom =
+            const bool n0_bottom =
                 std::find
                 (bottomTri.begin(), bottomTri.end(), n0)
              != bottomTri.end();
 
-            bool n1_bottom =
+            const bool n1_bottom =
                 std::find(bottomTri.begin(), bottomTri.end(), n1)
              != bottomTri.end();
 
@@ -401,9 +401,9 @@ std::vector<vtkIdType> orderWedgeNodes
     std::vector<size_t> orderedBottomNodes = bottomTri;
 
     // Ensure proper winding by checking normal direction
-    Vector testNormal = faceNormal(orderedBottomNodes, allNodes);
+    const Vector testNormal = faceNormal(orderedBottomNodes, allNodes);
 
-    Vector outwardDir =
+    const Vector outwardDir =
         faceCentroid(orderedBottomNodes, allNodes) - centroid;
     if (dot(testNormal, outwardDir) < 0)
     {
@@ -416,7 +416,7 @@ std::vector<vtkIdType> orderWedgeNodes
 
     for (size_t i = 0; i < 3; ++i)
     {
-        size_t bottomNode = orderedBottomNodes[i];
+        const size_t bottomNode = orderedBottomNodes[i];
 
         // Look up the corresponding top node
         if (bottomToTopMap.find(bottomNode) != bottomToTopMap.end())
@@ -431,13 +431,13 @@ std::vector<vtkIdType> orderWedgeNodes
     }
 
     // Verify all top nodes were mapped and are valid
-    std::set<size_t> mappedTopNodes
+    const std::set<size_t> mappedTopNodes
     (
         orderedTopNodes.begin(),
         orderedTopNodes.end()
     );
 
-    std::set<size_t> expectedTopNodes(topTri.begin(), topTri.end());
+    const std::set<size_t> expectedTopNodes(topTri.begin(), topTri.end());
 
     if (mappedTopNodes != expectedTopNodes)
     {
@@ -522,10 +522,10 @@ std::vector<vtkIdType> orderPyramidNodes
     // Ensure proper winding of base quad
     // (outward-pointing normal when viewed from outside)
     std::vector<size_t> orderedBase = baseFace;
-    Vector testNormal =
+    const Vector testNormal =
         faceNormal(orderedBase, allNodes);
 
-    Vector outwardDir =
+    const Vector outwardDir =
         faceCentroid(orderedBase, allNodes) - centroid;
 
     if (dot(testNormal, outwardDir) < 0)

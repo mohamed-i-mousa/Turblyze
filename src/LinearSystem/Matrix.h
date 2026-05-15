@@ -159,7 +159,7 @@ private:
     Scalar lastRelaxationFactor_ = S(0.0);
 
     /// Threshold below which f/(1-f) overflows
-    Scalar rootSmallValue_ = std::sqrt(smallValue);
+    inline static const Scalar rootSmallValue_ = std::sqrt(smallValue);
 
 
 // Private methods
@@ -182,7 +182,7 @@ private:
         const TransportEquation& equation,
         std::vector<Eigen::Triplet<Scalar>>& triplets,
         Vec& localB
-    );
+    ) const;
 
     /**
      * @brief Assemble boundary face contributions
@@ -197,7 +197,7 @@ private:
         const TransportEquation& equation,
         std::vector<Eigen::Triplet<Scalar>>& triplets,
         Vec& localB
-    );
+    ) const;
 
     /**
      * @brief Extract scalar boundary value from BC data

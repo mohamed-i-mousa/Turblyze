@@ -284,7 +284,7 @@ public:
             FatalError("Division by zero in Tensor::operator/=");
         }
 
-        Scalar inverse = S(1.0) / scalar;
+        const Scalar inverse = S(1.0) / scalar;
         xx_ *= inverse; xy_ *= inverse; xz_ *= inverse;
         yx_ *= inverse; yy_ *= inverse; yz_ *= inverse;
         zx_ *= inverse; zy_ *= inverse; zz_ *= inverse;
@@ -315,9 +315,9 @@ public:
      */
     [[nodiscard]] Tensor symm() const noexcept
     {
-        Scalar sxy = S(0.5) * (xy_ + yx_);
-        Scalar sxz = S(0.5) * (xz_ + zx_);
-        Scalar syz = S(0.5) * (yz_ + zy_);
+        const Scalar sxy = S(0.5) * (xy_ + yx_);
+        const Scalar sxz = S(0.5) * (xz_ + zx_);
+        const Scalar syz = S(0.5) * (yz_ + zy_);
 
         return
             Tensor
@@ -334,9 +334,9 @@ public:
      */
     [[nodiscard]] Tensor skew() const noexcept
     {
-        Scalar axy = S(0.5) * (xy_ - yx_);
-        Scalar axz = S(0.5) * (xz_ - zx_);
-        Scalar ayz = S(0.5) * (yz_ - zy_);
+        const Scalar axy = S(0.5) * (xy_ - yx_);
+        const Scalar axz = S(0.5) * (xz_ - zx_);
+        const Scalar ayz = S(0.5) * (yz_ - zy_);
 
         return
             Tensor

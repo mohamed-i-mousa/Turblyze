@@ -172,7 +172,7 @@ template<>
 inline Scalar CaseReader::convertTo<Scalar>(const std::string& value) const
 {
     double result = 0.0;
-    auto [ptr, ec] = std::from_chars
+    const auto [ptr, ec] = std::from_chars
     (
         value.data(),
         value.data() + value.size(),
@@ -191,7 +191,7 @@ template<>
 inline int CaseReader::convertTo<int>(const std::string& value) const
 {
     int result = 0;
-    auto [ptr, ec] = std::from_chars
+    const auto [ptr, ec] = std::from_chars
     (
         value.data(),
         value.data() + value.size(),
@@ -264,7 +264,7 @@ inline Vector CaseReader::convertTo<Vector>(const std::string& value) const
 template<typename T>
 T CaseReader::lookup(const std::string& keyword) const
 {
-    auto it = entries_.find(keyword);
+    const auto it = entries_.find(keyword);
     if (it == entries_.end())
     {
         FatalError("Keyword '" + keyword + "' not found in case file");
@@ -279,7 +279,7 @@ T CaseReader::lookupOrDefault
     const std::string& keyword, const T& defaultValue
 ) const
 {
-    auto it = entries_.find(keyword);
+    const auto it = entries_.find(keyword);
     if (it == entries_.end())
     {
         return defaultValue;

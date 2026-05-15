@@ -190,13 +190,12 @@ void kOmegaSST::updateWallDistance()
 
         if (patch.type() != PatchType::WALL) continue;
 
-        size_t cellIdx = face.ownerCell();
-        Vector cellCenter = mesh_.cells()[cellIdx].centroid();
-        Vector faceCenter = face.centroid();
-        Vector normal = face.normal();
-
-        Vector cellToFace = faceCenter - cellCenter;
-        Scalar dist = std::abs(dot(cellToFace, normal));
+        const size_t cellIdx = face.ownerCell();
+        const Vector cellCenter = mesh_.cells()[cellIdx].centroid();
+        const Vector faceCenter = face.centroid();
+        const Vector normal = face.normal();
+        const Vector cellToFace = faceCenter - cellCenter;
+        const Scalar dist = std::abs(dot(cellToFace, normal));
 
         if (dist < wallDistance_[cellIdx])
         {
@@ -218,21 +217,20 @@ void kOmegaSST::updateWallDistance()
         {
             if (face.isBoundary()) continue;
 
-            size_t owner = face.ownerCell();
-            size_t neighbor = face.neighborCell().value();
-
-            Vector ownerCenter = mesh_.cells()[owner].centroid();
-            Vector neighborCenter = mesh_.cells()[neighbor].centroid();
+            const size_t owner = face.ownerCell();
+            const size_t neighbor = face.neighborCell().value();
+            const Vector ownerCenter = mesh_.cells()[owner].centroid();
+            const Vector neighborCenter = mesh_.cells()[neighbor].centroid();
 
             // Try to improve owner using neighbor's nearest wall point
             {
-                Vector candidatePoint = nearestWallPoint_[neighbor];
-                Scalar newDist =
+                const Vector candidatePoint = nearestWallPoint_[neighbor];
+                const Scalar newDist =
                     (ownerCenter - candidatePoint).magnitude();
 
                 if (newDist < wallDistance_[owner])
                 {
-                    Scalar change = wallDistance_[owner] - newDist;
+                    const Scalar change = wallDistance_[owner] - newDist;
                     maxChange = std::max(maxChange, change);
                     wallDistance_[owner]     = newDist;
                     nearestWallPoint_[owner] = candidatePoint;
@@ -241,13 +239,13 @@ void kOmegaSST::updateWallDistance()
 
             // Try to improve neighbor using owner's nearest wall point
             {
-                Vector candidatePoint = nearestWallPoint_[owner];
-                Scalar newDist =
+                const Vector candidatePoint = nearestWallPoint_[owner];
+                const Scalar newDist =
                     (neighborCenter - candidatePoint).magnitude();
 
                 if (newDist < wallDistance_[neighbor])
                 {
-                    Scalar change = wallDistance_[neighbor] - newDist;
+                    const Scalar change = wallDistance_[neighbor] - newDist;
                     maxChange = std::max(maxChange, change);
                     wallDistance_[neighbor] = newDist;
                     nearestWallPoint_[neighbor] = candidatePoint;
@@ -285,7 +283,7 @@ void kOmegaSST::wallFunctionWeights()
 
         wallFunctionFaceIndices_.push_back(faceIdx);
 
-        size_t cellIdx = face.ownerCell();
+        const size_t cellIdx = face.ownerCell();
         totalWallArea[cellIdx] += face.projectedArea();
         ++wallFaceCountPerCell[cellIdx];
     }
@@ -294,8 +292,8 @@ void kOmegaSST::wallFunctionWeights()
     for (size_t faceIdx : wallFunctionFaceIndices_)
     {
         const auto& face = mesh_.faces()[faceIdx];
-        size_t cellIdx = face.ownerCell();
-        Scalar area = totalWallArea[cellIdx];
+        const size_t cellIdx = face.ownerCell();
+        const Scalar area = totalWallArea[cellIdx];
 
         if (area > S(0.0))
         {
@@ -346,9 +344,9 @@ void kOmegaSST::wallFunctionWeights()
     #pragma omp parallel for schedule(static)
     for (size_t i = 0; i < wallCellIndices_.size(); ++i)
     {
-        size_t cellIdx = wallCellIndices_[i];
-
+        const size_t cellIdx = wallCellIndices_[i];
         Scalar rawFraction = S(1.0);
+
         if (totalPolyWallArea[cellIdx] > S(0.0))
         {
             rawFraction =
@@ -376,13 +374,13 @@ void kOmegaSST::solveOmegaEquation
     const VectorField& gradOmega
 )
 {
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
 
     ScalarField GammaOmega;
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Scalar sigmaOmega =
+        const Scalar sigmaOmega =
             blend(f1[cellIdx], coeffs_.sigmaOmega1, coeffs_.sigmaOmega2);
 
         GammaOmega[cellIdx] = nu_ + sigmaOmega * nut_[cellIdx];
@@ -413,7 +411,7 @@ void kOmegaSST::solveOmegaEquation
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Scalar cellVolume = mesh_.cells()[cellIdx].volume();
+        const Scalar cellVolume = mesh_.cells()[cellIdx].volume();
 
         // Production term: Pk * gamma / nut
         vectorB(eIdx(cellIdx)) += productionOmega[cellIdx] * cellVolume;
@@ -427,7 +425,7 @@ void kOmegaSST::solveOmegaEquation
         ) += beta * omega_[cellIdx] * cellVolume;
 
         // Cross-diffusion: linearization of (1-F1)*CDkOmega
-        Scalar CDkOmegaLineared =
+        const Scalar CDkOmegaLineared =
             (S(1.0) - f1[cellIdx]) * CDkOmega[cellIdx]
           / (omega_[cellIdx] + vSmallValue);
 
@@ -446,8 +444,9 @@ void kOmegaSST::solveOmegaEquation
         }
 
         // -(2/3)*gamma*divU SuSp term (continuity correction)
-        Scalar gamma = blend(f1[cellIdx], coeffs_.gamma1, coeffs_.gamma2);
-        Scalar suspOmega = (S(2.0) / S(3.0)) * gamma * divU[cellIdx];
+        const Scalar gamma =
+            blend(f1[cellIdx], coeffs_.gamma1, coeffs_.gamma2);
+        const Scalar suspOmega = (S(2.0) / S(3.0)) * gamma * divU[cellIdx];
 
         matrixA.coeffRef
         (
@@ -493,7 +492,7 @@ void kOmegaSST::updateOmegaWallValues()
     for (size_t faceIdx : wallFunctionFaceIndices_)
     {
         const auto& face = mesh_.faces()[faceIdx];
-        size_t cellIdx = face.ownerCell();
+        const size_t cellIdx = face.ownerCell();
 
         if (yPlus_[face.idx()] < yPlusLam_)
         {
@@ -534,10 +533,10 @@ void kOmegaSST::applyOmegaWallCellValues()
 
     for (size_t i = 0; i < wallCellIndices_.size(); ++i)
     {
-        size_t cellIdx = wallCellIndices_[i];
+        const size_t cellIdx = wallCellIndices_[i];
         wallCellOmega_[i] = std::max(omegaAccum[cellIdx], omegaMin_);
 
-        Scalar f = wallCellFraction_[i];
+        const Scalar f = wallCellFraction_[i];
         omega_[cellIdx] = std::lerp(omega_[cellIdx], wallCellOmega_[i], f);
     }
 }
@@ -552,7 +551,7 @@ void kOmegaSST::solveKEquation
     const VectorField& gradK
 )
 {
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
 
     // Construct transport matrix for k
     ScalarField GammaK;
@@ -560,7 +559,8 @@ void kOmegaSST::solveKEquation
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Scalar sigmaK = blend(f1[cellIdx], coeffs_.sigmaK1, coeffs_.sigmaK2);
+        const Scalar sigmaK =
+            blend(f1[cellIdx], coeffs_.sigmaK1, coeffs_.sigmaK2);
 
         GammaK[cellIdx] = nu_ + sigmaK * nut_[cellIdx];
     }
@@ -589,7 +589,7 @@ void kOmegaSST::solveKEquation
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Scalar cellVolume = mesh_.cells()[cellIdx].volume();
+        const Scalar cellVolume = mesh_.cells()[cellIdx].volume();
 
         vectorB(eIdx(cellIdx)) += productionK[cellIdx] * cellVolume;
 
@@ -599,7 +599,7 @@ void kOmegaSST::solveKEquation
             destruction * cellVolume;
 
         // -(2/3)*divU SuSp term (continuity correction)
-        Scalar suspK = (S(2.0) / S(3.0)) * divU[cellIdx];
+        const Scalar suspK = (S(2.0) / S(3.0)) * divU[cellIdx];
 
         matrixA.coeffRef(eIdx(cellIdx),eIdx(cellIdx)) +=
             std::max(suspK, S(0.0)) * cellVolume;
@@ -640,7 +640,7 @@ void kOmegaSST::updateNutWall()
         if (yPlus_[face.idx()] > yPlusLam_)
         {
             // Log layer: nutw = nu * (yPlus*kappa/ln(E*yPlus) - 1)
-            Scalar nutw =
+            const Scalar nutw =
                 nu_
               * (
                     yPlus_[face.idx()] * coeffs_.kappa
@@ -678,7 +678,7 @@ void kOmegaSST::updateTurbulentViscosity
 {
     // SST turbulent viscosity:
     // nut = a1*k / max(a1*omega, b1*F23*sqrt(S2))
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -702,24 +702,18 @@ void kOmegaSST::updateWallShearStress
     for (size_t faceIdx : wallFunctionFaceIndices_)
     {
         const auto& face = mesh_.faces()[faceIdx];
-        size_t cellIdx = face.ownerCell();
+        const size_t cellIdx = face.ownerCell();
 
         // Project velocity onto wall plane (tangential component)
-        Scalar normalVelocity = dot(U[cellIdx], face.normal());
-        Vector tangentVelocity = U[cellIdx] - face.normal() * normalVelocity;
-        Scalar tangentVelocityMag = tangentVelocity.magnitude();
+        const Scalar normalVelocity = dot(U[cellIdx], face.normal());
+        const Vector tangentVelocity =
+            U[cellIdx] - face.normal() * normalVelocity;
+        const Scalar tangentVelocityMag = tangentVelocity.magnitude();
 
-        Scalar tau;
-        if (yPlus_[face.idx()] < yPlusLam_)
-        {
-            // Viscous sublayer: tau/rho = nu * tangentVelocity / y
-            tau = nu_ * tangentVelocityMag / y_[face.idx()];
-        }
-        else
-        {
-            // Log layer: tau/rho = uTau^2 = Cmu^0.5 * k
-            tau = Cmu25_ * Cmu25_ * k_[cellIdx];
-        }
+        const Scalar tau =
+            yPlus_[face.idx()] < yPlusLam_
+          ? nu_ * tangentVelocityMag / y_[face.idx()]
+          : Cmu25_ * Cmu25_ * k_[cellIdx];
 
         wallShearStress_[face.idx()] = std::min(tau, S(1000.0));
     }
@@ -734,13 +728,13 @@ ScalarField kOmegaSST::F1(const ScalarField& CDkOmega) const
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Scalar y = std::max(wallDistance_[cellIdx], vSmallValue);
-        Scalar sqrtK = std::sqrt(k_[cellIdx]);
+        const Scalar y = std::max(wallDistance_[cellIdx], vSmallValue);
+        const Scalar sqrtK = std::sqrt(k_[cellIdx]);
 
         // Cross-diffusion clipped to positive
-        Scalar CDkw = std::max(CDkOmega[cellIdx], S(1e-10));
+        const Scalar CDkw = std::max(CDkOmega[cellIdx], S(1e-10));
 
-        Scalar arg1 =
+        const Scalar arg1 =
             std::min
             (
                 std::min
@@ -757,7 +751,7 @@ ScalarField kOmegaSST::F1(const ScalarField& CDkOmega) const
 
         // F1 = tanh(arg1^4)
         // Direct multiplication is faster that std::pow(arg1, 4)
-        Scalar arg1Sq = arg1 * arg1;
+        const Scalar arg1Sq = arg1 * arg1;
         f1[cellIdx] = std::tanh(arg1Sq * arg1Sq);
     }
 
@@ -773,10 +767,10 @@ ScalarField kOmegaSST::F2() const
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Scalar y = std::max(wallDistance_[cellIdx], vSmallValue);
-        Scalar sqrtK = std::sqrt(k_[cellIdx]);
+        const Scalar y = std::max(wallDistance_[cellIdx], vSmallValue);
+        const Scalar sqrtK = std::sqrt(k_[cellIdx]);
 
-        Scalar arg2 =
+        const Scalar arg2 =
             std::min
             (
                 std::max
@@ -804,9 +798,9 @@ ScalarField kOmegaSST::F3() const
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Scalar y = std::max(wallDistance_[cellIdx], S(1e-12));
+        const Scalar y = std::max(wallDistance_[cellIdx], S(1e-12));
 
-        Scalar arg3 =
+        const Scalar arg3 =
             std::min
             (
                 S(150.0) * nu_ / (omega_[cellIdx] * y * y),
@@ -814,7 +808,7 @@ ScalarField kOmegaSST::F3() const
             );
          
         // F3 = 1 - tanh(arg3^4)    
-        Scalar arg3Sq = arg3 * arg3;
+        const Scalar arg3Sq = arg3 * arg3;
         f3[cellIdx] = S(1.0) - std::tanh(arg3Sq * arg3Sq);
     }
 
@@ -857,12 +851,12 @@ void kOmegaSST::kProduction
     const ScalarField& strainRate
 )
 {
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Scalar S2 = strainRate[cellIdx] * strainRate[cellIdx];
+        const Scalar S2 = strainRate[cellIdx] * strainRate[cellIdx];
 
         // k production = nut * S² (unlimited)
         Pk_[cellIdx] = nut_[cellIdx] * S2;
@@ -876,12 +870,12 @@ void kOmegaSST::omegaProduction
     const ScalarField& strainRate
 )
 {
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Scalar S2 = strainRate[cellIdx] * strainRate[cellIdx];
+        const Scalar S2 = strainRate[cellIdx] * strainRate[cellIdx];
 
         // omega production = gamma * GbyNut (unlimited)
         POmega_[cellIdx] = 
@@ -897,7 +891,7 @@ void kOmegaSST::limitProduction
     const ScalarField& f1,
     const ScalarField& f23,
     const ScalarField& strainRate
-)
+) const
 {
     const size_t numCells = mesh_.numCells();
 
@@ -905,12 +899,12 @@ void kOmegaSST::limitProduction
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         // Limit k production:
-        Scalar kLimit =
+        const Scalar kLimit =
             coeffs_.c1 * coeffs_.betaStar * k_[cellIdx] * omega_[cellIdx];
         productionK[cellIdx] = std::min(productionK[cellIdx], kLimit);
 
         // Limit omega production (Menter 2003 SST)
-        Scalar omegaLimit =
+        const Scalar omegaLimit =
             (coeffs_.c1 / coeffs_.a1) * coeffs_.betaStar * omega_[cellIdx]
           * blend(f1[cellIdx], coeffs_.gamma1, coeffs_.gamma2)
           * std::max
@@ -928,7 +922,7 @@ void kOmegaSST::overrideWallCellProduction
 (
     const VectorField& U,
     ScalarField& productionK
-)
+) const
 {
     const size_t numCells = mesh_.numCells();
     FaceData<Scalar> GWall;
@@ -938,7 +932,7 @@ void kOmegaSST::overrideWallCellProduction
     for (size_t faceIdx : wallFunctionFaceIndices_)
     {
         const auto& face = mesh_.faces()[faceIdx];
-        size_t cellIdx = face.ownerCell();
+        const size_t cellIdx = face.ownerCell();
 
         if (wallFaceWeight_[face.idx()] <= S(0.0))
         {
@@ -957,12 +951,12 @@ void kOmegaSST::overrideWallCellProduction
         else
         {
             // Log layer: G = sqr(uStar*magGradUw*y/uPlus) / (nu*kappa*yPlus)
-            Scalar magGradUw = U[cellIdx].magnitude() / y_[face.idx()];
-            Scalar uStar = Cmu25_ * std::sqrt(k_[cellIdx]);
-            Scalar uPlus =
+            const Scalar magGradUw = U[cellIdx].magnitude() / y_[face.idx()];
+            const Scalar uStar = Cmu25_ * std::sqrt(k_[cellIdx]);
+            const Scalar uPlus =
                 std::log(std::max(coeffs_.E * yPlus_[face.idx()], S(1.0)))
               / coeffs_.kappa;
-            Scalar uTau2 = uStar * magGradUw * y_[face.idx()] / (uPlus);
+            const Scalar uTau2 = uStar * magGradUw * y_[face.idx()] / uPlus;
 
             GWall[face.idx()] =
                 uTau2 * uTau2
@@ -976,12 +970,12 @@ void kOmegaSST::overrideWallCellProduction
 
     for (size_t i = 0; i < wallCellIndices_.size(); ++i)
     {
-        size_t cellIdx = wallCellIndices_[i];
+        const size_t cellIdx = wallCellIndices_[i];
         if (!hasWallOverride[cellIdx]) continue;
 
         // Blend wall production with interior production using
         // wallCellFraction (wall area / total boundary area)
-        Scalar f = wallCellFraction_[i];
+        const Scalar f = wallCellFraction_[i];
         productionK[cellIdx] =
             std::lerp(productionK[cellIdx], wallProductionAccum[cellIdx], f);
     }
@@ -993,14 +987,14 @@ ScalarField kOmegaSST::strainRate
     const TensorField& gradU
 ) const
 {
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
     ScalarField strainRateMag;
 
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         // S = sqrt(2 * S_ij * S_ij) where S_ij = 0.5*(du_i/dx_j + du_j/dx_i)
-        Scalar symmMagSq = gradU[cellIdx].symm().magnitudeSquared();
+        const Scalar symmMagSq = gradU[cellIdx].symm().magnitudeSquared();
         strainRateMag[cellIdx] = std::sqrt(S(2.0) * symmMagSq);
     }
 
@@ -1009,7 +1003,7 @@ ScalarField kOmegaSST::strainRate
 
 VectorField kOmegaSST::gradientK() const
 {
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
     VectorField gradK;
 
     #pragma omp parallel for schedule(static)
@@ -1026,7 +1020,7 @@ VectorField kOmegaSST::gradientK() const
 
 VectorField kOmegaSST::gradientOmega() const
 {
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
     VectorField gradOmega;
 
     #pragma omp parallel for schedule(static)
@@ -1048,7 +1042,7 @@ ScalarField kOmegaSST::crossDiffusion
     const VectorField& gradOmega
 ) const
 {
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
     ScalarField CD;
 
     #pragma omp parallel for schedule(static)
@@ -1097,7 +1091,7 @@ void kOmegaSST::updateYPlus()
     for (size_t faceIdx : wallFunctionFaceIndices_)
     {
         const auto& face = mesh_.faces()[faceIdx];
-        size_t cellIdx = face.ownerCell();
+        const size_t cellIdx = face.ownerCell();
 
         yPlus_[face.idx()] =
             Cmu25_ * std::sqrt(k_[cellIdx]) * y_[face.idx()] / nu_;
@@ -1112,7 +1106,7 @@ void kOmegaSST::boundOmega()
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Scalar omegaLowerBound =
+        const Scalar omegaLowerBound =
             k_[cellIdx] / (maxViscosityRatio_ * nu_ + vSmallValue);
 
         omega_[cellIdx] =
@@ -1137,7 +1131,7 @@ void kOmegaSST::logFieldDiagnostics() const
 {
     if (!debug_) return;
 
-    size_t numCells = mesh_.numCells();
+    const size_t numCells = mesh_.numCells();
     if (numCells == 0) return;
 
     Scalar kMin = k_[0];
@@ -1167,7 +1161,7 @@ void kOmegaSST::logFieldDiagnostics() const
         nSum += nut_[i];
     }
 
-    Scalar n = S(numCells);
+    const Scalar n = S(numCells);
 
     Logger::subsection("Turbulence field statistics");
     Logger::scalarStat("k",     kMin, kMax, kSum / n);

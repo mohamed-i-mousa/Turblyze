@@ -457,7 +457,7 @@ private:
         ScalarField& transposeSourceX,
         ScalarField& transposeSourceY,
         ScalarField& transposeSourceZ
-    );
+    ) const;
 
     /**
      * @brief Solve a single momentum component equation
