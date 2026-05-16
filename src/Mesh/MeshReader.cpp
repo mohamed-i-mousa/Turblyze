@@ -14,13 +14,12 @@
 #include "ErrorHandler.h"
 
 
-// ******************************* Constructor ********************************
+// ************************* Special Member Functions *************************
 
 MeshReader::MeshReader(const std::string& filePath)
 {
     parseFile(filePath);
 }
-
 
 // *************************** Main parsing method ****************************
 
@@ -76,7 +75,6 @@ void MeshReader::parseFile(const std::string& filePath)
     printSummary();
 }
 
-
 // ************************* Section parsing methods **************************
 
 void MeshReader::parseCommentSection(std::ifstream& ifs) const
@@ -103,12 +101,16 @@ void MeshReader::parseCommentSection(std::ifstream& ifs) const
     }
 }
 
+
 void MeshReader::parseDimensionSection(std::ifstream& ifs) const
 {
     std::string dimension;
-    ifs >> dimension;
+    if (!(ifs >> dimension) || dimension.empty() || dimension.back() != ')')
+    {
+        FatalError("Malformed dimension section in mesh file.");
+    }
 
-    // Remove trailing parentheses
+    // Remove trailing parenthesis
     dimension.pop_back();
 
     if (dimension != "3")
@@ -116,6 +118,7 @@ void MeshReader::parseDimensionSection(std::ifstream& ifs) const
         FatalError("This code doesn't handle 2D geometries!");
     }
 }
+
 
 void MeshReader::parseNodesSection
 (
@@ -195,6 +198,7 @@ void MeshReader::parseNodesSection
     }
 }
 
+
 void MeshReader::parseCellsSection
 (
     std::ifstream& ifs,
@@ -214,6 +218,7 @@ void MeshReader::parseCellsSection
         cells_.resize(lastIdx);
     }
 }
+
 
 void MeshReader::parseFacesSection
 (
@@ -340,7 +345,16 @@ void MeshReader::parseFacesSection
             // If mixed elements, the first item is the
             // node count and must be skipped.
             const size_t nodeStart = hasMixedElements ? 1 : 0;
-            const size_t nodeEnd   = hexItems.size() - 2;
+
+            if (hexItems.size() < 2)
+            {
+                FatalError
+                (
+                    "Malformed face data line for face idx: "
+                  + std::to_string(faceIdx)
+                );
+            }
+            const size_t nodeEnd = hexItems.size() - 2;
 
             const std::string_view ownerHex = hexItems[hexItems.size() - 2];
             const std::string_view neighborHex = hexItems[hexItems.size() - 1];
@@ -385,6 +399,7 @@ void MeshReader::parseFacesSection
     }
 }
 
+
 void MeshReader::parseBoundariesSection
 (
     std::ifstream& ifs,
@@ -420,7 +435,6 @@ void MeshReader::parseBoundariesSection
         }
     }
 }
-
 
 // ************************* Post-processing methods **************************
 
@@ -485,6 +499,7 @@ void MeshReader::buildTopology()
     }
 }
 
+
 void MeshReader::validateMesh() const
 {
     for (size_t faceIdx = 0; faceIdx < faces_.size(); ++faceIdx)
@@ -502,6 +517,7 @@ void MeshReader::validateMesh() const
         }
     }
 }
+
 
 void MeshReader::printSummary() const
 {
@@ -522,7 +538,6 @@ void MeshReader::printSummary() const
         << boundaryPatches_.size() << '\n';
 }
 
-
 // ************************* Static utility methods ***************************
 
 PatchType MeshReader::mapFluentBCToEnum(std::string_view fluentType)
@@ -540,6 +555,7 @@ PatchType MeshReader::mapFluentBCToEnum(std::string_view fluentType)
 
     return PatchType::UNDEFINED;
 }
+
 
 size_t MeshReader::hexToDec(std::string_view hexStr)
 {
@@ -570,6 +586,7 @@ size_t MeshReader::hexToDec(std::string_view hexStr)
     return decVal;
 }
 
+
 size_t MeshReader::strToDec(std::string_view decStr)
 {
     size_t decVal = 0;
@@ -599,6 +616,7 @@ size_t MeshReader::strToDec(std::string_view decStr)
 
     return decVal;
 }
+
 
 size_t MeshReader::safeFluentIndexConvert
 (
