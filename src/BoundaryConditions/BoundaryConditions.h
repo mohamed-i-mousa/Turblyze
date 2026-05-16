@@ -73,19 +73,6 @@ public:
     );
 
     /**
-     * @brief Set fixed vector value boundary condition
-     * @param patchName Name of the boundary patch
-     * @param fieldName Name of the field
-     * @param value Vector value to fix at boundary
-     */
-    void setFixedValue
-    (
-        const std::string& patchName,
-        const std::string& fieldName,
-        const Vector& value
-    );
-
-    /**
      * @brief Set fixed scalar gradient boundary condition
      * @param patchName Name of the boundary patch
      * @param fieldName Name of the field
@@ -177,30 +164,12 @@ public:
      * @param fieldName Name of the field
      * @param phi Scalar field
      * @param face Boundary face
-     * @param componentIdx Optional vector component index for extracting
-     *        a scalar from a vector BC (0=x, 1=y, 2=z)
      * @return Boundary value based on boundary condition
      */
     [[nodiscard]] Scalar boundaryFaceValue
     (
         const std::string& fieldName,
         const ScalarField& phi,
-        const Face& face,
-        std::optional<int> componentIdx = std::nullopt
-    ) const;
-
-    /**
-     * @brief Calculate boundary face value for vector field
-     * @param fieldName Name of the field (e.g., "U")
-     * @param phi Vector field
-     * @param face Boundary face
-     * @return Boundary vector value based on boundary condition
-     * @note Defaults to zero-gradient if no BC is specified for the face
-     */
-    [[nodiscard]] Vector boundaryVectorFaceValue
-    (
-        const std::string& fieldName,
-        const VectorField& phi,
         const Face& face
     ) const;
 

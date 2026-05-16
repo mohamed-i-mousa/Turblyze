@@ -66,8 +66,6 @@ public:
      *        std::numeric_limits<Scalar>::quiet_NaN() before filling in
      *        specific overrides. Faces left as NaN fall back to the BC
      *        manager. Pass nullptr to bypass the override entirely
-     * @param componentIdx For vector field components (0=x, 1=y, 2=z),
-     *        used to extract scalar from vector BCs
      * @return Gradient vector at the specified cell
      */
     [[nodiscard]] Vector cellGradient
@@ -75,8 +73,7 @@ public:
         const std::string& fieldName,
         const ScalarField& phi,
         size_t cellIdx,
-        const FaceData<Scalar>* boundaryFaceValues = nullptr,
-        std::optional<int> componentIdx = std::nullopt
+        const FaceData<Scalar>* boundaryFaceValues = nullptr
     ) const;
 
     /**
@@ -101,8 +98,7 @@ public:
         const ScalarField& phi,
         const Vector& gradPhiP,
         const Vector& gradPhiN,
-        size_t faceIndex,
-        std::optional<int> componentIdx = std::nullopt
+        size_t faceIndex
     ) const;
 
     /**
@@ -116,14 +112,25 @@ public:
      * @param fieldName Name of the field for BC lookup on boundary faces
      * @param phi Cell-centered scalar field
      * @param gradPhi Cell-centered gradient field (modified in place)
-     * @param componentIdx For vector field components (0=x, 1=y, 2=z)
      */
     void limitGradient
     (
         const std::string& fieldName,
         const ScalarField& phi,
-        VectorField& gradPhi,
-        std::optional<int> componentIdx = std::nullopt
+        VectorField& gradPhi
+    ) const;
+
+    /**
+     * @brief Compute a limited cell-centered gradient field
+     * @param fieldName Name of the field for BC lookup
+     * @param phi Cell-centered scalar field
+     * @param gradPhi Output gradient field (overwritten, then limited)
+     */
+    void fieldGradient
+    (
+        const std::string& fieldName,
+        const ScalarField& phi,
+        VectorField& gradPhi
     ) const;
 
 
@@ -158,8 +165,7 @@ private:
         const std::string& fieldName,
         const ScalarField& phi,
         const Vector& cellGradient,
-        const Face& face,
-        std::optional<int> componentIdx = std::nullopt
+        const Face& face
     ) const;
 
     /// Pre-compute inverse of ATA matrix for each cell

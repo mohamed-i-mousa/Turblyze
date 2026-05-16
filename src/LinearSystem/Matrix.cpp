@@ -13,7 +13,7 @@
 #include "ErrorHandler.h"
 #include "LinearInterpolation.h"
 
-// ************************* Constructor & Destructor *************************
+// ************************* Special Member Functions *************************
 
 Matrix::Matrix
 (
@@ -161,7 +161,6 @@ void Matrix::relax(Scalar alpha, const ScalarField& phiPrev)
     }
 }
 
-
 // ***************************** Private Methods *****************************
 
 void Matrix::clear()
@@ -170,33 +169,6 @@ void Matrix::clear()
     matrixA_.setZero();
     vectorB_.setZero();
     lastRelaxationFactor_ = S(0.0);
-}
-
-
-Scalar Matrix::extractBoundaryScalar
-(
-    const BoundaryData& bc,
-    std::optional<int> component
-) noexcept
-{
-    if (component && bc.valueType() == BCValueType::VECTOR)
-    {
-        const Vector& v = bc.vectorValue();
-        switch (*component)
-        {
-            case 0: return v.x();
-            case 1: return v.y();
-            case 2: return v.z();
-            default:
-                FatalError
-                (
-                    "extractBoundaryScalar: "
-                    "component index out of range"
-                );
-        }
-    }
-
-    return bc.scalarValue();
 }
 
 
@@ -241,21 +213,16 @@ void Matrix::assembleInternalFace
 {
     const size_t ownerIdx = face.ownerCell();
     const size_t neighborIdx = face.neighborCell().value();
-
     const Vector Sf = face.normal() * face.projectedArea();
-
     const Vector dPN =
         mesh_.cells()[neighborIdx].centroid()
       - mesh_.cells()[ownerIdx].centroid();
-
     const Scalar dPNMag = dPN.magnitude();
     const Vector ePN = dPN / (dPNMag + vSmallValue);
 
     // Orthogonal component (over-relaxed)
     const Vector Ef = (dot(Sf, Sf) / dot(Sf, ePN)) * ePN;
-
     const Scalar Gammaf = faceDiffusionCoefficient(face, equation);
-
     const Scalar aDiff = Gammaf * Ef.magnitude() / (dPNMag + vSmallValue);
 
     // Convection coefficients
@@ -294,8 +261,7 @@ void Matrix::assembleInternalFace
             equation.phi,
             gradPhiP,
             gradPhiN,
-            face.idx(),
-            equation.componentIdx
+            face.idx()
         );
 
     const Scalar nonOrthogonalFlux = Gammaf * dot(gradPhif, Tf);
@@ -331,19 +297,13 @@ void Matrix::assembleBoundaryFace
 ) const
 {
     const size_t ownerIdx = face.ownerCell();
-
     const BoundaryData& bc =
         bcManager_.fieldBC(face.patch()->get().patchName(), equation.fieldName);
-
     const Vector Sf = face.normal() * face.projectedArea();
-
     const Vector ePf = face.dPf().normalized();
     const Scalar dPfMag = face.dPfMag();
-
     const Vector Ef = (dot(Sf, Sf) / dot(Sf, ePf)) * ePf;
-
     const Scalar Gammaf = faceDiffusionCoefficient(face, equation);
-
     const Scalar aDiff = Gammaf * Ef.magnitude() / (dPfMag + vSmallValue);
 
     using enum BCType;
@@ -362,7 +322,7 @@ void Matrix::assembleBoundaryFace
         }
         else
         {
-            phiB = extractBoundaryScalar(bc, equation.componentIdx);
+            phiB = bc.fixedScalarValue();
         }
 
         // Diffusion contribution

@@ -24,12 +24,16 @@ public:
 
     /**
      * @brief Construct constraint manager with field references
-     * @param velocityField Reference to velocity field to constrain
+     * @param Ux Reference to x-velocity component to constrain
+     * @param Uy Reference to y-velocity component to constrain
+     * @param Uz Reference to z-velocity component to constrain
      * @param pressureField Reference to pressure field to constrain
      */
     Constraint
     (
-        VectorField& velocityField,
+        ScalarField& Ux,
+        ScalarField& Uy,
+        ScalarField& Uz,
         ScalarField& pressureField
     ) noexcept;
 
@@ -89,8 +93,14 @@ private:
 
 // Private members
 
-    /// Velocity field reference
-    VectorField& U_;
+    /// x-velocity component reference
+    ScalarField& Ux_;
+
+    /// y-velocity component reference
+    ScalarField& Uy_;
+
+    /// z-velocity component reference
+    ScalarField& Uz_;
 
     /// Pressure field reference
     ScalarField& p_;

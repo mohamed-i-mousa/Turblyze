@@ -8,12 +8,9 @@
  *
  * @enum BCType
  * - Enumeration of boundary condition types
- * 
- * @enum BCValueType
- * - Enumeration of boundary condition value types
- * 
+ *
  * @class BoundaryData
- * - Type-safe storage for BC parameters (scalar/vector values, gradients)
+ * - Type-safe storage for BC parameters (scalar values, gradients)
  * - Enumerations for supported BC types (FIXED_VALUE, ZERO_GRADIENT, etc.)
  * - Validation logic to ensure data consistency
  * - Conditional accessors based on the active configuration
@@ -22,7 +19,6 @@
 #pragma once
 
 #include "Scalar.h"
-#include "Vector.h"
 
 
 enum class BCType
@@ -38,14 +34,6 @@ enum class BCType
 };
 
 
-enum class BCValueType
-{
-    SCALAR,                 ///< Scalar-valued boundary condition
-    VECTOR,                 ///< Vector-valued boundary condition
-    UNDEFINED               ///< Undefined value type
-};
-
-
 class BoundaryData
 {
 public:
@@ -57,12 +45,6 @@ public:
      * @param scalarValue Scalar value to fix at boundary
      */
     void setFixedValue(Scalar scalarValue) noexcept;
-
-    /**
-     * @brief Set fixed vector value boundary condition
-     * @param vectorValue Vector value to fix at boundary
-     */
-    void setFixedValue(const Vector& vectorValue) noexcept;
 
     /**
      * @brief Set fixed scalar gradient boundary condition
@@ -91,25 +73,10 @@ public:
     [[nodiscard]] BCType type() const noexcept { return type_; }
 
     /**
-     * @brief Get value type
-     * @return Type of boundary value (scalar/vector)
-     */
-    [[nodiscard]] BCValueType valueType() const noexcept { return valueType_; }
-
-    /**
      * @brief Get scalar value
      * @return Current scalar boundary value
      */
     [[nodiscard]] Scalar scalarValue() const noexcept { return scalarValue_; }
-
-    /**
-     * @brief Get vector value
-     * @return Current vector boundary value
-     */
-    [[nodiscard]] const Vector& vectorValue() const noexcept
-    {
-        return vectorValue_;
-    }
 
     /**
      * @brief Get scalar gradient
@@ -128,13 +95,6 @@ public:
     [[nodiscard]] Scalar fixedScalarValue() const;
 
     /**
-     * @brief Get fixed vector value
-     * @return Fixed vector value
-     * @note Terminates the program if not a fixed vector value BC
-     */
-    [[nodiscard]] const Vector& fixedVectorValue() const;
-
-    /**
      * @brief Get fixed scalar gradient
      * @return Fixed scalar gradient (normal component)
      * @note Terminates the program if not a fixed scalar gradient BC
@@ -148,14 +108,8 @@ private:
     /// Boundary condition type
     BCType type_ = BCType::UNDEFINED;
 
-    /// Type of boundary value (scalar or vector)
-    BCValueType valueType_ = BCValueType::UNDEFINED;
-
     /// Scalar boundary value
     Scalar scalarValue_ = S(0.0);
-
-    /// Vector boundary value
-    Vector vectorValue_;
 
     /// Scalar boundary gradient (normal component)
     Scalar scalarGradient_ = S(0.0);

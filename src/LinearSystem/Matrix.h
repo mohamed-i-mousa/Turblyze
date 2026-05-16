@@ -200,18 +200,6 @@ private:
     ) const;
 
     /**
-     * @brief Extract scalar boundary value from BC data
-     * @param bc Boundary data for the patch/field
-     * @param component Component index for vector BCs (0=x, 1=y, 2=z)
-     * @return Scalar boundary value
-     */
-    [[nodiscard]] static Scalar extractBoundaryScalar
-    (
-        const BoundaryData& bc,
-        std::optional<int> component
-    ) noexcept;
-
-    /**
      * @brief Resolve the diffusion coefficient at a face.
      * @param face Face being assembled
      * @param equation Transport equation data

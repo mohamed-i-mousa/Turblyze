@@ -17,7 +17,7 @@
 #include "ErrorHandler.h"
 
 
-// ****************************** Constructor ******************************
+// ************************* Special Member Functions *************************
 
 GradientScheme::GradientScheme
 (
@@ -135,8 +135,7 @@ Vector GradientScheme::cellGradient
     const std::string& fieldName,
     const ScalarField& phi,
     size_t cellIndex,
-    const FaceData<Scalar>* boundaryFaceValues,
-    std::optional<int> componentIdx
+    const FaceData<Scalar>* boundaryFaceValues
 ) const
 {
     const Cell& cell = mesh_.cells()[cellIndex];
@@ -199,8 +198,7 @@ Vector GradientScheme::cellGradient
                 (
                     fieldName,
                     phi,
-                    face,
-                    componentIdx
+                    face
                 );
         }
 
@@ -228,8 +226,7 @@ void GradientScheme::limitGradient
 (
     const std::string& fieldName,
     const ScalarField& phi,
-    VectorField& gradPhi,
-    std::optional<int> componentIdx
+    VectorField& gradPhi
 ) const
 {
     const size_t numCells = mesh_.numCells();
@@ -261,8 +258,7 @@ void GradientScheme::limitGradient
                 (
                     fieldName,
                     phi,
-                    face,
-                    componentIdx
+                    face
                 );
             phiMin = std::min(phiMin, phiBound);
             phiMax = std::max(phiMax, phiBound);
@@ -295,14 +291,32 @@ void GradientScheme::limitGradient
 }
 
 
+void GradientScheme::fieldGradient
+(
+    const std::string& fieldName,
+    const ScalarField& phi,
+    VectorField& gradPhi
+) const
+{
+    const size_t numCells = mesh_.numCells();
+
+    #pragma omp parallel for schedule(static)
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    {
+        gradPhi[cellIdx] = cellGradient(fieldName, phi, cellIdx);
+    }
+
+    limitGradient(fieldName, phi, gradPhi);
+}
+
+
 Vector GradientScheme::faceGradient
 (
     const std::string& fieldName,
     const ScalarField& phi,
     const Vector& gradPhiP,
     const Vector& gradPhiN,
-    size_t faceIndex,
-    std::optional<int> componentIdx
+    size_t faceIndex
 ) const
 {
     const Face& face = mesh_.faces()[faceIndex];
@@ -316,8 +330,7 @@ Vector GradientScheme::faceGradient
                 fieldName,
                 phi,
                 gradPhiP,
-                face,
-                componentIdx
+                face
             );
     }
     else
@@ -370,8 +383,7 @@ Vector GradientScheme::boundaryFaceGradient
     const std::string& fieldName,
     const ScalarField& phi,
     const Vector& cellGradient,
-    const Face& face,
-    std::optional<int> componentIdx
+    const Face& face
 ) const
 {
     const BoundaryPatch& patch = face.patch()->get();
@@ -389,24 +401,7 @@ Vector GradientScheme::boundaryFaceGradient
 
             if (bc.type() == FIXED_VALUE)
             {
-                if (componentIdx && bc.valueType() == BCValueType::VECTOR)
-                {
-                    const Vector& v = bc.vectorValue();
-                    switch (*componentIdx)
-                    {
-                        case 0: boundaryValue = v.x(); break;
-                        case 1: boundaryValue = v.y(); break;
-                        case 2: boundaryValue = v.z(); break;
-                    }
-                }
-                else if (bc.valueType() == BCValueType::SCALAR)
-                {
-                    boundaryValue = bc.fixedScalarValue();
-                }
-                else
-                {
-                    return cellGradient;
-                }
+                boundaryValue = bc.fixedScalarValue();
             }
             const Scalar cellValue = phi[face.ownerCell()];
             const Scalar dn = dot(face.dPf(), face.normal());

@@ -6,6 +6,7 @@
 #include "VtkCellOrdering.h"
 
 #include <algorithm>
+#include <optional>
 #include <set>
 #include <unordered_map>
 
@@ -492,7 +493,7 @@ std::vector<vtkIdType> orderPyramidNodes
     }
 
     // The apex is the node NOT in the quad base face
-    size_t apexNode = 0;
+    std::optional<size_t> apexNode;
     for (size_t nodeId : uniqueNodes)
     {
         if
@@ -509,6 +510,11 @@ std::vector<vtkIdType> orderPyramidNodes
             apexNode = nodeId;
             break;
         }
+    }
+
+    if (!apexNode.has_value())
+    {
+        return orderedNodes; // Corrupt pyramid: no apex outside base face
     }
 
     // Compute cell centroid
@@ -540,8 +546,7 @@ std::vector<vtkIdType> orderPyramidNodes
         orderedNodes.push_back(
             static_cast<vtkIdType>(nodeId));
     }
-    orderedNodes.push_back(
-        static_cast<vtkIdType>(apexNode));
+    orderedNodes.push_back(static_cast<vtkIdType>(*apexNode));
 
     return orderedNodes;
 }

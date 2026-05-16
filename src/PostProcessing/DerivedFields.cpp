@@ -30,9 +30,24 @@ ScalarField computeMagnitude(const VectorField& field)
 
 // *********************** Public API: Derived Fields **************************
 
-ScalarField velocityMagnitude(const VectorField& velocity)
+ScalarField velocityMagnitude
+(
+    const ScalarField& Ux,
+    const ScalarField& Uy,
+    const ScalarField& Uz
+)
 {
-    return computeMagnitude(velocity);
+    ScalarField magnitude;
+    for (size_t idx = 0; idx < Ux.size(); ++idx)
+    {
+        magnitude[idx] = std::sqrt
+        (
+            Ux[idx] * Ux[idx]
+          + Uy[idx] * Uy[idx]
+          + Uz[idx] * Uz[idx]
+        );
+    }
+    return magnitude;
 }
 
 ScalarField vorticityMagnitude(const VectorField& vorticity)

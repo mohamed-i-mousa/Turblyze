@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <array>
 #include <map>
 #include <string>
 
@@ -34,7 +35,8 @@ namespace VTK
  * @param filename Output VTK file path (should end with .vtu extension)
  * @param mesh Mesh view (nodes, faces, cells)
  * @param scalarCellFields Map of scalar field names to cell-centered data
- * @param vectorCellFields Map of vector field names to cell-centered data
+ * @param vectorCellFields Map of vector field names to their three scalar
+ *        component fields (x, y, z)
  * @param debug Enable verbose output of cell-type diagnostics
  */
 void writeVtkUnstructuredGrid
@@ -44,7 +46,7 @@ void writeVtkUnstructuredGrid
     const std::map<std::string,
     const ScalarField*>& scalarCellFields = {},
     const std::map<std::string,
-    const VectorField*>& vectorCellFields = {},
+    std::array<const ScalarField*, 3>>& vectorCellFields = {},
     bool debug = false
 );
 

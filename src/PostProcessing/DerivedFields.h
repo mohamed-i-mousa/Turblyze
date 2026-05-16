@@ -17,13 +17,17 @@ namespace VTK
 {
 
 /**
- * @brief Compute velocity magnitude field from velocity vector field
- * @param velocity Input velocity vector field
+ * @brief Compute velocity magnitude field from velocity components
+ * @param Ux x-velocity component field
+ * @param Uy y-velocity component field
+ * @param Uz z-velocity component field
  * @return Scalar field containing velocity magnitude at each cell
  */
 [[nodiscard]] ScalarField velocityMagnitude
 (
-    const VectorField& velocity
+    const ScalarField& Ux,
+    const ScalarField& Uy,
+    const ScalarField& Uz
 );
 
 /**

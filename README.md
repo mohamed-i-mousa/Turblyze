@@ -13,7 +13,7 @@ A 3D incompressible CFD solver implementing the SIMPLE algorithm with k-omega SS
 
 - **Gradient Reconstruction**: Weighted least-squares cell-centered gradients
 
-- **Boundary Conditions**: BC system with smart vector component mapping, direct face-to-patch linking, and robust fallback mechanisms for all boundary types
+- **Boundary Conditions**: flexible per-field BC system with direct face-to-patch linking and robust fallback mechanisms for all boundary types
 
 - **Turbulence Modeling**: k-omega SST model with wall distance calculation and wall functions
 

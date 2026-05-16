@@ -17,7 +17,7 @@
 #include "kOmegaSST.h"
 #include "Constraint.h"
 
-// ************************ Constructor & Destructor ************************
+// ************************* Special Member Functions *************************
 
 SIMPLE::SIMPLE
 (
@@ -55,7 +55,7 @@ void SIMPLE::solve()
     std::cout
         << '\n' << "=== Starting SIMPLE Loop ===" << '\n' << '\n';
 
-    // Reset first-iteration residual references for clean convergence tracking
+    // Reset first-iteration residual references for convergence tracking
     massImbalance0_    = S(0.0);
     velocityResidual0_ = S(0.0);
     pressureResidual0_ = S(0.0);
@@ -63,7 +63,6 @@ void SIMPLE::solve()
     omegaResidual0_    = S(0.0);
 
     int iteration = 0;
-
     bool converged = false;
 
     while (!converged && iteration < maxIterations_)
@@ -78,19 +77,15 @@ void SIMPLE::solve()
             std::cout << " Iteration " << iteration + 1 << '\n';
         }
 
-        UPrev_ = U_;
-        UAvgPrevf_ = UAvgf_;
+        UxPrev_ = Ux_;
+        UyPrev_ = Uy_;
+        UzPrev_ = Uz_;
+        UxAvgPrevf_ = UxAvgf_;
+        UyAvgPrevf_ = UyAvgf_;
+        UzAvgPrevf_ = UzAvgf_;
         RhieChowFlowRatePrev_ = RhieChowFlowRate_;
 
-        const size_t numCells = mesh_.numCells();
-
-        #pragma omp parallel for schedule(static)
-        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-        {
-            gradP_[cellIdx] = gradientScheme_.cellGradient("p", p_, cellIdx);
-        }
-
-        gradientScheme_.limitGradient("p", p_, gradP_);
+        gradientScheme_.fieldGradient("p", p_, gradP_);
 
         solveMomentumEquations();
 
@@ -141,11 +136,15 @@ void SIMPLE::initialize
 )
 {
     matrixConstruct_ = std::make_unique<Matrix>(mesh_, bcManager_);
-    constraintSystem_ = std::make_unique<Constraint>(U_, p_);
+    constraintSystem_ = std::make_unique<Constraint>(Ux_, Uy_, Uz_, p_);
 
-    U_.setAll(initialVelocity);
+    Ux_.setAll(initialVelocity.x());
+    Uy_.setAll(initialVelocity.y());
+    Uz_.setAll(initialVelocity.z());
+    UxAvgf_.setAll(initialVelocity.x());
+    UyAvgf_.setAll(initialVelocity.y());
+    UzAvgf_.setAll(initialVelocity.z());
     p_.setAll(initialPressure);
-    UAvgf_.setAll(initialVelocity);
 
     // Initialize RhieChowFlowRate_ with linear interpolation
     const size_t numFaces = mesh_.numFaces();
@@ -158,11 +157,21 @@ void SIMPLE::initialize
         
         if (face.isBoundary())
         {
-            Uf = bcManager_.boundaryVectorFaceValue("U", U_, face);
+            Uf = Vector
+            (
+                bcManager_.boundaryFaceValue("Ux", Ux_, face),
+                bcManager_.boundaryFaceValue("Uy", Uy_, face),
+                bcManager_.boundaryFaceValue("Uz", Uz_, face)
+            );
         }
         else
         {
-            Uf = interpolateToFace(face, U_);
+            Uf = Vector
+            (
+                interpolateToFace(face, Ux_),
+                interpolateToFace(face, Uy_),
+                interpolateToFace(face, Uz_)
+            );
         }
 
         const Vector Sf = face.normal() * face.projectedArea();
@@ -202,23 +211,13 @@ void SIMPLE::solveMomentumEquations()
     const size_t numFaces = mesh_.numFaces();
 
     ScalarField nuEff;
-
-    // Extract velocity components
-    ScalarField Ux = extractComponent(U_, Component::X);
-    ScalarField Uy = extractComponent(U_, Component::Y);
-    ScalarField Uz = extractComponent(U_, Component::Z);
-
-    // Extract previous-iteration components
-    ScalarField UxPrev = extractComponent(UPrev_, Component::X);
-    ScalarField UyPrev = extractComponent(UPrev_, Component::Y);
-    ScalarField UzPrev = extractComponent(UPrev_, Component::Z);
-
     ScalarField UxSource;
     ScalarField UySource;
     ScalarField UzSource;
 
     // Reset diagonals accumulator
     DU_.setAll(0.0);
+    DUComputed_ = false;
 
     // Build effective viscosity and pressure gradient source
     #pragma omp parallel for schedule(static)
@@ -290,16 +289,16 @@ void SIMPLE::solveMomentumEquations()
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         gradUx[cellIdx] =
-            gradientScheme_.cellGradient("U", Ux, cellIdx, nullptr, 0);
+            gradientScheme_.cellGradient("Ux", Ux_, cellIdx);
         gradUy[cellIdx] =
-            gradientScheme_.cellGradient("U", Uy, cellIdx, nullptr, 1);
+            gradientScheme_.cellGradient("Uy", Uy_, cellIdx);
         gradUz[cellIdx] =
-            gradientScheme_.cellGradient("U", Uz, cellIdx, nullptr, 2);
+            gradientScheme_.cellGradient("Uz", Uz_, cellIdx);
     }
 
-    gradientScheme_.limitGradient("U", Ux, gradUx, 0);
-    gradientScheme_.limitGradient("U", Uy, gradUy, 1);
-    gradientScheme_.limitGradient("U", Uz, gradUz, 2);
+    gradientScheme_.limitGradient("Ux", Ux_, gradUx);
+    gradientScheme_.limitGradient("Uy", Uy_, gradUy);
+    gradientScheme_.limitGradient("Uz", Uz_, gradUz);
 
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -341,48 +340,45 @@ void SIMPLE::solveMomentumEquations()
     // Solve momentum equations for each component
     TransportEquation equationUx
     {
-        .fieldName      = "U",
-        .phi            = Ux,
+        .fieldName      = "Ux",
+        .phi            = Ux_,
         .flowRate       = std::cref(RhieChowFlowRatePrev_),
         .convScheme     = std::cref(convectionScheme_.momentum()),
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace),
         .source         = UxSource,
         .gradPhi        = gradUx,
-        .gradScheme     = gradientScheme_,
-        .componentIdx   = 0
+        .gradScheme     = gradientScheme_
     };
-    solveMomentumComponent(Component::X, equationUx, UxPrev);
+    solveMomentumEquation(equationUx, UxPrev_);
 
     TransportEquation equationUy
     {
-        .fieldName      = "U",
-        .phi            = Uy,
+        .fieldName      = "Uy",
+        .phi            = Uy_,
         .flowRate       = std::cref(RhieChowFlowRatePrev_),
         .convScheme     = std::cref(convectionScheme_.momentum()),
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace),
         .source         = UySource,
         .gradPhi        = gradUy,
-        .gradScheme     = gradientScheme_,
-        .componentIdx   = 1
+        .gradScheme     = gradientScheme_
     };
-    solveMomentumComponent(Component::Y, equationUy, UyPrev);
+    solveMomentumEquation(equationUy, UyPrev_);
 
     TransportEquation equationUz
     {
-        .fieldName      = "U",
-        .phi            = Uz,
+        .fieldName      = "Uz",
+        .phi            = Uz_,
         .flowRate       = std::cref(RhieChowFlowRatePrev_),
         .convScheme     = std::cref(convectionScheme_.momentum()),
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace),
         .source         = UzSource,
         .gradPhi        = gradUz,
-        .gradScheme     = gradientScheme_,
-        .componentIdx   = 2
+        .gradScheme     = gradientScheme_
     };
-    solveMomentumComponent(Component::Z, equationUz, UzPrev);
+    solveMomentumEquation(equationUz, UzPrev_);
 
     // Calculate DUf_ field using complete DU_
     #pragma omp parallel for schedule(static)
@@ -426,11 +422,19 @@ void SIMPLE::updateRhieChowFlowRate()
 
         if (face.isBoundary())
         {
-            UAvgf_[faceIdx] =
-                bcManager_.boundaryVectorFaceValue("U", U_, face);
+            UxAvgf_[faceIdx] = bcManager_.boundaryFaceValue("Ux", Ux_, face);
+            UyAvgf_[faceIdx] = bcManager_.boundaryFaceValue("Uy", Uy_, face);
+            UzAvgf_[faceIdx] = bcManager_.boundaryFaceValue("Uz", Uz_, face);
+
+            const Vector Uf
+            (
+                UxAvgf_[faceIdx],
+                UyAvgf_[faceIdx],
+                UzAvgf_[faceIdx]
+            );
 
             RhieChowFlowRate_[faceIdx] =
-                dot(UAvgf_[faceIdx], face.normal() * face.projectedArea());
+                dot(Uf, face.normal() * face.projectedArea());
 
             continue;
         }
@@ -439,12 +443,15 @@ void SIMPLE::updateRhieChowFlowRate()
         const size_t N = face.neighborCell().value();
 
         // Linear-interpolated velocity at face
-        const Vector UfLinear = interpolateToFace(face, U_);
+        const Vector UfLinear
+        (
+            interpolateToFace(face, Ux_),
+            interpolateToFace(face, Uy_),
+            interpolateToFace(face, Uz_)
+        );
 
         const Vector gradPAvgf = interpolateToFace(face, gradP_);
-
         const Vector Sf = face.normal() * face.projectedArea();
-
         const Vector gradPf =
             gradientScheme_.faceGradient
             (
@@ -454,12 +461,18 @@ void SIMPLE::updateRhieChowFlowRate()
                 gradP_[N],
                 faceIdx
             );
+        const Vector UfPrev
+        (
+            UxAvgPrevf_[faceIdx],
+            UyAvgPrevf_[faceIdx],
+            UzAvgPrevf_[faceIdx]
+        );
 
         RhieChowFlowRate_[faceIdx] =
             dot(UfLinear, Sf)
           - dot((DUf_[faceIdx] * (gradPf - gradPAvgf)), Sf)
           + (S(1.0) - alphaU_)
-          * (RhieChowFlowRatePrev_[faceIdx] - dot(UAvgPrevf_[faceIdx], Sf));
+          * (RhieChowFlowRatePrev_[faceIdx] - dot(UfPrev, Sf));
     }
 }
 
@@ -469,15 +482,7 @@ void SIMPLE::solvePressureCorrection()
     const size_t numCells = mesh_.numCells();
 
     VectorField gradPCorrPrecomputed;
-
-    #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-    {
-        gradPCorrPrecomputed[cellIdx] =
-            gradientScheme_.cellGradient("pCorr", pCorr_, cellIdx);
-    }
-
-    gradientScheme_.limitGradient("pCorr", pCorr_, gradPCorrPrecomputed);
+    gradientScheme_.fieldGradient("pCorr", pCorr_, gradPCorrPrecomputed);
 
     // Compute mass imbalance source term
     ScalarField massImbalance;
@@ -521,7 +526,6 @@ void SIMPLE::solvePressureCorrection()
 
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
     pCorrSolution(pCorr_.data(), eIdx(numCells));
-
     pressureSolver_.solveWithPCG(pCorrSolution, matrixA, vectorB);
 
     if (debug_)
@@ -551,20 +555,9 @@ void SIMPLE::correctVelocity()
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        U_[cellIdx].setX
-        (
-            U_[cellIdx].x() - DU_[cellIdx] * gradPCorr_[cellIdx].x()
-        );
-
-        U_[cellIdx].setY
-        (
-            U_[cellIdx].y() - DU_[cellIdx] * gradPCorr_[cellIdx].y()
-        );
-
-        U_[cellIdx].setZ
-        (
-            U_[cellIdx].z() - DU_[cellIdx] * gradPCorr_[cellIdx].z()
-        );
+        Ux_[cellIdx] -= DU_[cellIdx] * gradPCorr_[cellIdx].x();
+        Uy_[cellIdx] -= DU_[cellIdx] * gradPCorr_[cellIdx].y();
+        Uz_[cellIdx] -= DU_[cellIdx] * gradPCorr_[cellIdx].z();
     }
 
     const auto velocityConstraints =
@@ -587,12 +580,15 @@ void SIMPLE::correctVelocity()
 
         if (face.isBoundary())
         {
-            UAvgf_[faceIdx] =
-                bcManager_.boundaryVectorFaceValue("U", U_, face);
+            UxAvgf_[faceIdx] = bcManager_.boundaryFaceValue("Ux", Ux_, face);
+            UyAvgf_[faceIdx] = bcManager_.boundaryFaceValue("Uy", Uy_, face);
+            UzAvgf_[faceIdx] = bcManager_.boundaryFaceValue("Uz", Uz_, face);
         }
         else
         {
-            UAvgf_[faceIdx] = interpolateToFace(face, U_);
+            UxAvgf_[faceIdx] = interpolateToFace(face, Ux_);
+            UyAvgf_[faceIdx] = interpolateToFace(face, Uy_);
+            UzAvgf_[faceIdx] = interpolateToFace(face, Uz_);
         }
     }
 }
@@ -683,7 +679,6 @@ void SIMPLE::correctFlowRate()
             );
 
         const Vector Sf = face.normal() * face.projectedArea();
-
         const Scalar flowRateCorrection =
             DUf_[faceIdx] * dot(gradPCorrf, Sf);
 
@@ -699,10 +694,6 @@ void SIMPLE::solveTurbulence()
         // Recompute velocity gradients from corrected velocity
         const size_t numCells = mesh_.numCells();
 
-        ScalarField Ux = extractComponent(U_, Component::X);
-        ScalarField Uy = extractComponent(U_, Component::Y);
-        ScalarField Uz = extractComponent(U_, Component::Z);
-
         VectorField gUx;
         VectorField gUy;
         VectorField gUz;
@@ -711,16 +702,16 @@ void SIMPLE::solveTurbulence()
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
             gUx[cellIdx] =
-                gradientScheme_.cellGradient("U", Ux, cellIdx, nullptr, 0);
+                gradientScheme_.cellGradient("Ux", Ux_, cellIdx);
             gUy[cellIdx] =
-                gradientScheme_.cellGradient("U", Uy, cellIdx, nullptr, 1);
+                gradientScheme_.cellGradient("Uy", Uy_, cellIdx);
             gUz[cellIdx] =
-                gradientScheme_.cellGradient("U", Uz, cellIdx, nullptr, 2);
+                gradientScheme_.cellGradient("Uz", Uz_, cellIdx);
         }
 
-        gradientScheme_.limitGradient("U", Ux, gUx, 0);
-        gradientScheme_.limitGradient("U", Uy, gUy, 1);
-        gradientScheme_.limitGradient("U", Uz, gUz, 2);
+        gradientScheme_.limitGradient("Ux", Ux_, gUx);
+        gradientScheme_.limitGradient("Uy", Uy_, gUy);
+        gradientScheme_.limitGradient("Uz", Uz_, gUz);
 
         #pragma omp parallel for schedule(static)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -742,7 +733,7 @@ void SIMPLE::solveTurbulence()
             omegaPrev[cellIdx] = omegaField[cellIdx];
         }
 
-        turbulenceModel_->solve(U_, RhieChowFlowRate_, gradU_);
+        turbulenceModel_->solve(Ux_, Uy_, Uz_, RhieChowFlowRate_, gradU_);
 
         // Compute normalised change: ||x - x_prev|| / ||x_prev||
         Scalar kDiffSq = 0.0;
@@ -853,31 +844,6 @@ bool SIMPLE::checkConvergence()
 
 // ****************************** Private Methods ******************************
 
-ScalarField SIMPLE::extractComponent
-(
-    const VectorField& V,
-    Component component
-)
-{
-    const size_t numCells = V.size();
-
-    ScalarField result;
-
-    #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-    {
-        switch (component)
-        {
-            case Component::X: result[cellIdx] = V[cellIdx].x(); break;
-            case Component::Y: result[cellIdx] = V[cellIdx].y(); break;
-            case Component::Z: result[cellIdx] = V[cellIdx].z(); break;
-        }
-    }
-
-    return result;
-}
-
-
 Scalar SIMPLE::massImbalance() const
 {
     // Dimensionless normalized continuity residual per cell, averaged
@@ -919,9 +885,14 @@ Scalar SIMPLE::velocityResidual() const
     #pragma omp parallel for schedule(static) reduction(+:num, den)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        const Vector d = U_[cellIdx] - UPrev_[cellIdx];
-        num += d.magnitudeSquared();
-        den += UPrev_[cellIdx].magnitudeSquared();
+        const Scalar dx = Ux_[cellIdx] - UxPrev_[cellIdx];
+        const Scalar dy = Uy_[cellIdx] - UyPrev_[cellIdx];
+        const Scalar dz = Uz_[cellIdx] - UzPrev_[cellIdx];
+
+        num += dx * dx + dy * dy + dz * dz;
+        den += UxPrev_[cellIdx] * UxPrev_[cellIdx]
+             + UyPrev_[cellIdx] * UyPrev_[cellIdx]
+             + UzPrev_[cellIdx] * UzPrev_[cellIdx];
     }
 
     num = std::sqrt(num + vSmallValue);
@@ -1003,9 +974,8 @@ void SIMPLE::transposeGradientSource
 }
 
 
-void SIMPLE::solveMomentumComponent
+void SIMPLE::solveMomentumEquation
 (
-    Component component,
     TransportEquation& eq,
     const ScalarField& componentPrev
 )
@@ -1020,7 +990,7 @@ void SIMPLE::solveMomentumComponent
     const size_t numCells = mesh_.numCells();
 
     // DU_ is identical for all 3 momentum components — compute only once
-    if (component == Component::X)
+    if (DUComputed_ == false)
     {
         #pragma omp parallel for schedule(static)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -1029,9 +999,11 @@ void SIMPLE::solveMomentumComponent
                 mesh_.cells()[cellIdx].volume()
               / (matrixA.coeff(eIdx(cellIdx), eIdx(cellIdx)) + vSmallValue);
         }
+        DUComputed_ = true;
     }
 
-    // Map phi directly as Eigen vector (zero-copy solve)
+    // Map phi directly as Eigen vector: the zero-copy solve writes the
+    // result straight into the bound velocity component field
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
     solutionMap(eq.phi.data(), eIdx(numCells));
 
@@ -1044,32 +1016,12 @@ void SIMPLE::solveMomentumComponent
 
     if (debug_)
     {
-        const char* label = "U*";
-        switch (component)
-        {
-            case Component::X: label = "Ux"; break;
-            case Component::Y: label = "Uy"; break;
-            case Component::Z: label = "Uz"; break;
-        }
-
         Logger::residualRow
         (
-            label,
+            eq.fieldName,
             "BiCGSTAB",
             momentumSolver_.lastIterations(),
             momentumSolver_.lastResidual()
         );
-    }
-
-    // Write solved component back to velocity VectorField
-    #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-    {
-        switch (component)
-        {
-            case Component::X: U_[cellIdx].setX(eq.phi[cellIdx]); break;
-            case Component::Y: U_[cellIdx].setY(eq.phi[cellIdx]); break;
-            case Component::Z: U_[cellIdx].setZ(eq.phi[cellIdx]); break;
-        }
     }
 }

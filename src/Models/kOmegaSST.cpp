@@ -15,7 +15,7 @@
 #include "Logger.h"
 #include "Matrix.h"
 
-// ************************* Constructor & Destructor *************************
+// ************************* Special Member Functions *************************
 
 kOmegaSST::kOmegaSST
 (
@@ -77,7 +77,9 @@ void kOmegaSST::initialize
 
 void kOmegaSST::solve
 (
-    const VectorField& U,
+    const ScalarField& Ux,
+    const ScalarField& Uy,
+    const ScalarField& Uz,
     const FaceFluxField& flowRateFace,
     const TensorField& gradU
 )
@@ -99,11 +101,14 @@ void kOmegaSST::solve
     applyOmegaWallCellValues();
 
     // Override k production at wall-adjacent cells
-    overrideWallCellProduction(U, Pk_);
+    overrideWallCellProduction(Ux, Uy, Uz, Pk_);
 
     // Compute gradients and cross-diffusion
-    const VectorField gradK = gradientK();
-    const VectorField gradOmega = gradientOmega();
+    VectorField gradK;
+    gradientScheme_.fieldGradient("k", k_, gradK);
+    VectorField gradOmega;
+    gradientScheme_.fieldGradient("omega", omega_, gradOmega);
+
     const ScalarField CDkOmega = crossDiffusion(gradK, gradOmega);
 
     // Compute blending functions
@@ -149,7 +154,7 @@ void kOmegaSST::solve
     updateNutWall();
 
     // Update kinematic wall shear stress for diagnostics
-    updateWallShearStress(U);
+    updateWallShearStress(Ux, Uy, Uz);
 
     // Log min/max/mean of k, omega, nut
     logFieldDiagnostics();
@@ -696,7 +701,9 @@ void kOmegaSST::updateTurbulentViscosity
 
 void kOmegaSST::updateWallShearStress
 (
-    const VectorField& U
+    const ScalarField& Ux,
+    const ScalarField& Uy,
+    const ScalarField& Uz
 )
 {
     for (size_t faceIdx : wallFunctionFaceIndices_)
@@ -705,9 +712,10 @@ void kOmegaSST::updateWallShearStress
         const size_t cellIdx = face.ownerCell();
 
         // Project velocity onto wall plane (tangential component)
-        const Scalar normalVelocity = dot(U[cellIdx], face.normal());
+        const Vector Ucell(Ux[cellIdx], Uy[cellIdx], Uz[cellIdx]);
+        const Scalar normalVelocity = dot(Ucell, face.normal());
         const Vector tangentVelocity =
-            U[cellIdx] - face.normal() * normalVelocity;
+            Ucell - face.normal() * normalVelocity;
         const Scalar tangentVelocityMag = tangentVelocity.magnitude();
 
         const Scalar tau =
@@ -920,7 +928,9 @@ void kOmegaSST::limitProduction
 
 void kOmegaSST::overrideWallCellProduction
 (
-    const VectorField& U,
+    const ScalarField& Ux,
+    const ScalarField& Uy,
+    const ScalarField& Uz,
     ScalarField& productionK
 ) const
 {
@@ -951,7 +961,9 @@ void kOmegaSST::overrideWallCellProduction
         else
         {
             // Log layer: G = sqr(uStar*magGradUw*y/uPlus) / (nu*kappa*yPlus)
-            const Scalar magGradUw = U[cellIdx].magnitude() / y_[face.idx()];
+            const Vector Ucell(Ux[cellIdx], Uy[cellIdx], Uz[cellIdx]);
+            const Scalar magGradUw =
+                Ucell.magnitude() / y_[face.idx()];
             const Scalar uStar = Cmu25_ * std::sqrt(k_[cellIdx]);
             const Scalar uPlus =
                 std::log(std::max(coeffs_.E * yPlus_[face.idx()], S(1.0)))
@@ -999,40 +1011,6 @@ ScalarField kOmegaSST::strainRate
     }
 
     return strainRateMag;
-}
-
-VectorField kOmegaSST::gradientK() const
-{
-    const size_t numCells = mesh_.numCells();
-    VectorField gradK;
-
-    #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-    {
-        gradK[cellIdx] = gradientScheme_.cellGradient("k", k_, cellIdx);
-    }
-
-    gradientScheme_.limitGradient("k", k_, gradK);
-
-    return gradK;
-}
-
-
-VectorField kOmegaSST::gradientOmega() const
-{
-    const size_t numCells = mesh_.numCells();
-    VectorField gradOmega;
-
-    #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-    {
-        gradOmega[cellIdx] =
-            gradientScheme_.cellGradient("omega", omega_, cellIdx);
-    }
-
-    gradientScheme_.limitGradient("omega", omega_, gradOmega);
-
-    return gradOmega;
 }
 
 

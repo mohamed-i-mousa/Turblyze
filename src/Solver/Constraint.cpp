@@ -11,14 +11,17 @@
 
 Constraint::Constraint
 (
-    VectorField& velocityField,
+    ScalarField& Ux,
+    ScalarField& Uy,
+    ScalarField& Uz,
     ScalarField& pressureField
 ) noexcept
 :
-    U_(velocityField),
+    Ux_(Ux),
+    Uy_(Uy),
+    Uz_(Uz),
     p_(pressureField)
 {}
-
 
 // ****************************** Setter Methods ******************************
 
@@ -61,13 +64,21 @@ size_t Constraint::applyVelocityConstraints() noexcept
     size_t constraintApplied = 0;
     const Scalar maxMagSq = maxVelocityMagnitude_ * maxVelocityMagnitude_;
 
-    for (size_t cellIdx = 0; cellIdx < U_.size(); ++cellIdx)
+    for (size_t cellIdx = 0; cellIdx < Ux_.size(); ++cellIdx)
     {
-        const Scalar magSq = U_[cellIdx].magnitudeSquared();
+        const Scalar magSq =
+            Ux_[cellIdx] * Ux_[cellIdx]
+          + Uy_[cellIdx] * Uy_[cellIdx]
+          + Uz_[cellIdx] * Uz_[cellIdx];
+
         if (magSq > maxMagSq)
         {
-            const Scalar mag = std::sqrt(magSq);
-            U_[cellIdx] *= maxVelocityMagnitude_ / mag;
+            const Scalar scale =
+                maxVelocityMagnitude_ / std::sqrt(magSq);
+
+            Ux_[cellIdx] *= scale;
+            Uy_[cellIdx] *= scale;
+            Uz_[cellIdx] *= scale;
 
             constraintApplied++;
         }

@@ -91,13 +91,17 @@ public:
      * 5. Solves the k-equation with under-relaxation
      * 6. Updates turbulent viscosity and wall shear stress
      *
-     * @param U Current velocity field
+     * @param Ux Current x-velocity component
+     * @param Uy Current y-velocity component
+     * @param Uz Current z-velocity component
      * @param flowRateFace Face volume flow rates
      * @param gradU Pre-computed velocity gradient tensor field
      */
     void solve
     (
-        const VectorField& U,
+        const ScalarField& Ux,
+        const ScalarField& Uy,
+        const ScalarField& Uz,
         const FaceFluxField& flowRateFace,
         const TensorField& gradU
     );
@@ -407,9 +411,16 @@ private:
      * - Viscous sublayer (y+ < yPlusLam): tau/rho = nu * U_tan / y
      * - Log layer (y+ >= yPlusLam): tau/rho = uTau^2 = Cmu^0.5 * k
      *
-     * @param U Current velocity field
+     * @param Ux Current x-velocity component
+     * @param Uy Current y-velocity component
+     * @param Uz Current z-velocity component
      */
-    void updateWallShearStress(const VectorField& U);
+    void updateWallShearStress
+    (
+        const ScalarField& Ux,
+        const ScalarField& Uy,
+        const ScalarField& Uz
+    );
 
     /// Update y+ field on wall-function faces
     void updateYPlus();
@@ -422,12 +433,6 @@ private:
      * @return Strain rate magnitude per cell
      */
     ScalarField strainRate(const TensorField& gradU) const;
-
-    /// Compute limited cell gradient of k
-    VectorField gradientK() const;
-
-    /// Compute limited cell gradient of omega
-    VectorField gradientOmega() const;
 
     /**
      * @brief Compute cross-diffusion term from k and omega gradients
@@ -510,12 +515,16 @@ private:
 
     /**
      * @brief Override k production at wall-adjacent cells
-     * @param U Current velocity field
+     * @param Ux Current x-velocity component
+     * @param Uy Current y-velocity component
+     * @param Uz Current z-velocity component
      * @param productionK k-production field (mutated in place)
      */
     void overrideWallCellProduction
     (
-        const VectorField& U,
+        const ScalarField& Ux,
+        const ScalarField& Uy,
+        const ScalarField& Uz,
         ScalarField& productionK
     ) const;
 

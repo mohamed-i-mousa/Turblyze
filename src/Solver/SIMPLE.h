@@ -92,7 +92,9 @@ public:
      * @brief Get velocity field
      * @return Const reference to velocity vector field
      */
-    [[nodiscard]] const VectorField& velocity() const noexcept { return U_; }
+    [[nodiscard]] const ScalarField& Ux() const noexcept { return Ux_; }
+    [[nodiscard]] const ScalarField& Uy() const noexcept { return Uy_; }
+    [[nodiscard]] const ScalarField& Uz() const noexcept { return Uz_; }
 
     /**
      * @brief Get pressure field
@@ -312,8 +314,10 @@ private:
 
 // Solution fields
 
-    /// Velocity field
-    VectorField U_;
+    /// Velocity fields
+    ScalarField Ux_;
+    ScalarField Uy_;
+    ScalarField Uz_;
 
     /// Pressure field
     ScalarField p_;
@@ -322,13 +326,19 @@ private:
     ScalarField pCorr_;
 
     /// Velocity from previous iteration
-    VectorField UPrev_;
+    ScalarField UxPrev_;
+    ScalarField UyPrev_;
+    ScalarField UzPrev_;
 
     /// Face velocity field (current iteration)
-    FaceVectorField UAvgf_;
+    FaceData<Scalar> UxAvgf_;
+    FaceData<Scalar> UyAvgf_;
+    FaceData<Scalar> UzAvgf_;
 
     /// Face velocity from previous iteration
-    FaceVectorField UAvgPrevf_;
+    FaceData<Scalar> UxAvgPrevf_;
+    FaceData<Scalar> UyAvgPrevf_;
+    FaceData<Scalar> UzAvgPrevf_;
 
     /// Mass flux through faces (Rhie-Chow)
     FaceFluxField RhieChowFlowRate_;
@@ -341,6 +351,9 @@ private:
 
     /// Face diffusion coefficients for momentum
     FaceFluxField DUf_;
+
+    /// Flag to allow one-time computation of DU_
+    bool DUComputed_ = false;
 
 // Gradient fields
 
@@ -382,11 +395,6 @@ private:
 
     bool debug_ = false;
 
-// Private types
-
-    /// Velocity component selector used in place of raw char/int indices
-    enum class Component : int { X = 0, Y = 1, Z = 2 };
-
 // Algorithm steps (called only by solve())
 
     /// Solve momentum equations for each velocity component
@@ -414,18 +422,6 @@ private:
     [[nodiscard]] bool checkConvergence();
 
 // Private methods
-
-    /**
-     * @brief Extract a single component from a VectorField into a ScalarField
-     * @param V Source vector field
-     * @param component Component to extract (X, Y, or Z)
-     * @return ScalarField containing the extracted component
-     */
-    static ScalarField extractComponent
-    (
-        const VectorField& V,
-        Component component
-    );
 
     /// Compute mass imbalance across domain
     Scalar massImbalance() const;
@@ -466,13 +462,11 @@ private:
      * velocity component. Handles matrix assembly, under-relaxation, and
      * linear solver iteration.
      *
-     * @param component Component to solve (X, Y, or Z)
      * @param eq Transport equation data for this component
      * @param componentPrev Previous iteration velocity component
      */
-    void solveMomentumComponent
+    void solveMomentumEquation
     (
-        Component component,
         TransportEquation& eq,
         const ScalarField& componentPrev
     );

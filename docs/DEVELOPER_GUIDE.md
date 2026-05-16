@@ -114,36 +114,24 @@ Notes:
 - `FIXED_VALUE`: Dirichlet boundary conditions
 - `FIXED_GRADIENT`: Neumann boundary conditions
 - `ZERO_GRADIENT`: Natural boundary conditions
-- `NO_SLIP`: Special case for velocity (vector value = 0)
+- `NO_SLIP`: Special case for velocity (each component fixed to 0)
 - `K_WALL_FUNCTION`: Wall function for turbulent kinetic energy
 - `OMEGA_WALL_FUNCTION`: Wall function for specific dissipation rate
 - `NUT_WALL_FUNCTION`: Wall function for turbulent viscosity
 
 **Value Storage**:
-- `BCValueType::SCALAR` or `BCValueType::VECTOR`
-- Type-safe getters: `fixedScalarValue()`, `fixedScalarGradient()`
-- Vector access: `vectorValue()`, `vectorGradient()`
+- Scalar-only — one `scalarValue_`, one `scalarGradient_`; there is no
+  vector storage (velocity BCs are registered per component)
+- Validated getters: `fixedScalarValue()`, `fixedScalarGradient()`
 
 ### BoundaryConditions Manager
 **Data Structure**: `patchBoundaryData[patchName][fieldName] = BoundaryData`
 
 **Key Features**:
 1. **Direct Patch Lookup**: `Face::patch()` returns `const BoundaryPatch*` directly, linked at startup via `BoundaryConditions::linkFaces()`
-2. **Index-Based Component Extraction**: `calculateBoundaryFaceValue()` accepts an optional `componentIndex` (0=x, 1=y, 2=z) to extract scalar components from vector BCs
+2. **Per-Component Velocity BCs**: velocity has no vector BC type — it is registered as three independent scalar BCs under `"Ux"/"Uy"/"Uz"`. `CFDApplication` splits the case file's `U` vector at registration (`setFixedValue(patch, "Ux", value.x())`, etc.)
 3. **Robust Retrieval**: `fieldBC()` with comprehensive error handling
-4. **Boundary Value Calculation**: `calculateBoundaryFaceValue()` for scalars, `calculateBoundaryVectorFaceValue()` for vectors
-
-**Vector Component Handling**:
-```cpp
-// Index-based component extraction from vector BC
-const Vector& v = bc->fixedVectorValue();
-switch (*componentIndex)
-{
-    case 0: return v.x();
-    case 1: return v.y();
-    case 2: return v.z();
-}
-```
+4. **Boundary Value Calculation**: `boundaryFaceValue()` resolves a face value for any field — every field (`Ux`, `Uy`, `Uz`, `p`, `k`, `omega`, `nut`) is scalar
 
 ### BC Evaluation Logic
 **Scalar Boundary Values**:
@@ -151,12 +139,7 @@ switch (*componentIndex)
 - **ZERO_GRADIENT**: `φf = φOwner`  
 - **FIXED_GRADIENT**: `φf = φOwner + gradient × dn`
   where `dn = dot(dPf, faceNormal)`
-
-**Vector Boundary Values**:
-- **FIXED_VALUE**: `Uf = UBoundary`
-- **NO_SLIP**: `Uf = (0, 0, 0)`
-- **ZERO_GRADIENT**: `Uf = UOwner`
-- **FIXED_GRADIENT**: `Uf = UOwner + gradient × dn`
+- **NO_SLIP**: `φf = 0` (velocity components `Ux`/`Uy`/`Uz`)
 
 **Fallbacks**:
 - Missing BC specifications default to zero-gradient
@@ -184,7 +167,7 @@ switch (*componentIndex)
 **Method**: Corrected interpolation of cell gradients
 
 **Algorithm**:
-1. **Boundary Check**: Use `calculateBoundaryFaceGradient()` for boundary faces
+1. **Boundary Check**: Use `boundaryFaceGradient()` for boundary faces
 2. **Distance Calculation**: `d_PN = centroid_N - centroid_P`
 3. **Average Gradient**: Distance-weighted interpolation via `averageFaceGradient()`
 4. **Consistency Correction**: `correction = (φ_N - φ_P)/|d_PN| - (∇φ_avg · e_PN)`
@@ -195,7 +178,7 @@ switch (*componentIndex)
 - **Formula**: `∇φ_f = g_P × ∇φ_P + g_N × ∇φ_N`
 - **Physical meaning**: Closer cell has more influence
 
-#### Boundary Face Gradients (`calculateBoundaryFaceGradient`)
+#### Boundary Face Gradients (`boundaryFaceGradient`)
 **Approach**: Normal/tangential decomposition
 
 **FIXED_VALUE BC**:
@@ -269,7 +252,7 @@ Uses a unified `TransportEquation` struct to bundle all data for any transport e
 ```cpp
 struct TransportEquation
 {
-    std::string fieldName;              // "U", "k", "pCorr", etc.
+    std::string fieldName;              // "Ux", "k", "pCorr", etc.
     ScalarField& phi;                   // Current field values (mutable for zero-copy solve)
     OptionalRef<FaceFluxField> flowRate = std::nullopt;    // Face flow rates (nullopt = no convection)
     OptionalRef<ConvectionScheme> convScheme = std::nullopt;
@@ -278,7 +261,6 @@ struct TransportEquation
     const ScalarField& source;          // Explicit source term
     const VectorField& gradPhi;         // Pre-computed cell gradients
     const GradientScheme& gradScheme;
-    std::optional<int> componentIndex = std::nullopt;  // Vector component (0=x, 1=y, 2=z)
 };
 ```
 
@@ -416,7 +398,7 @@ by `if(APPLE)` and does not affect Linux builds.
 
 Entry point: `SIMPLE::solve()` performs the outer iteration until convergence or `maxIterations`:
 1) Store previous-iteration fields (U, face velocities, flow rates), compute gradP.
-2) `solveMomentumEquations()`: extracts Ux/Uy/Uz components, computes velocity gradients once into `gradU_` member, solves each component via `solveMomentumComponent()` with `buildMatrix()` + Patankar relaxation.
+2) `solveMomentumEquations()`: computes velocity gradients once into the `gradU_` member, then solves the `Ux_`/`Uy_`/`Uz_` component fields the solver owns directly — each via `solveMomentumEquation()` with `buildMatrix()` + Patankar relaxation.
 3) `calculateRhieChowFlowRate()`: compute face velocities and mass fluxes.
 4) `solvePressureCorrection()`: pre-compute mass imbalance source, build and solve p' equation using `buildMatrix()` with face-based diffusion (DUf), no convection.
 5) `correctVelocity()`: update U using `U = U* - D ∇p'`.
@@ -569,7 +551,7 @@ Used by: `Face`, `Cell`, `BoundaryData`, `BoundaryPatch`, `CellData<T>`, `FaceDa
 ### Add a new boundary condition
 1) **Extend enums**: Add new type to `BCType` enum in `BoundaryData.h`
 2) **Update BoundaryData**: Add setters/getters for new BC type
-3) **Extend evaluation**: Update `calculateBoundaryFaceValue()` and `calculateBoundaryFaceGradient()`
+3) **Extend evaluation**: Update `BoundaryConditions::boundaryFaceValue()` and `GradientScheme::boundaryFaceGradient()`
 4) **Matrix integration**: Update boundary handling in `Matrix::buildMatrix()`
 5) **Case file parsing**: Add parsing support in `CFDApplication::setupBoundaryConditions()`
 
@@ -600,18 +582,18 @@ case BCType::PERIODIC:
 #### Boundary Conditions Testing
 **Testing Strategy**: Add comprehensive std::cout debugging to trace:
 1. **Patch Registration**: Verify patch names, zones, face ranges
-2. **BC Storage**: Confirm type-safe storage of scalar/vector values
+2. **BC Storage**: Confirm type-safe storage of scalar values and gradients
 3. **Field Lookup**: Test `fieldBC()` with various field names
-4. **Vector Components**: Verify `Ux`/`Uy`/`Uz` → `U` fallback
-5. **Boundary Values**: Test `calculateBoundaryFaceValue()` for all BC types
+4. **Per-Component Velocity**: Verify `Ux`/`Uy`/`Uz` are registered as independent scalar BCs
+5. **Boundary Values**: Test `boundaryFaceValue()` for all BC types
 6. **Patch Linking**: Verify `Face::patch()` returns correct patch after `linkFaces()`
 
 **Key Tests**:
 ```cpp
 // Test all BC types
-setFixedValue("inlet", "U", Vector(1,0,0));
+setFixedValue("inlet", "Ux", 1.0);   // velocity is per component
 setZeroGradient("outlet", "p");
-setNoSlip("wall", "U");
+setNoSlip("wall", "Ux");
 setFixedGradient("interface", "T", 100.0);
 ```
 

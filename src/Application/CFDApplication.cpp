@@ -6,6 +6,7 @@
 #include "CFDApplication.h"
 
 #include <iostream>
+#include <array>
 #include <map>
 #include <set>
 #include <algorithm>
@@ -30,7 +31,7 @@
 #include <sstream>
 #include <iomanip>
 
-// ******************************* Constructor *******************************
+// ************************* Special Member Functions *************************
 
 CFDApplication::CFDApplication(const std::string& caseFilePath)
 :
@@ -92,6 +93,8 @@ void CFDApplication::loadCase()
 
     rho_ = physicalProperties.lookup<Scalar>("rho");
     mu_ = physicalProperties.lookup<Scalar>("mu");
+    if (rho_ <= S(0)) FatalError("physicalProperties.rho must be positive.");
+    if (mu_ <= S(0)) FatalError("physicalProperties.mu must be positive.");
 
     // Extract initial conditions
     const auto& initialConditions = caseReader_->section("initialConditions");
@@ -392,15 +395,21 @@ void CFDApplication::setupBoundaryConditions()
             if (bcType == "fixedValue")
             {
                 const Vector value = patchBC.lookup<Vector>("value");
-                bcManager_.setFixedValue(patchName, "U", value);
+                bcManager_.setFixedValue(patchName, "Ux", value.x());
+                bcManager_.setFixedValue(patchName, "Uy", value.y());
+                bcManager_.setFixedValue(patchName, "Uz", value.z());
             }
             else if (bcType == "noSlip")
             {
-                bcManager_.setNoSlip(patchName, "U");
+                bcManager_.setNoSlip(patchName, "Ux");
+                bcManager_.setNoSlip(patchName, "Uy");
+                bcManager_.setNoSlip(patchName, "Uz");
             }
             else if (bcType == "zeroGradient")
             {
-                bcManager_.setZeroGradient(patchName, "U");
+                bcManager_.setZeroGradient(patchName, "Ux");
+                bcManager_.setZeroGradient(patchName, "Uy");
+                bcManager_.setZeroGradient(patchName, "Uz");
             }
             else
             {
@@ -501,20 +510,26 @@ void CFDApplication::setupBoundaryConditions()
 
                 if (valStr == "calculated")
                 {
-                    const BoundaryData& velocityBC =
-                        bcManager_.fieldBC(patchName, "U");
+                    const BoundaryData& UxBC =
+                        bcManager_.fieldBC(patchName, "Ux");
+                    const BoundaryData& UyBC =
+                        bcManager_.fieldBC(patchName, "Uy");
+                    const BoundaryData& UzBC =
+                        bcManager_.fieldBC(patchName, "Uz");
 
                     Scalar UMag = initialVelocity_.magnitude();
 
-                    if
-                    (
-                        velocityBC.type() == BCType::FIXED_VALUE
-                     && velocityBC.valueType() == BCValueType::VECTOR
-                    )
+                    if (UxBC.type() == BCType::FIXED_VALUE)
                     {
-                        UMag = velocityBC.fixedVectorValue().magnitude();
+                        const Vector velocityBCValue
+                        (
+                            UxBC.fixedScalarValue(),
+                            UyBC.fixedScalarValue(),
+                            UzBC.fixedScalarValue()
+                        );
+                        UMag = velocityBCValue.magnitude();
                     }
-                    else if (velocityBC.type() == BCType::NO_SLIP)
+                    else if (UxBC.type() == BCType::NO_SLIP)
                     {
                         UMag = S(0.0);
                     }
@@ -590,31 +605,33 @@ void CFDApplication::setupBoundaryConditions()
                     const BoundaryData& kPatchBC =
                         bcManager_.fieldBC(patchName, "k");
 
-                    if
-                    (
-                        kPatchBC.type() == BCType::FIXED_VALUE
-                     && kPatchBC.valueType() == BCValueType::SCALAR
-                    )
+                    if (kPatchBC.type() == BCType::FIXED_VALUE)
                     {
                         kValue = kPatchBC.fixedScalarValue();
                     }
                     else
                     {
                         // Compute k from velocity BC
-                        const BoundaryData& velocityBC =
-                            bcManager_.fieldBC(patchName, "U");
+                        const BoundaryData& UxBC =
+                            bcManager_.fieldBC(patchName, "Ux");
+                        const BoundaryData& UyBC =
+                            bcManager_.fieldBC(patchName, "Uy");
+                        const BoundaryData& UzBC =
+                            bcManager_.fieldBC(patchName, "Uz");
 
                         Scalar UMag = initialVelocity_.magnitude();
 
-                        if
-                        (
-                            velocityBC.type() == BCType::FIXED_VALUE
-                         && velocityBC.valueType() == BCValueType::VECTOR
-                        )
+                        if (UxBC.type() == BCType::FIXED_VALUE)
                         {
-                            UMag = velocityBC.fixedVectorValue().magnitude();
+                            const Vector velocityBCValue
+                            (
+                                UxBC.fixedScalarValue(),
+                                UyBC.fixedScalarValue(),
+                                UzBC.fixedScalarValue()
+                            );
+                            UMag = velocityBCValue.magnitude();
                         }
-                        else if (velocityBC.type() == BCType::NO_SLIP)
+                        else if (UxBC.type() == BCType::NO_SLIP)
                         {
                             UMag = S(0.0);
                         }
@@ -913,7 +930,9 @@ void CFDApplication::postProcess()
     std::cout
          << '\n' << "--- 5. Extracting Solution Fields ---" << '\n';
 
-    const VectorField& velocity = solver_->velocity();
+    const ScalarField& Ux = solver_->Ux();
+    const ScalarField& Uy = solver_->Uy();
+    const ScalarField& Uz = solver_->Uz();
     const ScalarField& pressure = solver_->pressure();
 
     if (debug_)
@@ -926,9 +945,9 @@ void CFDApplication::postProcess()
          << '\n' << "--- 6. Post-Processing Results ---" << '\n';
 
     // Calculate velocity magnitude
-    const ScalarField velocityMag = VTK::velocityMagnitude(velocity);
+    const ScalarField velocityMag = VTK::velocityMagnitude(Ux, Uy, Uz);
 
-    if (velocity.size() == 0)
+    if (Ux.size() == 0)
     {
         Warning("Solution fields are empty. Skipping statistics.");
         return;
@@ -940,7 +959,7 @@ void CFDApplication::postProcess()
     Scalar maximumPressure = pressure[0];
     Scalar minimumPressure = pressure[0];
 
-    for (size_t cellIdx = 0; cellIdx < velocity.size(); ++cellIdx)
+    for (size_t cellIdx = 0; cellIdx < Ux.size(); ++cellIdx)
     {
         const Scalar vmag = velocityMag[cellIdx];
         maximumVelocity = std::max(maximumVelocity, vmag);
@@ -949,7 +968,7 @@ void CFDApplication::postProcess()
         maximumPressure = std::max(maximumPressure, pressure[cellIdx]);
         minimumPressure = std::min(minimumPressure, pressure[cellIdx]);
     }
-    averageVelocity /= S(velocity.size());
+    averageVelocity /= S(Ux.size());
 
     std::cout
         << "Flow Statistics:" << '\n';
@@ -971,11 +990,13 @@ void CFDApplication::exportResults()
     std::cout
          << '\n' << "--- 7. Exporting Results to VTK ---" << '\n';
 
-    const VectorField& velocity = solver_->velocity();
+    const ScalarField& Ux = solver_->Ux();
+    const ScalarField& Uy = solver_->Uy();
+    const ScalarField& Uz = solver_->Uz();
     const ScalarField& pressure = solver_->pressure();
 
     // Calculate velocity magnitude
-    const ScalarField velocityMag = VTK::velocityMagnitude(velocity);
+    const ScalarField velocityMag = VTK::velocityMagnitude(Ux, Uy, Uz);
 
     // Prepare scalar fields for export
     std::map<std::string, const ScalarField*>
@@ -995,10 +1016,10 @@ void CFDApplication::exportResults()
     }
 
     // Prepare vector fields for export
-    std::map<std::string, const VectorField*>
+    std::map<std::string, std::array<const ScalarField*, 3>>
     vectorFieldsToVtk;
 
-    vectorFieldsToVtk["velocity"] = &velocity;
+    vectorFieldsToVtk["velocity"] = {&Ux, &Uy, &Uz};
 
     // Determine VTU filename
     std::string vtuFilename = vtkOutputFilename_;

@@ -30,7 +30,7 @@ void writeVtkUnstructuredGrid
     const std::map<std::string,
     const ScalarField*>& scalarCellFields,
     const std::map<std::string,
-    const VectorField*>& vectorCellFields,
+    std::array<const ScalarField*, 3>>& vectorCellFields,
     bool debug
 )
 {
@@ -194,10 +194,14 @@ void writeVtkUnstructuredGrid
         unstructuredGrid->GetCellData()->AddArray(dataArray);
     }
 
-    // Add vector cell fields
-    for (const auto& [fieldName, vectorField] : vectorCellFields)
+    // Add vector cell fields (supplied as three scalar component fields)
+    for (const auto& [fieldName, components] : vectorCellFields)
     {
-        if (!vectorField) continue;
+        if (!components[0] || !components[1] || !components[2]) continue;
+
+        const ScalarField& cx = *components[0];
+        const ScalarField& cy = *components[1];
+        const ScalarField& cz = *components[2];
 
         vtkSmartPointer<vtkDoubleArray> dataArray =
             vtkSmartPointer<vtkDoubleArray>::New();
@@ -208,10 +212,10 @@ void writeVtkUnstructuredGrid
 
         for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
         {
-            if (cellIdx < vectorField->size())
+            if (cellIdx < cx.size())
             {
-                const Vector& vec = (*vectorField)[cellIdx];
-                const double vecData[3] = {vec.x(), vec.y(), vec.z()};
+                const double vecData[3] =
+                    {cx[cellIdx], cy[cellIdx], cz[cellIdx]};
                 dataArray->SetTuple(static_cast<vtkIdType>(cellIdx), vecData);
             }
             else

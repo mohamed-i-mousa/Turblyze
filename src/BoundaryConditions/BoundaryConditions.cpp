@@ -39,18 +39,6 @@ void BoundaryConditions::setFixedValue
     setBC(patchName, fieldName, std::move(bcData));
 }
 
-void BoundaryConditions::setFixedValue
-(
-    const std::string& patchName,
-    const std::string& fieldName,
-    const Vector& value
-)
-{
-    BoundaryData bcData;
-    bcData.setFixedValue(value);
-    setBC(patchName, fieldName, std::move(bcData));
-}
-
 void BoundaryConditions::setFixedGradient
 (
     const std::string& patchName,
@@ -144,8 +132,7 @@ Scalar BoundaryConditions::boundaryFaceValue
 (
     const std::string& fieldName,
     const ScalarField& phi,
-    const Face& face,
-    std::optional<int> componentIdx
+    const Face& face
 ) const
 {
     if (!face.patch().has_value())
@@ -171,26 +158,6 @@ Scalar BoundaryConditions::boundaryFaceValue
         
         case FIXED_VALUE:
         {
-            // Extract scalar from vector BC using component index
-            if (componentIdx && bc.valueType() == BCValueType::VECTOR)
-            {
-                const Vector& v = bc.fixedVectorValue();
-                switch (*componentIdx)
-                {
-                    case 0: return v.x();
-                    case 1: return v.y();
-                    case 2: return v.z();
-                    default:
-                        FatalError
-                        (
-                            "Invalid component index "
-                            + std::to_string(*componentIdx)
-                            + " for vector BC on face "
-                            + std::to_string(face.idx())
-                        );
-                }
-            }
-
             // Fixed value: φf = φb
             return bc.fixedScalarValue();
         }
@@ -206,16 +173,6 @@ Scalar BoundaryConditions::boundaryFaceValue
 
         case FIXED_GRADIENT:
         {
-            if (componentIdx)
-            {
-                FatalError
-                (
-                    "FIXED_GRADIENT is only supported for scalar fields. "
-                    "Vector fixed-gradient boundary conditions require "
-                    "per-component gradient storage."
-                );
-            }
-
             // Fixed gradient: φf = φP + grad * distance
             const Scalar dn = dot(face.dPf(), face.normal());
             
@@ -235,71 +192,6 @@ Scalar BoundaryConditions::boundaryFaceValue
             );
         }
 
-    }
-}
-
-Vector BoundaryConditions::boundaryVectorFaceValue
-(
-    const std::string& fieldName,
-    const VectorField& phi,
-    const Face& face
-) const
-{
-    if (!face.patch().has_value())
-    {
-        FatalError
-        (
-            "Face " + std::to_string(face.idx())
-            + " has no linked patch. "
-              "Ensure linkFaces() is called before solving."
-        );
-    }
-
-    const BoundaryPatch& patch = face.patch()->get();
-    const BoundaryData& bc = fieldBC(patch.patchName(), fieldName);
-
-    using enum BCType;
-    switch (bc.type())
-    {
-        case NO_SLIP:
-        {
-            return Vector{};
-        }
-
-        case FIXED_VALUE:
-        {
-            // Fixed value: Uf = Ub
-            return bc.fixedVectorValue();
-        }
-
-        case K_WALL_FUNCTION:
-        case OMEGA_WALL_FUNCTION:
-        case NUT_WALL_FUNCTION:
-        case ZERO_GRADIENT:
-        {
-            return phi[face.ownerCell()];
-        }
-
-        case FIXED_GRADIENT:
-        {
-            FatalError
-            (
-                "FIXED_GRADIENT is only supported for scalar fields. "
-                "Vector fixed-gradient boundary conditions require "
-                "per-component gradient storage."
-            );
-        }
-
-        case UNDEFINED:
-        default:
-        {
-            FatalError
-            (
-                "Corrupted BCType value for face "
-              + std::to_string(face.idx())
-              + " in patch " + patch.patchName()
-            );
-        }
     }
 }
 
@@ -439,22 +331,8 @@ void BoundaryConditions::printSummary() const
                 )
                 {
                     std::cout
-                        << ", Value: ";
-
-                    if (fbc.valueType() == BCValueType::SCALAR)
-                    {
-                        std::cout
-                            << fbc.scalarValue();
-                    }
-                    else if (fbc.valueType() == BCValueType::VECTOR)
-                    {
-                        std::cout
-                            << fbc.vectorValue();
-                    }
-                    else
-                    {
-                        FatalError("Unknown BC value type");
-                    }
+                        << ", Value: "
+                        << fbc.scalarValue();
                 }
                 else if (fbc.type() == BCType::FIXED_GRADIENT)
                 {
