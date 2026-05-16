@@ -153,8 +153,12 @@ void MeshChecker::check() const
     }
 
     // Calculate average non-orthogonality
-    const Scalar avgNonOrthogonality =
-        std::acos(totalCosAngle / S(nonOrthCount)) * radToDeg;
+    Scalar avgNonOrthogonality = 0.0;
+    if (nonOrthCount > 0)
+    {
+        avgNonOrthogonality =
+            std::acos(totalCosAngle / S(nonOrthCount)) * radToDeg;
+    }
 
     // Cell volume and aspect ratio statistics
     Scalar minCellVolume = mesh_.cells()[0].volume();
@@ -259,12 +263,20 @@ void MeshChecker::check() const
     std::cout
         << std::fixed << std::setprecision(2);
 
-    std::cout
-        << "  Maximum: " << maxNonOrthogonality
-        << "° (face " << maxNonOrthFaceIdx << ")" << '\n';
+    if (nonOrthCount > 0)
+    {
+        std::cout
+            << "  Maximum: " << maxNonOrthogonality
+            << "° (face " << maxNonOrthFaceIdx << ")" << '\n';
 
-    std::cout
-        << "  Average: " << avgNonOrthogonality << "°" << '\n';
+        std::cout
+            << "  Average: " << avgNonOrthogonality << "°" << '\n';
+    }
+    else
+    {
+        std::cout
+            << "  No internal faces to measure" << '\n';
+    }
 
     if (!severeNonOrthFaces.empty())
     {
