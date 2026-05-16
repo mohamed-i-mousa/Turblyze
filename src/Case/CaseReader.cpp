@@ -10,7 +10,7 @@
 
 #include "ErrorHandler.h"
 
-// ************************** Constructor/Destructor **************************
+// ************************* Special Member Functions *************************
 
 CaseReader::CaseReader(const std::string& filename)
 :
@@ -18,7 +18,6 @@ CaseReader::CaseReader(const std::string& filename)
 {
     parseFile(filename);
 }
-
 
 // ***************************** Accessor Methods *****************************
 
@@ -33,6 +32,7 @@ const CaseReader& CaseReader::section(const std::string& name) const
     return it->second;
 }
 
+
 std::vector<std::string> CaseReader::sectionNames() const
 {
     std::vector<std::string> names;
@@ -43,7 +43,6 @@ std::vector<std::string> CaseReader::sectionNames() const
     }
     return names;
 }
-
 
 // ***************************** Utility Methods ******************************
 
@@ -71,7 +70,6 @@ void CaseReader::print(int indent) const
     }
 }
 
-
 // ****************************** Private Methods ******************************
 
 void CaseReader::parseFile(const std::string& filename)
@@ -85,6 +83,7 @@ void CaseReader::parseFile(const std::string& filename)
     currentLine_ = 1;
     parseSection(file, *this, '\0');
 }
+
 
 void CaseReader::parseSection
 (
@@ -149,6 +148,7 @@ void CaseReader::parseSection
     }
 }
 
+
 void CaseReader::skipCommentsAndWhitespace(std::istream& is)
 {
     char c;
@@ -203,6 +203,7 @@ void CaseReader::skipCommentsAndWhitespace(std::istream& is)
     }
 }
 
+
 std::string CaseReader::readToken(std::istream& is)
 {
     skipCommentsAndWhitespace(is);
@@ -253,6 +254,7 @@ std::string CaseReader::readToken(std::istream& is)
 
     return token;
 }
+
 
 std::string CaseReader::parseValue
 (

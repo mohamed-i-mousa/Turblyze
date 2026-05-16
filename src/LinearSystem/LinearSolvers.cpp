@@ -8,7 +8,7 @@
 #include "ErrorHandler.h"
 
 
-// ************************* Constructor & Setters ************************
+// ************************* Special Member Functions *************************
 
 LinearSolver::LinearSolver
 (
@@ -23,8 +23,6 @@ LinearSolver::LinearSolver
 {}
 
 
-// *********************************** Copy ***********************************
-
 LinearSolver::LinearSolver(const LinearSolver& other)
 :
     fieldName_{other.fieldName_},
@@ -32,6 +30,7 @@ LinearSolver::LinearSolver(const LinearSolver& other)
     maxIterations_{other.maxIterations_},
     solverInitialized_{false}
 {}
+
 
 LinearSolver& LinearSolver::operator=(const LinearSolver& other)
 {
@@ -46,7 +45,6 @@ LinearSolver& LinearSolver::operator=(const LinearSolver& other)
     }
     return *this;
 }
-
 
 // ***************************** BiCGSTAB Solver *****************************
 
