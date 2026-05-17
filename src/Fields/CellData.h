@@ -22,6 +22,8 @@
 #include <cstddef>
 #include <span>
 #include <vector>
+#include <concepts>
+#include <iostream>
 
 #include "Scalar.h"
 #include "Vector.h"
@@ -30,6 +32,13 @@
 
 
 template<typename T>
+concept CellFieldType = 
+    std::same_as<T, Scalar>
+ || std::same_as<T, Vector>
+ || std::same_as<T, Tensor>;
+
+
+template<CellFieldType T>
 class CellData
 {
 public:
@@ -117,7 +126,31 @@ public:
      * @brief Print field summary for debugging
      * @param itemsToShow Number of items to display
      */
-    void printSummary(size_t itemsToShow) const;
+    void printSummary(size_t itemsToShow) const
+    {
+        std::cout
+            << "CellData (Size: " << internalField_.size() << ")\n";
+
+        const size_t count = std::min(internalField_.size(), itemsToShow);
+
+        for
+        (
+            size_t cellIdx = 0;
+            cellIdx < count;
+            ++cellIdx
+        )
+        {
+            std::cout
+                << "  Cell " << cellIdx << ": " << internalField_[cellIdx]
+                << '\n';
+        }
+
+        if (internalField_.size() > itemsToShow)
+        {
+            std::cout
+                << "  ...\n";
+        }
+    }
 
 private:
 

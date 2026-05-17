@@ -22,6 +22,8 @@
 #include <cstddef>
 #include <span>
 #include <vector>
+#include <concepts>
+#include <iostream>
 
 #include "Scalar.h"
 #include "Vector.h"
@@ -29,6 +31,10 @@
 
 
 template<typename T>
+concept FaceFieldType = std::same_as<T, Scalar> || std::same_as<T, Vector>;
+
+
+template<FaceFieldType T>
 class FaceData
 {
 public:
@@ -116,7 +122,31 @@ public:
      * @brief Print field summary for debugging
      * @param itemsToShow Number of items to display
      */
-    void printSummary(size_t itemsToShow) const;
+    void printSummary(size_t itemsToShow) const
+    {
+        std::cout
+            << "FaceData (Size: " << internalField_.size() << ")\n";
+
+        const size_t count = std::min(internalField_.size(), itemsToShow);
+
+        for
+        (
+            size_t faceIdx = 0;
+            faceIdx < count;
+            ++faceIdx
+        )
+        {
+            std::cout
+                << "  Face " << faceIdx << ": " << internalField_[faceIdx]
+                << '\n';
+        }
+
+        if (internalField_.size() > itemsToShow)
+        {
+            std::cout
+                << "  ...\n";
+        }
+    }
 
 private:
 

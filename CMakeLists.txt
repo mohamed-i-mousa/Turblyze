@@ -47,8 +47,6 @@ add_executable(${PROJECT_NAME}
     src/Mesh/Cell.cpp
     src/Mesh/MeshReader.cpp
     src/Mesh/MeshChecker.cpp
-    src/Fields/CellData.cpp
-    src/Fields/FaceData.cpp
     src/Fields/Field.cpp
     src/BoundaryConditions/BoundaryData.cpp
     src/BoundaryConditions/BoundaryConditions.cpp
