@@ -48,7 +48,14 @@ void writeVtkUnstructuredGrid
 
     for (size_t nodeIdx = 0; nodeIdx < allNodes.size(); ++nodeIdx)
     {
-        points->SetPoint(static_cast<vtkIdType>(nodeIdx), allNodes[nodeIdx].x(), allNodes[nodeIdx].y(), allNodes[nodeIdx].z());
+        const Vector& node = allNodes[nodeIdx];
+        points->SetPoint
+        (
+            static_cast<vtkIdType>(nodeIdx),
+            static_cast<double>(node.x()),
+            static_cast<double>(node.y()),
+            static_cast<double>(node.z())
+        );
     }
 
     unstructuredGrid->SetPoints(points);
@@ -183,7 +190,9 @@ void writeVtkUnstructuredGrid
         {
             if (cellIdx < scalarField->size())
             {
-                dataArray->SetValue(static_cast<vtkIdType>(cellIdx), (*scalarField)[cellIdx]);
+                const double value =
+                    static_cast<double>((*scalarField)[cellIdx]);
+                dataArray->SetValue(static_cast<vtkIdType>(cellIdx), value);
             }
             else
             {
@@ -215,7 +224,11 @@ void writeVtkUnstructuredGrid
             if (cellIdx < cx.size())
             {
                 const double vecData[3] =
-                    {cx[cellIdx], cy[cellIdx], cz[cellIdx]};
+                {
+                    static_cast<double>(cx[cellIdx]),
+                    static_cast<double>(cy[cellIdx]),
+                    static_cast<double>(cz[cellIdx])
+                };
                 dataArray->SetTuple(static_cast<vtkIdType>(cellIdx), vecData);
             }
             else

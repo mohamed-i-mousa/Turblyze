@@ -89,12 +89,13 @@ void writeWallBoundaryData
 
     for (const auto& [globalIdx, localIdx] : nodeMap)
     {
+        const Vector& node = allNodes[globalIdx];
         points->SetPoint
         (
             localIdx,
-            allNodes[globalIdx].x(),
-            allNodes[globalIdx].y(),
-            allNodes[globalIdx].z()
+            static_cast<double>(node.x()),
+            static_cast<double>(node.y()),
+            static_cast<double>(node.z())
         );
     }
 
@@ -137,7 +138,8 @@ void writeWallBoundaryData
         for (size_t i = 0; i < wallFaceIndices.size(); ++i)
         {
             const size_t faceIdx = wallFaceIndices[i];
-            dataArray->SetValue(static_cast<vtkIdType>(i), (*faceField)[faceIdx]);
+            const double value = static_cast<double>((*faceField)[faceIdx]);
+            dataArray->SetValue(static_cast<vtkIdType>(i), value);
         }
 
         polyData->GetCellData()->AddArray(dataArray);

@@ -24,7 +24,7 @@ Vector faceCentroid
     std::span<const Vector> allNodes
 )
 {
-    Vector centroid(0.0, 0.0, 0.0);
+    Vector centroid;
     for (size_t nodeIdx : faceNodes)
     {
         centroid += allNodes[nodeIdx];
@@ -72,12 +72,12 @@ std::vector<vtkIdType> orderHexahedronNodes
     }
 
     // Compute cell centroid
-    Vector centroid(0.0, 0.0, 0.0);
+    Vector centroid;
     for (size_t nodeId : uniqueNodes)
     {
         centroid += allNodes[nodeId];
     }
-    centroid /= 8.0;
+    centroid /= S(8.0);
 
     // Find two opposite faces (bottom and top)
     // Opposite faces share no common nodes
@@ -298,12 +298,12 @@ std::vector<vtkIdType> orderWedgeNodes
 
     // Determine which triangular face is "bottom" and which is "top"
     // Use centroid as reference - doesn't assume Z-alignment
-    Vector centroid(0.0, 0.0, 0.0);
+    Vector centroid;
     for (size_t nodeId : uniqueNodes)
     {
         centroid += allNodes[nodeId];
     }
-    centroid /= 6.0;
+    centroid /= S(6.0);
 
     // Compute face centroids and normals for triangular faces
     const Vector tri0Centroid = faceCentroid(triangularFaces[0], allNodes);
@@ -518,12 +518,12 @@ std::vector<vtkIdType> orderPyramidNodes
     }
 
     // Compute cell centroid
-    Vector centroid(0.0, 0.0, 0.0);
+    Vector centroid;
     for (size_t nodeId : uniqueNodes)
     {
         centroid += allNodes[nodeId];
     }
-    centroid /= 5.0;
+    centroid /= S(5.0);
 
     // Ensure proper winding of base quad
     // (outward-pointing normal when viewed from outside)
