@@ -371,9 +371,9 @@ public:
 private:
 
     /// Row-major components (first index = row, second = column)
-    Scalar xx_ = 0.0; Scalar xy_ = 0.0; Scalar xz_ = 0.0;
-    Scalar yx_ = 0.0; Scalar yy_ = 0.0; Scalar yz_ = 0.0;
-    Scalar zx_ = 0.0; Scalar zy_ = 0.0; Scalar zz_ = 0.0;
+    Scalar xx_ = S(0.0); Scalar xy_ = S(0.0); Scalar xz_ = S(0.0);
+    Scalar yx_ = S(0.0); Scalar yy_ = S(0.0); Scalar yz_ = S(0.0);
+    Scalar zx_ = S(0.0); Scalar zy_ = S(0.0); Scalar zz_ = S(0.0);
 };
 
 // Non-member methods

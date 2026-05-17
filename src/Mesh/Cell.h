@@ -175,7 +175,7 @@ private:
     Vector centroid_;
 
     /// Cell volume
-    Scalar volume_ = 0.0;
+    Scalar volume_ = S(0.0);
 
     /// Flag indicating if geometry has been calculated
     bool geometricPropertiesCalculated_ = false;

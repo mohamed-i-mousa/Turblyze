@@ -254,9 +254,9 @@ public:
 private:
 
     /// x, y, z components of the vector
-    Scalar x_ = 0.0;
-    Scalar y_ = 0.0;
-    Scalar z_ = 0.0;
+    Scalar x_ = S(0.0);
+    Scalar y_ = S(0.0);
+    Scalar z_ = S(0.0);
 };
 
 // Non-member methods

@@ -55,19 +55,19 @@ private:
 // Mesh quality thresholds
 
     /// Minimum face area before warning
-    static constexpr Scalar minArea_ = 1e-12;
+    static constexpr Scalar minArea_ = S(1e-12);
 
     /// Minimum cell volume before warning
-    static constexpr Scalar minVolume_ = 1e-30;
+    static constexpr Scalar minVolume_ = S(1e-30);
 
     /// Non-orthogonality warning threshold (degrees)
-    static constexpr Scalar maxNonOrthThreshold_ = 70.0;
+    static constexpr Scalar maxNonOrthThreshold_ = S(70.0);
 
     /// Skewness warning threshold
-    static constexpr Scalar maxSkewThreshold_ = 4.0;
+    static constexpr Scalar maxSkewThreshold_ = S(4.0);
 
     /// Aspect ratio warning threshold
-    static constexpr Scalar maxAspectThreshold_ = 100.0;
+    static constexpr Scalar maxAspectThreshold_ = S(100.0);
 
 // Private members
 

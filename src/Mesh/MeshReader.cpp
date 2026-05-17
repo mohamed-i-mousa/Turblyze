@@ -179,9 +179,9 @@ void MeshReader::parseNodesSection
                 );
             }
 
-            Scalar xVal = 0.0;
-            Scalar yVal = 0.0;
-            Scalar zVal = 0.0;
+            Scalar xVal = S(0.0);
+            Scalar yVal = S(0.0);
+            Scalar zVal = S(0.0);
 
             ifs >> xVal;
             ifs >> yVal;

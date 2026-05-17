@@ -41,14 +41,14 @@ void MeshChecker::check() const
     std::vector<size_t> smallAreaFaces;
 
     // Non-orthogonality statistics
-    Scalar maxNonOrthogonality = 0.0;
-    Scalar totalCosAngle = 0.0;
+    Scalar maxNonOrthogonality = S(0.0);
+    Scalar totalCosAngle = S(0.0);
     size_t nonOrthCount = 0;
     size_t maxNonOrthFaceIdx = 0;
     std::vector<size_t> severeNonOrthFaces;
 
     // Skewness statistics
-    Scalar maxSkewness = 0.0;
+    Scalar maxSkewness = S(0.0);
     size_t maxSkewFaceIdx = 0;
     std::vector<size_t> highSkewFaces;
 
@@ -153,7 +153,7 @@ void MeshChecker::check() const
     }
 
     // Calculate average non-orthogonality
-    Scalar avgNonOrthogonality = 0.0;
+    Scalar avgNonOrthogonality = S(0.0);
     if (nonOrthCount > 0)
     {
         avgNonOrthogonality =
@@ -166,7 +166,7 @@ void MeshChecker::check() const
     size_t minCellIdx = mesh_.cells()[0].idx();
     size_t maxCellIdx = mesh_.cells()[0].idx();
 
-    Scalar maxAspectRatio = 0.0;
+    Scalar maxAspectRatio = S(0.0);
     size_t maxAspectCellIdx = 0;
     std::vector<size_t> highAspectCells;
 
@@ -592,7 +592,7 @@ Scalar MeshChecker::cellAspectRatio
 ) const
 {
     // Accumulate absolute face area components per direction
-    Vector sumMagAreaComponents(0.0, 0.0, 0.0);
+    Vector sumMagAreaComponents;
 
     const auto faceIndices = cell.faceIndices();
 

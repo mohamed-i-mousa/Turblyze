@@ -84,7 +84,7 @@ FaceIntegrals Face::calculateGeometricProperties
     // CASE 2: Face is "Polygon" (numNodes > 3)
     else
     {
-        Vector faceCenter(0.0, 0.0, 0.0);
+        Vector faceCenter;
 
         for (size_t nodeIdx : nodeIndices_)
         {
@@ -95,7 +95,7 @@ FaceIntegrals Face::calculateGeometricProperties
 
         Vector weightedCentroidSum{};
         Vector normalSum{};
-        Scalar weightedAreaSum = 0.0;
+        Scalar weightedAreaSum = S(0.0);
 
         for (size_t nodeIdx = 0; nodeIdx < numNodes; ++nodeIdx)
         {

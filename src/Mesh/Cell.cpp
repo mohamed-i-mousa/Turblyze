@@ -21,7 +21,7 @@ void Cell::calculateGeometricProperties
 )
 {
     geometricPropertiesCalculated_ = false;
-    volume_ = 0.0;
+    volume_ = S(0.0);
     centroid_ = Vector{};
     Vector centroidSum;
 
@@ -67,6 +67,7 @@ void Cell::calculateGeometricProperties
     centroid_ = centroidSum / (S(2.0) * volume_);
     geometricPropertiesCalculated_ = true;
 }
+
 
 std::ostream& operator<<(std::ostream& os, const Cell& c)
 {

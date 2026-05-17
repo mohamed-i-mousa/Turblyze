@@ -216,7 +216,7 @@ void SIMPLE::solveMomentumEquations()
     ScalarField UzSource;
 
     // Reset diagonals accumulator
-    DU_.setAll(0.0);
+    DU_.setAll(S(0.0));
     DUComputed_ = false;
 
     // Build effective viscosity and pressure gradient source
@@ -278,7 +278,7 @@ void SIMPLE::solveMomentumEquations()
     }
 
     // Reset interpolated diagonals accumulator
-    DUf_.setAll(0.0);
+    DUf_.setAll(S(0.0));
 
     // Compute per-row velocity gradients and assemble the tensor field.
     VectorField gradUx;
@@ -399,7 +399,7 @@ void SIMPLE::solveMomentumEquations()
             else
             {
                 // Zero gradient pressure boundary
-                DUf_[faceIdx] = 0.0;
+                DUf_[faceIdx] = S(0.0);
             }
         }
         else
@@ -596,7 +596,7 @@ void SIMPLE::correctVelocity()
 
 void SIMPLE::correctPressure()
 {
-    Scalar sumSq = 0.0;
+    Scalar sumSq = S(0.0);
 
     const size_t numCells = mesh_.numCells();
 
@@ -627,7 +627,7 @@ void SIMPLE::correctPressure()
     }
 
     // Reset pressure correction for next iteration
-    pCorr_.setAll(0.0);
+    pCorr_.setAll(S(0.0));
 }
 
 
@@ -736,10 +736,10 @@ void SIMPLE::solveTurbulence()
         turbulenceModel_->solve(Ux_, Uy_, Uz_, RhieChowFlowRate_, gradU_);
 
         // Compute normalised change: ||x - x_prev|| / ||x_prev||
-        Scalar kDiffSq = 0.0;
-        Scalar kPrevSq = 0.0;
-        Scalar omDiffSq = 0.0;
-        Scalar omPrevSq = 0.0;
+        Scalar kDiffSq = S(0.0);
+        Scalar kPrevSq = S(0.0);
+        Scalar omDiffSq = S(0.0);
+        Scalar omPrevSq = S(0.0);
 
         #pragma omp parallel for schedule(static) \
             reduction(+:kDiffSq, kPrevSq, omDiffSq, omPrevSq)
@@ -847,22 +847,22 @@ bool SIMPLE::checkConvergence()
 Scalar SIMPLE::massImbalance() const
 {
     // Dimensionless normalized continuity residual per cell, averaged
-    Scalar totalNormImbalance = 0.0;
+    Scalar totalNormImbalance = S(0.0);
 
     const size_t numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static) reduction(+:totalNormImbalance)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Scalar net = 0.0;
-        Scalar sumAbs = 0.0;
+        Scalar net = S(0.0);
+        Scalar sumAbs = S(0.0);
 
         for (size_t j = 0; j < mesh_.cells()[cellIdx].faceIndices().size(); ++j)
         {
             const size_t faceIdx = mesh_.cells()[cellIdx].faceIndices()[j];
             const int sign = mesh_.cells()[cellIdx].faceSigns()[j];
             const Scalar mf = RhieChowFlowRate_[faceIdx];
-            net += sign * mf;
+            net += S(sign) * mf;
             sumAbs += std::abs(mf);
         }
 
@@ -877,8 +877,8 @@ Scalar SIMPLE::massImbalance() const
 Scalar SIMPLE::velocityResidual() const
 {
     // Normalized residual: ||U - U_prev||_2 / (||U_prev||_2 + eps)
-    Scalar num = 0.0;
-    Scalar den = 0.0;
+    Scalar num = S(0.0);
+    Scalar den = S(0.0);
 
     const size_t numCells = mesh_.numCells();
 
@@ -905,7 +905,7 @@ Scalar SIMPLE::velocityResidual() const
 Scalar SIMPLE::pressureResidual() const
 {
     // Normalize p' RMS by RMS(p)
-    Scalar sumP2 = 0.0;
+    Scalar sumP2 = S(0.0);
 
     const size_t numCells = mesh_.numCells();
     

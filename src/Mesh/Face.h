@@ -34,10 +34,10 @@
 
 struct FaceIntegrals
 {
-    Scalar x2 = 0.0;
-    Scalar y2 = 0.0;
-    Scalar z2 = 0.0;
-    Scalar volume = 0.0;
+    Scalar x2 = S(0.0);
+    Scalar y2 = S(0.0);
+    Scalar z2 = S(0.0);
+    Scalar volume = S(0.0);
 };
 
 
@@ -320,10 +320,10 @@ private:
     Vector normal_;
 
     /// Face area (projected area for flux calculations)
-    Scalar projectedArea_ = 0.0;
+    Scalar projectedArea_ = S(0.0);
 
     /// Contact area (For shear stress calculations)
-    Scalar contactArea_ = 0.0;
+    Scalar contactArea_ = S(0.0);
 
     /// Distance vector from owner cell center to face center
     Vector dPf_;
@@ -332,7 +332,7 @@ private:
     std::optional<Vector> dNf_;
 
     /// Magnitude of d_Pf
-    Scalar dPfMag_ = 0.0;
+    Scalar dPfMag_ = S(0.0);
 
     /// Magnitude of d_Nf
     std::optional<Scalar> dNfMag_;

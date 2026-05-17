@@ -114,8 +114,8 @@ void CFDApplication::loadCase()
     const auto& relaxFactors = simple.section("relaxationFactors");
     alphaU_ = relaxFactors.lookup<Scalar>("U");
     alphaP_ = relaxFactors.lookup<Scalar>("p");
-    alphaK_ = relaxFactors.lookupOrDefault<Scalar>("k", 0.5);
-    alphaOmega_ = relaxFactors.lookupOrDefault<Scalar>("omega", 0.5);
+    alphaK_ = relaxFactors.lookupOrDefault<Scalar>("k", S(0.5));
+    alphaOmega_ = relaxFactors.lookupOrDefault<Scalar>("omega", S(0.5));
 
     // Extract turbulence parameters
     const auto& turbulence = caseReader_->section("turbulence");
@@ -953,8 +953,8 @@ void CFDApplication::postProcess()
     }
 
     // Print statistics
-    Scalar maximumVelocity = 0.0;
-    Scalar averageVelocity = 0.0;
+    Scalar maximumVelocity = S(0.0);
+    Scalar averageVelocity = S(0.0);
     Scalar maximumPressure = pressure[0];
     Scalar minimumPressure = pressure[0];
 
