@@ -83,6 +83,8 @@ void appendPVDTimeStep
         );
     }
 
+    bool inserted = false;
+
     for (const auto& existingLine : lines)
     {
         if (existingLine.find("</Collection>") != std::string::npos)
@@ -91,11 +93,26 @@ void appendPVDTimeStep
             pvdFileOut
                 << "    <DataSet timestep=\"" << timeValue
                 << "\" file=\"" << vtuFilename << "\"/>" << '\n';
+            inserted = true;
         }
         pvdFileOut << existingLine << '\n';
     }
 
+    if (!inserted)
+    {
+        FatalError
+        (
+            "PVD file '" + pvdFilename
+          + "' has no </Collection> marker; cannot append timestep."
+        );
+    }
+
     pvdFileOut.close();
+
+    if (pvdFileOut.fail())
+    {
+        FatalError("Failed to write PVD file: " + pvdFilename);
+    }
 
     std::cout
         << "Added timestep " << timeValue << " to PVD file" << '\n';

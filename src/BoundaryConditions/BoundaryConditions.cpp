@@ -205,6 +205,29 @@ void BoundaryConditions::linkFaces(std::span<Face> faces)
 {
     for (const auto& patch : patches_)
     {
+        if (patch.firstFaceIdx() > patch.lastFaceIdx())
+        {
+            FatalError
+            (
+                "Boundary patch '" + patch.patchName()
+              + "' has an inverted face range ["
+              + std::to_string(patch.firstFaceIdx()) + ", "
+              + std::to_string(patch.lastFaceIdx()) + "]."
+            );
+        }
+
+        if (patch.lastFaceIdx() >= faces.size())
+        {
+            FatalError
+            (
+                "Boundary patch '" + patch.patchName()
+              + "' references face index "
+              + std::to_string(patch.lastFaceIdx())
+              + " outside the valid range [0, "
+              + std::to_string(faces.size()) + ")."
+            );
+        }
+
         for
         (
             size_t faceIdx = patch.firstFaceIdx();
@@ -215,7 +238,7 @@ void BoundaryConditions::linkFaces(std::span<Face> faces)
             faces[faceIdx].setPatch(patch);
         }
     }
-    
+
     linked_ = true;
 }
 

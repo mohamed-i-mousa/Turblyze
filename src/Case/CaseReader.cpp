@@ -288,6 +288,16 @@ std::string CaseReader::parseValue
                 parenDepth--;
             }
         }
+
+        if (parenDepth != 0)
+        {
+            FatalError
+            (
+                "Unbalanced parentheses in value '" + value
+              + "' in file " + currentFile_
+            );
+        }
+
         skipCommentsAndWhitespace(is);
         if (is.peek() == ';')
         {

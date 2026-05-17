@@ -118,6 +118,42 @@ void Logger::scaledResidual(std::string_view name, Scalar value)
 }
 
 
+void Logger::residualSummary
+(
+    Scalar mass,
+    Scalar velocity,
+    Scalar pressure
+)
+{
+    StreamStateGuard guard(std::cout);
+
+    std::cout
+        << " - Mass: " << std::scientific << mass
+        << ", Velocity: " << velocity
+        << ", Pressure: " << pressure << '\n';
+}
+
+
+void Logger::residualSummary
+(
+    Scalar mass,
+    Scalar velocity,
+    Scalar pressure,
+    Scalar k,
+    Scalar omega
+)
+{
+    StreamStateGuard guard(std::cout);
+
+    std::cout
+        << " - Mass: " << std::scientific << mass
+        << ", Velocity: " << velocity
+        << ", Pressure: " << pressure
+        << ", k: " << k
+        << ", omega: " << omega << '\n';
+}
+
+
 void Logger::linearSolverConfigHeader()
 {
     StreamStateGuard guard(std::cout);

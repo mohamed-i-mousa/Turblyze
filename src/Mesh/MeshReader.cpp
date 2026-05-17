@@ -156,6 +156,27 @@ void MeshReader::parseNodesSection
         ifs >> typeStr;
         ifs >> dimensionStr;
 
+        if (!ifs)
+        {
+            FatalError
+            (
+                "Malformed nodes-section header: unexpected end of file "
+                "while reading the zone descriptor."
+            );
+        }
+
+        // The dimension token carries two trailing characters (")(" — the
+        // zone-header close and the data-block open); guard the strip
+        // against a truncated or malformed token
+        if (dimensionStr.size() < 2)
+        {
+            FatalError
+            (
+                "Malformed nodes-section header: dimension token '"
+              + dimensionStr + "' is too short."
+            );
+        }
+
         // Remove trailing parentheses
         dimensionStr.pop_back();
         dimensionStr.pop_back();
@@ -189,6 +210,15 @@ void MeshReader::parseNodesSection
             if (dimension == 3)
             {
                 ifs >> zVal;
+            }
+
+            if (!ifs)
+            {
+                FatalError
+                (
+                    "Malformed nodes section: failed to read coordinates "
+                    "for node " + std::to_string(globalIdx) + "."
+                );
             }
 
             nodes_[globalIdx].setX(xVal);
@@ -504,15 +534,49 @@ void MeshReader::validateMesh() const
 {
     for (size_t faceIdx = 0; faceIdx < faces_.size(); ++faceIdx)
     {
-        if (faces_[faceIdx].nodeIndices().size() < 3)
+        const Face& face = faces_[faceIdx];
+
+        if (face.nodeIndices().size() < 3)
         {
             FatalError
             (
                 "Face "
               + std::to_string(faceIdx)
               + " has only "
-              + std::to_string(faces_[faceIdx].nodeIndices().size())
+              + std::to_string(face.nodeIndices().size())
               + " nodes, minimum required is 3."
+            );
+        }
+
+        if (face.ownerCell() >= cells_.size())
+        {
+            FatalError
+            (
+                "Face "
+              + std::to_string(faceIdx)
+              + " has owner cell index "
+              + std::to_string(face.ownerCell())
+              + " outside the valid range [0, "
+              + std::to_string(cells_.size())
+              + ")."
+            );
+        }
+
+        if
+        (
+            face.neighborCell().has_value()
+         && face.neighborCell().value() >= cells_.size()
+        )
+        {
+            FatalError
+            (
+                "Face "
+              + std::to_string(faceIdx)
+              + " has neighbor cell index "
+              + std::to_string(face.neighborCell().value())
+              + " outside the valid range [0, "
+              + std::to_string(cells_.size())
+              + ")."
             );
         }
     }

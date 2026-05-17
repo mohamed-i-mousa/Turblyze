@@ -256,6 +256,17 @@ inline Vector CaseReader::convertTo<Vector>(const std::string& value) const
         FatalError("Cannot convert '" + value + "' to Vector");
     }
 
+    // Reject trailing components: a Vector has exactly three
+    std::string extra;
+    if (iss >> extra)
+    {
+        FatalError
+        (
+            "Cannot convert '" + value
+          + "' to Vector: expected exactly three components"
+        );
+    }
+
     return Vector(x, y, z);
 }
 

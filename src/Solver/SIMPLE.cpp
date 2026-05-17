@@ -52,8 +52,7 @@ void SIMPLE::setTurbulenceSolvers
 
 void SIMPLE::solve()
 {
-    std::cout
-        << '\n' << "=== Starting SIMPLE Loop ===" << '\n' << '\n';
+    Logger::sectionHeader("Starting SIMPLE Loop");
 
     // Reset first-iteration residual references for convergence tracking
     massImbalance0_    = S(0.0);
@@ -805,20 +804,20 @@ bool SIMPLE::checkConvergence()
             Logger::scaledResidual("omega", scaledOmega);
         }
     }
+    else if (turbulenceModel_)
+    {
+        Logger::residualSummary
+        (
+            scaledMass,
+            scaledVelocity,
+            scaledPressure,
+            scaledK,
+            scaledOmega
+        );
+    }
     else
     {
-        std::cout
-            << " - Mass: " << std::scientific
-            << scaledMass
-            << ", Velocity: " << scaledVelocity
-            << ", Pressure: " << scaledPressure;
-        if (turbulenceModel_)
-        {
-            std::cout
-                << ", k: " << scaledK
-                << ", omega: " << scaledOmega;
-        }
-        std::cout << std::fixed << '\n';
+        Logger::residualSummary(scaledMass, scaledVelocity, scaledPressure);
     }
 
     return converged;

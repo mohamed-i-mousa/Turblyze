@@ -158,4 +158,29 @@ namespace Logger
      * @param value Scaled residual value
      */
     void scaledResidual(std::string_view name, Scalar value);
+
+    /**
+     * @brief Print the non-debug one-line per-iteration residual summary
+     * @param mass     Scaled mass-imbalance residual
+     * @param velocity Scaled velocity residual
+     * @param pressure Scaled pressure residual
+     */
+    void residualSummary(Scalar mass, Scalar velocity, Scalar pressure);
+
+    /**
+     * @brief Print the non-debug one-line residual summary with turbulence
+     * @param mass     Scaled mass-imbalance residual
+     * @param velocity Scaled velocity residual
+     * @param pressure Scaled pressure residual
+     * @param k        Scaled k residual
+     * @param omega    Scaled omega residual
+     */
+    void residualSummary
+    (
+        Scalar mass,
+        Scalar velocity,
+        Scalar pressure,
+        Scalar k,
+        Scalar omega
+    );
 }

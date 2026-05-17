@@ -14,9 +14,11 @@
 #include <vtkXMLUnstructuredGridWriter.h>
 
 #include <iostream>
+#include <string>
 #include <unordered_set>
 #include <vector>
 
+#include "ErrorHandler.h"
 #include "VtkCellOrdering.h"
 
 
@@ -179,6 +181,17 @@ void writeVtkUnstructuredGrid
     {
         if (!scalarField) continue;
 
+        if (scalarField->size() != allCells.size())
+        {
+            FatalError
+            (
+                "VTK scalar field '" + fieldName + "' has "
+              + std::to_string(scalarField->size())
+              + " values but the mesh has "
+              + std::to_string(allCells.size()) + " cells."
+            );
+        }
+
         vtkSmartPointer<vtkDoubleArray>
         dataArray = vtkSmartPointer<vtkDoubleArray>::New();
 
@@ -188,16 +201,9 @@ void writeVtkUnstructuredGrid
 
         for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
         {
-            if (cellIdx < scalarField->size())
-            {
-                const double value =
-                    static_cast<double>((*scalarField)[cellIdx]);
-                dataArray->SetValue(static_cast<vtkIdType>(cellIdx), value);
-            }
-            else
-            {
-                dataArray->SetValue(static_cast<vtkIdType>(cellIdx), 0.0);
-            }
+            const double value =
+                static_cast<double>((*scalarField)[cellIdx]);
+            dataArray->SetValue(static_cast<vtkIdType>(cellIdx), value);
         }
 
         unstructuredGrid->GetCellData()->AddArray(dataArray);
@@ -212,6 +218,21 @@ void writeVtkUnstructuredGrid
         const ScalarField& cy = *components[1];
         const ScalarField& cz = *components[2];
 
+        if
+        (
+            cx.size() != allCells.size()
+         || cy.size() != allCells.size()
+         || cz.size() != allCells.size()
+        )
+        {
+            FatalError
+            (
+                "VTK vector field '" + fieldName
+              + "' has component sizes that do not match the mesh cell "
+                "count " + std::to_string(allCells.size()) + "."
+            );
+        }
+
         vtkSmartPointer<vtkDoubleArray> dataArray =
             vtkSmartPointer<vtkDoubleArray>::New();
 
@@ -221,21 +242,13 @@ void writeVtkUnstructuredGrid
 
         for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
         {
-            if (cellIdx < cx.size())
+            const double vecData[3] =
             {
-                const double vecData[3] =
-                {
-                    static_cast<double>(cx[cellIdx]),
-                    static_cast<double>(cy[cellIdx]),
-                    static_cast<double>(cz[cellIdx])
-                };
-                dataArray->SetTuple(static_cast<vtkIdType>(cellIdx), vecData);
-            }
-            else
-            {
-                const double zeroVec[3] = {0.0, 0.0, 0.0};
-                dataArray->SetTuple(static_cast<vtkIdType>(cellIdx), zeroVec);
-            }
+                static_cast<double>(cx[cellIdx]),
+                static_cast<double>(cy[cellIdx]),
+                static_cast<double>(cz[cellIdx])
+            };
+            dataArray->SetTuple(static_cast<vtkIdType>(cellIdx), vecData);
         }
 
         unstructuredGrid->GetCellData()->AddArray(dataArray);
@@ -249,7 +262,11 @@ void writeVtkUnstructuredGrid
     writer->SetInputData(unstructuredGrid);
     writer->SetDataModeToBinary();
     writer->SetCompressorTypeToZLib();
-    writer->Write();
+
+    if (writer->Write() == 0)
+    {
+        FatalError("Failed to write VTK UnstructuredGrid file: " + filename);
+    }
 
     std::cout
         << "VTK UnstructuredGrid file written: "

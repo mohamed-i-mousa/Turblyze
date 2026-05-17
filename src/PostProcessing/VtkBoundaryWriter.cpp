@@ -22,6 +22,7 @@
 
 // Header includes
 #include "BoundaryPatch.h"
+#include "ErrorHandler.h"
 
 
 namespace VTK
@@ -153,7 +154,11 @@ void writeWallBoundaryData
     writer->SetInputData(polyData);
     writer->SetDataModeToBinary();
     writer->SetCompressorTypeToZLib();
-    writer->Write();
+
+    if (writer->Write() == 0)
+    {
+        FatalError("Failed to write VTK PolyData wall file: " + filename);
+    }
 
     std::cout
         << "VTK PolyData wall boundary file written: "

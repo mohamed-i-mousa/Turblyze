@@ -101,6 +101,9 @@ void CFDApplication::loadCase()
     initialVelocity_ = initialConditions.lookup<Vector>("U");
     initialPressure_ = initialConditions.lookup<Scalar>("p");
 
+    debug_ =
+        caseReader_->section("output").lookupOrDefault<bool>("debug", false);
+
     // Parse convection schemes
     convectionSchemes_ = parseConvectionSchemes();
 
@@ -108,14 +111,39 @@ void CFDApplication::loadCase()
     const auto& simple = caseReader_->section("SIMPLE");
 
     maxIterations_ = simple.lookup<int>("numIterations");
+    if (maxIterations_ <= 0)
+    {
+        FatalError("SIMPLE.numIterations must be a positive integer.");
+    }
 
     convergenceTolerance_ = simple.lookup<Scalar>("convergenceTolerance");
+    if (convergenceTolerance_ <= S(0))
+    {
+        FatalError("SIMPLE.convergenceTolerance must be positive.");
+    }
 
     const auto& relaxFactors = simple.section("relaxationFactors");
     alphaU_ = relaxFactors.lookup<Scalar>("U");
     alphaP_ = relaxFactors.lookup<Scalar>("p");
     alphaK_ = relaxFactors.lookupOrDefault<Scalar>("k", S(0.5));
     alphaOmega_ = relaxFactors.lookupOrDefault<Scalar>("omega", S(0.5));
+
+    if (alphaU_ <= S(0) || alphaU_ > S(2))
+    {
+        FatalError("SIMPLE.relaxationFactors.U must be in (0, 1].");
+    }
+    if (alphaP_ <= S(0) || alphaP_ > S(2))
+    {
+        FatalError("SIMPLE.relaxationFactors.p must be in (0, 1].");
+    }
+    if (alphaK_ <= S(0) || alphaK_ > S(2))
+    {
+        FatalError("SIMPLE.relaxationFactors.k must be in (0, 1].");
+    }
+    if (alphaOmega_ <= S(0) || alphaOmega_ > S(2))
+    {
+        FatalError("SIMPLE.relaxationFactors.omega must be in (0, 1].");
+    }
 
     // Extract turbulence parameters
     const auto& turbulence = caseReader_->section("turbulence");
@@ -137,6 +165,15 @@ void CFDApplication::loadCase()
         turbulence.lookupOrDefault<Scalar>("turbulenceIntensity", S(0.05));
     hydrDiameter_ =
         turbulence.lookupOrDefault<Scalar>("hydraulicDiameter", S(0.01));
+
+    if (turbIntensity_ <= S(0))
+    {
+        FatalError("turbulence.turbulenceIntensity must be positive.");
+    }
+    if (hydrDiameter_ <= S(0))
+    {
+        FatalError("turbulence.hydraulicDiameter must be positive.");
+    }
 
     const Scalar lTurb = std::max(S(0.07) * hydrDiameter_, smallValue);
     const Scalar UMag = initialVelocity_.magnitude();
@@ -161,10 +198,20 @@ void CFDApplication::loadCase()
     initialOmega_ =
         initialConditions.lookupOrDefault<Scalar>("omega", defaultOmega_);
 
-    // Extract output configuration
+    if (turbulenceEnabled_)
+    {
+        if (initialK_ < S(0))
+        {
+            FatalError("initialConditions.k must be non-negative.");
+        }
+        if (initialOmega_ <= S(0))
+        {
+            FatalError("initialConditions.omega must be positive.");
+        }
+    }
+
     const auto& outputDict = caseReader_->section("output");
     vtkOutputFilename_ = outputDict.lookup<std::string>("filename");
-    debug_ = outputDict.lookupOrDefault<bool>("debug", false);
 
     std::cout
         << "Case file loaded." << '\n';
