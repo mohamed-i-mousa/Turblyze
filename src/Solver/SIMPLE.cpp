@@ -205,6 +205,44 @@ void SIMPLE::initialize
 }
 
 
+void SIMPLE::updateVelocityGradients
+(
+    VectorField& gradUx,
+    VectorField& gradUy,
+    VectorField& gradUz
+)
+{
+    const size_t numCells = mesh_.numCells();
+
+    #pragma omp parallel for schedule(static)
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    {
+        gradUx[cellIdx] =
+            gradientScheme_.cellGradient(Field::Ux, Ux_, cellIdx);
+        gradUy[cellIdx] =
+            gradientScheme_.cellGradient(Field::Uy, Uy_, cellIdx);
+        gradUz[cellIdx] =
+            gradientScheme_.cellGradient(Field::Uz, Uz_, cellIdx);
+    }
+
+    gradientScheme_.limitGradient(Field::Ux, Ux_, gradUx);
+    gradientScheme_.limitGradient(Field::Uy, Uy_, gradUy);
+    gradientScheme_.limitGradient(Field::Uz, Uz_, gradUz);
+
+    #pragma omp parallel for schedule(static)
+    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    {
+        gradU_[cellIdx] =
+            Tensor::fromRows
+            (
+                gradUx[cellIdx],
+                gradUy[cellIdx],
+                gradUz[cellIdx]
+            );
+    }
+}
+
+
 void SIMPLE::solveMomentumEquations()
 {
     const size_t numCells = mesh_.numCells();
@@ -280,37 +318,10 @@ void SIMPLE::solveMomentumEquations()
     // Reset interpolated diagonals accumulator
     DUf_.setAll(S(0.0));
 
-    // Compute per-row velocity gradients and assemble the tensor field.
     VectorField gradUx;
     VectorField gradUy;
     VectorField gradUz;
-
-    #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-    {
-        gradUx[cellIdx] =
-            gradientScheme_.cellGradient(Field::Ux, Ux_, cellIdx);
-        gradUy[cellIdx] =
-            gradientScheme_.cellGradient(Field::Uy, Uy_, cellIdx);
-        gradUz[cellIdx] =
-            gradientScheme_.cellGradient(Field::Uz, Uz_, cellIdx);
-    }
-
-    gradientScheme_.limitGradient(Field::Ux, Ux_, gradUx);
-    gradientScheme_.limitGradient(Field::Uy, Uy_, gradUy);
-    gradientScheme_.limitGradient(Field::Uz, Uz_, gradUz);
-
-    #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-    {
-        gradU_[cellIdx] = 
-            Tensor::fromRows
-            (
-                gradUx[cellIdx],
-                gradUy[cellIdx],
-                gradUz[cellIdx]
-            );
-    }
+    updateVelocityGradients(gradUx, gradUy, gradUz);
 
     // Add transpose gradient source term
     if (turbulenceModel_)
@@ -691,47 +702,18 @@ void SIMPLE::solveTurbulence()
 {
     if (turbulenceModel_)
     {
-        // Recompute velocity gradients from corrected velocity
         const size_t numCells = mesh_.numCells();
 
-        VectorField gUx;
-        VectorField gUy;
-        VectorField gUz;
+        VectorField gradUx;
+        VectorField gradUy;
+        VectorField gradUz;
+        updateVelocityGradients(gradUx, gradUy, gradUz);
 
-        #pragma omp parallel for schedule(static)
-        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-        {
-            gUx[cellIdx] =
-                gradientScheme_.cellGradient(Field::Ux, Ux_, cellIdx);
-            gUy[cellIdx] =
-                gradientScheme_.cellGradient(Field::Uy, Uy_, cellIdx);
-            gUz[cellIdx] =
-                gradientScheme_.cellGradient(Field::Uz, Uz_, cellIdx);
-        }
-
-        gradientScheme_.limitGradient(Field::Ux, Ux_, gUx);
-        gradientScheme_.limitGradient(Field::Uy, Uy_, gUy);
-        gradientScheme_.limitGradient(Field::Uz, Uz_, gUz);
-
-        #pragma omp parallel for schedule(static)
-        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-        {
-            gradU_[cellIdx] = 
-                Tensor::fromRows(gUx[cellIdx], gUy[cellIdx], gUz[cellIdx]);
-        }
-        
         const auto& kField = turbulenceModel_->k();
         const auto& omegaField = turbulenceModel_->omega();
 
-        ScalarField kPrev;
-        ScalarField omegaPrev;
-
-        #pragma omp parallel for schedule(static)
-        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-        {
-            kPrev[cellIdx] = kField[cellIdx];
-            omegaPrev[cellIdx] = omegaField[cellIdx];
-        }
+        ScalarField kPrev = kField;
+        ScalarField omegaPrev = omegaField;
 
         turbulenceModel_->solve(Ux_, Uy_, Uz_, RhieChowFlowRate_, gradU_);
 

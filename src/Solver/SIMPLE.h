@@ -423,6 +423,19 @@ private:
 
 // Private methods
 
+    /**
+     * @brief Compute limited velocity gradients and assemble gradU_
+     * @param gradUx Output gradient field for x-velocity
+     * @param gradUy Output gradient field for y-velocity
+     * @param gradUz Output gradient field for z-velocity
+     */
+    void updateVelocityGradients
+    (
+        VectorField& gradUx,
+        VectorField& gradUy,
+        VectorField& gradUz
+    );
+
     /// Compute mass imbalance across domain
     Scalar massImbalance() const;
 
