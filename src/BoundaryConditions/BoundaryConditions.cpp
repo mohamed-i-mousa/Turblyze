@@ -11,7 +11,6 @@
 
 #include "ErrorHandler.h"
 
-
 // ****************************** Setter Methods ******************************
 
 void BoundaryConditions::addPatch(BoundaryPatch patch)
@@ -27,64 +26,68 @@ void BoundaryConditions::addPatch(BoundaryPatch patch)
     patches_.push_back(std::move(patch));
 }
 
+
 void BoundaryConditions::setFixedValue
 (
     const std::string& patchName,
-    const std::string& fieldName,
+    Field field,
     Scalar value
 )
 {
     BoundaryData bcData;
     bcData.setFixedValue(value);
-    setBC(patchName, fieldName, std::move(bcData));
+    setBC(patchName, field, std::move(bcData));
 }
+
 
 void BoundaryConditions::setFixedGradient
 (
     const std::string& patchName,
-    const std::string& fieldName,
+    Field field,
     Scalar gradient
 )
 {
     BoundaryData bcData;
     bcData.setFixedGradient(gradient);
-    setBC(patchName, fieldName, std::move(bcData));
+    setBC(patchName, field, std::move(bcData));
 }
+
 
 void BoundaryConditions::setZeroGradient
 (
     const std::string& patchName,
-    const std::string& fieldName
+    Field field
 )
 {
     BoundaryData bcData;
     bcData.setZeroGradient();
-    setBC(patchName, fieldName, std::move(bcData));
+    setBC(patchName, field, std::move(bcData));
 }
+
 
 void BoundaryConditions::setNoSlip
 (
     const std::string& patchName,
-    const std::string& fieldName
+    Field field
 )
 {
     BoundaryData bcData;
     bcData.setNoSlip();
-    setBC(patchName, fieldName, std::move(bcData));
+    setBC(patchName, field, std::move(bcData));
 }
+
 
 void BoundaryConditions::setWallFunctionType
 (
     const std::string& patchName,
-    const std::string& fieldName,
+    Field field,
     BCType wallType
 )
 {
     BoundaryData bcData;
     bcData.setWallFunctionType(wallType);
-    setBC(patchName, fieldName, std::move(bcData));
+    setBC(patchName, field, std::move(bcData));
 }
-
 
 // ****************************** Accessor Methods ******************************
 
@@ -101,10 +104,11 @@ const BoundaryPatch& BoundaryConditions::patch(const std::string& name) const
     FatalError("Patch " + name + " not found");
 }
 
+
 const BoundaryData& BoundaryConditions::fieldBC
 (
     const std::string& patchName,
-    const std::string& fieldName
+    Field field
 ) const
 {
     const auto patchIterator = patchBoundaryData_.find(patchName);
@@ -113,7 +117,7 @@ const BoundaryData& BoundaryConditions::fieldBC
     {
         const auto& fieldMap = patchIterator->second;
 
-        const auto fieldIterator = fieldMap.find(fieldName);
+        const auto fieldIterator = fieldMap.find(field);
 
         if (fieldIterator != fieldMap.end())
         {
@@ -124,13 +128,14 @@ const BoundaryData& BoundaryConditions::fieldBC
     FatalError
     (
         "Boundary condition not found for patch " + patchName
-        + " and field " + fieldName
+        + " and field " + std::string(fieldToString(field))
     );
 }
 
+
 Scalar BoundaryConditions::boundaryFaceValue
 (
-    const std::string& fieldName,
+    Field field,
     const ScalarField& phi,
     const Face& face
 ) const
@@ -146,7 +151,7 @@ Scalar BoundaryConditions::boundaryFaceValue
     }
 
     const BoundaryPatch& patch = face.patch()->get();
-    const BoundaryData& bc = fieldBC(patch.patchName(), fieldName);
+    const BoundaryData& bc = fieldBC(patch.patchName(), field);
 
     using enum BCType;
     switch (bc.type())
@@ -195,6 +200,7 @@ Scalar BoundaryConditions::boundaryFaceValue
     }
 }
 
+
 void BoundaryConditions::linkFaces(std::span<Face> faces)
 {
     for (const auto& patch : patches_)
@@ -213,6 +219,7 @@ void BoundaryConditions::linkFaces(std::span<Face> faces)
     linked_ = true;
 }
 
+
 std::string BoundaryConditions::bcTypeToString(BCType bctype)
 {
     using enum BCType;
@@ -230,6 +237,7 @@ std::string BoundaryConditions::bcTypeToString(BCType bctype)
 
     FatalError("Corrupted BCType value");
 }
+
 
 void BoundaryConditions::validatePatchNames() const
 {
@@ -265,6 +273,7 @@ void BoundaryConditions::validatePatchNames() const
         }
     }
 }
+
 
 void BoundaryConditions::printSummary() const
 {
@@ -316,11 +325,11 @@ void BoundaryConditions::printSummary() const
 
             for (const auto& fieldBCPair : patchBCIterator->second)
             {
-                const std::string& fieldName = fieldBCPair.first;
+                const Field field = fieldBCPair.first;
                 const BoundaryData& fbc = fieldBCPair.second;
 
                 std::cout
-                    << "      Field '" << fieldName
+                    << "      Field '" << fieldToString(field)
                     << "': Type: "
                     << bcTypeToString(fbc.type());
 

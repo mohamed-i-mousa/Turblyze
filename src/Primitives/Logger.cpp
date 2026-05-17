@@ -10,7 +10,7 @@
 #include <string>
 
 
-void Logger::sectionHeader(const std::string& title)
+void Logger::sectionHeader(std::string_view title)
 {
     StreamStateGuard guard(std::cout);
     std::cout
@@ -60,8 +60,8 @@ void Logger::residualTableHeader()
 
 void Logger::residualRow
 (
-    const std::string& equation,
-    const std::string& solver,
+    std::string_view equation,
+    std::string_view solver,
     int iterations,
     Scalar linearSolverResidual
 )
@@ -79,7 +79,7 @@ void Logger::residualRow
 }
 
 
-void Logger::subsection(const std::string& title)
+void Logger::subsection(std::string_view title)
 {
     StreamStateGuard guard(std::cout);
     std::cout << '\n' << "  " << title << '\n';
@@ -88,7 +88,7 @@ void Logger::subsection(const std::string& title)
 
 void Logger::scalarStat
 (
-    const std::string& name,
+    std::string_view name,
     Scalar minVal,
     Scalar maxVal,
     Scalar meanVal
@@ -106,7 +106,7 @@ void Logger::scalarStat
 }
 
 
-void Logger::scaledResidual(const std::string& name, Scalar value)
+void Logger::scaledResidual(std::string_view name, Scalar value)
 {
     StreamStateGuard guard(std::cout);
 
@@ -142,8 +142,8 @@ void Logger::linearSolverConfigHeader()
 
 void Logger::linearSolverConfigRow
 (
-    const std::string& equation,
-    const std::string& solver,
+    std::string_view equation,
+    std::string_view solver,
     Scalar tolerance,
     int maxIters
 )
@@ -158,7 +158,7 @@ void Logger::linearSolverConfigRow
 }
 
 
-void Logger::keyValue(const std::string& label, Scalar value)
+void Logger::keyValue(std::string_view label, Scalar value)
 {
     StreamStateGuard guard(std::cout);
 
@@ -168,7 +168,7 @@ void Logger::keyValue(const std::string& label, Scalar value)
 }
 
 
-void Logger::keyValue(const std::string& label, int value)
+void Logger::keyValue(std::string_view label, int value)
 {
     StreamStateGuard guard(std::cout);
 
@@ -178,7 +178,7 @@ void Logger::keyValue(const std::string& label, int value)
 }
 
 
-void Logger::keyValue(const std::string& label, const std::string& value)
+void Logger::keyValue(std::string_view label, std::string_view value)
 {
     StreamStateGuard guard(std::cout);
 

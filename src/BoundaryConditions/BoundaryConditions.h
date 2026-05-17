@@ -29,6 +29,7 @@
 #include "BoundaryPatch.h"
 #include "BoundaryData.h"
 #include "CellData.h"
+#include "Field.h"
 
 
 class BoundaryConditions
@@ -46,78 +47,78 @@ public:
     /**
      * @brief Set generic boundary condition
      * @param patchName Name of the boundary patch
-     * @param fieldName Name of the field (U, p, k, omega, etc.)
+     * @param field Field identifier
      * @param bcData Boundary condition data
      */
     void setBC
     (
         const std::string& patchName,
-        const std::string& fieldName,
+        Field field,
         BoundaryData bcData
     )
     {
-        patchBoundaryData_[patchName][fieldName] = std::move(bcData);
+        patchBoundaryData_[patchName][field] = std::move(bcData);
     }
 
     /**
      * @brief Set fixed scalar value boundary condition
      * @param patchName Name of the boundary patch
-     * @param fieldName Name of the field
+     * @param field Field identifier
      * @param value Scalar value to fix at boundary
      */
     void setFixedValue
     (
         const std::string& patchName,
-        const std::string& fieldName,
+        Field field,
         Scalar value
     );
 
     /**
      * @brief Set fixed scalar gradient boundary condition
      * @param patchName Name of the boundary patch
-     * @param fieldName Name of the field
+     * @param field Field identifier
      * @param gradient Scalar gradient to fix at boundary
      */
     void setFixedGradient
     (
         const std::string& patchName,
-        const std::string& fieldName,
+        Field field,
         Scalar gradient
     );
 
     /**
      * @brief Set zero gradient boundary condition
      * @param patchName Name of the boundary patch
-     * @param fieldName Name of the field
+     * @param field Field identifier
      */
     void setZeroGradient
     (
         const std::string& patchName,
-        const std::string& fieldName
+        Field field
     );
 
     /**
      * @brief Set no-slip boundary condition (for velocity)
      * @param patchName Name of the boundary patch
-     * @param fieldName Name of the field
+     * @param field Field identifier
      */
     void setNoSlip
     (
         const std::string& patchName,
-        const std::string& fieldName
+        Field field
     );
 
     /**
      * @brief Set wall function boundary condition type
      * @param patchName Name of the boundary patch
-     * @param fieldName Name of the field
+     * @param field Field identifier
      * @param wallType The wall function type (K_WALL_FUNCTION,
      *                 OMEGA_WALL_FUNCTION, or NUT_WALL_FUNCTION)
      */
     void setWallFunctionType
     (
         const std::string& patchName,
-        const std::string& fieldName,
+        Field field,
         BCType wallType
     );
 
@@ -149,26 +150,26 @@ public:
     /**
      * @brief Get boundary condition for a field on a patch
      * @param patchName Name of the boundary patch
-     * @param fieldName Name of the field
+     * @param field Field identifier
      * @return Reference to boundary data
      * @note Terminates the program if not found
      */
     [[nodiscard]] const BoundaryData& fieldBC
     (
         const std::string& patchName,
-        const std::string& fieldName
+        Field field
     ) const;
 
     /**
      * @brief Calculate boundary face value for scalar field
-     * @param fieldName Name of the field
+     * @param field Field identifier
      * @param phi Scalar field
      * @param face Boundary face
      * @return Boundary value based on boundary condition
      */
     [[nodiscard]] Scalar boundaryFaceValue
     (
-        const std::string& fieldName,
+        Field field,
         const ScalarField& phi,
         const Face& face
     ) const;
@@ -204,8 +205,8 @@ private:
 
 // Private members
 
-    /// Nested map: patch name → field name → boundary data
-    std::map<std::string, std::map<std::string, BoundaryData>>
+    /// Nested map: patch name → field → boundary data
+    std::map<std::string, std::map<Field, BoundaryData>>
     patchBoundaryData_;
 
     /// Vector of all boundary patches

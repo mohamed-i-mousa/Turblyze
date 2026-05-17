@@ -28,6 +28,7 @@
 #include "BoundaryConditions.h"
 #include "CellData.h"
 #include "FaceData.h"
+#include "Field.h"
 
 
 class GradientScheme
@@ -58,7 +59,7 @@ public:
 
     /**
      * @brief Calculate gradient at a single cell using least-squares.
-     * @param fieldName Name of the field for BC lookup
+     * @param field Field identifier for BC lookup
      * @param phi Scalar field for gradient calculation
      * @param cellIdx Index of the cell to compute gradient for
      * @param boundaryFaceValues Optional per-face boundary value overrides.
@@ -70,7 +71,7 @@ public:
      */
     [[nodiscard]] Vector cellGradient
     (
-        const std::string& fieldName,
+        Field field,
         const ScalarField& phi,
         size_t cellIdx,
         const FaceData<Scalar>* boundaryFaceValues = nullptr
@@ -85,7 +86,7 @@ public:
      * orthogonal correction to ensure consistency with the direct
      * cell-to-cell difference.
      * 
-     * @param fieldName Name of the field for BC lookup
+     * @param field Field identifier for BC lookup
      * @param phi Cell-centered scalar field
      * @param gradPhiP Gradient at the owner cell
      * @param gradPhiN Gradient at the neighbor cell
@@ -94,7 +95,7 @@ public:
      */
     [[nodiscard]] Vector faceGradient
     (
-        const std::string& fieldName,
+        Field field,
         const ScalarField& phi,
         const Vector& gradPhiP,
         const Vector& gradPhiN,
@@ -109,26 +110,26 @@ public:
      * including values imposed by boundary conditions on boundary faces.
      * Prevents overshoot from steep gradients (e.g. near wall cells).
      *
-     * @param fieldName Name of the field for BC lookup on boundary faces
+     * @param field Field identifier for BC lookup on boundary faces
      * @param phi Cell-centered scalar field
      * @param gradPhi Cell-centered gradient field (modified in place)
      */
     void limitGradient
     (
-        const std::string& fieldName,
+        Field field,
         const ScalarField& phi,
         VectorField& gradPhi
     ) const;
 
     /**
      * @brief Compute a limited cell-centered gradient field
-     * @param fieldName Name of the field for BC lookup
+     * @param field Field identifier for BC lookup
      * @param phi Cell-centered scalar field
      * @param gradPhi Output gradient field (overwritten, then limited)
      */
     void fieldGradient
     (
-        const std::string& fieldName,
+        Field field,
         const ScalarField& phi,
         VectorField& gradPhi
     ) const;
@@ -155,14 +156,14 @@ private:
     /**
      * @brief Calculate boundary face gradient based on BC type
      * @param face Boundary face
-     * @param fieldName Name of the field for BC lookup
+     * @param field Field identifier for BC lookup
      * @param phi Scalar field values
      * @param cellGradient Gradient at the owner cell
      * @return Gradient vector at the boundary face
      */
     Vector boundaryFaceGradient
     (
-        const std::string& fieldName,
+        Field field,
         const ScalarField& phi,
         const Vector& cellGradient,
         const Face& face

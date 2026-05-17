@@ -257,7 +257,7 @@ void Matrix::assembleInternalFace
     const Vector gradPhif =
         equation.gradScheme.faceGradient
         (
-            equation.fieldName,
+            equation.field,
             equation.phi,
             gradPhiP,
             gradPhiN,
@@ -298,7 +298,7 @@ void Matrix::assembleBoundaryFace
 {
     const size_t ownerIdx = face.ownerCell();
     const BoundaryData& bc =
-        bcManager_.fieldBC(face.patch()->get().patchName(), equation.fieldName);
+        bcManager_.fieldBC(face.patch()->get().patchName(), equation.field);
     const Vector Sf = face.normal() * face.projectedArea();
     const Vector ePf = face.dPf().normalized();
     const Scalar dPfMag = face.dPfMag();
@@ -377,7 +377,7 @@ void Matrix::assembleBoundaryFace
         Warning
         (
             "Undefined boundary condition type for field "
-          + equation.fieldName + " on patch "
+          + std::string(fieldToString(equation.field)) + " on patch "
           + face.patch()->get().patchName()
           + ". Applying zero gradient."
         );

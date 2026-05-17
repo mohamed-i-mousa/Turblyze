@@ -18,7 +18,7 @@
 
 #include <ios>
 #include <ostream>
-#include <string>
+#include <string_view>
 
 #include "Scalar.h"
 
@@ -63,7 +63,7 @@ namespace Logger
      * @brief Print a generic 80-char framed banner with the given title
      * @param title Title text shown on the second line of the banner
      */
-    void sectionHeader(const std::string& title);
+    void sectionHeader(std::string_view title);
 
     /**
      * @brief Print the per-iteration banner
@@ -86,8 +86,8 @@ namespace Logger
      */
     void linearSolverConfigRow
     (
-        const std::string& equation,
-        const std::string& solver,
+        std::string_view equation,
+        std::string_view solver,
         Scalar tolerance,
         int maxIters
     );
@@ -97,21 +97,21 @@ namespace Logger
      * @param label Row label (left-justified, padded to 24 chars)
      * @param value Scalar value, printed in scientific notation
      */
-    void keyValue(const std::string& label, Scalar value);
+    void keyValue(std::string_view label, Scalar value);
 
     /**
      * @brief Print one indented "label  value" row with an int value
      * @param label Row label (left-justified, padded to 24 chars)
      * @param value Integer value, right-aligned to 12 chars
      */
-    void keyValue(const std::string& label, int value);
+    void keyValue(std::string_view label, int value);
 
     /**
      * @brief Print one indented "label  value" row with a string value
      * @param label Row label (left-justified, padded to 24 chars)
      * @param value String value (e.g. "kOmegaSST", "[-1e5, 1e5] Pa")
      */
-    void keyValue(const std::string& label, const std::string& value);
+    void keyValue(std::string_view label, std::string_view value);
 
     /// Print the column header row for the table
     void residualTableHeader();
@@ -125,8 +125,8 @@ namespace Logger
      */
     void residualRow
     (
-        const std::string& equation,
-        const std::string& solver,
+        std::string_view equation,
+        std::string_view solver,
         int iterations,
         Scalar linearSolverResidual
     );
@@ -135,7 +135,7 @@ namespace Logger
      * @brief Print a sub-section title line with two-space indentation
      * @param title Title text (without trailing newline)
      */
-    void subsection(const std::string& title);
+    void subsection(std::string_view title);
 
     /**
      * @brief Print one min/max/mean statistics line for a scalar field
@@ -146,7 +146,7 @@ namespace Logger
      */
     void scalarStat
     (
-        const std::string& name,
+        std::string_view name,
         Scalar minVal,
         Scalar maxVal,
         Scalar meanVal
@@ -157,5 +157,5 @@ namespace Logger
      * @param name  Residual label ("mass", "velocity", ...)
      * @param value Scaled residual value
      */
-    void scaledResidual(const std::string& name, Scalar value);
+    void scaledResidual(std::string_view name, Scalar value);
 }

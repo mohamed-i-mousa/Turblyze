@@ -85,7 +85,7 @@ void SIMPLE::solve()
         UzAvgPrevf_ = UzAvgf_;
         RhieChowFlowRatePrev_ = RhieChowFlowRate_;
 
-        gradientScheme_.fieldGradient("p", p_, gradP_);
+        gradientScheme_.fieldGradient(Field::p, p_, gradP_);
 
         solveMomentumEquations();
 
@@ -159,9 +159,9 @@ void SIMPLE::initialize
         {
             Uf = Vector
             (
-                bcManager_.boundaryFaceValue("Ux", Ux_, face),
-                bcManager_.boundaryFaceValue("Uy", Uy_, face),
-                bcManager_.boundaryFaceValue("Uz", Uz_, face)
+                bcManager_.boundaryFaceValue(Field::Ux, Ux_, face),
+                bcManager_.boundaryFaceValue(Field::Uy, Uy_, face),
+                bcManager_.boundaryFaceValue(Field::Uz, Uz_, face)
             );
         }
         else
@@ -256,7 +256,7 @@ void SIMPLE::solveMomentumEquations()
             {
                 const BoundaryPatch& patch = face.patch()->get();
                 const BoundaryData& bc =
-                    bcManager_.fieldBC(patch.patchName(), "nut");
+                    bcManager_.fieldBC(patch.patchName(), Field::nut);
 
                 if (bc.type() == BCType::NUT_WALL_FUNCTION)
                 {
@@ -289,16 +289,16 @@ void SIMPLE::solveMomentumEquations()
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         gradUx[cellIdx] =
-            gradientScheme_.cellGradient("Ux", Ux_, cellIdx);
+            gradientScheme_.cellGradient(Field::Ux, Ux_, cellIdx);
         gradUy[cellIdx] =
-            gradientScheme_.cellGradient("Uy", Uy_, cellIdx);
+            gradientScheme_.cellGradient(Field::Uy, Uy_, cellIdx);
         gradUz[cellIdx] =
-            gradientScheme_.cellGradient("Uz", Uz_, cellIdx);
+            gradientScheme_.cellGradient(Field::Uz, Uz_, cellIdx);
     }
 
-    gradientScheme_.limitGradient("Ux", Ux_, gradUx);
-    gradientScheme_.limitGradient("Uy", Uy_, gradUy);
-    gradientScheme_.limitGradient("Uz", Uz_, gradUz);
+    gradientScheme_.limitGradient(Field::Ux, Ux_, gradUx);
+    gradientScheme_.limitGradient(Field::Uy, Uy_, gradUy);
+    gradientScheme_.limitGradient(Field::Uz, Uz_, gradUz);
 
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -340,7 +340,7 @@ void SIMPLE::solveMomentumEquations()
     // Solve momentum equations for each component
     TransportEquation equationUx
     {
-        .fieldName      = "Ux",
+        .field          = Field::Ux,
         .phi            = Ux_,
         .flowRate       = std::cref(RhieChowFlowRatePrev_),
         .convScheme     = std::cref(convectionScheme_.momentum()),
@@ -354,7 +354,7 @@ void SIMPLE::solveMomentumEquations()
 
     TransportEquation equationUy
     {
-        .fieldName      = "Uy",
+        .field          = Field::Uy,
         .phi            = Uy_,
         .flowRate       = std::cref(RhieChowFlowRatePrev_),
         .convScheme     = std::cref(convectionScheme_.momentum()),
@@ -368,7 +368,7 @@ void SIMPLE::solveMomentumEquations()
 
     TransportEquation equationUz
     {
-        .fieldName      = "Uz",
+        .field          = Field::Uz,
         .phi            = Uz_,
         .flowRate       = std::cref(RhieChowFlowRatePrev_),
         .convScheme     = std::cref(convectionScheme_.momentum()),
@@ -389,7 +389,7 @@ void SIMPLE::solveMomentumEquations()
         if (face.isBoundary())
         {
             const BoundaryData& bc =
-                bcManager_.fieldBC(face.patch()->get().patchName(), "p");
+                bcManager_.fieldBC(face.patch()->get().patchName(), Field::p);
 
             if (bc.type() == BCType::FIXED_VALUE)
             {
@@ -422,9 +422,9 @@ void SIMPLE::updateRhieChowFlowRate()
 
         if (face.isBoundary())
         {
-            UxAvgf_[faceIdx] = bcManager_.boundaryFaceValue("Ux", Ux_, face);
-            UyAvgf_[faceIdx] = bcManager_.boundaryFaceValue("Uy", Uy_, face);
-            UzAvgf_[faceIdx] = bcManager_.boundaryFaceValue("Uz", Uz_, face);
+            UxAvgf_[faceIdx] = bcManager_.boundaryFaceValue(Field::Ux, Ux_, face);
+            UyAvgf_[faceIdx] = bcManager_.boundaryFaceValue(Field::Uy, Uy_, face);
+            UzAvgf_[faceIdx] = bcManager_.boundaryFaceValue(Field::Uz, Uz_, face);
 
             const Vector Uf
             (
@@ -455,7 +455,7 @@ void SIMPLE::updateRhieChowFlowRate()
         const Vector gradPf =
             gradientScheme_.faceGradient
             (
-                "p",
+                Field::p,
                 p_,
                 gradP_[P],
                 gradP_[N],
@@ -482,7 +482,7 @@ void SIMPLE::solvePressureCorrection()
     const size_t numCells = mesh_.numCells();
 
     VectorField gradPCorrPrecomputed;
-    gradientScheme_.fieldGradient("pCorr", pCorr_, gradPCorrPrecomputed);
+    gradientScheme_.fieldGradient(Field::pCorr, pCorr_, gradPCorrPrecomputed);
 
     // Compute mass imbalance source term
     ScalarField massImbalance;
@@ -504,7 +504,7 @@ void SIMPLE::solvePressureCorrection()
 
     TransportEquation equationPCorr
     {
-        .fieldName  = "pCorr",
+        .field      = Field::pCorr,
         .phi        = pCorr_,
         .flowRate   = std::nullopt,
         .convScheme = std::nullopt,
@@ -543,7 +543,7 @@ void SIMPLE::solvePressureCorrection()
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         gradPCorr_[cellIdx] =
-            gradientScheme_.cellGradient("pCorr", pCorr_, cellIdx);
+            gradientScheme_.cellGradient(Field::pCorr, pCorr_, cellIdx);
     }
 }
 
@@ -580,9 +580,9 @@ void SIMPLE::correctVelocity()
 
         if (face.isBoundary())
         {
-            UxAvgf_[faceIdx] = bcManager_.boundaryFaceValue("Ux", Ux_, face);
-            UyAvgf_[faceIdx] = bcManager_.boundaryFaceValue("Uy", Uy_, face);
-            UzAvgf_[faceIdx] = bcManager_.boundaryFaceValue("Uz", Uz_, face);
+            UxAvgf_[faceIdx] = bcManager_.boundaryFaceValue(Field::Ux, Ux_, face);
+            UyAvgf_[faceIdx] = bcManager_.boundaryFaceValue(Field::Uy, Uy_, face);
+            UzAvgf_[faceIdx] = bcManager_.boundaryFaceValue(Field::Uz, Uz_, face);
         }
         else
         {
@@ -644,7 +644,7 @@ void SIMPLE::correctFlowRate()
         if (face.isBoundary())
         {
             const BoundaryData& bc =
-                bcManager_.fieldBC(face.patch()->get().patchName(), "p");
+                bcManager_.fieldBC(face.patch()->get().patchName(), Field::p);
 
             if
             (
@@ -671,7 +671,7 @@ void SIMPLE::correctFlowRate()
         const Vector gradPCorrf =
             gradientScheme_.faceGradient
             (
-                "pCorr",
+                Field::pCorr,
                 pCorr_,
                 gradPCorr_[ownerIdx],
                 gradPCorr_[neighborIdx],
@@ -702,16 +702,16 @@ void SIMPLE::solveTurbulence()
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
             gUx[cellIdx] =
-                gradientScheme_.cellGradient("Ux", Ux_, cellIdx);
+                gradientScheme_.cellGradient(Field::Ux, Ux_, cellIdx);
             gUy[cellIdx] =
-                gradientScheme_.cellGradient("Uy", Uy_, cellIdx);
+                gradientScheme_.cellGradient(Field::Uy, Uy_, cellIdx);
             gUz[cellIdx] =
-                gradientScheme_.cellGradient("Uz", Uz_, cellIdx);
+                gradientScheme_.cellGradient(Field::Uz, Uz_, cellIdx);
         }
 
-        gradientScheme_.limitGradient("Ux", Ux_, gUx);
-        gradientScheme_.limitGradient("Uy", Uy_, gUy);
-        gradientScheme_.limitGradient("Uz", Uz_, gUz);
+        gradientScheme_.limitGradient(Field::Ux, Ux_, gUx);
+        gradientScheme_.limitGradient(Field::Uy, Uy_, gUy);
+        gradientScheme_.limitGradient(Field::Uz, Uz_, gUz);
 
         #pragma omp parallel for schedule(static)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -1018,7 +1018,7 @@ void SIMPLE::solveMomentumEquation
     {
         Logger::residualRow
         (
-            eq.fieldName,
+            fieldToString(eq.field),
             "BiCGSTAB",
             momentumSolver_.lastIterations(),
             momentumSolver_.lastResidual()

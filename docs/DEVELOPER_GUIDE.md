@@ -27,8 +27,8 @@ following the OpenFOAM convention.
   - `Scalar.h`, `Vector.h/.cpp`, `Tensor.h/.cpp`, `OptionalRef.h`, `ErrorHandler.h`
 - **`src/Mesh/`**: mesh topology — geometric entities and mesh I/O
   - `BoundaryPatch.h`, `Face.h/.cpp`, `Cell.h/.cpp`, `Mesh.h`, `MeshReader.h/.cpp`, `MeshChecker.h/.cpp`
-- **`src/Fields/`**: typed field containers used by all layers
-  - `CellData.h/.cpp`, `FaceData.h/.cpp`
+- **`src/Fields/`**: typed field containers and field identity used by all layers
+  - `CellData.h/.cpp`, `FaceData.h/.cpp`, `Field.h/.cpp`
 - **`src/BoundaryConditions/`**: patch metadata and physical BC configuration
   - `BoundaryData.h/.cpp`, `BoundaryConditions.h/.cpp`
 - **`src/Schemes/`**: discretization schemes
@@ -125,11 +125,11 @@ Notes:
 - Validated getters: `fixedScalarValue()`, `fixedScalarGradient()`
 
 ### BoundaryConditions Manager
-**Data Structure**: `patchBoundaryData[patchName][fieldName] = BoundaryData`
+**Data Structure**: `patchBoundaryData[patchName][field] = BoundaryData`, where `field` is the `Field` enum (`src/Fields/Field.h`: `Field::{Ux, Uy, Uz, p, pCorr, k, omega, nut}`). Field identity is a compiler-checked enum, not a string key.
 
 **Key Features**:
 1. **Direct Patch Lookup**: `Face::patch()` returns `const BoundaryPatch*` directly, linked at startup via `BoundaryConditions::linkFaces()`
-2. **Per-Component Velocity BCs**: velocity has no vector BC type — it is registered as three independent scalar BCs under `"Ux"/"Uy"/"Uz"`. `CFDApplication` splits the case file's `U` vector at registration (`setFixedValue(patch, "Ux", value.x())`, etc.)
+2. **Per-Component Velocity BCs**: velocity has no vector BC type — it is registered as three independent scalar BCs under `Field::Ux/Uy/Uz`. `CFDApplication` splits the case file's `U` vector at registration (`setFixedValue(patch, Field::Ux, value.x())`, etc.)
 3. **Robust Retrieval**: `fieldBC()` with comprehensive error handling
 4. **Boundary Value Calculation**: `boundaryFaceValue()` resolves a face value for any field — every field (`Ux`, `Uy`, `Uz`, `p`, `k`, `omega`, `nut`) is scalar
 
@@ -143,7 +143,6 @@ Notes:
 
 **Fallbacks**:
 - Missing BC specifications default to zero-gradient
-- Unknown field names default to cell gradient
 - Invalid patches use cell values
 
 
@@ -252,7 +251,7 @@ Uses a unified `TransportEquation` struct to bundle all data for any transport e
 ```cpp
 struct TransportEquation
 {
-    std::string fieldName;              // "Ux", "k", "pCorr", etc.
+    Field field;                        // Ux, Uy, Uz, p, pCorr, k, omega, nut
     ScalarField& phi;                   // Current field values (mutable for zero-copy solve)
     OptionalRef<FaceFluxField> flowRate = std::nullopt;    // Face flow rates (nullopt = no convection)
     OptionalRef<ConvectionScheme> convScheme = std::nullopt;
@@ -533,16 +532,17 @@ Used by: `Face`, `Cell`, `BoundaryData`, `BoundaryPatch`, `CellData<T>`, `FaceDa
 ## Extending the codebase (recipes)
 
 ### Add a new scalar transport equation
-1) Create a `ScalarField phi("phi", numCells, initial)` in your driver.
-2) Build an effective diffusion field `Gamma` and a source `phi_source` per cell.
-3) Pre-compute cell gradients `gradPhi` via `GradientScheme::cellGradient()`.
-4) Create a `TransportEquation` struct with all required fields:
+1) Add a `Field` enumerator for the new field in `src/Fields/Field.h` (lowercase for scalar fields, matching `p`/`k`/`omega`) and a matching `case` in `fieldToString()` (`Field.cpp`).
+2) Create the field in your driver: `ScalarField phi(initialValue);` (cell count comes from `Mesh::cellCount()`; use `ScalarField phi;` for zero-init).
+3) Build an effective diffusion field `Gamma` and a source `phi_source` per cell.
+4) Pre-compute cell gradients `gradPhi` via `GradientScheme::cellGradient()`.
+5) Create a `TransportEquation` struct with all required fields:
    ```cpp
-   TransportEquation eq{"phi", phi, flowRate, convScheme,
+   TransportEquation eq{Field::phi, phi, flowRate, convScheme,
        Gamma, std::nullopt, source, gradPhi, gradScheme};
    ```
-5) Call `matrix.buildMatrix(eq)`, then solve with `LinearSolver::solveWithBiCGSTAB()`.
-6) Apply under-relaxation via `matrix.relax(alpha, phiPrev)` if needed.
+6) Call `matrix.buildMatrix(eq)`, then solve with `LinearSolver::solveWithBiCGSTAB()`.
+7) Apply under-relaxation via `matrix.relax(alpha, phiPrev)` if needed.
 
 ### Add a new convection scheme
 1) Derive from `ConvectionScheme` (base `getFluxCoefficients` returns `FluxCoefficients` struct).
@@ -583,18 +583,18 @@ case BCType::PERIODIC:
 **Testing Strategy**: Add comprehensive std::cout debugging to trace:
 1. **Patch Registration**: Verify patch names, zones, face ranges
 2. **BC Storage**: Confirm type-safe storage of scalar values and gradients
-3. **Field Lookup**: Test `fieldBC()` with various field names
+3. **Field Lookup**: Test `fieldBC()` with various `Field` values
 4. **Per-Component Velocity**: Verify `Ux`/`Uy`/`Uz` are registered as independent scalar BCs
 5. **Boundary Values**: Test `boundaryFaceValue()` for all BC types
 6. **Patch Linking**: Verify `Face::patch()` returns correct patch after `linkFaces()`
 
 **Key Tests**:
 ```cpp
-// Test all BC types
-setFixedValue("inlet", "Ux", 1.0);   // velocity is per component
-setZeroGradient("outlet", "p");
-setNoSlip("wall", "Ux");
-setFixedGradient("interface", "T", 100.0);
+// Test all BC types — patch names stay strings, fields are the Field enum
+setFixedValue("inlet", Field::Ux, 1.0);   // velocity is per component
+setZeroGradient("outlet", Field::p);
+setNoSlip("wall", Field::Ux);
+setFixedGradient("inlet", Field::k, 100.0);
 ```
 
 #### Convection Schemes Testing

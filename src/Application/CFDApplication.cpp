@@ -395,21 +395,21 @@ void CFDApplication::setupBoundaryConditions()
             if (bcType == "fixedValue")
             {
                 const Vector value = patchBC.lookup<Vector>("value");
-                bcManager_.setFixedValue(patchName, "Ux", value.x());
-                bcManager_.setFixedValue(patchName, "Uy", value.y());
-                bcManager_.setFixedValue(patchName, "Uz", value.z());
+                bcManager_.setFixedValue(patchName, Field::Ux, value.x());
+                bcManager_.setFixedValue(patchName, Field::Uy, value.y());
+                bcManager_.setFixedValue(patchName, Field::Uz, value.z());
             }
             else if (bcType == "noSlip")
             {
-                bcManager_.setNoSlip(patchName, "Ux");
-                bcManager_.setNoSlip(patchName, "Uy");
-                bcManager_.setNoSlip(patchName, "Uz");
+                bcManager_.setNoSlip(patchName, Field::Ux);
+                bcManager_.setNoSlip(patchName, Field::Uy);
+                bcManager_.setNoSlip(patchName, Field::Uz);
             }
             else if (bcType == "zeroGradient")
             {
-                bcManager_.setZeroGradient(patchName, "Ux");
-                bcManager_.setZeroGradient(patchName, "Uy");
-                bcManager_.setZeroGradient(patchName, "Uz");
+                bcManager_.setZeroGradient(patchName, Field::Ux);
+                bcManager_.setZeroGradient(patchName, Field::Uy);
+                bcManager_.setZeroGradient(patchName, Field::Uz);
             }
             else
             {
@@ -441,12 +441,12 @@ void CFDApplication::setupBoundaryConditions()
             if (bcType == "fixedValue")
             {
                 const Scalar value = patchBC.lookup<Scalar>("value");
-                bcManager_.setFixedValue(patchName, "p", value);
+                bcManager_.setFixedValue(patchName, Field::p, value);
                 hasFixedPressure = true;
             }
             else if (bcType == "zeroGradient")
             {
-                bcManager_.setZeroGradient(patchName, "p");
+                bcManager_.setZeroGradient(patchName, Field::p);
             }
             else
             {
@@ -470,11 +470,11 @@ void CFDApplication::setupBoundaryConditions()
 
             if (bcType == "fixedValue")
             {
-                bcManager_.setFixedValue(patchName, "pCorr", S(0.0));
+                bcManager_.setFixedValue(patchName, Field::pCorr, S(0.0));
             }
             else if (bcType == "zeroGradient")
             {
-                bcManager_.setZeroGradient(patchName, "pCorr");
+                bcManager_.setZeroGradient(patchName, Field::pCorr);
             }
         }
     }
@@ -511,11 +511,11 @@ void CFDApplication::setupBoundaryConditions()
                 if (valStr == "calculated")
                 {
                     const BoundaryData& UxBC =
-                        bcManager_.fieldBC(patchName, "Ux");
+                        bcManager_.fieldBC(patchName, Field::Ux);
                     const BoundaryData& UyBC =
-                        bcManager_.fieldBC(patchName, "Uy");
+                        bcManager_.fieldBC(patchName, Field::Uy);
                     const BoundaryData& UzBC =
-                        bcManager_.fieldBC(patchName, "Uz");
+                        bcManager_.fieldBC(patchName, Field::Uz);
 
                     Scalar UMag = initialVelocity_.magnitude();
 
@@ -548,7 +548,7 @@ void CFDApplication::setupBoundaryConditions()
 
                 bcManager_.setFixedValue
                 (
-                    patchName, "k", value
+                    patchName, Field::k, value
                 );
 
             }
@@ -557,13 +557,13 @@ void CFDApplication::setupBoundaryConditions()
                 bcManager_.setWallFunctionType
                 (
                     patchName,
-                    "k",
+                    Field::k,
                     BCType::K_WALL_FUNCTION
                 );
             }
             else if (bcType == "zeroGradient")
             {
-                bcManager_.setZeroGradient(patchName, "k");
+                bcManager_.setZeroGradient(patchName, Field::k);
             }
             else
             {
@@ -603,7 +603,7 @@ void CFDApplication::setupBoundaryConditions()
                     Scalar kValue = S(0.0);
 
                     const BoundaryData& kPatchBC =
-                        bcManager_.fieldBC(patchName, "k");
+                        bcManager_.fieldBC(patchName, Field::k);
 
                     if (kPatchBC.type() == BCType::FIXED_VALUE)
                     {
@@ -613,11 +613,11 @@ void CFDApplication::setupBoundaryConditions()
                     {
                         // Compute k from velocity BC
                         const BoundaryData& UxBC =
-                            bcManager_.fieldBC(patchName, "Ux");
+                            bcManager_.fieldBC(patchName, Field::Ux);
                         const BoundaryData& UyBC =
-                            bcManager_.fieldBC(patchName, "Uy");
+                            bcManager_.fieldBC(patchName, Field::Uy);
                         const BoundaryData& UzBC =
-                            bcManager_.fieldBC(patchName, "Uz");
+                            bcManager_.fieldBC(patchName, Field::Uz);
 
                         Scalar UMag = initialVelocity_.magnitude();
 
@@ -658,7 +658,7 @@ void CFDApplication::setupBoundaryConditions()
 
                 bcManager_.setFixedValue
                 (
-                    patchName, "omega", value
+                    patchName, Field::omega, value
                 );
             }
             else if (bcType == "omegaWallFunction")
@@ -666,13 +666,13 @@ void CFDApplication::setupBoundaryConditions()
                 bcManager_.setWallFunctionType
                 (
                     patchName,
-                    "omega",
+                    Field::omega,
                     BCType::OMEGA_WALL_FUNCTION
                 );
             }
             else if (bcType == "zeroGradient")
             {
-                bcManager_.setZeroGradient(patchName, "omega");
+                bcManager_.setZeroGradient(patchName, Field::omega);
             }
             else
             {
@@ -702,18 +702,18 @@ void CFDApplication::setupBoundaryConditions()
             if (bcType == "fixedValue")
             {
                 const Scalar value = patchBC.lookup<Scalar>("value");
-                bcManager_.setFixedValue(patchName, "nut", value);
+                bcManager_.setFixedValue(patchName, Field::nut, value);
             }
             else if (bcType == "zeroGradient")
             {
-                bcManager_.setZeroGradient(patchName, "nut");
+                bcManager_.setZeroGradient(patchName, Field::nut);
             }
             else if (bcType == "nutWallFunction")
             {
                 bcManager_.setWallFunctionType
                 (
                     patchName,
-                    "nut",
+                    Field::nut,
                     BCType::NUT_WALL_FUNCTION
                 );
             }
@@ -744,7 +744,6 @@ void CFDApplication::setupBoundaryConditions()
         << "Boundary conditions set for "
         << mesh_.patches().size() << " patches." << '\n';
 }
-
 
 // ***************************** configureSolver *****************************
 

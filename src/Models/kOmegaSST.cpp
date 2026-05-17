@@ -105,9 +105,9 @@ void kOmegaSST::solve
 
     // Compute gradients and cross-diffusion
     VectorField gradK;
-    gradientScheme_.fieldGradient("k", k_, gradK);
+    gradientScheme_.fieldGradient(Field::k, k_, gradK);
     VectorField gradOmega;
-    gradientScheme_.fieldGradient("omega", omega_, gradOmega);
+    gradientScheme_.fieldGradient(Field::omega, omega_, gradOmega);
 
     const ScalarField CDkOmega = crossDiffusion(gradK, gradOmega);
 
@@ -283,7 +283,7 @@ void kOmegaSST::wallFunctionWeights()
         if (patch.type() != PatchType::WALL) continue;
 
         const BoundaryData& bc =
-            bcManager_.fieldBC(patch.patchName(), "omega");
+            bcManager_.fieldBC(patch.patchName(), Field::omega);
         if (bc.type() != BCType::OMEGA_WALL_FUNCTION) continue;
 
         wallFunctionFaceIndices_.push_back(faceIdx);
@@ -396,7 +396,7 @@ void kOmegaSST::solveOmegaEquation
 
     TransportEquation equationOmega
     {
-        .fieldName  = "omega",
+        .field      = Field::omega,
         .phi        = omega_,
         .flowRate   = std::cref(flowRateFace),
         .convScheme = std::cref(omegaConvectionScheme_),
@@ -574,7 +574,7 @@ void kOmegaSST::solveKEquation
 
     TransportEquation equationK
     {
-        .fieldName  = "k",
+        .field      = Field::k,
         .phi        = k_,
         .flowRate   = std::cref(flowRateFace),
         .convScheme = std::cref(kConvectionScheme_),

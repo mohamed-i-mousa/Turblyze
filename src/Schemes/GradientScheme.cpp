@@ -132,7 +132,7 @@ void GradientScheme::precomputeInverseATA()
 
 Vector GradientScheme::cellGradient
 (
-    const std::string& fieldName,
+    Field field,
     const ScalarField& phi,
     size_t cellIndex,
     const FaceData<Scalar>* boundaryFaceValues
@@ -196,7 +196,7 @@ Vector GradientScheme::cellGradient
             phiBoundary =
                 bcManager_.boundaryFaceValue
                 (
-                    fieldName,
+                    field,
                     phi,
                     face
                 );
@@ -224,7 +224,7 @@ Vector GradientScheme::cellGradient
 
 void GradientScheme::limitGradient
 (
-    const std::string& fieldName,
+    Field field,
     const ScalarField& phi,
     VectorField& gradPhi
 ) const
@@ -256,7 +256,7 @@ void GradientScheme::limitGradient
             const Scalar phiBound =
                 bcManager_.boundaryFaceValue
                 (
-                    fieldName,
+                    field,
                     phi,
                     face
                 );
@@ -293,7 +293,7 @@ void GradientScheme::limitGradient
 
 void GradientScheme::fieldGradient
 (
-    const std::string& fieldName,
+    Field field,
     const ScalarField& phi,
     VectorField& gradPhi
 ) const
@@ -303,16 +303,16 @@ void GradientScheme::fieldGradient
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        gradPhi[cellIdx] = cellGradient(fieldName, phi, cellIdx);
+        gradPhi[cellIdx] = cellGradient(field, phi, cellIdx);
     }
 
-    limitGradient(fieldName, phi, gradPhi);
+    limitGradient(field, phi, gradPhi);
 }
 
 
 Vector GradientScheme::faceGradient
 (
-    const std::string& fieldName,
+    Field field,
     const ScalarField& phi,
     const Vector& gradPhiP,
     const Vector& gradPhiN,
@@ -327,7 +327,7 @@ Vector GradientScheme::faceGradient
         return
             boundaryFaceGradient
             (
-                fieldName,
+                field,
                 phi,
                 gradPhiP,
                 face
@@ -380,7 +380,7 @@ Vector GradientScheme::averageFaceGradient
 
 Vector GradientScheme::boundaryFaceGradient
 (
-    const std::string& fieldName,
+    Field field,
     const ScalarField& phi,
     const Vector& cellGradient,
     const Face& face
@@ -389,7 +389,7 @@ Vector GradientScheme::boundaryFaceGradient
     const BoundaryPatch& patch = face.patch()->get();
 
     const BoundaryData& bc =
-        bcManager_.fieldBC(patch.patchName(), fieldName);
+        bcManager_.fieldBC(patch.patchName(), field);
 
     using enum BCType;
     switch (bc.type())

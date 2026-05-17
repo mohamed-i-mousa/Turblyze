@@ -19,10 +19,10 @@
 
 #pragma once
 
-#include <string>
 #include <optional>
 
 #include "CellData.h"
+#include "Field.h"
 #include "FaceData.h"
 #include "ConvectionSchemes.h"
 #include "GradientScheme.h"
@@ -34,8 +34,8 @@ struct TransportEquation
 
 // Field
 
-    /// Name of the field ("Ux", "k", "pCorr", etc.)
-    std::string fieldName;
+    /// Field identifier
+    Field field;
 
     /// Current cell-centered field values (mutable for zero-copy solve)
     ScalarField& phi;
