@@ -115,7 +115,7 @@ void MeshReader::parseDimensionSection(std::ifstream& ifs) const
 
     if (dimension != "3")
     {
-        FatalError("This code doesn't handle 2D geometries!");
+        FatalError("This code handles 3D meshes only!");
     }
 }
 
@@ -141,13 +141,27 @@ void MeshReader::parseNodesSection
     // Data block with "(zoneIdx"
     else
     {
-        std::string zoneIdxStr, startIdxStr, endIdxStr;
-        std::string typeStr, dimensionStr;
+        std::string zoneIdxStr;
+        std::string startIdxStr;
+        std::string endIdxStr;
+        std::string typeStr;
+        std::string dimensionStr;
 
         std::string zoneToken = token;
 
-        // Remove leading '('
-        zoneToken.erase(0, 1);
+        if (!zoneToken.starts_with('('))
+        {
+            FatalError
+            (
+                "Malformed nodes-section header: expected zone token starting "
+                "with '(' but found '" + zoneToken + "'."
+            );
+        }
+        else
+        {
+            // Remove leading '('
+            zoneToken.erase(0, 1);
+        }
 
         zoneIdxStr = zoneToken;
 
@@ -165,9 +179,7 @@ void MeshReader::parseNodesSection
             );
         }
 
-        // The dimension token carries two trailing characters (")(" — the
-        // zone-header close and the data-block open); guard the strip
-        // against a truncated or malformed token
+        // The dimension token carries two trailing characters ")("
         if (dimensionStr.size() < 2)
         {
             FatalError
@@ -177,9 +189,21 @@ void MeshReader::parseNodesSection
             );
         }
 
-        // Remove trailing parentheses
-        dimensionStr.pop_back();
-        dimensionStr.pop_back();
+        if (!dimensionStr.ends_with(")("))
+        {
+            FatalError
+            (
+                "Malformed nodes-section header: dimension token '"
+              + dimensionStr
+              + "' does not end with expected ')('."
+            );
+        }
+        else
+        {
+            // Remove trailing parentheses
+            dimensionStr.pop_back();
+            dimensionStr.pop_back();
+        }
 
         const size_t startIdx = hexToDec(startIdxStr);
         const size_t endIdx = hexToDec(endIdxStr);
@@ -238,7 +262,9 @@ void MeshReader::parseCellsSection
     // Only header with "(0" is expected for cells section, no data block
     if (token == "(0")
     {
-        std::string firstIdxStr, lastIdxStr, zeroStrOrType;
+        std::string firstIdxStr;
+        std::string lastIdxStr;
+        std::string zeroStrOrType;
         ifs >> firstIdxStr;
         ifs >> lastIdxStr;
         ifs >> zeroStrOrType;
@@ -259,7 +285,9 @@ void MeshReader::parseFacesSection
     // The faces section header
     if (token == "(0")
     {
-        std::string firstIdxStr, lastIdxStr, zeroStrOrType;
+        std::string firstIdxStr;
+        std::string lastIdxStr;
+        std::string zeroStrOrType;
         ifs >> firstIdxStr;
         ifs >> lastIdxStr;
         ifs >> zeroStrOrType;
@@ -271,13 +299,27 @@ void MeshReader::parseFacesSection
     // Data block with "(zoneIdx" for each face zone
     else
     {
-        std::string zoneIdxStr, startIdxStr, endIdxStr;
-        std::string typeStr, elementTypeStr;
+        std::string zoneIdxStr;
+        std::string startIdxStr;
+        std::string endIdxStr;
+        std::string typeStr;
+        std::string elementTypeStr;
 
         std::string zoneToken = token;
 
         // Remove leading '('
-        zoneToken.erase(0, 1);
+        if (!zoneToken.starts_with('('))
+        {
+            FatalError
+            (
+                "Malformed faces-section header: expected zone token starting "
+                "with '(' but found '" + zoneToken + "'."
+            );
+        }
+        else
+        {
+            zoneToken.erase(0, 1);
+        }
 
         zoneIdxStr = zoneToken;
 
@@ -287,8 +329,20 @@ void MeshReader::parseFacesSection
         ifs >> elementTypeStr;
 
         // Remove trailing parentheses
-        elementTypeStr.pop_back();
-        elementTypeStr.pop_back();
+        if(!elementTypeStr.ends_with(")("))
+        {
+            FatalError
+            (
+                "Malformed faces-section header: element type token '"
+              + elementTypeStr
+              + "' does not end with expected ')('."
+            );
+        }
+        else
+        {
+            elementTypeStr.pop_back();
+            elementTypeStr.pop_back();
+        }
 
         // Check mixed element section (node count included)
         const bool hasMixedElements = (elementTypeStr == "0");
@@ -316,7 +370,6 @@ void MeshReader::parseFacesSection
 
         std::string line;
         std::getline(ifs, line);
-
         std::string itemHex;
         std::vector<std::string> hexItems;
 
@@ -384,8 +437,8 @@ void MeshReader::parseFacesSection
                   + std::to_string(faceIdx)
                 );
             }
-            const size_t nodeEnd = hexItems.size() - 2;
 
+            const size_t nodeEnd = hexItems.size() - 2;
             const std::string_view ownerHex = hexItems[hexItems.size() - 2];
             const std::string_view neighborHex = hexItems[hexItems.size() - 1];
 
@@ -439,7 +492,18 @@ void MeshReader::parseBoundariesSection
     std::string zoneToken = token;
 
     // Remove leading '('
-    zoneToken.erase(0, 1);
+    if (!zoneToken.starts_with('('))
+    {
+        FatalError
+        (
+            "Malformed boundaries-section header: expected zone token starting "
+            "with '(' but found '" + zoneToken + "'."
+        );
+    }
+    else
+    {
+        zoneToken.erase(0, 1);
+    }
 
     const size_t zoneIdx = strToDec(zoneToken);
 
@@ -450,10 +514,21 @@ void MeshReader::parseBoundariesSection
     ifs >> nameString;
     
     // Remove trailing parentheses
-    nameString.pop_back();
-    nameString.pop_back();
-    nameString.pop_back();
-    nameString.pop_back();
+    if (!nameString.ends_with(")())"))
+    {
+        FatalError
+        (
+            "Malformed boundaries-section header: expected name token ending "
+            "with ')())' but found '" + nameString + "'."
+        );
+    }
+    else
+    {
+        nameString.pop_back();
+        nameString.pop_back();
+        nameString.pop_back();
+        nameString.pop_back();
+    }
 
     for (size_t i = 0; i < boundaryPatches_.size(); ++i)
     {
