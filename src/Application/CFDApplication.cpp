@@ -130,19 +130,19 @@ void CFDApplication::loadCase()
 
     if (alphaU_ <= S(0) || alphaU_ > S(2))
     {
-        FatalError("SIMPLE.relaxationFactors.U must be in (0, 1].");
+        FatalError("SIMPLE.relaxationFactors.U must be in (0, 2].");
     }
     if (alphaP_ <= S(0) || alphaP_ > S(2))
     {
-        FatalError("SIMPLE.relaxationFactors.p must be in (0, 1].");
+        FatalError("SIMPLE.relaxationFactors.p must be in (0, 2].");
     }
     if (alphaK_ <= S(0) || alphaK_ > S(2))
     {
-        FatalError("SIMPLE.relaxationFactors.k must be in (0, 1].");
+        FatalError("SIMPLE.relaxationFactors.k must be in (0, 2].");
     }
     if (alphaOmega_ <= S(0) || alphaOmega_ > S(2))
     {
-        FatalError("SIMPLE.relaxationFactors.omega must be in (0, 1].");
+        FatalError("SIMPLE.relaxationFactors.omega must be in (0, 2].");
     }
 
     // Extract turbulence parameters
@@ -212,6 +212,10 @@ void CFDApplication::loadCase()
 
     const auto& outputDict = caseReader_->section("output");
     vtkOutputFilename_ = outputDict.lookup<std::string>("filename");
+    if (vtkOutputFilename_.empty())
+    {
+        FatalError("output.filename must not be empty.");
+    }
 
     std::cout
         << "Case file loaded." << '\n';
@@ -229,6 +233,14 @@ void CFDApplication::loadCase()
 
             maxVelocityConstraint_ =
                 velConstraint.lookup<Scalar>("maxVelocity");
+
+            if (velocityConstraintEnabled_ && maxVelocityConstraint_ <= S(0))
+            {
+                FatalError
+                (
+                    "constraints.velocity.maxVelocity must be positive."
+                );
+            }
         }
 
         if (constraintsDict.hasSection("pressure"))
@@ -243,6 +255,19 @@ void CFDApplication::loadCase()
 
             maxPressureConstraint_ =
                 presConstraint.lookup<Scalar>("maxPressure");
+
+            if
+            (
+                pressureConstraintEnabled_
+             && minPressureConstraint_ >= maxPressureConstraint_
+            )
+            {
+                FatalError
+                (
+                    "constraints.pressure.minPressure must be "
+                    "less than maxPressure."
+                );
+            }
         }
     }
 }
@@ -860,6 +885,39 @@ void CFDApplication::configureSolver()
             omegaTol = s.lookupOrDefault<Scalar>("tolerance", omegaTol);
             omegaMaxIter = s.lookupOrDefault<int>("maxIter", omegaMaxIter);
         }
+    }
+
+    if (uTol <= S(0))
+    {
+        FatalError("linearSolvers.U.tolerance must be positive.");
+    }
+    if (uMaxIter <= 0)
+    {
+        FatalError("linearSolvers.U.maxIter must be a positive integer.");
+    }
+    if (pTol <= S(0))
+    {
+        FatalError("linearSolvers.p.tolerance must be positive.");
+    }
+    if (pMaxIter <= 0)
+    {
+        FatalError("linearSolvers.p.maxIter must be a positive integer.");
+    }
+    if (kTol <= S(0))
+    {
+        FatalError("linearSolvers.k.tolerance must be positive.");
+    }
+    if (kMaxIter <= 0)
+    {
+        FatalError("linearSolvers.k.maxIter must be a positive integer.");
+    }
+    if (omegaTol <= S(0))
+    {
+        FatalError("linearSolvers.omega.tolerance must be positive.");
+    }
+    if (omegaMaxIter <= 0)
+    {
+        FatalError("linearSolvers.omega.maxIter must be a positive integer.");
     }
 
     solver_->setMomentumSolver(LinearSolver("momentum", uTol, uMaxIter));
