@@ -24,10 +24,20 @@
 #include <algorithm>
 #include <charconv>
 #include <cctype>
+#include <concepts>
 
 #include "Scalar.h"
 #include "Vector.h"
 #include "ErrorHandler.h"
+
+
+template<typename T>
+concept CaseInputType =
+    std::same_as<T, Scalar>
+ || std::same_as<T, Vector>
+ || std::same_as<T, std::string>
+ || std::same_as<T, bool>
+ || std::same_as<T, int>;
 
 
 class CaseReader
@@ -52,8 +62,17 @@ public:
      * @return Converted value
      * @note Terminates the program if keyword not found or conversion fails
      */
-    template<typename T>
-    T lookup(const std::string& keyword) const;
+    template<CaseInputType T>
+    T lookup(const std::string& keyword) const
+    {
+        const auto it = entries_.find(keyword);
+        if (it == entries_.end())
+        {
+            FatalError("Keyword '" + keyword + "' not found in case file");
+        }
+
+        return convertTo<T>(it->second);
+    }
 
     /**
      * @brief Look up an optional value with default
@@ -62,8 +81,17 @@ public:
      * @param defaultValue Value to return if keyword not found
      * @return Converted value or default
      */
-    template<typename T>
-    T lookupOrDefault(const std::string& keyword, const T& defaultValue) const;
+    template<CaseInputType T>
+    T lookupOrDefault(const std::string& keyword, const T& defaultValue) const
+    {
+        const auto it = entries_.find(keyword);
+        if (it == entries_.end())
+        {
+            return defaultValue;
+        }
+
+        return convertTo<T>(it->second);
+    }
 
     /**
      * @brief Access a section
@@ -145,9 +173,116 @@ private:
      * @param value String value
      * @return Converted value
      */
-    template<typename T>
-    T convertTo(const std::string& value) const;
+    template<CaseInputType T>
+    T convertTo(const std::string& value) const
+    {
+        if constexpr (std::same_as<T, Scalar>)
+        {
+            Scalar result = S(0.0);
+            const auto [ptr, ec] = std::from_chars
+            (
+                value.data(),
+                value.data() + value.size(),
+                result
+            );
 
+            if (ec != std::errc() || ptr != value.data() + value.size())
+            {
+                FatalError("Cannot convert '" + value + "' to Scalar");
+            }
+
+            return result;
+        }
+        else if constexpr (std::same_as<T, int>)
+        {
+            int result = 0;
+            const auto [ptr, ec] = std::from_chars
+            (
+                value.data(),
+                value.data() + value.size(),
+                result
+            );
+
+            if (ec != std::errc() || ptr != value.data() + value.size())
+            {
+                FatalError("Cannot convert '" + value + "' to int");
+            }
+
+            return result;
+        }
+        else if constexpr (std::same_as<T, bool>)
+        {
+            std::string lower = value;
+            std::ranges::transform(lower, lower.begin(), toLowerSafe);
+
+            if
+            (
+                lower == "true"
+             || lower == "on"
+             || lower == "yes"
+             || lower == "1"
+            )
+            {
+                return true;
+            }
+            else if
+            (
+                lower == "false"
+             || lower == "off"
+             || lower == "no"
+             || lower == "0"
+            )
+            {
+                return false;
+            }
+            else
+            {
+                FatalError("Cannot convert '" + value + "' to bool");
+            }
+        }
+        else if constexpr (std::same_as<T, std::string>)
+        {
+            return value;
+        }
+        else if constexpr (std::same_as<T, Vector>)
+        {
+            // Expecting format: (x y z)
+            std::string trimmed = value;
+
+            // Remove parentheses
+            std::erase(trimmed, '(');
+            std::erase(trimmed, ')');
+
+            std::istringstream iss(trimmed);
+            Scalar x;
+            Scalar y;
+            Scalar z;
+
+            if (!(iss >> x >> y >> z))
+            {
+                FatalError("Cannot convert '" + value + "' to Vector");
+            }
+
+            // Reject trailing components: a Vector has exactly three
+            std::string extra;
+            if (iss >> extra)
+            {
+                FatalError
+                (
+                    "Cannot convert '" + value
+                  + "' to Vector: expected exactly three components"
+                );
+            }
+
+            return Vector(x, y, z);
+        }
+    }
+
+    /**
+     * @brief Convert a character to lowercase (safe version)
+     * @param c Character to convert
+     * @return Lowercase character
+     */
     static char toLowerSafe(char c) noexcept
     {
         return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -165,136 +300,3 @@ private:
     std::string currentFile_;
     int currentLine_ = 1;
 };
-
-// Template specializations for common types
-
-template<>
-inline Scalar CaseReader::convertTo<Scalar>(const std::string& value) const
-{
-    double result = 0.0;
-    const auto [ptr, ec] = std::from_chars
-    (
-        value.data(),
-        value.data() + value.size(),
-        result
-    );
-
-    if (ec != std::errc() || ptr != value.data() + value.size())
-    {
-        FatalError("Cannot convert '" + value + "' to Scalar");
-    }
-
-    return static_cast<Scalar>(result);
-}
-
-template<>
-inline int CaseReader::convertTo<int>(const std::string& value) const
-{
-    int result = 0;
-    const auto [ptr, ec] = std::from_chars
-    (
-        value.data(),
-        value.data() + value.size(),
-        result
-    );
-
-    if (ec != std::errc() || ptr != value.data() + value.size())
-    {
-        FatalError("Cannot convert '" + value + "' to int");
-    }
-
-    return result;
-}
-
-template<>
-inline bool CaseReader::convertTo<bool>(const std::string& value) const
-{
-    std::string lower = value;
-    std::ranges::transform(lower, lower.begin(), toLowerSafe);
-
-    if (lower == "true" || lower == "on" || lower == "yes" || lower == "1")
-    {
-        return true;
-    }
-    else if
-    (
-        lower == "false" || lower == "off" || lower == "no" || lower == "0"
-    )
-    {
-        return false;
-    }
-
-    FatalError("Cannot convert '" + value + "' to bool");
-}
-
-template<>
-inline std::string CaseReader::convertTo<std::string>
-(
-    const std::string& value
-) const
-{
-    return value;
-}
-
-template<>
-inline Vector CaseReader::convertTo<Vector>(const std::string& value) const
-{
-    // Expecting format: (x y z)
-    std::string trimmed = value;
-
-    // Remove parentheses
-    std::erase(trimmed, '(');
-    std::erase(trimmed, ')');
-
-    std::istringstream iss(trimmed);
-    Scalar x;
-    Scalar y;
-    Scalar z;
-
-    if (!(iss >> x >> y >> z))
-    {
-        FatalError("Cannot convert '" + value + "' to Vector");
-    }
-
-    // Reject trailing components: a Vector has exactly three
-    std::string extra;
-    if (iss >> extra)
-    {
-        FatalError
-        (
-            "Cannot convert '" + value
-          + "' to Vector: expected exactly three components"
-        );
-    }
-
-    return Vector(x, y, z);
-}
-
-// Template method implementations
-
-template<typename T>
-T CaseReader::lookup(const std::string& keyword) const
-{
-    const auto it = entries_.find(keyword);
-    if (it == entries_.end())
-    {
-        FatalError("Keyword '" + keyword + "' not found in case file");
-    }
-
-    return convertTo<T>(it->second);
-}
-
-template<typename T>
-T CaseReader::lookupOrDefault
-(
-    const std::string& keyword, const T& defaultValue
-) const
-{
-    const auto it = entries_.find(keyword);
-    if (it == entries_.end())
-    {
-        return defaultValue;
-    }
-
-    return convertTo<T>(it->second);
-}

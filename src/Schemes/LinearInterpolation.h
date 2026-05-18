@@ -28,7 +28,7 @@
  * @return Face-centered value
  * @note Callers must resolve boundary-face values themselves.
  */
-template<typename T>
+template<CellFieldType T>
 [[nodiscard]] T interpolateToFace
 (
     const Face& face,
