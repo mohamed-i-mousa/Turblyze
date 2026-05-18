@@ -7,8 +7,6 @@
 
 #include <cmath>
 
-#include "ErrorHandler.h"
-
 Constraint::Constraint
 (
     ScalarField& Ux,
@@ -31,20 +29,8 @@ void Constraint::setPressureConstraints
     Scalar maxPressure
 )
 {
-    if (minPressure < maxPressure)
-    {
-        minPressure_ = minPressure;
-        maxPressure_ = maxPressure;
-    }
-    else if (minPressure > maxPressure)
-    {
-        minPressure_ = maxPressure;
-        maxPressure_ = minPressure;
-    }
-    else
-    {
-        FatalError("Wrong Pressure Constraints input");
-    }
+    minPressure_ = minPressure;
+    maxPressure_ = maxPressure;
 }
 
 void Constraint::enableConstraints
