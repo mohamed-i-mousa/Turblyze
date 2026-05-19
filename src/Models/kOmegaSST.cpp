@@ -160,6 +160,33 @@ void kOmegaSST::solve
     logFieldDiagnostics();
 }
 
+
+Scalar kOmegaSST::inletK
+(
+    const Vector& velocity,
+    Scalar turbulenceIntensity
+) noexcept
+{
+    const Scalar uPrime = turbulenceIntensity * velocity.magnitude();
+    return std::max(S(1.5) * uPrime * uPrime, S(1e-8));
+}
+
+
+Scalar kOmegaSST::inletOmega
+(
+    Scalar k,
+    Scalar hydraulicDiameter
+) noexcept
+{
+    const Scalar lengthScale = S(0.07) * hydraulicDiameter;
+
+    const Scalar omegaValue =
+        std::sqrt(std::max(k, S(0.0)))
+      / (std::pow(coeffs_.betaStar, S(0.25)) * lengthScale);
+
+    return std::max(omegaValue, S(1e-4));
+}
+
 // ****************************** Private Methods *****************************
 
 void kOmegaSST::yPlusLam()

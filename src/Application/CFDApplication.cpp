@@ -10,7 +10,6 @@
 #include <map>
 #include <set>
 #include <algorithm>
-#include <cmath>
 
 #include <omp.h>
 #include <eigen3/Eigen/Core>
@@ -160,7 +159,7 @@ void CFDApplication::loadCase()
         );
     }
 
-    // Compute turbulence initial conditions
+    // Extract turbulence inlet/initial parameters
     turbIntensity_ =
         turbulence.lookupOrDefault<Scalar>("turbulenceIntensity", S(0.05));
     hydrDiameter_ =
@@ -175,31 +174,19 @@ void CFDApplication::loadCase()
         FatalError("turbulence.hydraulicDiameter must be positive.");
     }
 
-    const Scalar lTurb = std::max(S(0.07) * hydrDiameter_, smallValue);
-    const Scalar UMag = initialVelocity_.magnitude();
-
-    defaultK_ =
-        std::max
-        (
-            S(1.5) * (turbIntensity_ * UMag) * (turbIntensity_ * UMag),
-            S(1e-8)
-        );
-
-    defaultOmega_ =
-        std::max
-        (
-            std::sqrt(defaultK_)
-          / (std::pow(kOmegaSST::coeffs_.betaStar, S(0.25)) * lTurb),
-            S(1e-4)
-        );
-
-    initialK_ =
-        initialConditions.lookupOrDefault<Scalar>("k", defaultK_);
-    initialOmega_ =
-        initialConditions.lookupOrDefault<Scalar>("omega", defaultOmega_);
-
     if (turbulenceEnabled_)
     {
+        // Module-computed defaults; user-supplied entries override them
+        const Scalar defaultK =
+            kOmegaSST::inletK(initialVelocity_, turbIntensity_);
+        const Scalar defaultOmega =
+            kOmegaSST::inletOmega(defaultK, hydrDiameter_);
+
+        initialK_ =
+            initialConditions.lookupOrDefault<Scalar>("k", defaultK);
+        initialOmega_ =
+            initialConditions.lookupOrDefault<Scalar>("omega", defaultOmega);
+
         if (initialK_ < S(0))
         {
             FatalError("initialConditions.k must be non-negative.");
@@ -562,8 +549,6 @@ void CFDApplication::setupBoundaryConditions()
     }
 
     // Process turbulent kinetic energy BCs
-    const Scalar lengthScale = std::max(S(0.07) * hydrDiameter_, S(1e-20));
-
     if (BCs.hasSection("k"))
     {
         const auto& kBCs = BCs.section("k");
@@ -582,32 +567,7 @@ void CFDApplication::setupBoundaryConditions()
 
                 if (valStr == "calculated")
                 {
-                    const BoundaryData& UxBC =
-                        bcManager_.fieldBC(patchName, Field::Ux);
-                    const BoundaryData& UyBC =
-                        bcManager_.fieldBC(patchName, Field::Uy);
-                    const BoundaryData& UzBC =
-                        bcManager_.fieldBC(patchName, Field::Uz);
-
-                    Scalar UMag = initialVelocity_.magnitude();
-
-                    if (UxBC.type() == BCType::FIXED_VALUE)
-                    {
-                        const Vector velocityBCValue
-                        (
-                            UxBC.fixedScalarValue(),
-                            UyBC.fixedScalarValue(),
-                            UzBC.fixedScalarValue()
-                        );
-                        UMag = velocityBCValue.magnitude();
-                    }
-                    else if (UxBC.type() == BCType::NO_SLIP)
-                    {
-                        UMag = S(0.0);
-                    }
-
-                    const Scalar uPrime = turbIntensity_ * UMag;
-                    value = std::max(S(1.5) * uPrime * uPrime, S(1e-8));
+                    value = kOmegaSST::inletK(initialVelocity_, turbIntensity_);
 
                     std::cout
                         << "Inlet turbulence kinetic energy : " << value
@@ -671,54 +631,16 @@ void CFDApplication::setupBoundaryConditions()
 
                 if (valStr == "calculated")
                 {
-                    // Determine k value for this patch
-                    Scalar kValue = S(0.0);
-
+                    // Use the patch k BC if fixed, else derive k from velocity
                     const BoundaryData& kPatchBC =
                         bcManager_.fieldBC(patchName, Field::k);
 
-                    if (kPatchBC.type() == BCType::FIXED_VALUE)
-                    {
-                        kValue = kPatchBC.fixedScalarValue();
-                    }
-                    else
-                    {
-                        // Compute k from velocity BC
-                        const BoundaryData& UxBC =
-                            bcManager_.fieldBC(patchName, Field::Ux);
-                        const BoundaryData& UyBC =
-                            bcManager_.fieldBC(patchName, Field::Uy);
-                        const BoundaryData& UzBC =
-                            bcManager_.fieldBC(patchName, Field::Uz);
+                    const Scalar kValue =
+                        kPatchBC.type() == BCType::FIXED_VALUE
+                      ? kPatchBC.fixedScalarValue()
+                      : kOmegaSST::inletK(initialVelocity_, turbIntensity_);
 
-                        Scalar UMag = initialVelocity_.magnitude();
-
-                        if (UxBC.type() == BCType::FIXED_VALUE)
-                        {
-                            const Vector velocityBCValue
-                            (
-                                UxBC.fixedScalarValue(),
-                                UyBC.fixedScalarValue(),
-                                UzBC.fixedScalarValue()
-                            );
-                            UMag = velocityBCValue.magnitude();
-                        }
-                        else if (UxBC.type() == BCType::NO_SLIP)
-                        {
-                            UMag = S(0.0);
-                        }
-
-                        const Scalar uPrime = turbIntensity_ * UMag;
-                        kValue = std::max(S(1.5) * uPrime * uPrime, S(1e-8));
-                    }
-
-                    // Compute omega from k
-                    const Scalar omegaValue =
-                        std::sqrt(std::max(kValue, S(0.0)))
-                      / (std::pow(kOmegaSST::coeffs_.betaStar, S(0.25))
-                       * lengthScale);
-
-                    value = std::max(omegaValue, S(1e-4));
+                    value = kOmegaSST::inletOmega(kValue, hydrDiameter_);
 
                     std::cout
                         << "Inlet specific dissipation : " << value << '\n';

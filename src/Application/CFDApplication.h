@@ -118,10 +118,6 @@ private:
     Scalar initialK_ = 0;
     Scalar initialOmega_ = 0;
 
-    /// Computed turbulence defaults
-    Scalar defaultK_ = 0;
-    Scalar defaultOmega_ = 0;
-
     /// SIMPLE algorithm parameters
     int maxIterations_ = 0;
     Scalar convergenceTolerance_ = 0;
