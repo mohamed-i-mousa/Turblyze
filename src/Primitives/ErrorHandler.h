@@ -21,6 +21,7 @@
 #include <iostream>
 #include <source_location>
 #include <string>
+#include <string_view>
 
 
 /**
@@ -31,9 +32,9 @@
 // Print a fatal error message and abort the program
 [[noreturn]] inline void FatalError
 (
-    const std::string& message,
+    std::string_view message,
     std::source_location location = std::source_location::current()
-)
+) noexcept
 {
     std::cerr
         << '\n' << '\n' << "FATAL ERROR"
@@ -52,9 +53,9 @@
  */
 inline void Warning
 (
-    const std::string& message,
+    std::string_view message,
     std::source_location location = std::source_location::current()
-)
+) noexcept
 {
     std::cerr
         << '\n' << "[WARNING] (" << location.file_name() << ':'

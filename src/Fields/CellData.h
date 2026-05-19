@@ -108,14 +108,17 @@ public:
      * @param cellIndex Index of the cell to access
      * @return Reference to field value at the cell
      */
-    T& operator[](size_t cellIndex) { return internalField_[cellIndex]; }
+    T& operator[](size_t cellIndex) noexcept
+    {
+        return internalField_[cellIndex];
+    }
 
     /**
      * @brief Unchecked const subscript operator
      * @param cellIndex Index of the cell to access
      * @return Const reference to field value at the cell
      */
-    const T& operator[](size_t cellIndex) const
+    const T& operator[](size_t cellIndex) const noexcept
     {
         return internalField_[cellIndex];
     }

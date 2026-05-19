@@ -189,7 +189,7 @@ public:
      * @note Terminates the program if unknown BC type
      * @note It's used in printSummary
      */
-    [[nodiscard]] static std::string bcTypeToString(BCType bctype);
+    [[nodiscard]] static std::string bcTypeToString(BCType bctype) noexcept;
 
     /**
      * @brief Validate that all patch names in boundary data

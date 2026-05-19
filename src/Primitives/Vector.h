@@ -128,7 +128,7 @@ public:
      * @return Vector divided by scalar
      * @note Terminates the program if scalar is zero
      */
-    Vector operator/(Scalar scalar) const
+    Vector operator/(Scalar scalar) const noexcept
     {
         Vector result(*this);
         result /= scalar;
@@ -185,7 +185,7 @@ public:
      * @note Using inverse is a micro-optimization to reduce the number
      *       of divisions, which are more expensive than multiplications
      */
-    Vector& operator/=(Scalar scalar)
+    Vector& operator/=(Scalar scalar) noexcept
     {
         if (std::abs(scalar) <= vSmallValue)
         {
@@ -238,7 +238,7 @@ public:
      * @return Normalized vector
      * @note Terminates the program if vector has zero magnitude
      */
-    [[nodiscard]] Vector normalized() const
+    [[nodiscard]] Vector normalized() const noexcept
     {
         const Scalar mag = magnitude();
         

@@ -104,14 +104,17 @@ public:
      * @param faceIndex Index of the face to access
      * @return Reference to field value at the face
      */
-    T& operator[](size_t faceIndex) { return internalField_[faceIndex]; }
+    T& operator[](size_t faceIndex) noexcept
+    {
+        return internalField_[faceIndex];
+    }
 
     /**
      * @brief Unchecked const subscript operator
      * @param faceIndex Index of the face to access
      * @return Const reference to field value at the face
      */
-    const T& operator[](size_t faceIndex) const
+    const T& operator[](size_t faceIndex) const noexcept
     {
         return internalField_[faceIndex];
     }

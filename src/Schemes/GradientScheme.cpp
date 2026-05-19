@@ -16,7 +16,6 @@
 
 #include "ErrorHandler.h"
 
-
 // ************************* Special Member Functions *************************
 
 GradientScheme::GradientScheme
@@ -333,21 +332,19 @@ Vector GradientScheme::faceGradient
                 face
             );
     }
-    else
-    {
-        const size_t N = face.neighborCell().value();
-        const Vector dPN =
-            mesh_.cells()[N].centroid() - mesh_.cells()[P].centroid();
-        const Scalar dPNMag = dPN.magnitude();
-        const Vector ePN = dPN / (dPNMag + vSmallValue);
-        const Vector gradAvg = averageFaceGradient(face, gradPhiP, gradPhiN);
-        const Scalar phiDiff = phi[N] - phi[P];
-        const Scalar correction =
-            (phiDiff / (dPNMag + vSmallValue))
-          - dot(gradAvg, ePN);
 
-        return gradAvg + correction * ePN;
-    }
+    const size_t N = face.neighborCell().value();
+    const Vector dPN =
+        mesh_.cells()[N].centroid() - mesh_.cells()[P].centroid();
+    const Scalar dPNMag = dPN.magnitude();
+    const Vector ePN = dPN / (dPNMag + vSmallValue);
+    const Vector gradAvg = averageFaceGradient(face, gradPhiP, gradPhiN);
+    const Scalar phiDiff = phi[N] - phi[P];
+    const Scalar correction =
+        (phiDiff / (dPNMag + vSmallValue))
+      - dot(gradAvg, ePN);
+
+    return gradAvg + correction * ePN;
 }
 
 

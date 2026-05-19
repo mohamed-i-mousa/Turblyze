@@ -7,7 +7,6 @@
 
 #include "ErrorHandler.h"
 
-
 // ****************************** Setter Methods ******************************
 
 void BoundaryData::setFixedValue(Scalar scalarValue) noexcept
@@ -16,11 +15,13 @@ void BoundaryData::setFixedValue(Scalar scalarValue) noexcept
     scalarValue_ = scalarValue;
 }
 
+
 void BoundaryData::setFixedGradient(Scalar scalarGradient) noexcept
 {
     type_ = BCType::FIXED_GRADIENT;
     scalarGradient_ = scalarGradient;
 }
+
 
 void BoundaryData::setZeroGradient() noexcept
 {
@@ -28,21 +29,22 @@ void BoundaryData::setZeroGradient() noexcept
     scalarGradient_ = S(0.0);
 }
 
+
 void BoundaryData::setNoSlip() noexcept
 {
     type_ = BCType::NO_SLIP;
     scalarValue_ = S(0.0);
 }
 
+
 void BoundaryData::setWallFunctionType(BCType wallType) noexcept
 {
     type_ = wallType;
 }
 
-
 // ***************************** Accessor Methods *****************************
 
-Scalar BoundaryData::fixedScalarValue() const
+Scalar BoundaryData::fixedScalarValue() const noexcept
 {
     if (type_ == BCType::FIXED_VALUE)
     {
@@ -56,7 +58,8 @@ Scalar BoundaryData::fixedScalarValue() const
     );
 }
 
-Scalar BoundaryData::fixedScalarGradient() const
+
+Scalar BoundaryData::fixedScalarGradient() const noexcept
 {
     if (type_ == BCType::FIXED_GRADIENT)
     {

@@ -313,14 +313,10 @@ void Matrix::assembleBoundaryFace
      || bc.type() == NO_SLIP
     )
     {
-        // Dirichlet BC: phi_b is prescribed
+        // Dirichlet BC: phiB is prescribed
         Scalar phiB = S(0.0);
 
-        if (bc.type() == NO_SLIP)
-        {
-            phiB = S(0.0);
-        }
-        else
+        if (bc.type() != NO_SLIP)
         {
             phiB = bc.fixedScalarValue();
         }

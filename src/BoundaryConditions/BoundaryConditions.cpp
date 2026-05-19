@@ -243,7 +243,7 @@ void BoundaryConditions::linkFaces(std::span<Face> faces)
 }
 
 
-std::string BoundaryConditions::bcTypeToString(BCType bctype)
+std::string BoundaryConditions::bcTypeToString(BCType bctype) noexcept
 {
     using enum BCType;
     switch (bctype)

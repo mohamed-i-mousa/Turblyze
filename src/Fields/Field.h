@@ -36,4 +36,4 @@ enum class Field
  * @note Terminates the program if the value is unrecognized
  * @note For diagnostics only, never use the returned string for dispatch
  */
-[[nodiscard]] std::string_view fieldToString(Field field);
+[[nodiscard]] std::string_view fieldToString(Field field) noexcept;

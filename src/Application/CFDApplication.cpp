@@ -1115,18 +1115,18 @@ CFDApplication::createConvectionScheme(const std::string& name)
     {
         return std::make_unique<UpwindScheme>();
     }
-    else if (name == "CentralDifference")
+
+    if (name == "CentralDifference")
     {
         return std::make_unique<CentralDifferenceScheme>();
     }
-    else if (name == "SecondOrderUpwind")
+
+    if (name == "SecondOrderUpwind")
     {
         return std::make_unique<SecondOrderUpwindScheme>();
     }
-    else
-    {
-        FatalError("Unknown convection scheme: " + name);
-    }
+
+    FatalError("Unknown convection scheme: " + name);
 }
 
 // ************************ parseConvectionSchemes ************************

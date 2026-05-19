@@ -144,7 +144,7 @@ public:
      * @return Vector containing the three components of row i
      * @note Terminates the program if i is out of range
      */
-    [[nodiscard]] Vector row(size_t i) const
+    [[nodiscard]] Vector row(size_t i) const noexcept
     {
         switch (i)
         {
@@ -163,7 +163,7 @@ public:
      * @return Vector containing the three components of column j
      * @note Terminates the program if j is out of range
      */
-    [[nodiscard]] Vector col(size_t j) const
+    [[nodiscard]] Vector col(size_t j) const noexcept
     {
         switch (j)
         {
@@ -220,7 +220,7 @@ public:
      * @return Tensor divided by scalar
      * @note Terminates the program if scalar is near zero
      */
-    Tensor operator/(Scalar scalar) const
+    Tensor operator/(Scalar scalar) const noexcept
     {
         Tensor result(*this);
         result /= scalar;
@@ -277,7 +277,7 @@ public:
      * @note Using inverse is a micro-optimization to reduce the number
      *       of divisions, which are more expensive than multiplications
      */
-    Tensor& operator/=(Scalar scalar)
+    Tensor& operator/=(Scalar scalar) noexcept
     {
         if (std::abs(scalar) <= vSmallValue)
         {

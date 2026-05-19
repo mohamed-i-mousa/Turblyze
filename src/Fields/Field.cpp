@@ -8,7 +8,7 @@
 #include "ErrorHandler.h"
 
 
-std::string_view fieldToString(Field field)
+std::string_view fieldToString(Field field) noexcept
 {
     using enum Field;
     switch (field)

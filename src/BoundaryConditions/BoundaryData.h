@@ -92,14 +92,14 @@ public:
      * @return Fixed scalar value
      * @note Terminates the program if not a fixed scalar value BC
      */
-    [[nodiscard]] Scalar fixedScalarValue() const;
+    [[nodiscard]] Scalar fixedScalarValue() const noexcept;
 
     /**
      * @brief Get fixed scalar gradient
      * @return Fixed scalar gradient (normal component)
      * @note Terminates the program if not a fixed scalar gradient BC
      */
-    [[nodiscard]] Scalar fixedScalarGradient() const;
+    [[nodiscard]] Scalar fixedScalarGradient() const noexcept;
 
 private:
 
