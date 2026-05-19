@@ -71,7 +71,8 @@ int main(int argc, char* argv[])
         << '\n' << "--- Simulation Complete ---" << '\n';
 
     std::cout
-        << "Total execution time: " << duration.count() << " seconds" << '\n';
+        << "Total execution time: " << duration.count() << " seconds" << '\n'
+        << '\n';
 
     return 0;
 }
