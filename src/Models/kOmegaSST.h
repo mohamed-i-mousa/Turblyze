@@ -24,9 +24,11 @@
 
 #include <vector>
 #include <memory>
+#include <string>
 
 #include "Scalar.h"
 #include "Mesh.h"
+#include "Vector.h"
 #include "CellData.h"
 #include "FaceData.h"
 #include "BoundaryConditions.h"
@@ -236,6 +238,33 @@ public:
         .betaStar    = S(0.09)
     };
 
+// Inlet/initial condition calculators
+
+    /**
+     * @brief Calculate inlet/initial turbulent kinetic energy
+     * @param velocity Inlet (or case initial) velocity
+     * @param turbulenceIntensity Turbulence intensity (e.g. 0.05 for 5%)
+     * @return Turbulent kinetic energy
+     */
+    [[nodiscard]] static Scalar inletK
+    (
+        const Vector& velocity,
+        Scalar turbulenceIntensity
+    ) noexcept;
+
+    /**
+     * @brief Calculate inlet/initial specific dissipation rate
+     * @param k Turbulent kinetic energy the rate is derived from
+     * @param hydraulicDiameter Hydraulic diameter used for the length scale
+     * @return Specific dissipation rate
+     */
+    [[nodiscard]] static Scalar inletOmega
+    (
+        Scalar k,
+        Scalar hydraulicDiameter
+    ) noexcept;
+
+
 private:
 
 // Mesh references
@@ -363,7 +392,13 @@ private:
     /// Linear solver for omega equation
     LinearSolver omegaSolver_ = LinearSolver("omega", S(1e-8), 1000);
 
-// Persistent-state writers
+// Private methods
+
+    /// Blend two constants using SST blending function
+    static Scalar blend(Scalar f, Scalar cInner, Scalar cOuter) noexcept
+    {
+        return f * (cInner - cOuter) + cOuter;
+    }
 
     /// Compute y+ crossover via fixed-point iteration
     void yPlusLam();
@@ -374,58 +409,14 @@ private:
     /// Build per-cell corner weights for wall-function faces
     void wallFunctionWeights();
 
-    /// Update dynamic omega wall-function boundary values per face
-    void updateOmegaWallValues();
-
-    /// Pre-set wall-cell omega to area-weighted wall-function values
-    void applyOmegaWallCellValues();
-
-    /// Update wall-function nut on wall faces (nutkWallFunction)
-    void updateNutWall();
-
-    /**
-     * @brief Initialize turbulent viscosity with simple k/omega estimate
-     *
-     * @details
-     * Used at startup before the first momentum solve, when strain rate
-     * and F23 are not yet available for the full SST limited form.
-     */
+    /// Initialize turbulent viscosity with k/omega estimate
     void initializeTurbulentViscosity();
-
-    /**
-     * @brief Update SST turbulent viscosity with limiter
-     * @param f23 F2 or F2*F3 blending selector
-     * @param strainRateField Strain rate magnitude
-     */
-    void updateTurbulentViscosity
-    (
-        const ScalarField& f23,
-        const ScalarField& strainRate
-    );
-
-    /**
-     * @brief Update wall shear stress using parallel velocity only
-     *
-     * @details
-     * Computes kinematic wall shear stress (tau/rho) [m^2/s^2]:
-     * - Viscous sublayer (y+ < yPlusLam): tau/rho = nu * U_tan / y
-     * - Log layer (y+ >= yPlusLam): tau/rho = uTau^2 = Cmu^0.5 * k
-     *
-     * @param Ux Current x-velocity component
-     * @param Uy Current y-velocity component
-     * @param Uz Current z-velocity component
-     */
-    void updateWallShearStress
-    (
-        const ScalarField& Ux,
-        const ScalarField& Uy,
-        const ScalarField& Uz
-    );
 
     /// Update y+ field on wall-function faces
     void updateYPlus();
 
-// Transient-quantity producers (return by value)
+    /// Update wall-function nut on wall faces (nutkWallFunction)
+    void updateNutWall();
 
     /**
      * @brief Compute strain rate magnitude from velocity gradient tensor
@@ -433,6 +424,43 @@ private:
      * @return Strain rate magnitude per cell
      */
     ScalarField strainRate(const TensorField& gradU) const;
+
+    /**
+     * @brief Compute cell velocity divergence from face mass fluxes
+     * @param flowRateFace Face volume flow rates
+     * @return Cell-centred divergence of U
+     */
+    ScalarField divU(const FaceFluxField& flowRateFace) const;
+
+    /**
+     * @brief Compute k production term
+     * @param strainRateField Strain rate magnitude
+     */
+    void kProduction
+    (
+        const ScalarField& strainRate
+    );
+
+    /// Update dynamic omega wall-function boundary values per face
+    void updateOmegaWallValues();
+
+    /// Pre-set wall-cell omega to area-weighted wall-function values
+    void applyOmegaWallCellValues();
+
+    /**
+     * @brief Override k production at wall-adjacent cells
+     * @param Ux Current x-velocity component
+     * @param Uy Current y-velocity component
+     * @param Uz Current z-velocity component
+     * @param productionK k-production field (mutated in place)
+     */
+    void overrideWallCellProduction
+    (
+        const ScalarField& Ux,
+        const ScalarField& Uy,
+        const ScalarField& Uz,
+        ScalarField& productionK
+    ) const;
 
     /**
      * @brief Compute cross-diffusion term from k and omega gradients
@@ -468,24 +496,6 @@ private:
     ScalarField F23(const ScalarField& f2, const ScalarField& f3) const;
 
     /**
-     * @brief Compute cell velocity divergence from face mass fluxes
-     * @param flowRateFace Face volume flow rates
-     * @return Cell-centred divergence of U
-     */
-    ScalarField divU(const FaceFluxField& flowRateFace) const;
-
-// Transport equation solvers
-
-    /**
-     * @brief Compute k production term
-     * @param strainRateField Strain rate magnitude
-     */
-    void kProduction
-    (
-        const ScalarField& strainRate
-    );
-
-    /**
      * @brief Compute omega production term
      * @param f1 SST F1 blending function
      * @param strainRateField Strain rate magnitude
@@ -511,21 +521,6 @@ private:
         const ScalarField& f1,
         const ScalarField& f23,
         const ScalarField& strainRate
-    ) const;
-
-    /**
-     * @brief Override k production at wall-adjacent cells
-     * @param Ux Current x-velocity component
-     * @param Uy Current y-velocity component
-     * @param Uz Current z-velocity component
-     * @param productionK k-production field (mutated in place)
-     */
-    void overrideWallCellProduction
-    (
-        const ScalarField& Ux,
-        const ScalarField& Uy,
-        const ScalarField& Uz,
-        ScalarField& productionK
     ) const;
 
     /**
@@ -564,19 +559,41 @@ private:
         const VectorField& gradK
     );
 
-// Utilities
-
-    /// Blend two constants using SST blending function
-    static Scalar blend(Scalar f, Scalar cInner, Scalar cOuter) noexcept
-    {
-        return f * (cInner - cOuter) + cOuter;
-    }
-
     /// Bound omega with viscosity-ratio limit
     void boundOmega();
 
     /// Bound k to minimum value
     void boundK();
+
+    /**
+     * @brief Update SST turbulent viscosity with limiter
+     * @param f23 F2 or F2*F3 blending selector
+     * @param strainRateField Strain rate magnitude
+     */
+    void updateTurbulentViscosity
+    (
+        const ScalarField& f23,
+        const ScalarField& strainRate
+    );
+
+    /**
+     * @brief Update wall shear stress using parallel velocity only
+     *
+     * @details
+     * Computes kinematic wall shear stress (tau/rho) [m^2/s^2]:
+     * - Viscous sublayer (y+ < yPlusLam): tau/rho = nu * U_tan / y
+     * - Log layer (y+ >= yPlusLam): tau/rho = uTau^2 = Cmu^0.5 * k
+     *
+     * @param Ux Current x-velocity component
+     * @param Uy Current y-velocity component
+     * @param Uz Current z-velocity component
+     */
+    void updateWallShearStress
+    (
+        const ScalarField& Ux,
+        const ScalarField& Uy,
+        const ScalarField& Uz
+    );
 
     /// Log min/max/mean for k, omega, nut fields
     void logFieldDiagnostics() const;
