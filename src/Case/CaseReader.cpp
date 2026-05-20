@@ -21,7 +21,7 @@ CaseReader::CaseReader(const std::string& filename)
 
 // ***************************** Accessor Methods *****************************
 
-const CaseReader& CaseReader::section(const std::string& name) const
+const CaseReader& CaseReader::section(const std::string& name) const noexcept
 {
     const auto it = sections_.find(name);
     if (it == sections_.end())

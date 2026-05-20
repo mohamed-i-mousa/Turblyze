@@ -27,7 +27,7 @@ void Constraint::setPressureConstraints
 (
     Scalar minPressure,
     Scalar maxPressure
-)
+) noexcept
 {
     minPressure_ = minPressure;
     maxPressure_ = maxPressure;

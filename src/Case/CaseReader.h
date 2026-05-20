@@ -99,7 +99,7 @@ public:
      * @return Section object
      * @note Terminates the program if section not found
      */
-    const CaseReader& section(const std::string& name) const;
+    const CaseReader& section(const std::string& name) const noexcept;
 
     /**
      * @brief Check if section exists

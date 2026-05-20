@@ -136,7 +136,7 @@ public:
      * @brief Get all boundary patches
      * @return Const reference to vector of boundary patches
      */
-    [[nodiscard]] const std::vector<BoundaryPatch>& patches() const
+    [[nodiscard]] const std::vector<BoundaryPatch>& patches() const noexcept
     {
         return patches_;
     }
@@ -145,7 +145,10 @@ public:
      * @brief Get number of patches
      * @return Number of boundary patches
      */
-    [[nodiscard]] size_t numPatches() const { return patches_.size(); }
+    [[nodiscard]] size_t numPatches() const noexcept
+    {
+        return patches_.size();
+    }
 
     /**
      * @brief Get boundary condition for a field on a patch

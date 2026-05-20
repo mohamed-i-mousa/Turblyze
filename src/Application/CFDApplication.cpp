@@ -37,7 +37,7 @@ CFDApplication::CFDApplication(const std::string& caseFilePath)
     caseFilePath_(caseFilePath)
 {}
 
-CFDApplication::~CFDApplication() = default;
+CFDApplication::~CFDApplication() noexcept = default;
 
 // *********************************** run ***********************************
 

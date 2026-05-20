@@ -64,7 +64,11 @@ public:
      * @param minPressure Minimum allowed pressure
      * @param maxPressure Maximum allowed pressure
      */
-    void setPressureConstraints(Scalar minPressure, Scalar maxPressure);
+    void setPressureConstraints
+    (
+        Scalar minPressure,
+        Scalar maxPressure
+    ) noexcept;
 
     /**
      * @brief Enable or disable field constraints

@@ -148,7 +148,7 @@ public:
      * @param rho Fluid density
      * @param mu Dynamic viscosity
      */
-    void setPhysicalProperties(Scalar rho, Scalar mu)
+    void setPhysicalProperties(Scalar rho, Scalar mu) noexcept
     {
         if (rho <= S(0.0))
         {
@@ -437,13 +437,13 @@ private:
     );
 
     /// Compute mass imbalance across domain
-    Scalar massImbalance() const;
+    Scalar massImbalance() const noexcept;
 
     /// Compute velocity residual
-    Scalar velocityResidual() const;
+    Scalar velocityResidual() const noexcept;
 
     /// Compute pressure residual
-    Scalar pressureResidual() const;
+    Scalar pressureResidual() const noexcept;
 
     /**
      * @brief Calculate transpose gradient source term for momentum equations

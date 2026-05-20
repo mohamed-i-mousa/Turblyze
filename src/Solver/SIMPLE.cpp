@@ -825,7 +825,7 @@ bool SIMPLE::checkConvergence()
 
 // ****************************** Private Methods ******************************
 
-Scalar SIMPLE::massImbalance() const
+Scalar SIMPLE::massImbalance() const noexcept
 {
     // Dimensionless normalized continuity residual per cell, averaged
     Scalar totalNormImbalance = S(0.0);
@@ -855,7 +855,7 @@ Scalar SIMPLE::massImbalance() const
 }
 
 
-Scalar SIMPLE::velocityResidual() const
+Scalar SIMPLE::velocityResidual() const noexcept
 {
     // Normalized residual: ||U - U_prev||_2 / (||U_prev||_2 + eps)
     Scalar num = S(0.0);
@@ -883,7 +883,7 @@ Scalar SIMPLE::velocityResidual() const
 }
 
 
-Scalar SIMPLE::pressureResidual() const
+Scalar SIMPLE::pressureResidual() const noexcept
 {
     // Normalize p' RMS by RMS(p)
     Scalar sumP2 = S(0.0);

@@ -47,7 +47,7 @@ public:
     CFDApplication& operator=(CFDApplication&&) noexcept = default;
 
     /// Destructor
-    ~CFDApplication();
+    ~CFDApplication() noexcept;
 
     /// Run the full simulation
     void run();
