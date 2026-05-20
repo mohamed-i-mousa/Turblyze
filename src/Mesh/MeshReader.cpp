@@ -157,11 +157,9 @@ void MeshReader::parseNodesSection
                 "with '(' but found '" + zoneToken + "'."
             );
         }
-        else
-        {
-            // Remove leading '('
-            zoneToken.erase(0, 1);
-        }
+
+        // Remove leading '('
+        zoneToken.erase(0, 1);
 
         zoneIdxStr = zoneToken;
 
@@ -198,12 +196,10 @@ void MeshReader::parseNodesSection
               + "' does not end with expected ')('."
             );
         }
-        else
-        {
-            // Remove trailing parentheses
-            dimensionStr.pop_back();
-            dimensionStr.pop_back();
-        }
+
+        // Remove trailing parentheses
+        dimensionStr.pop_back();
+        dimensionStr.pop_back();
 
         const size_t startIdx = hexToDec(startIdxStr);
         const size_t endIdx = hexToDec(endIdxStr);
@@ -316,10 +312,8 @@ void MeshReader::parseFacesSection
                 "with '(' but found '" + zoneToken + "'."
             );
         }
-        else
-        {
-            zoneToken.erase(0, 1);
-        }
+
+        zoneToken.erase(0, 1);
 
         zoneIdxStr = zoneToken;
 
@@ -329,7 +323,7 @@ void MeshReader::parseFacesSection
         ifs >> elementTypeStr;
 
         // Remove trailing parentheses
-        if(!elementTypeStr.ends_with(")("))
+        if (!elementTypeStr.ends_with(")("))
         {
             FatalError
             (
@@ -338,11 +332,9 @@ void MeshReader::parseFacesSection
               + "' does not end with expected ')('."
             );
         }
-        else
-        {
-            elementTypeStr.pop_back();
-            elementTypeStr.pop_back();
-        }
+
+        elementTypeStr.pop_back();
+        elementTypeStr.pop_back();
 
         // Check mixed element section (node count included)
         const bool hasMixedElements = (elementTypeStr == "0");
@@ -500,10 +492,8 @@ void MeshReader::parseBoundariesSection
             "with '(' but found '" + zoneToken + "'."
         );
     }
-    else
-    {
-        zoneToken.erase(0, 1);
-    }
+
+    zoneToken.erase(0, 1);
 
     const size_t zoneIdx = strToDec(zoneToken);
 
@@ -522,13 +512,11 @@ void MeshReader::parseBoundariesSection
             "with ')())' but found '" + nameString + "'."
         );
     }
-    else
-    {
-        nameString.pop_back();
-        nameString.pop_back();
-        nameString.pop_back();
-        nameString.pop_back();
-    }
+
+    nameString.pop_back();
+    nameString.pop_back();
+    nameString.pop_back();
+    nameString.pop_back();
 
     for (size_t i = 0; i < boundaryPatches_.size(); ++i)
     {

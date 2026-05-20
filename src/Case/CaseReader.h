@@ -225,7 +225,8 @@ private:
             {
                 return true;
             }
-            else if
+
+            if
             (
                 lower == "false"
              || lower == "off"
@@ -235,10 +236,8 @@ private:
             {
                 return false;
             }
-            else
-            {
-                FatalError("Cannot convert '" + value + "' to bool");
-            }
+
+            FatalError("Cannot convert '" + value + "' to bool");
         }
         else if constexpr (std::same_as<T, std::string>)
         {
