@@ -388,6 +388,11 @@ Vector GradientScheme::boundaryFaceGradient
     const BoundaryData& bc =
         bcManager_.fieldBC(patch.patchName(), field);
 
+    const Vector tangentialGradient =
+        cellGradient
+      - dot(cellGradient, face.normal())
+      * face.normal();
+
     using enum BCType;
     switch (bc.type())
     {
@@ -413,11 +418,6 @@ Vector GradientScheme::boundaryFaceGradient
                 (boundaryValue - cellValue)
               / dnStabilized;
 
-            const Vector tangentialGradient =
-                cellGradient
-              - dot(cellGradient, face.normal())
-              * face.normal();
-
             return tangentialGradient + normalGradient * face.normal();
         }
 
@@ -427,11 +427,6 @@ Vector GradientScheme::boundaryFaceGradient
         case ZERO_GRADIENT:
         {
             // Zero normal gradient: retain only tangential
-            const Vector tangentialGradient =
-                cellGradient
-              - dot(cellGradient, face.normal())
-              * face.normal();
-
             return tangentialGradient;
         }
 
@@ -441,11 +436,6 @@ Vector GradientScheme::boundaryFaceGradient
 
             // Project cell gradient onto tangential directions
             // and combine with specified normal gradient
-            const Vector tangentialGradient =
-                cellGradient
-              - dot(cellGradient, face.normal())
-              * face.normal();
-
             return tangentialGradient + specifiedGradient * face.normal();
         }
 
