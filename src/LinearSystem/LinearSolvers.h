@@ -1,23 +1,48 @@
 /******************************************************************************
  * @file LinearSolvers.h
- * @brief Iterative solver for sparse linear systems
- * 
- * @details This class provides configurable solvers with preconditioners for 
- * discretized transport equations. Each LinearSolver instance maintains  
- * independent convergence parameters and preconditioner settings.
+ * @brief Iterative solver hierarchy for sparse linear systems
+ *
+ * @details Polymorphic LinearSolver interface with an EigenLinearSolver
+ * adapter that wraps an Eigen iterative solver. The Eigen solver type is
+ * fixed by the EigenLinearSolver template argument; concrete classes
+ * (BiCGSTAB, PCG) inherit a specific instantiation and supply the
+ * algorithm name used in diagnostics.
+ *
+ * The shared solve path lives in EigenLinearSolver<T>::solve() and is
+ * defined inline, so this header pulls Eigen's iterative-solver template
+ * into every translation unit that includes it.
+ *
+ * @struct SolvePerformance
+ * - Convergence diagnostics cached by LinearSolver after solve()
  *
  * @class LinearSolver
- * - BiCGSTAB solver with Jacobi (diagonal) preconditioner
- * - PCG solver with Jacobi (diagonal) preconditioner for pressure correction
- * - Configurable convergence tolerances
+ * - Abstract base with virtual solve()
+ * - Holds shared convergence configuration and cached solve diagnostics
+ *
+ * @class EigenLinearSolver
+ * - Templated adapter that owns the concrete Eigen iterative solver
+ * - Implements the common analyse/factorize/solveWithGuess workflow once
+ * - Stores sparsity-pattern analysis state per solver instance
+ *
+ * @class BiCGSTAB
+ * - Final solver class inheriting EigenLinearSolver<EigenBiCGSTAB> (Jacobi
+ *   preconditioner); use for non-symmetric momentum/turbulence systems
+ *
+ * @class PCG
+ * - Final solver class inheriting EigenLinearSolver<EigenPCG> (Jacobi
+ *   preconditioner); use for symmetric positive definite systems (p')
  *****************************************************************************/
 
 #pragma once
 
+#include <limits>
 #include <string>
+#include <string_view>
+
 #include <eigen3/Eigen/SparseCore>
 #include <eigen3/Eigen/IterativeLinearSolvers>
 
+#include "ErrorHandler.h"
 #include "Scalar.h"
 
 
@@ -28,6 +53,28 @@ using VecRef = Eigen::Ref<Vec>;
 using JacobiPreconditioner = Eigen::DiagonalPreconditioner<Scalar>;
 static constexpr int LowerUpper = Eigen::Lower | Eigen::Upper;
 
+using EigenBiCGSTAB =
+    Eigen::BiCGSTAB<SparseMatrix, JacobiPreconditioner>;
+using EigenPCG =
+    Eigen::ConjugateGradient
+    <SparseMatrix, LowerUpper, JacobiPreconditioner>;
+
+
+struct SolvePerformance
+{
+    /// Solver name (view into LinearSolver::name() — program-lifetime storage)
+    std::string_view solverName = {};
+
+    /// Iterations performed by the solve call
+    int iterations = 0;
+
+    /// Final relative residual reported by Eigen
+    Scalar finalResidual = S(0.0);
+
+    /// Whether Eigen reported successful convergence
+    bool converged = false;
+};
+
 
 class LinearSolver
 {
@@ -35,53 +82,52 @@ public:
 
     /**
      * @brief Construct linear solver with convergence parameters
-     * @param fieldName Name of field being solved
-     * @param tolerance Absolute residual tolerance
+     * @param tolerance Relative residual tolerance used by Eigen
      * @param maxIterations Maximum solver iterations
      */
     LinearSolver
     (
-        std::string fieldName,
         Scalar tolerance = S(1e-6),
         int maxIterations = 1000
-    );
+    )
+    :
+        tolerance_(tolerance),
+        maxIterations_(maxIterations)
+    {}
 
-    /// Copy constructor and assignment - Customized for Eigen members
-    LinearSolver(const LinearSolver& other);
-    LinearSolver& operator=(const LinearSolver& other);
 
-    /// Move constructor and assignment - deleted: Eigen iterative solver move
-    /// is unsound for un-analysed instances (self-referential internal wrapper)
+    /// Copy constructor and assignment - Not copyable (Polymorphic)
+    LinearSolver(const LinearSolver&) = delete;
+    LinearSolver& operator=(const LinearSolver&) = delete;
+
+    /// Move constructor and assignment - Not movable
     LinearSolver(LinearSolver&&) = delete;
     LinearSolver& operator=(LinearSolver&&) = delete;
 
-    /// Destructor
-    ~LinearSolver() noexcept = default;
+    /// Virtual destructor for polymorphic deletion
+    virtual ~LinearSolver() noexcept = default;
 
 // Setters
 
-    /**
-     * @brief Set absolute residual tolerance
-     * @param tol Convergence threshold
-     */
-    void setTolerance(Scalar tol) noexcept { tolerance_ = tol; }
+    /// Set relative residual tolerance
+    void setTolerance(Scalar tol) noexcept
+    {
+        tolerance_ = tol;
+    }
 
-    /**
-     * @brief Set maximum solver iterations
-     * @param maxIter Maximum allowed iterations
-     */
-    void setMaxIterations(int maxIter) noexcept { maxIterations_ = maxIter; }
+    /// Set maximum solver iterations
+    void setMaxIterations(int maxIter) noexcept
+    {
+        maxIterations_ = maxIter;
+    }
 
 // Accessors
 
-    /// Get field name for this solver
-    [[nodiscard]] const std::string& fieldName() const noexcept
+    /// Get relative tolerance
+    [[nodiscard]] Scalar tolerance() const noexcept
     {
-        return fieldName_;
+        return tolerance_;
     }
-
-    /// Get absolute tolerance
-    [[nodiscard]] Scalar tolerance() const noexcept { return tolerance_; }
 
     /// Get maximum iterations
     [[nodiscard]] int maxIterations() const noexcept
@@ -89,73 +135,176 @@ public:
         return maxIterations_;
     }
 
-    /// Iterations performed by the last solve call (BiCGSTAB or PCG)
+    /// Iterations performed by the last solve call
     [[nodiscard]] int lastIterations() const noexcept
     {
-        return lastIterations_;
+        return lastPerformance_.iterations;
     }
 
     /// Final relative residual reported by the last solve call
     [[nodiscard]] Scalar lastResidual() const noexcept
     {
-        return lastResidual_;
+        return lastPerformance_.finalResidual;
     }
 
-// Solver methods
+    /// Full diagnostics from the last solve call
+    [[nodiscard]] const SolvePerformance& lastPerformance() const noexcept
+    {
+        return lastPerformance_;
+    }
+
+// Solver method
 
     /**
-     * @brief Solve sparse system using BiCGSTAB with Jacobi preconditioner
-     * @param x Solution vector
+     * @brief Solve sparse system using the derived algorithm
+     * @param x Solution vector (initial guess on input, solution on output)
      * @param A Sparse coefficient matrix
      * @param B Right-hand side vector
-     *
-     * Suitable for non-symmetric systems (momentum, turbulence).
      */
-    void solveWithBiCGSTAB
+    virtual void solve
     (
         VecRef x,
         const SparseMatrix& A,
         const Vec& B
-    );
+    ) = 0;
 
     /**
-     * @brief Solve sparse system using PCG with Jacobi preconditioner
-     * @param x Solution vector
-     * @param A Sparse coefficient matrix (must be SPD)
-     * @param B Right-hand side vector
-     *
-     * Requires symmetric positive definite matrix
+     * @brief Algorithm label used in diagnostic output
+     * @return Solver name ("BiCGSTAB", "PCG", ...)
      */
-    void solveWithPCG
-    (
-        VecRef x,
-        const SparseMatrix& A,
-        const Vec& B
-    );
-    
+    [[nodiscard]] virtual std::string_view name() const noexcept = 0;
+
+protected:
+
+    /// Store diagnostics from the most recent solve call
+    void setLastPerformance(const SolvePerformance& performance) noexcept
+    {
+        lastPerformance_ = performance;
+    }
+
 private:
 
-    /// Name of field being solved
-    std::string fieldName_;
-
-    /// Absolute residual tolerance for convergence
+    /// Relative residual tolerance for convergence
     Scalar tolerance_;
 
     /// Maximum solver iterations before failure
     int maxIterations_;
 
-    /// Whether solver parameters and sparsity pattern have been initialized
-    bool solverInitialized_ = false;
+    /// Diagnostics from the most recent solve call
+    SolvePerformance lastPerformance_
+    {
+        .solverName    = {},
+        .iterations    = -1,
+        .finalResidual = std::numeric_limits<Scalar>::quiet_NaN(),
+        .converged     = false
+    };
+};
 
-    /// Iterations performed by the most recent solve call
-    int lastIterations_ = 0;
 
-    /// Final residual reported by the most recent solve call
-    Scalar lastResidual_ = S(0.0);
+template<typename EigenSolverT>
+class EigenLinearSolver : public LinearSolver
+{
+public:
 
-    /// BiCGSTAB solver with Jacobi (diagonal) preconditioner
-    Eigen::BiCGSTAB<SparseMatrix, JacobiPreconditioner> bicgstab_;
+    using LinearSolver::LinearSolver;
 
-    /// PCG solver with Jacobi (diagonal) preconditioner
-    Eigen::ConjugateGradient<SparseMatrix, LowerUpper, JacobiPreconditioner> pcg_;
+    /**
+     * @brief Solve sparse system using the owned Eigen iterative solver
+     * @param x Solution vector (initial guess on input, solution on output)
+     * @param A Sparse coefficient matrix
+     * @param B Right-hand side vector
+     */
+    void solve
+    (
+        VecRef x,
+        const SparseMatrix& A,
+        const Vec& B
+    ) final
+    {
+        if (x.size() != B.size())
+        {
+            FatalError("LinearSolver: x and B size mismatch");
+        }
+
+        solver_.setMaxIterations(maxIterations());
+        solver_.setTolerance(tolerance());
+
+        if (!patternAnalyzed_)
+        {
+            solver_.analyzePattern(A);
+            patternAnalyzed_ = true;
+        }
+
+        solver_.factorize(A);
+
+        if (solver_.info() != Eigen::Success)
+        {
+            Warning(std::string(name()) + ": factorization failed");
+
+            const SolvePerformance performance
+            {
+                .solverName    = name(),
+                .iterations    = 0,
+                .finalResidual = std::numeric_limits<Scalar>::quiet_NaN(),
+                .converged     = false
+            };
+
+            setLastPerformance(performance);
+            return;
+        }
+
+        x = solver_.solveWithGuess(B, x);
+
+        const bool converged = solver_.info() == Eigen::Success;
+
+        const SolvePerformance performance
+        {
+            .solverName    = name(),
+            .iterations    = static_cast<int>(solver_.iterations()),
+            .finalResidual = solver_.error(),
+            .converged     = converged
+        };
+
+        setLastPerformance(performance);
+    }
+
+private:
+
+    /// Owned Eigen iterative solver
+    EigenSolverT solver_;
+
+    /// Whether this instance has analysed the sparsity pattern
+    bool patternAnalyzed_ = false;
+};
+
+
+class BiCGSTAB final : public EigenLinearSolver<EigenBiCGSTAB>
+{
+public:
+
+    using EigenLinearSolver<EigenBiCGSTAB>::EigenLinearSolver;
+
+    /// Runtime selection name
+    static constexpr std::string_view typeName = "BiCGSTAB";
+
+    [[nodiscard]] std::string_view name() const noexcept override
+    {
+        return typeName;
+    }
+};
+
+
+class PCG final : public EigenLinearSolver<EigenPCG>
+{
+public:
+
+    using EigenLinearSolver<EigenPCG>::EigenLinearSolver;
+
+    /// Runtime selection name
+    static constexpr std::string_view typeName = "PCG";
+
+    [[nodiscard]] std::string_view name() const noexcept override
+    {
+        return typeName;
+    }
 };

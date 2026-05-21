@@ -220,43 +220,52 @@ linearSolvers
     U   // Momentum equations
     {
         solver              BiCGSTAB;       // Solver type
-        preconditioner      ILUT;           // Preconditioner
-        tolerance           1e-5;           // Absolute tolerance
+        preconditioner      Jacobi;         // Supported preconditioner
+        tolerance           1e-5;           // Relative residual tolerance
         maxIter             500;            // Maximum iterations
-        computeResiduals    false;          // Optional: compute residuals
     }
 
     p   // Pressure equation
     {
-        solver              PCG;
-        preconditioner      Jacobi;
-        tolerance           1e-6;
-        relTol              0.05;
-        maxIter             1000;
-        computeResiduals    false;
+        solver              PCG;            // Solver type
+        preconditioner      Jacobi;         // Supported preconditioner
+        tolerance           1e-6;           // Relative residual tolerance
+        maxIter             1000;           // Maximum iterations
     }
 
     k   // Turbulent kinetic energy (if turbulence enabled)
     {
-        solver              BiCGSTAB;
-        preconditioner      ILUT;
-        tolerance           1e-5;
-        maxIter             500;
-        computeResiduals    false;
+        solver              BiCGSTAB;       // Solver type
+        preconditioner      Jacobi;         // Supported preconditioner
+        tolerance           1e-5;           // Relative residual tolerance
+        maxIter             500;            // Maximum iterations
     }
 
     omega   // Specific dissipation rate (if turbulence enabled)
     {
-        solver              BiCGSTAB;
-        preconditioner      ILUT;
-        tolerance           1e-5;
-        maxIter             500;
-        computeResiduals    false;
+        solver              BiCGSTAB;       // Solver type
+        preconditioner      Jacobi;         // Supported preconditioner
+        tolerance           1e-5;           // Relative residual tolerance
+        maxIter             500;            // Maximum iterations
     }
 }
 ```
 
-**Note**: `relTol` (relative tolerance) is only supported for the pressure solver, not momentum or turbulence solvers.
+Recognized keys per section:
+
+- `solver` — `BiCGSTAB` (non-symmetric matrices: U, k, omega) or `PCG`
+  (SPD matrices: p). Optional; defaults to `BiCGSTAB` for U/k/omega and `PCG`
+  for p.
+- `preconditioner` — parsed for forward compatibility but not yet consumed;
+  the Eigen solvers currently use Jacobi (diagonal) unconditionally.
+  Optional; defaults to `Jacobi`.
+- `tolerance` — relative residual tolerance used by Eigen's iterative
+  solvers (`|r| / |b|`).
+- `maxIter` — iteration cap before the solver gives up.
+
+Algorithm/equation pairing is not validated. Picking `PCG` for a
+non-symmetric equation will compile and run but will not converge to the
+correct solution.
 
 ### 8. turbulence
 Turbulence model configuration.

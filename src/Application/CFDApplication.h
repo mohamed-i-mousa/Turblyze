@@ -17,6 +17,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <memory>
 
 #include "Scalar.h"
@@ -27,6 +28,7 @@
 class GradientScheme;
 class SIMPLE;
 class CaseReader;
+class LinearSolver;
 
 class CFDApplication
 {
@@ -90,6 +92,21 @@ private:
      */
     static std::unique_ptr<ConvectionSchemes>
     createConvectionScheme(const std::string& name);
+
+    /**
+     * @brief Create a linear solver by case-file name
+     * @param name Solver name (BiCGSTAB, PCG)
+     * @param tolerance Relative residual tolerance
+     * @param maxIterations Maximum solver iterations
+     * @return Unique pointer to created solver
+     * @note Terminates the program if name is unknown
+     */
+    static std::unique_ptr<LinearSolver> createLinearSolver
+    (
+        std::string_view name,
+        Scalar tolerance,
+        int maxIterations
+    );
 
     /**
      * @brief Parse convection schemes from case file

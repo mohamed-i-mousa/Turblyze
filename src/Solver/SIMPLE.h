@@ -22,6 +22,7 @@
 
 #include <vector>
 #include <memory>
+#include <utility>
 
 #include "Mesh.h"
 #include "BoundaryConditions.h"
@@ -162,32 +163,32 @@ public:
 
     /**
      * @brief Set linear solver for momentum equations
-     * @param solver Configured LinearSolver for momentum
+     * @param solver Owning pointer to configured solver
      */
-    void setMomentumSolver(const LinearSolver& solver)
+    void setMomentumSolver(std::unique_ptr<LinearSolver> solver) noexcept
     {
-        momentumSolver_ = solver;
+        momentumSolver_ = std::move(solver);
     }
 
     /**
      * @brief Set linear solver for pressure correction equation
-     * @param solver Configured LinearSolver for pressure
+     * @param solver Owning pointer to configured solver
      */
-    void setPressureSolver(const LinearSolver& solver)
+    void setPressureSolver(std::unique_ptr<LinearSolver> solver) noexcept
     {
-        pressureSolver_ = solver;
+        pressureSolver_ = std::move(solver);
     }
 
     /**
      * @brief Set linear solvers for turbulence equations
-     * @param kSolver Configured LinearSolver for k equation
-     * @param omegaSolver Configured LinearSolver for omega equation
+     * @param kSolver Owning pointer to configured solver for k equation
+     * @param omegaSolver Owning pointer to configured solver for omega
      */
     void setTurbulenceSolvers
     (
-        const LinearSolver& kSolver,
-        const LinearSolver& omegaSolver
-    );
+        std::unique_ptr<LinearSolver> kSolver,
+        std::unique_ptr<LinearSolver> omegaSolver
+    ) noexcept;
 
 // Getter methods
 
@@ -370,10 +371,10 @@ private:
     std::unique_ptr<Matrix> matrixConstruct_ = nullptr;
 
     /// Linear solver for momentum equations
-    LinearSolver momentumSolver_ = LinearSolver("momentum", S(1e-6), 1000);
+    std::unique_ptr<LinearSolver> momentumSolver_;
 
     /// Linear solver for pressure correction equation
-    LinearSolver pressureSolver_ = LinearSolver("pCorr", S(1e-6), 1000);
+    std::unique_ptr<LinearSolver> pressureSolver_;
 
 // Residual tracking for convergence
 

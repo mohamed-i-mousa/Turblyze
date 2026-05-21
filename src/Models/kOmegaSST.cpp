@@ -949,16 +949,19 @@ void kOmegaSST::solveOmegaEquation
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
     omegaSolution(omega_.data(), eIdx(numCells));
 
-    omegaSolver_.solveWithBiCGSTAB(omegaSolution, matrixA, vectorB);
+    omegaSolver_->solve(omegaSolution, matrixA, vectorB);
 
     if (debug_)
     {
+        const SolvePerformance& omegaPerformance =
+            omegaSolver_->lastPerformance();
+
         Logger::residualRow
         (
             "omega",
-            "BiCGSTAB",
-            omegaSolver_.lastIterations(),
-            omegaSolver_.lastResidual()
+            omegaPerformance.solverName,
+            omegaPerformance.iterations,
+            omegaPerformance.finalResidual
         );
     }
 }
@@ -1036,16 +1039,18 @@ void kOmegaSST::solveKEquation
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
     kSolution(k_.data(), eIdx(numCells));
 
-    kSolver_.solveWithBiCGSTAB(kSolution, matrixA, vectorB);
+    kSolver_->solve(kSolution, matrixA, vectorB);
 
     if (debug_)
     {
+        const SolvePerformance& kPerformance = kSolver_->lastPerformance();
+
         Logger::residualRow
         (
             "k",
-            "BiCGSTAB",
-            kSolver_.lastIterations(),
-            kSolver_.lastResidual()
+            kPerformance.solverName,
+            kPerformance.iterations,
+            kPerformance.finalResidual
         );
     }
 }

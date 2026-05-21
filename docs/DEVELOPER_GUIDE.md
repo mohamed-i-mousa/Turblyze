@@ -358,8 +358,8 @@ temporary allocations, and often has better cache behavior.
 | Component | Parallel? | Notes |
 |---|---|---|
 | SpMV inside BiCGSTAB/PCG | YES | RowMajor partitions rows across threads |
-| Dot products / norms in BiCGSTAB | YES | Eigen OpenMP reduction |
-| ILUT triangular solve (precond apply) | **NO** | Inherently sequential; hard ceiling on solver speedup |
+| Dot products / norms in BiCGSTAB/PCG | YES | Eigen OpenMP reduction |
+| Jacobi preconditioner apply | YES | Diagonal scaling |
 | Matrix assembly (face loop) | YES | Per-thread buffer pattern |
 | `Matrix::relax()` | YES | Per-row, no neighbor writes |
 | `Matrix::setValues()` | NO | Small; left serial intentionally |
@@ -441,11 +441,21 @@ Class `kOmegaSST`:
 
 ## Linear solvers
 
-`LinearSolver` provides both `solveWithBiCGSTAB()` (ILUT preconditioner) and `solveWithPCG()` (Jacobi preconditioner):
+`LinearSolver` is an abstract base class for sparse iterative solvers.
+`EigenLinearSolver<T>` contains the shared Eigen-backed solve path, while
+concrete `BiCGSTAB` and `PCG` classes provide algorithm identity. Use
+`BiCGSTAB` for non-symmetric momentum/turbulence systems and `PCG` for the
+pressure-correction system:
 - Per-field solver instances with independent convergence parameters.
-- Configurable absolute tolerance, relative tolerance, and max iterations.
-- Optional exact RMS residual computation with convergence diagnostics.
-- Throws on non-finite errors; returns success boolean.
+- Configurable relative residual tolerance and max iterations.
+- `solve(x, A, b)` updates the supplied solution vector in place and caches
+  diagnostics in `lastPerformance()`.
+- Last-solve diagnostics are also available through `lastIterations()` and
+  `lastResidual()`.
+- Factorization failures emit a `Warning` and reset diagnostics to `0`
+  iterations and `NaN` residual. Non-convergence after `solveWithGuess()`
+  is recorded silently into `lastPerformance().converged = false`; callers
+  read the flag to decide how to react.
 
 
 ## Precision and numerical tolerances
@@ -499,25 +509,23 @@ ConvectionScheme& operator=(ConvectionScheme&&) = default;
 
 Used by: `ConvectionScheme`.
 
-### Pattern 3 — Eigen iterative solver member (rule of five, move deleted, copy customized)
+### Pattern 3 — Eigen iterative solver member (rule of five, copy/move deleted)
 
 Eigen's `BiCGSTAB` and `ConjugateGradient` hold a `generic_matrix_wrapper` that
 stores a `Ref<>` pointing to a dummy member — the default move leaves that `Ref<>`
-dangling. Copy is provided manually to reset `solverInitialized_` to `false` in the
-new instance (the copied solver must re-analyze its own sparsity pattern).
+dangling. Solver wrappers are therefore owned through `std::unique_ptr`, with
+copy and move operations deleted.
 
 ```cpp
-/// Copy constructor and assignment — Customized for Eigen members
-LinearSolver(const LinearSolver& other);
-LinearSolver& operator=(const LinearSolver& other);
+/// Copy and move - deleted; instances are owned through unique_ptr
+LinearSolver(const LinearSolver&) = delete;
+LinearSolver& operator=(const LinearSolver&) = delete;
 
-/// Move constructor and assignment — deleted: Eigen iterative solver move
-/// is unsound for un-analysed instances (self-referential internal wrapper)
 LinearSolver(LinearSolver&&) = delete;
 LinearSolver& operator=(LinearSolver&&) = delete;
 
-/// Destructor
-~LinearSolver() noexcept = default;
+/// Virtual destructor for polymorphic deletion
+virtual ~LinearSolver() noexcept = default;
 ```
 
 ### Pattern 4 — Rule of zero
@@ -541,7 +549,8 @@ Used by: `Face`, `Cell`, `BoundaryData`, `BoundaryPatch`, `CellData<T>`, `FaceDa
    TransportEquation eq{Field::phi, phi, flowRate, convScheme,
        Gamma, std::nullopt, source, gradPhi, gradScheme};
    ```
-6) Call `matrix.buildMatrix(eq)`, then solve with `LinearSolver::solveWithBiCGSTAB()`.
+6) Call `matrix.buildMatrix(eq)`, then solve through a configured
+   `LinearSolver` instance.
 7) Apply under-relaxation via `matrix.relax(alpha, phiPrev)` if needed.
 
 ### Add a new convection scheme
@@ -645,8 +654,8 @@ loop. Helpers available:
 - `Logger::residualTableHeader()` / `Logger::residualRow(equation, solver,
   iters, lsResidual)` — column-aligned residual table. The equation label
   is supplied by the caller (e.g. `SIMPLE` passes `"Ux"`/`"Uy"`/`"Uz"`/
-  `"p'"`; `kOmegaSST` passes `"k"`/`"omega"`), reading
-  `LinearSolver::lastIterations()` and `lastResidual()`.
+  `"p'"`; `kOmegaSST` passes `"k"`/`"omega"`), using the `SolvePerformance`
+  cached by `LinearSolver::solve()`.
 - `Logger::subsection(title)` + `Logger::scalarStat(name, min, max, mean)`
   — grouped field statistics blocks.
 - `Logger::scaledResidual(name, value)` — one row of the convergence
@@ -784,5 +793,3 @@ flowchart TD
   P -->|loop| I
   P --> Q[postProcess + VTK]
 ```
-
-

@@ -53,7 +53,6 @@ add_executable(${PROJECT_NAME}
     src/Schemes/GradientScheme.cpp
     src/Schemes/ConvectionSchemes.cpp
     src/LinearSystem/Matrix.cpp
-    src/LinearSystem/LinearSolvers.cpp
     src/Solver/SIMPLE.cpp
     src/Solver/Constraint.cpp
     src/Models/kOmegaSST.cpp

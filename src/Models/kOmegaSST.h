@@ -25,6 +25,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "Scalar.h"
 #include "Mesh.h"
@@ -177,16 +178,22 @@ public:
     }
 
     /**
-     * @brief Access k-equation linear solver for external configuration
-     * @return Reference to k linear solver
+     * @brief Replace the k-equation linear solver
+     * @param solver Owning pointer to configured solver
      */
-    LinearSolver& kSolverSettings() noexcept { return kSolver_; }
+    void setKSolver(std::unique_ptr<LinearSolver> solver) noexcept
+    {
+        kSolver_ = std::move(solver);
+    }
 
     /**
-     * @brief Access omega-equation linear solver for external configuration
-     * @return Reference to omega linear solver
+     * @brief Replace the omega-equation linear solver
+     * @param solver Owning pointer to configured solver
      */
-    LinearSolver& omegaSolverSettings() noexcept { return omegaSolver_; }
+    void setOmegaSolver(std::unique_ptr<LinearSolver> solver) noexcept
+    {
+        omegaSolver_ = std::move(solver);
+    }
 
     /**
      * @brief Enable or disable verbose console output
@@ -387,10 +394,10 @@ private:
     std::unique_ptr<Matrix> matrixConstruct_;
 
     /// Linear solver for k equation
-    LinearSolver kSolver_ = LinearSolver("k", S(1e-8), 1000);
+    std::unique_ptr<LinearSolver> kSolver_;
 
     /// Linear solver for omega equation
-    LinearSolver omegaSolver_ = LinearSolver("omega", S(1e-8), 1000);
+    std::unique_ptr<LinearSolver> omegaSolver_;
 
 // Private methods
 

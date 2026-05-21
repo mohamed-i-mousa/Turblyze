@@ -25,7 +25,7 @@ SIMPLE::SIMPLE
     const BoundaryConditions& bc,
     const GradientScheme& gradScheme,
     const ConvectionScheme& convSchemes
-) 
+)
 :
     mesh_(mesh),
     bcManager_(bc),
@@ -37,15 +37,12 @@ SIMPLE::SIMPLE
 
 void SIMPLE::setTurbulenceSolvers
 (
-    const LinearSolver& kSolver,
-    const LinearSolver& omegaSolver
-)
+    std::unique_ptr<LinearSolver> kSolver,
+    std::unique_ptr<LinearSolver> omegaSolver
+) noexcept
 {
-    if (turbulenceModel_)
-    {
-        turbulenceModel_->kSolverSettings() = kSolver;
-        turbulenceModel_->omegaSolverSettings() = omegaSolver;
-    }
+    turbulenceModel_->setKSolver(std::move(kSolver));
+    turbulenceModel_->setOmegaSolver(std::move(omegaSolver));
 }
 
 // ******************************* Public Methods ******************************
@@ -536,16 +533,19 @@ void SIMPLE::solvePressureCorrection()
 
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
     pCorrSolution(pCorr_.data(), eIdx(numCells));
-    pressureSolver_.solveWithPCG(pCorrSolution, matrixA, vectorB);
+    pressureSolver_->solve(pCorrSolution, matrixA, vectorB);
 
     if (debug_)
     {
+        const SolvePerformance& pressurePerformance =
+            pressureSolver_->lastPerformance();
+
         Logger::residualRow
         (
             "p'",
-            "PCG",
-            pressureSolver_.lastIterations(),
-            pressureSolver_.lastResidual()
+            pressurePerformance.solverName,
+            pressurePerformance.iterations,
+            pressurePerformance.finalResidual
         );
     }
 
@@ -988,21 +988,19 @@ void SIMPLE::solveMomentumEquation
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
     solutionMap(eq.phi.data(), eIdx(numCells));
 
-    momentumSolver_.solveWithBiCGSTAB
-    (
-        solutionMap,
-        matrixA,
-        vectorB
-    );
+    momentumSolver_->solve(solutionMap, matrixA, vectorB);
 
     if (debug_)
     {
+        const SolvePerformance& momentumPerformance =
+            momentumSolver_->lastPerformance();
+
         Logger::residualRow
         (
             fieldToString(eq.field),
-            "BiCGSTAB",
-            momentumSolver_.lastIterations(),
-            momentumSolver_.lastResidual()
+            momentumPerformance.solverName,
+            momentumPerformance.iterations,
+            momentumPerformance.finalResidual
         );
     }
 }

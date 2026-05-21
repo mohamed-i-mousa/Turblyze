@@ -768,16 +768,25 @@ void CFDApplication::configureSolver()
         );
 
     solver_->setPhysicalProperties(rho_, mu_);
-
     solver_->setRelaxationFactors(alphaU_, alphaP_, alphaK_, alphaOmega_);
     solver_->setConvergenceTolerance(convergenceTolerance_);
     solver_->setMaxIterations(maxIterations_);
 
-    // Linear solver settings
-    Scalar uTol     = S(1e-8); int uMaxIter     = 1000;
-    Scalar pTol     = S(1e-6); int pMaxIter     = 1000;
-    Scalar kTol     = S(1e-6); int kMaxIter     = 1000;
-    Scalar omegaTol = S(1e-6); int omegaMaxIter = 1000;
+    // Linear solver settings (defaults per equation)
+    std::string uSolverName     = "BiCGSTAB";
+    std::string pSolverName     = "PCG";
+    std::string kSolverName     = "BiCGSTAB";
+    std::string omegaSolverName = "BiCGSTAB";
+    Scalar uTol     = S(1e-8);
+    Scalar pTol     = S(1e-6);
+    Scalar kTol     = S(1e-6);
+    Scalar omegaTol = S(1e-6);
+    int uMaxIter     = 1000;
+    int pMaxIter     = 1000;
+    int kMaxIter     = 1000;
+    int omegaMaxIter = 1000;
+
+    std::string preconditioner = "Jacobi";
 
     if (caseReader_->hasSection("linearSolvers"))
     {
@@ -786,26 +795,42 @@ void CFDApplication::configureSolver()
         if (solvers.hasSection("U"))
         {
             const auto& s = solvers.section("U");
+            uSolverName =
+                s.lookupOrDefault<std::string>("solver", uSolverName);
             uTol = s.lookupOrDefault<Scalar>("tolerance", uTol);
             uMaxIter = s.lookupOrDefault<int>("maxIter", uMaxIter);
+            preconditioner =
+                s.lookupOrDefault<std::string>("preconditioner", "Jacobi");
         }
         if (solvers.hasSection("p"))
         {
             const auto& s = solvers.section("p");
+            pSolverName =
+                s.lookupOrDefault<std::string>("solver", pSolverName);
             pTol = s.lookupOrDefault<Scalar>("tolerance", pTol);
             pMaxIter = s.lookupOrDefault<int>("maxIter", pMaxIter);
+            preconditioner =
+                s.lookupOrDefault<std::string>("preconditioner", "Jacobi");
         }
         if (turbulenceEnabled_ && solvers.hasSection("k"))
         {
             const auto& s = solvers.section("k");
+            kSolverName =
+                s.lookupOrDefault<std::string>("solver", kSolverName);
             kTol = s.lookupOrDefault<Scalar>("tolerance", kTol);
             kMaxIter = s.lookupOrDefault<int>("maxIter", kMaxIter);
+            preconditioner =
+                s.lookupOrDefault<std::string>("preconditioner", "Jacobi");
         }
         if (turbulenceEnabled_ && solvers.hasSection("omega"))
         {
             const auto& s = solvers.section("omega");
+            omegaSolverName =
+                s.lookupOrDefault<std::string>("solver", omegaSolverName);
             omegaTol = s.lookupOrDefault<Scalar>("tolerance", omegaTol);
             omegaMaxIter = s.lookupOrDefault<int>("maxIter", omegaMaxIter);
+            preconditioner =
+                s.lookupOrDefault<std::string>("preconditioner", "Jacobi");
         }
     }
 
@@ -813,44 +838,50 @@ void CFDApplication::configureSolver()
     {
         FatalError("linearSolvers.U.tolerance must be positive.");
     }
-    if (uMaxIter <= 0)
-    {
-        FatalError("linearSolvers.U.maxIter must be a positive integer.");
-    }
     if (pTol <= S(0))
     {
         FatalError("linearSolvers.p.tolerance must be positive.");
-    }
-    if (pMaxIter <= 0)
-    {
-        FatalError("linearSolvers.p.maxIter must be a positive integer.");
     }
     if (kTol <= S(0))
     {
         FatalError("linearSolvers.k.tolerance must be positive.");
     }
-    if (kMaxIter <= 0)
-    {
-        FatalError("linearSolvers.k.maxIter must be a positive integer.");
-    }
     if (omegaTol <= S(0))
     {
         FatalError("linearSolvers.omega.tolerance must be positive.");
+    }
+    if (uMaxIter <= 0)
+    {
+        FatalError("linearSolvers.U.maxIter must be a positive integer.");
+    }
+    if (pMaxIter <= 0)
+    {
+        FatalError("linearSolvers.p.maxIter must be a positive integer.");
+    }
+    if (kMaxIter <= 0)
+    {
+        FatalError("linearSolvers.k.maxIter must be a positive integer.");
     }
     if (omegaMaxIter <= 0)
     {
         FatalError("linearSolvers.omega.maxIter must be a positive integer.");
     }
 
-    solver_->setMomentumSolver(LinearSolver("momentum", uTol, uMaxIter));
-    solver_->setPressureSolver(LinearSolver("pCorr", pTol, pMaxIter));
+    solver_->setMomentumSolver
+    (
+        createLinearSolver(uSolverName, uTol, uMaxIter)
+    );
+    solver_->setPressureSolver
+    (
+        createLinearSolver(pSolverName, pTol, pMaxIter)
+    );
 
     if (turbulenceEnabled_)
     {
         solver_->setTurbulenceSolvers
         (
-            LinearSolver("k", kTol, kMaxIter),
-            LinearSolver("omega", omegaTol, omegaMaxIter)
+            createLinearSolver(kSolverName, kTol, kMaxIter),
+            createLinearSolver(omegaSolverName, omegaTol, omegaMaxIter)
         );
     }
 
@@ -879,12 +910,18 @@ void CFDApplication::configureSolver()
 
     Logger::subsection("Linear solvers");
     Logger::linearSolverConfigHeader();
-    Logger::linearSolverConfigRow("U", "BiCGSTAB", uTol, uMaxIter);
-    Logger::linearSolverConfigRow("p", "PCG", pTol, pMaxIter);
+    Logger::linearSolverConfigRow("U", uSolverName, uTol, uMaxIter);
+    Logger::linearSolverConfigRow("p", pSolverName, pTol, pMaxIter);
     if (turbulenceEnabled_)
     {
-        Logger::linearSolverConfigRow("k", "BiCGSTAB", kTol, kMaxIter);
-        Logger::linearSolverConfigRow("omega", "BiCGSTAB", omegaTol, omegaMaxIter);
+        Logger::linearSolverConfigRow("k", kSolverName, kTol, kMaxIter);
+        Logger::linearSolverConfigRow
+        (
+            "omega",
+            omegaSolverName,
+            omegaTol,
+            omegaMaxIter
+        );
     }
 
     Logger::subsection("SIMPLE controls");
@@ -1127,6 +1164,32 @@ CFDApplication::createConvectionScheme(const std::string& name)
     }
 
     FatalError("Unknown convection scheme: " + name);
+}
+
+// ************************** createLinearSolver **************************
+
+std::unique_ptr<LinearSolver> CFDApplication::createLinearSolver
+(
+    std::string_view name,
+    Scalar tolerance,
+    int maxIterations
+)
+{
+    if (name == BiCGSTAB::typeName)
+    {
+        return std::make_unique<BiCGSTAB>(tolerance, maxIterations);
+    }
+
+    if (name == PCG::typeName)
+    {
+        return std::make_unique<PCG>(tolerance, maxIterations);
+    }
+
+    FatalError
+    (
+        "Unknown linear solver '" + std::string(name)
+      + "'. Supported solvers: BiCGSTAB, PCG."
+    );
 }
 
 // ************************ parseConvectionSchemes ************************
