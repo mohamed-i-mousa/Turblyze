@@ -472,13 +472,9 @@ void CFDApplication::setupBoundaryConditions()
             }
             else
             {
-                FatalError
+                unknownBCType
                 (
-                    "Unknown boundary condition type '"
-                  + bcType
-                  + "' for field 'U' on patch '"
-                  + patchName
-                  + "'. Valid types: "
+                    bcType, "U", patchName,
                     "fixedValue, noSlip, zeroGradient"
                 );
             }
@@ -509,13 +505,9 @@ void CFDApplication::setupBoundaryConditions()
             }
             else
             {
-                FatalError
+                unknownBCType
                 (
-                    "Unknown boundary condition type '"
-                  + bcType
-                  + "' for field 'p' on patch '"
-                  + patchName
-                  + "'. Valid types: "
+                    bcType, "p", patchName,
                     "fixedValue, zeroGradient"
                 );
             }
@@ -599,13 +591,9 @@ void CFDApplication::setupBoundaryConditions()
             }
             else
             {
-                FatalError
+                unknownBCType
                 (
-                    "Unknown boundary condition type '"
-                  + bcType
-                  + "' for field 'k' on patch '"
-                  + patchName
-                  + "'. Valid types: "
+                    bcType, "k", patchName,
                     "fixedValue, kWallFunction, zeroGradient"
                 );
             }
@@ -670,13 +658,9 @@ void CFDApplication::setupBoundaryConditions()
             }
             else
             {
-                FatalError
+                unknownBCType
                 (
-                    "Unknown boundary condition type '"
-                  + bcType
-                  + "' for field 'omega' on patch '"
-                  + patchName
-                  + "'. Valid types: "
+                    bcType, "omega", patchName,
                     "fixedValue, omegaWallFunction, zeroGradient"
                 );
             }
@@ -713,13 +697,9 @@ void CFDApplication::setupBoundaryConditions()
             }
             else
             {
-                FatalError
+                unknownBCType
                 (
-                    "Unknown boundary condition type '"
-                  + bcType
-                  + "' for field 'nut' on patch '"
-                  + patchName
-                  + "'. Valid types: "
+                    bcType, "nut", patchName,
                     "fixedValue, zeroGradient, nutWallFunction"
                 );
             }
@@ -1158,6 +1138,25 @@ std::unique_ptr<LinearSolver> CFDApplication::createLinearSolver
     (
         "Unknown linear solver '" + std::string(name)
       + "'. Supported solvers: BiCGSTAB, PCG."
+    );
+}
+
+// ***************************** unknownBCType *****************************
+
+void CFDApplication::unknownBCType
+(
+    std::string_view bcType,
+    std::string_view fieldName,
+    std::string_view patchName,
+    std::string_view validList
+)
+{
+    FatalError
+    (
+        "Unknown boundary condition type '" + std::string(bcType)
+      + "' for field '" + std::string(fieldName)
+      + "' on patch '" + std::string(patchName)
+      + "'. Valid types: " + std::string(validList)
     );
 }
 

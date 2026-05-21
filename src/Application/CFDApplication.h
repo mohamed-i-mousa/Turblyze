@@ -134,6 +134,21 @@ private:
         int& maxIterations
     );
 
+    /**
+     * @brief Emit a fatal "unknown BC type" error
+     * @param bcType The unrecognized type from the case file
+     * @param fieldName Field (U, p, k, omega, nut)
+     * @param patchName Patch the BC was attempted on
+     * @param validList Comma-separated list of valid types for this field
+     */
+    [[noreturn]] static void unknownBCType
+    (
+        std::string_view bcType,
+        std::string_view fieldName,
+        std::string_view patchName,
+        std::string_view validList
+    );
+
 // Private members
 
     /// Path to case file
