@@ -114,6 +114,26 @@ private:
      */
     ConvectionScheme parseConvectionSchemes() const;
 
+    /**
+     * @brief Read per-equation linear-solver settings and validate them
+     * @param solvers The linearSolvers section of the case file
+     * @param key Equation key (U, p, k, omega)
+     * @param solverName Solver name
+     * @param preconditioner Preconditioner name
+     * @param tolerance Relative tolerance
+     * @param maxIterations Maximum solver iterations
+     * @note Terminates the program on invalid tolerance or maxIter
+     */
+    static void readAndValidateSolverConfig
+    (
+        const CaseReader& solvers,
+        const std::string& key,
+        std::string& solverName,
+        std::string& preconditioner,
+        Scalar& tolerance,
+        int& maxIterations
+    );
+
 // Private members
 
     /// Path to case file
