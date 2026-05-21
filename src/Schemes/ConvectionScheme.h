@@ -53,7 +53,7 @@ public:
      */
     const ConvectionSchemes& momentum() const
     {
-        return resolve(momentumScheme);
+        return resolve(momentumScheme.get());
     }
 
     /**
@@ -62,7 +62,7 @@ public:
      */
     const ConvectionSchemes& k() const
     {
-        return resolve(kScheme);
+        return resolve(kScheme.get());
     }
 
     /**
@@ -71,14 +71,14 @@ public:
      */
     const ConvectionSchemes& omega() const
     {
-        return resolve(omegaScheme);
+        return resolve(omegaScheme.get());
     }
 
 private:
 
     const ConvectionSchemes& resolve
     (
-        const std::unique_ptr<ConvectionSchemes>& specific
+        const ConvectionSchemes* specific
     ) const
     {
         if (specific) return *specific;
