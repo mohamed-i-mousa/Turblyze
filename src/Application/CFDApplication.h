@@ -34,10 +34,7 @@ class CFDApplication
 {
 public:
 
-    /**
-     * @brief Construct application with path to case file
-     * @param caseFilePath Path to case file
-     */
+    /// Constructor for CFDApplication
     explicit CFDApplication(const std::string& caseFilePath);
 
     /// Copy constructor and assignment - Not copyable (unique_ptr members)
@@ -84,23 +81,11 @@ private:
 
 // Helper methods
 
-    /**
-     * @brief Create a convection scheme by name
-     * @param name Scheme name (Upwind, CentralDifference, SecondOrderUpwind)
-     * @return Unique pointer to created scheme
-     * @note Terminates the program if name is unknown
-     */
+    /// Create a convection scheme by scheme name
     static std::unique_ptr<ConvectionSchemes>
     createConvectionScheme(const std::string& name);
 
-    /**
-     * @brief Create a linear solver by case-file name
-     * @param name Solver name (BiCGSTAB, PCG)
-     * @param tolerance Relative residual tolerance
-     * @param maxIterations Maximum solver iterations
-     * @return Unique pointer to created solver
-     * @note Terminates the program if name is unknown
-     */
+    /// Create a linear solver
     static std::unique_ptr<LinearSolver> createLinearSolver
     (
         std::string_view name,
@@ -108,22 +93,10 @@ private:
         int maxIterations
     );
 
-    /**
-     * @brief Parse convection schemes from case file
-     * @return Populated ConvectionScheme container
-     */
+    /// Parse convection schemes from the case file
     ConvectionScheme parseConvectionSchemes() const;
 
-    /**
-     * @brief Read per-equation linear-solver settings and validate them
-     * @param solvers The linearSolvers section of the case file
-     * @param key Equation key (U, p, k, omega)
-     * @param solverName Solver name
-     * @param preconditioner Preconditioner name
-     * @param tolerance Relative tolerance
-     * @param maxIterations Maximum solver iterations
-     * @note Terminates the program on invalid tolerance or maxIter
-     */
+    /// Read per-equation linear-solver settings and validate them
     static void readAndValidateSolverConfig
     (
         const CaseReader& solvers,
@@ -134,13 +107,7 @@ private:
         int& maxIterations
     );
 
-    /**
-     * @brief Emit a fatal "unknown BC type" error
-     * @param bcType The unrecognized type from the case file
-     * @param fieldName Field (U, p, k, omega, nut)
-     * @param patchName Patch the BC was attempted on
-     * @param validList Comma-separated list of valid types for this field
-     */
+    /// Report "unknown BC type" error
     [[noreturn]] static void unknownBCType
     (
         std::string_view bcType,
@@ -196,9 +163,11 @@ private:
     /// Enable verbose console output
     bool debug_ = false;
 
-    /// Constraint configuration
+    /// Velocity constraint configuration
     bool velocityConstraintEnabled_ = false;
     Scalar maxVelocityConstraint_ = 0;
+
+    /// Pressure constraint configuration
     bool pressureConstraintEnabled_ = false;
     Scalar minPressureConstraint_ = 0;
     Scalar maxPressureConstraint_ = 0;

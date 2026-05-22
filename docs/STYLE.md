@@ -55,47 +55,40 @@ and `.cpp` files under `src/`.
 
 All documentation lives in **headers only**. Source files have no Doxygen on method implementations.
 
-**In headers (.h)** — full Doxygen `/** */` blocks on every method declaration:
+**In headers (.h)** — use `///` for all method and function declarations:
 ```cpp
-/**
- * @brief Calculate boundary face value for scalar field
- * @param face Boundary face
- * @param phi Scalar field
- * @param fieldName Name of the field
- * @return Boundary value based on boundary condition
- * @note Terminates the program if face not found in boundary patches
- */
-Scalar calculateBoundaryFaceValue
+/// Calculate boundary face value for a scalar field
+[[nodiscard]] Scalar boundaryFaceValue
 (
-    const Face& face,
+    Field field,
     const ScalarField& phi,
-    const std::string& fieldName
+    const Face& face
 ) const;
-```
 
-Use `///` for trivial one-liners (simple constructors, member variables, and methods with no return value and no parameters):
-```cpp
 /// Default constructor
 BoundaryConditions() = default;
 
 /// Print summary of all boundary conditions
 void printSummary() const;
 
-/// Nested map: patch name → field name → boundary data
-std::map<std::string, std::map<std::string, BoundaryData>> patchBoundaryData_;
+/// Nested map: patch name → field → boundary data
+std::map<std::string, std::map<Field, BoundaryData>> patchBoundaryData_;
 ```
 
-Use `@details` for extended method explanations, starting on a new line:
+Use multiple `///` lines only when a non-obvious invariant or formula genuinely cannot fit on one line:
 ```cpp
-/**
- * @brief Calculate mass fluxes using Rhie-Chow interpolation
- * @param flowRate Face volume flow rates
- *
- * @details
- * Implements the Rhie-Chow interpolation method to prevent
- * checkerboard pressure oscillations in collocated grids.
- */
+/// Symmetric second-moment polynomial for triangle integration
+/// Evaluates a² + b² + c² + ab + ac + bc
+/// ∫∫_triangle x² dA = (area / 6) × secondMoment(x₁, x₂, x₃)
+[[nodiscard]] static Scalar secondMoment(Scalar a, Scalar b, Scalar c);
 ```
+
+Do not add trailing periods to `///` method or function doc comments — they are labels, not
+sentences. Full prose sentences on member-variable comments may end with a period when
+explaining a non-obvious constraint. Do not use `@param`, `@return`, or `@note` tags on
+individual method declarations — the function signature and name already carry that information.
+The full `/** @brief … @param … @return */` Doxygen form is reserved for the file-level
+`@file`/`@class` block at the top of each header.
 
 **In source files (.cpp)** — no Doxygen on implementations; use inline `//` comments only where logic needs explanation:
 ```cpp

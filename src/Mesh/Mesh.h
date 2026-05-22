@@ -33,13 +33,7 @@ public:
     /// Construct empty mesh
     Mesh() = default;
 
-    /**
-     * @brief Construct mesh by taking ownership of data vectors
-     * @param nodes  Node coordinate data
-     * @param faces  Face topology data
-     * @param cells  Cell topology data
-     * @param patches Boundary patch data
-     */
+    /// Construct mesh by taking ownership of data vectors
     Mesh
     (
         std::vector<Vector> nodes,

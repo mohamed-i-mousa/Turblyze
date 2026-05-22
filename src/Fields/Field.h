@@ -29,11 +29,5 @@ enum class Field
 };
 
 
-/**
- * @brief Human-readable name of a field, for diagnostics and logging
- * @param field Field identifier
- * @return Field name
- * @note Terminates the program if the value is unrecognized
- * @note For diagnostics only, never use the returned string for dispatch
- */
+/// Human-readable name of a field, for diagnostics and logging
 [[nodiscard]] std::string_view fieldToString(Field field) noexcept;

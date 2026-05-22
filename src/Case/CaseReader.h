@@ -44,10 +44,7 @@ class CaseReader
 {
 public:
 
-    /**
-     * @brief Construct reader from file
-     * @param filename Path to the input file
-     */
+    /// Construct reader from file
     explicit CaseReader(const std::string& filename);
 
     /// Default constructor for sections
@@ -55,13 +52,7 @@ public:
 
 // Accessor methods
 
-    /**
-     * @brief Look up a required value
-     * @tparam T Type to convert value
-     * @param keyword Key to look up
-     * @return Converted value
-     * @note Terminates the program if keyword not found or conversion fails
-     */
+    /// Look up a required value
     template<CaseInputType T>
     T lookup(const std::string& keyword) const
     {
@@ -74,13 +65,7 @@ public:
         return convertTo<T>(it->second);
     }
 
-    /**
-     * @brief Look up an optional value with default
-     * @tparam T Type to convert value
-     * @param keyword Key to look up
-     * @param defaultValue Value to return if keyword not found
-     * @return Converted value or default
-     */
+    /// Look up an optional value with default
     template<CaseInputType T>
     T lookupOrDefault(const std::string& keyword, const T& defaultValue) const
     {
@@ -93,52 +78,29 @@ public:
         return convertTo<T>(it->second);
     }
 
-    /**
-     * @brief Access a section
-     * @param name Name of section
-     * @return Section object
-     * @note Terminates the program if section not found
-     */
+    /// Access a section
     const CaseReader& section(const std::string& name) const;
 
-    /**
-     * @brief Check if section exists
-     * @param name Name of section
-     * @return true if section exists
-     */
+    /// Check if section exists
     bool hasSection(const std::string& name) const noexcept
     {
         return sections_.contains(name);
     }
 
-    /**
-     * @brief Get all section names
-     * @return Vector of section names
-     */
+    /// Get all section names
     std::vector<std::string> sectionNames() const;
 
-    /**
-     * @brief Print case file contents (for debugging)
-     * @param indent Indentation level
-     */
+    /// Print case file contents for debugging
     void print(int indent = 0) const;
 
 private:
 
 // Private methods
 
-    /**
-     * @brief Parse file contents
-     * @param filename Path to file
-     */
+    /// Parse file contents
     void parseFile(const std::string& filename);
 
-    /**
-     * @brief Parse a section from stream
-     * @param is Input stream
-     * @param sec Section to populate
-     * @param terminator Character that ends this section
-     */
+    /// Parse a section from stream
     void parseSection
     (
         std::istream& is,
@@ -146,33 +108,16 @@ private:
         char terminator = '\0'
     );
 
-    /**
-     * @brief Skip comments and whitespace
-     * @param is Input stream
-     */
+    /// Skip comments and whitespace
     void skipCommentsAndWhitespace(std::istream& is);
 
-    /**
-     * @brief Read next token from stream
-     * @param is Input stream
-     * @return Next token or empty string if EOF
-     */
+    /// Read next token from stream
     std::string readToken(std::istream& is);
 
-    /**
-     * @brief Parse a value (could be scalar, vector, or list)
-     * @param is Input stream
-     * @param token First token of value
-     * @return String representation of value
-     */
+    /// Parse a value as a string representation
     std::string parseValue(std::istream& is, const std::string& firstToken);
 
-    /**
-     * @brief Convert string to specified type
-     * @tparam T Target type
-     * @param value String value
-     * @return Converted value
-     */
+    /// Convert string to specified type
     template<CaseInputType T>
     T convertTo(const std::string& value) const
     {
@@ -277,11 +222,7 @@ private:
         }
     }
 
-    /**
-     * @brief Convert a character to lowercase (safe version)
-     * @param c Character to convert
-     * @return Lowercase character
-     */
+    /// Convert a character to lowercase safely
     static char toLowerSafe(char c) noexcept
     {
         return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));

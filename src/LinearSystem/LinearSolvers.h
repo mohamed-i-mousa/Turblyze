@@ -80,11 +80,7 @@ class LinearSolver
 {
 public:
 
-    /**
-     * @brief Construct linear solver with convergence parameters
-     * @param tolerance Relative residual tolerance used by Eigen
-     * @param maxIterations Maximum solver iterations
-     */
+    /// Construct linear solver with convergence parameters
     LinearSolver
     (
         Scalar tolerance = S(1e-6),
@@ -155,12 +151,7 @@ public:
 
 // Solver method
 
-    /**
-     * @brief Solve sparse system using the derived algorithm
-     * @param x Solution vector (initial guess on input, solution on output)
-     * @param A Sparse coefficient matrix
-     * @param B Right-hand side vector
-     */
+    /// Solve sparse system using the derived algorithm
     virtual void solve
     (
         VecRef x,
@@ -168,10 +159,7 @@ public:
         const Vec& B
     ) = 0;
 
-    /**
-     * @brief Algorithm label used in diagnostic output
-     * @return Solver name ("BiCGSTAB", "PCG", ...)
-     */
+    /// Algorithm label used in diagnostic output
     [[nodiscard]] virtual std::string_view name() const noexcept = 0;
 
 protected:
@@ -208,12 +196,7 @@ public:
 
     using LinearSolver::LinearSolver;
 
-    /**
-     * @brief Solve sparse system using the owned Eigen iterative solver
-     * @param x Solution vector (initial guess on input, solution on output)
-     * @param A Sparse coefficient matrix
-     * @param B Right-hand side vector
-     */
+    /// Solve sparse system using the owned Eigen iterative solver
     void solve
     (
         VecRef x,

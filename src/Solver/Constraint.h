@@ -22,13 +22,7 @@ class Constraint
 {
 public:
 
-    /**
-     * @brief Construct constraint manager with field references
-     * @param Ux Reference to x-velocity component to constrain
-     * @param Uy Reference to y-velocity component to constrain
-     * @param Uz Reference to z-velocity component to constrain
-     * @param pressureField Reference to pressure field to constrain
-     */
+    /// Construct constraint manager with field references
     Constraint
     (
         ScalarField& Ux,
@@ -50,47 +44,30 @@ public:
 
 // Setter methods
 
-    /**
-     * @brief Set velocity field constraints
-     * @param maxVelocity Maximum allowed velocity magnitude
-     */
+    /// Set velocity field constraints
     void setVelocityConstraints(Scalar maxVelocity) noexcept
     {
         maxVelocityMagnitude_ = std::abs(maxVelocity);
     }
 
-    /**
-     * @brief Set pressure field constraints
-     * @param minPressure Minimum allowed pressure
-     * @param maxPressure Maximum allowed pressure
-     */
+    /// Set pressure field constraints
     void setPressureConstraints
     (
         Scalar minPressure,
         Scalar maxPressure
     ) noexcept;
 
-    /**
-     * @brief Enable or disable field constraints
-     * @param enableVel Enable velocity constraints
-     * @param enablePress Enable pressure constraints
-     */
+    /// Enable or disable field constraints
     void enableConstraints
     (
         bool enableVel,
         bool enablePress
     ) noexcept;
 
-    /**
-     * @brief Apply velocity field constraints
-     * @return Number of cells where constraints were applied
-     */
+    /// Apply velocity field constraints
     [[nodiscard]] size_t applyVelocityConstraints() noexcept;
 
-    /**
-     * @brief Apply pressure field constraints
-     * @return Number of cells where constraints were applied
-     */
+    /// Apply pressure field constraints
     [[nodiscard]] size_t applyPressureConstraints() noexcept;
 
 private:

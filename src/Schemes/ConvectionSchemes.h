@@ -68,19 +68,7 @@ public:
 
 // Public interface
 
-    /**
-     * @brief Get implicit upwind flux coefficients for matrix assembly
-     * @param flowRate Volumetric flow rate through face (F = ρ·U·A)
-     * @return FluxCoefficients with owner and neighbor contributions
-     *
-     * The returned coefficients are used in the implicit matrix assembly:
-     * - owner    = max(F, 0): active when flow is from owner to neighbor (F >= 0)
-     * - neighbor = min(F, 0): active when flow is from neighbor to owner (F < 0)
-     *
-     * All schemes use these same upwind coefficients for stability. Higher-order
-     * schemes add an explicit correction term to the RHS to achieve improved
-     * accuracy while maintaining a stable implicit discretization.
-     */
+    /// Get implicit upwind flux coefficients for matrix assembly
     [[nodiscard]] static FluxCoefficients getFluxCoefficients
     (
         Scalar flowRate
@@ -93,17 +81,7 @@ public:
         };
     }
 
-    /**
-     * @brief Calculate higher-order deferred correction term
-     * @param face Face for interpolation
-     * @param phi Cell-centered field values
-     * @param gradPhiP Cell gradient at owner cell
-     * @param gradPhiN Cell gradient at neighbor cell
-     * @param flowRate Volumetric flow rate through face
-     * @return Correction flux: flowRate × (φ_highOrder - φ_upwind).
-     *         UpwindScheme returns 0; higher-order schemes return the
-     *         explicit correction term added to the RHS.
-     */
+    /// Calculate higher-order deferred correction term
     [[nodiscard]] virtual Scalar correction
     (
         const Face& face,

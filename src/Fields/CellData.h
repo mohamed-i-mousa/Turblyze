@@ -1,18 +1,18 @@
 /******************************************************************************
  * @file CellData.h
  * @brief Template container for cell-centered field data storage
- * 
- * @details This header defines a generic template class for storing field 
- * variables at cell centers in finite volume meshes. The container manages 
- * cell-based data including velocity fields, pressure field, and 
+ *
+ * @details This header defines a generic template class for storing field
+ * variables at cell centers in finite volume meshes. The container manages
+ * cell-based data including velocity fields, pressure field, and
  * cell-centered gradients
- * 
+ *
  * @class CellData<T>
  * @tparam T Type of field value stored at each cell (e.g., Scalar, Vector)
  *
  * The CellData template provides:
  * - Type-safe storage for cell-centered field variables
- * - Face-specific initialization and assignment operations  
+ * - Face-specific initialization and assignment operations
  * - Debugging output for face field analysis
  *****************************************************************************/
 
@@ -32,7 +32,7 @@
 
 
 template<typename T>
-concept CellFieldType = 
+concept CellFieldType =
     std::same_as<T, Scalar>
  || std::same_as<T, Vector>
  || std::same_as<T, Tensor>;
@@ -49,21 +49,15 @@ public:
         internalField_(Mesh::cellCount(), T{})
     {}
 
-    /**
-     * @brief Construct field with initial value
-     * @param initialValue Value to initialize all cells with
-     */
+    /// Construct field with initial value
     explicit CellData(const T& initialValue)
     :
         internalField_(Mesh::cellCount(), initialValue)
     {}
-    
+
 // Setter methods
 
-    /**
-     * @brief Set all field values to a given value
-     * @param value Value to assign to all cells
-     */
+    /// Set all field values to a given value
     void setAll(const T& value)
     {
         std::fill(internalField_.begin(), internalField_.end(), value);
@@ -71,25 +65,16 @@ public:
 
 // Accessor methods
 
-    /**
-     * @brief Get number of cells in the field
-     * @return Number of cells
-     */
+    /// Get number of cells in the field
     [[nodiscard]] size_t size() const noexcept
     {
         return internalField_.size();
     }
 
-    /**
-     * @brief Get pointer to field storage
-     * @return Pointer to first element
-     */
+    /// Get pointer to field storage
     [[nodiscard]] T* data() noexcept { return internalField_.data(); }
 
-    /**
-     * @brief Get const pointer to field storage
-     * @return Const pointer to first element
-     */
+    /// Get const pointer to field storage
     [[nodiscard]] const T* data() const noexcept
     {
         return internalField_.data();
@@ -103,21 +88,13 @@ public:
 
 // Operator methods
 
-    /**
-     * @brief Unchecked subscript operator
-     * @param cellIndex Index of the cell to access
-     * @return Reference to field value at the cell
-     */
+    /// Unchecked subscript operator
     T& operator[](size_t cellIndex) noexcept
     {
         return internalField_[cellIndex];
     }
 
-    /**
-     * @brief Unchecked const subscript operator
-     * @param cellIndex Index of the cell to access
-     * @return Const reference to field value at the cell
-     */
+    /// Unchecked const subscript operator
     const T& operator[](size_t cellIndex) const noexcept
     {
         return internalField_[cellIndex];
@@ -125,10 +102,7 @@ public:
 
 // Helper methods
 
-    /**
-     * @brief Print field summary for debugging
-     * @param itemsToShow Number of items to display
-     */
+    /// Print field summary for debugging
     void printSummary(size_t itemsToShow) const
     {
         std::cout

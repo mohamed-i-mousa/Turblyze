@@ -24,12 +24,7 @@
 #include <string_view>
 
 
-/**
- * @brief Print a fatal error message and abort the program
- * @param message The error message to display
- * @param location The source location (file & line) where the error occurred
- */
-// Print a fatal error message and abort the program
+/// Print a fatal error message and abort the program
 [[noreturn]] inline void FatalError
 (
     std::string_view message,
@@ -46,11 +41,7 @@
 }
 
 
-/**
- * @brief Print a warning message and continue execution
- * @param message The warning message to display
- * @param location The source location (file & line) where the warning occurred
- */
+/// Print a warning message and continue execution
 inline void Warning
 (
     std::string_view message,

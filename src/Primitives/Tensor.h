@@ -32,18 +32,7 @@ public:
     /// Default constructor (zero-initialised components)
     Tensor() noexcept = default;
 
-    /**
-     * @brief Constructs tensor with specified components (row-major)
-     * @param xx Component (0,0)
-     * @param xy Component (0,1)
-     * @param xz Component (0,2)
-     * @param yx Component (1,0)
-     * @param yy Component (1,1)
-     * @param yz Component (1,2)
-     * @param zx Component (2,0)
-     * @param zy Component (2,1)
-     * @param zz Component (2,2)
-     */
+    /// Constructs tensor with specified components (row-major)
     Tensor
     (
         Scalar xx, Scalar xy, Scalar xz,
@@ -58,13 +47,7 @@ public:
 
 // Factory methods
 
-    /**
-     * @brief Constructs tensor from three row vectors
-     * @param row0 First row (components at i=0)
-     * @param row1 Second row (components at i=1)
-     * @param row2 Third row (components at i=2)
-     * @return Tensor with the given rows
-     */
+    /// Constructs tensor from three row vectors
     [[nodiscard]] static Tensor fromRows
     (
         const Vector& row0,
@@ -138,12 +121,7 @@ public:
     /// Get component (2,2)
     [[nodiscard]] Scalar zz() const noexcept { return zz_; }
 
-    /**
-     * @brief Get row i of the tensor
-     * @param i Row index (0, 1, or 2)
-     * @return Vector containing the three components of row i
-     * @note Terminates the program if i is out of range
-     */
+    /// Get row i of the tensor
     [[nodiscard]] Vector row(size_t i) const noexcept
     {
         switch (i)
@@ -157,12 +135,7 @@ public:
         return Vector{};
     }
 
-    /**
-     * @brief Get column j of the tensor
-     * @param j Column index (0, 1, or 2)
-     * @return Vector containing the three components of column j
-     * @note Terminates the program if j is out of range
-     */
+    /// Get column j of the tensor
     [[nodiscard]] Vector col(size_t j) const noexcept
     {
         switch (j)
@@ -178,11 +151,7 @@ public:
 
 // Operator methods
 
-    /**
-     * @brief Tensor addition operator
-     * @param other Tensor to add
-     * @return Sum of the two tensors
-     */
+    /// Tensor addition operator
     Tensor operator+(const Tensor& other) const noexcept
     {
         Tensor result(*this);
@@ -190,11 +159,7 @@ public:
         return result;
     }
 
-    /**
-     * @brief Tensor subtraction operator
-     * @param other Tensor to subtract
-     * @return Difference of the two tensors
-     */
+    /// Tensor subtraction operator
     Tensor operator-(const Tensor& other) const noexcept
     {
         Tensor result(*this);
@@ -202,11 +167,7 @@ public:
         return result;
     }
 
-    /**
-     * @brief Scalar multiplication operator
-     * @param scalar Scalar to multiply by
-     * @return Tensor scaled by scalar
-     */
+    /// Scalar multiplication operator
     Tensor operator*(Scalar scalar) const noexcept
     {
         Tensor result(*this);
@@ -214,12 +175,7 @@ public:
         return result;
     }
 
-    /**
-     * @brief Scalar division operator
-     * @param scalar Scalar to divide by
-     * @return Tensor divided by scalar
-     * @note Terminates the program if scalar is near zero
-     */
+    /// Scalar division operator
     Tensor operator/(Scalar scalar) const noexcept
     {
         Tensor result(*this);
@@ -227,11 +183,7 @@ public:
         return result;
     }
 
-    /**
-     * @brief Compound addition assignment operator
-     * @param other Tensor to add
-     * @return Reference to this tensor
-     */
+    /// Compound addition assignment operator
     Tensor& operator+=(const Tensor& other) noexcept
     {
         xx_ += other.xx_; xy_ += other.xy_; xz_ += other.xz_;
@@ -241,11 +193,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Compound subtraction assignment operator
-     * @param other Tensor to subtract
-     * @return Reference to this tensor
-     */
+    /// Compound subtraction assignment operator
     Tensor& operator-=(const Tensor& other) noexcept
     {
         xx_ -= other.xx_; xy_ -= other.xy_; xz_ -= other.xz_;
@@ -255,11 +203,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Compound multiplication assignment operator
-     * @param scalar Scalar to multiply by
-     * @return Reference to this tensor
-     */
+    /// Compound multiplication assignment operator
     Tensor& operator*=(Scalar scalar) noexcept
     {
         xx_ *= scalar; xy_ *= scalar; xz_ *= scalar;
@@ -269,14 +213,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Compound division assignment operator
-     * @param scalar Scalar to divide by
-     * @return Reference to this tensor
-     * @note Terminates the program if scalar is near zero
-     * @note Using inverse is a micro-optimization to reduce the number
-     *       of divisions, which are more expensive than multiplications
-     */
+    /// Compound division assignment operator
     Tensor& operator/=(Scalar scalar) noexcept
     {
         if (std::abs(scalar) <= vSmallValue)
@@ -294,10 +231,7 @@ public:
 
 // Tensor algebra
 
-    /**
-     * @brief Transpose of this tensor
-     * @return Tensor with components (i,j) and (j,i) swapped
-     */
+    /// Transpose of this tensor
     [[nodiscard]] Tensor transpose() const noexcept
     {
         return
@@ -309,10 +243,7 @@ public:
             );
     }
 
-    /**
-     * @brief Symmetric part of this tensor: 0.5 * (T + T^T)
-     * @return Symmetric tensor
-     */
+    /// Symmetric part of this tensor: 0.5 * (T + T^T)
     [[nodiscard]] Tensor symm() const noexcept
     {
         const Scalar sxy = S(0.5) * (xy_ + yx_);
@@ -328,10 +259,7 @@ public:
             );
     }
 
-    /**
-     * @brief Antisymmetric (skew) part of this tensor: 0.5 * (T - T^T)
-     * @return Skew-symmetric tensor (diagonals are zero)
-     */
+    /// Antisymmetric (skew) part of this tensor: 0.5 * (T - T^T)
     [[nodiscard]] Tensor skew() const noexcept
     {
         const Scalar axy = S(0.5) * (xy_ - yx_);
@@ -347,19 +275,13 @@ public:
             );
     }
 
-    /**
-     * @brief Trace of this tensor
-     * @return Sum of diagonal components (xx + yy + zz)
-     */
+    /// Trace of this tensor
     [[nodiscard]] Scalar trace() const noexcept
     {
         return xx_ + yy_ + zz_;
     }
 
-    /**
-     * @brief Frobenius squared magnitude: T:T = T_ij T_ij
-     * @return Sum of squared components
-     */
+    /// Frobenius squared magnitude: T:T = T_ij T_ij
     [[nodiscard]] Scalar magnitudeSquared() const noexcept
     {
         return 
@@ -378,12 +300,7 @@ private:
 
 // Non-member methods
 
-/**
- * @brief Double-dot product of two tensors: A:B = A_ij B_ij
- * @param A First tensor
- * @param B Second tensor
- * @return Scalar double-dot product
- */
+/// Double-dot product of two tensors: A:B = A_ij B_ij
 [[nodiscard]] inline Scalar doubleDot
 (
     const Tensor& A,
@@ -396,12 +313,7 @@ private:
       + A.zx() * B.zx() + A.zy() * B.zy() + A.zz() * B.zz();
 }
 
-/**
- * @brief Outer product of two vectors: T_ij = a_i b_j
- * @param a First vector
- * @param b Second vector
- * @return Tensor outer product
- */
+/// Outer product of two vectors: T_ij = a_i b_j
 [[nodiscard]] inline Tensor outer
 (
     const Vector& a,
@@ -417,21 +329,11 @@ private:
         );
 }
 
-/**
- * @brief Scalar multiplication operator (scalar * tensor)
- * @param scalar Scalar multiplier
- * @param T Tensor to multiply
- * @return Scaled tensor
- */
+/// Scalar multiplication operator (scalar * tensor)
 inline Tensor operator*(Scalar scalar, const Tensor& T) noexcept
 {
     return T * scalar;
 }
 
-/**
- * @brief Stream output operator for Tensor
- * @param os Output stream
- * @param T Tensor to output
- * @return Reference to output stream
- */
+/// Stream output operator for Tensor
 std::ostream& operator<<(std::ostream& os, const Tensor& T);

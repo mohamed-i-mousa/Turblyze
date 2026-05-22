@@ -11,7 +11,7 @@
  * @struct FaceIntegrals
  * - Stores second moment integrals and volume contribution from a face
  *   used in cell geometric property calculations.
- * 
+ *
  * @class Face
  * - Connectivity (nodes, owner cell, neighbor cell)
  * - Face properties (centroid, area, normal vector)
@@ -48,13 +48,7 @@ public:
     /// Default constructor
     Face() = default;
 
-    /**
-     * @brief Constructor for internal faces
-     * @param faceIdx Unique face identifier
-     * @param nodes Indices of face nodes
-     * @param owner Index of owner cell
-     * @param neighbor Index of neighbor cell
-     */
+    /// Constructor for internal faces
     Face
     (
         size_t faceIdx,
@@ -69,12 +63,7 @@ public:
         neighborCell_(neighbor)
     {}
 
-    /**
-     * @brief Constructor for boundary faces
-     * @param faceIdx Unique face identifier
-     * @param nodes Indices of face nodes
-     * @param owner Index of owner cell
-     */
+    /// Constructor for boundary faces
     Face
     (
         size_t faceIdx,
@@ -90,213 +79,120 @@ public:
 
 // Setter methods
 
-    /**
-     * @brief Set face identifier
-     * @param faceIdx Unique face ID
-     */
+    /// Set face identifier
     void setIdx(size_t faceIdx) noexcept { idx_ = faceIdx; }
 
-    /**
-     * @brief Set owner cell index
-     * @param owner Index of owner cell
-     */
+    /// Set owner cell index
     void setOwnerCell(size_t owner) noexcept { ownerCell_ = owner; }
 
-    /**
-     * @brief Set neighbor cell index
-     * @param neighbor Index of neighbor cell
-     */
+    /// Set neighbor cell index
     void setNeighborCell(size_t neighbor) noexcept
     {
         neighborCell_ = neighbor;
     }
 
-    /**
-     * @brief Set neighbor cell to null (boundary face)
-     */
+    /// Set neighbor cell to null
     void setNeighborCell(std::nullopt_t) noexcept
     {
         neighborCell_ = std::nullopt;
     }
 
-    /**
-     * @brief Add node index to face connectivity
-     * @param nodeIdx Index of node to add
-     */
+    /// Add node index to face connectivity
     void addNodeIndex(size_t nodeIdx) { nodeIndices_.push_back(nodeIdx); }
 
-    /**
-     * @brief Clear all node indices
-     */
+    /// Clear all node indices
     void clearNodeIndices() noexcept { nodeIndices_.clear(); }
 
-    /**
-     * @brief Set the boundary patch this face belongs to
-     * @param p Reference to the owning boundary patch
-     */
+    /// Set the boundary patch this face belongs to
     void setPatch(const BoundaryPatch& p) noexcept { patch_ = std::cref(p); }
 
 // Accessor methods
 
-    /**
-     * @brief Get face identifier
-     * @return Unique face ID
-     */
+    /// Get face identifier
     [[nodiscard]] size_t idx() const noexcept { return idx_; }
 
-    /**
-     * @brief Get node connectivity
-     * @return Vector of node indices
-     */
+    /// Get node connectivity
     [[nodiscard]] std::span<const size_t> nodeIndices() const noexcept
     {
         return nodeIndices_;
     }
 
-    /**
-     * @brief Get owner cell index
-     * @return Index of owner cell
-     */
+    /// Get owner cell index
     [[nodiscard]] size_t ownerCell() const noexcept { return ownerCell_; }
 
-    /**
-     * @brief Get neighbor cell index
-     * @return Optional neighbor cell index
-     */
+    /// Get neighbor cell index
     [[nodiscard]] const std::optional<size_t>& neighborCell() const noexcept
     {
         return neighborCell_;
     }
 
-    /**
-     * @brief Get face centroid
-     * @return Face center coordinates
-     */
+    /// Get face centroid
     [[nodiscard]] const Vector& centroid() const noexcept { return centroid_; }
 
-    /**
-     * @brief Get face normal vector
-     * @return Unit normal vector
-     */
+    /// Get face normal vector
     [[nodiscard]] const Vector& normal() const noexcept { return normal_; }
 
-    /**
-     * @brief Get face area (projected area) for flux calculations
-     * @return Face area magnitude (projected area for non-planar faces)
-     */
+    /// Get face area for flux calculations
     [[nodiscard]] Scalar projectedArea() const noexcept
     {
         return projectedArea_;
     }
 
-    /**
-     * @brief Get face contact area (actual wetted surface area)
-     * @return Contact area (sum of sub-triangle areas for non-planar faces)
-     * @note Used for wall shear stress, heat transfer, and friction drag
-     */
+    /// Get face contact area
     [[nodiscard]] Scalar contactArea() const noexcept { return contactArea_; }
 
-    /**
-     * @brief Get owner cell distance vector
-     * @return Vector from owner to face
-     */
+    /// Get owner cell distance vector
     [[nodiscard]] const Vector& dPf() const noexcept { return dPf_; }
 
-    /**
-     * @brief Get neighbor cell distance vector
-     * @return Optional vector from neighbor to face
-     */
+    /// Get neighbor cell distance vector
     [[nodiscard]] const std::optional<Vector>& dNf() const noexcept
     {
         return dNf_;
     }
 
-    /**
-     * @brief Get owner cell distance magnitude
-     * @return Distance from owner to face
-     */
+    /// Get owner cell distance magnitude
     [[nodiscard]] Scalar dPfMag() const noexcept { return dPfMag_; }
 
-    /**
-     * @brief Get neighbor cell distance magnitude
-     * @return Optional distance from neighbor to face
-     */
+    /// Get neighbor cell distance magnitude
     [[nodiscard]] const std::optional<Scalar>& dNfMag() const noexcept
     {
         return dNfMag_;
     }
 
-    /**
-     * @brief Check if geometric properties calculated
-     * @return True if geometry computed
-     */
+    /// Check if geometric properties calculated
     [[nodiscard]] bool geometricPropertiesCalculated() const noexcept
     {
         return geometricPropertiesCalculated_;
     }
 
-    /**
-     * @brief Check if distance properties calculated
-     * @return True if distance vectors and magnitudes computed
-     */
+    /// Check if distance properties calculated
     [[nodiscard]] bool distancePropertiesCalculated() const noexcept
     {
         return distancePropertiesCalculated_;
     }
 
-    /**
-     * @brief Calculate geometric properties of the face
-     *
-     * @details
-     * - Calculates face area, centroid, normal vector, and second moment
-     *   integrals.
-     * - For triangles, uses direct cross product. For polygons, decomposes
-     *   into triangles.
-     * - Sets geometricPropertiesCalculated flag when success.
-     *
-     * @param allNodes Vector of all mesh nodes
-     * @note Terminates the program if node index is invalid
-     * @note Terminates the program if face has zero area (collinear nodes)
-     * @return FaceIntegrals for cell volume/centroid computation
-     */
+    /// Calculate Face centroid, normal, area, and second moment integral
     [[nodiscard]] FaceIntegrals calculateGeometricProperties
     (
         std::span<const Vector> allNodes
     );
 
-    /**
-     * @brief Calculate distance properties of the face
-     *
-     * @details
-     * - Calculates distance vectors, magnitudes, and unit vectors
-     *   from cell centers to face center. For boundary faces,
-     *   only owner cell distances are calculated.
-     *
-     * @param cellCentroids Centroid of every cell indexed by cell index
-     */
+    /// Calculate distance properties of the face
     void calculateDistanceProperties(std::span<const Vector> cellCentroids);
 
-    /**
-     * @brief Check if this is a boundary face
-     * @return True if face is on domain boundary
-     */
+    /// Check if this is a boundary face
     [[nodiscard]] bool isBoundary() const noexcept
     {
         return !neighborCell_.has_value();
     }
 
-    /**
-     * @brief Get the boundary patch this face belongs to
-     * @return Optional reference to owning patch (nullopt if unlinked)
-     */
+    /// Get the boundary patch this face belongs to
     [[nodiscard]] const OptionalRef<BoundaryPatch>& patch() const noexcept
     {
         return patch_;
     }
 
-    /**
-     * @brief Flip the face normal direction
-     */
+    /// Flip the face normal direction
     void flipNormal() noexcept { normal_ *= S(-1.0); }
 
 private:
@@ -346,19 +242,9 @@ private:
     /// Owning boundary patch (nullopt for internal or unlinked faces)
     OptionalRef<BoundaryPatch> patch_;
 
-    /**
-     * @brief Symmetric second-moment polynomial for triangle integration
-     *
-     * @details Evaluates a² + b² + c² + ab + ac + bc, which appears in the
-     * divergence-theorem integral of x² over a triangle whose vertices have
-     * coordinate values a, b, c along a given axis:
-     * ∫∫_triangle x² dA = (area / 6) × secondMoment(x₁, x₂, x₃)
-     *
-     * @param a First vertex coordinate along one axis
-     * @param b Second vertex coordinate along one axis
-     * @param c Third vertex coordinate along one axis
-     * @return a² + b² + c² + ab + ac + bc
-     */
+    /// Symmetric second-moment polynomial for triangle integration
+    /// Evaluates a² + b² + c² + ab + ac + bc
+    /// ∫∫_triangle x² dA = (area / 6) × secondMoment(x₁, x₂, x₃)
     [[nodiscard]] static Scalar secondMoment
     (
         Scalar a,
@@ -371,10 +257,5 @@ private:
 
 };
 
-/**
- * @brief Stream output operator for Face
- * @param os Output stream
- * @param f Face to output
- * @return Reference to output stream
- */
+/// Stream output operator for Face
 std::ostream& operator<<(std::ostream& os, const Face& f);

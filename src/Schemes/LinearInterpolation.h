@@ -21,13 +21,7 @@
     return dP / (dP + dN);
 }
 
-/**
- * @brief Linear interpolation of a cell-centered field to an internal face
- * @param face Internal face (FatalError if boundary)
- * @param field Cell-centered field of type Scalar, Vector, or Tensor
- * @return Face-centered value
- * @note Callers must resolve boundary-face values themselves.
- */
+/// Linear interpolation of a cell-centered field to an internal face
 template<CellFieldType T>
 [[nodiscard]] T interpolateToFace
 (

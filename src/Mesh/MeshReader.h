@@ -41,45 +41,30 @@
 class MeshReader
 {
 public:
-    /**
-     * @brief Construct MeshReader and parse the given Fluent mesh file
-     * @param filePath Path to the Fluent mesh file (.msh format)
-     */
+    /// Construct MeshReader and parse the given Fluent mesh file
     explicit MeshReader(const std::string& filePath);
 
 // Move accessors
 
-    /**
-     * @brief Transfer ownership of nodes data
-     * @return Moved vector of node coordinates
-     */
+    /// Transfer ownership of nodes data
     [[nodiscard]] std::vector<Vector> moveNodes() noexcept
     {
         return std::move(nodes_);
     }
 
-    /**
-     * @brief Transfer ownership of faces data
-     * @return Moved vector of mesh faces
-     */
+    /// Transfer ownership of faces data
     [[nodiscard]] std::vector<Face> moveFaces() noexcept
     {
         return std::move(faces_);
     }
 
-    /**
-     * @brief Transfer ownership of cells data
-     * @return Moved vector of mesh cells
-     */
+    /// Transfer ownership of cells data
     [[nodiscard]] std::vector<Cell> moveCells() noexcept
     {
         return std::move(cells_);
     }
 
-    /**
-     * @brief Transfer ownership of boundary patches data
-     * @return Moved vector of boundary patches
-     */
+    /// Transfer ownership of boundary patches data
     [[nodiscard]] std::vector<BoundaryPatch> moveBoundaryPatches() noexcept
     {
         return std::move(boundaryPatches_);
@@ -112,63 +97,30 @@ private:
 
 // Private parsing methods
 
-    /**
-     * @brief Parse the complete mesh file
-     * @param filePath Path to the Fluent mesh file
-     */
+    /// Parse the complete mesh file
     void parseFile(const std::string& filePath);
 
-    /**
-     * @brief Parse the comment section and skip its contents
-     * @param ifs Input file stream positioned at the comment section
-     */
+    /// Parse the comment section and skip its contents
     void parseCommentSection(std::ifstream& ifs) const;
 
-    /**
-     * @brief Parse and validate the dimension section
-     * @param ifs Input file stream positioned at the dimension section
-     */
+    /// Parse and validate the dimension section
     void parseDimensionSection(std::ifstream& ifs) const;
 
-    /**
-     * @brief Parse the nodes section (header or data block)
-     * @param ifs Input file stream positioned after the section identifier
-     * @param token The current token being parsed
-     */
+    /// Parse the nodes section
     void parseNodesSection(std::ifstream& ifs, const std::string& token);
 
-    /**
-     * @brief Parse the cells section (header only, allocates storage)
-     * @param ifs Input file stream positioned after the section identifier
-     * @param token The current token being parsed
-     */
+    /// Parse the cells section
     void parseCellsSection(std::ifstream& ifs, const std::string& token);
 
-    /**
-     * @brief Parse the faces section (header or connectivity data)
-     * @param ifs Input file stream positioned after the section identifier
-     * @param token The current token being parsed
-     */
+    /// Parse the faces section
     void parseFacesSection(std::ifstream& ifs, const std::string& token);
 
-    /**
-     * @brief Parse the boundaries section (zone names and types)
-     * @param ifs Input file stream positioned after the section identifier
-     * @param token The current token being parsed
-     */
+    /// Parse the boundaries section
     void parseBoundariesSection(std::ifstream& ifs, const std::string& token);
 
 // Building topology & connectivity methods
 
-    /**
-     * @brief Build cell-face connectivity and neighbor relationships
-     *
-     * @details
-     * 1. Assigns cell indices and clears existing connectivity
-     * 2. Maps faces to their owner and neighbor cells
-     * 3. Assigns face signs (+1 owner, -1 neighbor)
-     * 4. Deduplicates and sorts neighbor cell lists
-     */
+    /// Build cell-face connectivity and neighbor relationships
     void buildTopology();
 
     /// Validate mesh integrity
@@ -179,27 +131,13 @@ private:
 
 // Static utility methods
 
-    /**
-     * @brief Convert hexadecimal string to size_t
-     * @param hexStr Hexadecimal string to convert
-     * @return Converted decimal value
-     */
+    /// Convert hexadecimal string to size_t
     [[nodiscard]] static size_t hexToDec(std::string_view hexStr);
 
-    /**
-     * @brief Convert decimal string to size_t
-     * @param decStr Decimal string to convert
-     * @return Converted decimal value
-     */
+    /// Convert decimal string to size_t
     [[nodiscard]] static size_t strToDec(std::string_view decStr);
 
-    /**
-     * @brief Safely convert 1-based Fluent index to 0-based index
-     * @param fluentIdx 1-based index from Fluent file
-     * @param context Where this index is used (in the Error message)
-     * @return 0-based index (fluentIdx - 1)
-     * @note Terminates the program if fluentIdx is 0
-     */
+    /// Safely convert 1-based Fluent index to 0-based index
     [[nodiscard]] static size_t safeFluentIndexConvert
     (
         size_t fluentIdx,
@@ -233,11 +171,7 @@ private:
         {"fluid",            PatchType::FLUID}
     };
 
-    /**
-     * @brief Maps Fluent boundary type string to enumeration
-     * @param fluentType String representation from Fluent mesh file
-     * @return Corresponding PatchType enumeration
-     */
+    /// Map Fluent boundary type string to enumeration
     [[nodiscard]] static PatchType mapFluentBCToEnum
     (
         std::string_view fluentType

@@ -18,18 +18,10 @@
 namespace VTK
 {
 
-/**
- * @brief Create PVD time series file header for transient runs
- * @param pvdFilename Path to .pvd file to create
- */
+/// Create PVD time series file header for transient runs
 void writePVDTimeSeriesHeader(const std::string& pvdFilename);
 
-/**
- * @brief Append a timestep to PVD time series file
- * @param pvdFilename Path to existing .pvd file
- * @param vtuFilename Relative path to .vtu file for this timestep
- * @param timeValue Physical time value for this timestep
- */
+/// Append a timestep to PVD time series file
 void appendPVDTimeStep
 (
     const std::string& pvdFilename,

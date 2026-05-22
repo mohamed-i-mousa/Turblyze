@@ -8,7 +8,7 @@
  *
  * @enum PatchType
  * - Enumeration of boundary condition types
- * 
+ *
  * @class BoundaryPatch
  * - Identification of boundary zones (name, ID, type)
  * - Topological range definitions (start face index, end face index)
@@ -42,12 +42,7 @@ class BoundaryPatch
 {
 public:
 
-    /**
-     * @brief Constructor for boundary patch
-     * @param idx Zone identifier
-     * @param startIdx Index of first face
-     * @param endIdx Index of last face
-     */
+    /// Constructor for boundary patch
     BoundaryPatch
     (
         size_t idx,
@@ -62,66 +57,42 @@ public:
 
 // Setter methods
 
-    /**
-     * @brief Set patch name
-     * @param name New human-readable name
-     */
+    /// Set patch name
     void setPatchName(std::string name) noexcept
     {
         patchName_ = std::move(name);
     }
 
-    /**
-     * @brief Set patch type
-     * @param patchType New patch type
-     */
+    /// Set patch type
     void setType(PatchType patchType) noexcept { type_ = patchType; }
 
 // Accessor methods
 
-    /**
-     * @brief Get number of faces in this boundary patch
-     * @return Number of boundary faces
-     */
+    /// Get number of faces in this boundary patch
     [[nodiscard]] size_t numBoundaryFaces() const noexcept
     {
         return lastFaceIdx_ - firstFaceIdx_ + 1;
     }
 
-    /**
-     * @brief Get patch name
-     * @return Patch name
-     */
+    /// Get patch name
     [[nodiscard]] const std::string& patchName() const noexcept
     {
         return patchName_;
     }
 
-    /**
-     * @brief Get patch type
-     * @return Mapped patch type
-     */
+    /// Get patch type
     [[nodiscard]] PatchType type() const noexcept { return type_; }
 
-    /**
-     * @brief Get zone identifier
-     * @return Zone ID from mesh file
-     */
+    /// Get zone identifier
     [[nodiscard]] size_t zoneIdx() const noexcept { return zoneIdx_; }
 
-    /**
-     * @brief Get first face index
-     * @return Index of first face in patch
-     */
+    /// Get first face index
     [[nodiscard]] size_t firstFaceIdx() const noexcept
     {
         return firstFaceIdx_;
     }
 
-    /**
-     * @brief Get last face index
-     * @return Index of last face in patch
-     */
+    /// Get last face index
     [[nodiscard]] size_t lastFaceIdx() const noexcept
     {
         return lastFaceIdx_;

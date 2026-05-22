@@ -40,16 +40,10 @@ public:
 
 // Setter methods
 
-    /**
-     * @brief Set fixed scalar value boundary condition
-     * @param scalarValue Scalar value to fix at boundary
-     */
+    /// Set fixed scalar value boundary condition
     void setFixedValue(Scalar scalarValue) noexcept;
 
-    /**
-     * @brief Set fixed scalar gradient boundary condition
-     * @param scalarGradient Scalar gradient (normal component) at boundary
-     */
+    /// Set fixed scalar gradient boundary condition
     void setFixedGradient(Scalar scalarGradient) noexcept;
 
     /// Set zero gradient boundary condition
@@ -58,47 +52,27 @@ public:
     /// Set no-slip boundary condition (for velocity)
     void setNoSlip() noexcept;
 
-    /**
-     * @brief Set wall function boundary condition type
-     * @param wallType The wall function type (K_WALL_FUNCTION, OMEGA_WALL_FUNCTION, or NUT_WALL_FUNCTION)
-     */
+    /// Set wall function boundary condition type
     void setWallFunctionType(BCType wallType) noexcept;
 
 // Accessor methods
 
-    /**
-     * @brief Get boundary condition type
-     * @return Current BC type
-     */
+    /// Get boundary condition type
     [[nodiscard]] BCType type() const noexcept { return type_; }
 
-    /**
-     * @brief Get scalar value
-     * @return Current scalar boundary value
-     */
+    /// Get scalar value
     [[nodiscard]] Scalar scalarValue() const noexcept { return scalarValue_; }
 
-    /**
-     * @brief Get scalar gradient
-     * @return Current scalar boundary gradient
-     */
+    /// Get scalar gradient
     [[nodiscard]] Scalar scalarGradient() const noexcept
     {
         return scalarGradient_;
     }
 
-    /**
-     * @brief Get fixed scalar value
-     * @return Fixed scalar value
-     * @note Terminates the program if not a fixed scalar value BC
-     */
+    /// Get fixed scalar value
     [[nodiscard]] Scalar fixedScalarValue() const noexcept;
 
-    /**
-     * @brief Get fixed scalar gradient
-     * @return Fixed scalar gradient (normal component)
-     * @note Terminates the program if not a fixed scalar gradient BC
-     */
+    /// Get fixed scalar gradient
     [[nodiscard]] Scalar fixedScalarGradient() const noexcept;
 
 private:

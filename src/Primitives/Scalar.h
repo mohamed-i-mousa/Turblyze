@@ -44,12 +44,7 @@ concept ScalarLiteral =
  || std::same_as<T, std::int8_t>
  || std::same_as<T, std::size_t>;
 
-/**
- * @brief Type-safe scalar literal conversion function
- * @tparam T Floating-point or integer literal type to convert
- * @param value Value to convert to Scalar type
- * @return Value converted to Scalar type
- */
+/// Type-safe scalar literal conversion function
 template<ScalarLiteral T>
 [[nodiscard]] constexpr Scalar S(T value) noexcept
 {

@@ -35,11 +35,7 @@ class GradientScheme
 {
 public:
 
-    /**
-     * @brief Construct gradient scheme with mesh context
-     * @param mesh Mesh view (nodes, faces, cells)
-     * @param bc Reference to boundary conditions manager
-     */
+    /// Construct gradient scheme with mesh context
     GradientScheme
     (
         const Mesh& mesh,
@@ -57,18 +53,7 @@ public:
     /// Destructor
     ~GradientScheme() noexcept = default;
 
-    /**
-     * @brief Calculate gradient at a single cell using least-squares.
-     * @param field Field identifier for BC lookup
-     * @param phi Scalar field for gradient calculation
-     * @param cellIdx Index of the cell to compute gradient for
-     * @param boundaryFaceValues Optional per-face boundary value overrides.
-     *        The caller MUST initialise every entry to
-     *        std::numeric_limits<Scalar>::quiet_NaN() before filling in
-     *        specific overrides. Faces left as NaN fall back to the BC
-     *        manager. Pass nullptr to bypass the override entirely
-     * @return Gradient vector at the specified cell
-     */
+    /// Calculate gradient at a single cell using least-squares
     [[nodiscard]] Vector cellGradient
     (
         Field field,
@@ -77,22 +62,7 @@ public:
         const FaceData<Scalar>* boundaryFaceValues = nullptr
     ) const;
 
-    /**
-     * @brief Interpolate gradient at a single face
-     * 
-     * @details
-     * For internal faces, computes a corrected face gradient using
-     * distance-weighted interpolation of cell gradients with an
-     * orthogonal correction to ensure consistency with the direct
-     * cell-to-cell difference.
-     * 
-     * @param field Field identifier for BC lookup
-     * @param phi Cell-centered scalar field
-     * @param gradPhiP Gradient at the owner cell
-     * @param gradPhiN Gradient at the neighbor cell
-     * @param faceIndex Index of the face
-     * @return Gradient vector at the specified face
-     */
+    /// Interpolate gradient at a single face
     [[nodiscard]] Vector faceGradient
     (
         Field field,
@@ -102,18 +72,7 @@ public:
         size_t faceIndex
     ) const;
 
-    /**
-     * @brief Apply Barth-Jespersen cell-based gradient limiter
-     *
-     * @details Scales each cell's gradient so that face-extrapolated
-     * values do not exceed the range of neighboring cell values,
-     * including values imposed by boundary conditions on boundary faces.
-     * Prevents overshoot from steep gradients (e.g. near wall cells).
-     *
-     * @param field Field identifier for BC lookup on boundary faces
-     * @param phi Cell-centered scalar field
-     * @param gradPhi Cell-centered gradient field (modified in place)
-     */
+    /// Apply cell-based gradient limiter
     void limitGradient
     (
         Field field,
@@ -121,12 +80,7 @@ public:
         VectorField& gradPhi
     ) const;
 
-    /**
-     * @brief Compute a limited cell-centered gradient field
-     * @param field Field identifier for BC lookup
-     * @param phi Cell-centered scalar field
-     * @param gradPhi Output gradient field (overwritten, then limited)
-     */
+    /// Compute a limited cell-centered gradient field
     void fieldGradient
     (
         Field field,
@@ -139,13 +93,7 @@ private:
 
 // Private methods
 
-    /**
-     * @brief Distance-weighted linear interpolation of gradients
-     * @param face Internal face for interpolation
-     * @param gradPhiP Gradient at the owner cell
-     * @param gradPhiN Gradient at the neighbor cell
-     * @return Linearly interpolated gradient vector at the face
-     */
+    /// Distance-weighted linear interpolation of gradients
     Vector averageFaceGradient
     (
         const Face& face,
@@ -153,14 +101,7 @@ private:
         const Vector& gradPhiN
     ) const;
 
-    /**
-     * @brief Calculate boundary face gradient based on BC type
-     * @param face Boundary face
-     * @param field Field identifier for BC lookup
-     * @param phi Scalar field values
-     * @param cellGradient Gradient at the owner cell
-     * @return Gradient vector at the boundary face
-     */
+    /// Calculate boundary face gradient based on BC type
     Vector boundaryFaceGradient
     (
         Field field,

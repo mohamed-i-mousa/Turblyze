@@ -55,27 +55,17 @@ public:
 
 // Setter methods
 
-    /**
-     * @brief Set cell identifier
-     * @param cellIdx Unique cell ID
-     */
+    /// Set cell identifier
     void setIdx(size_t cellIdx) noexcept { idx_ = cellIdx; }
 
-    /**
-     * @brief Add a bounding face with its normal direction sign
-     * @param faceIdx Index of bounding face
-     * @param sign Direction sign (+1 outward, -1 inward)
-     */
+    /// Add a bounding face with its normal direction sign
     void addFace(size_t faceIdx, int8_t sign)
     {
         faceIndices_.push_back(faceIdx);
         faceSigns_.push_back(sign);
     }
 
-    /**
-     * @brief Set all neighbor cell indices
-     * @param neighbors Vector of neighboring cell indices
-     */
+    /// Set all neighbor cell indices
     void setNeighborCellIndices(std::span<const size_t> neighbors)
     {
         neighborCellIndices_.assign(neighbors.begin(), neighbors.end());
@@ -83,75 +73,49 @@ public:
 
 // Accessor methods
 
-    /**
-     * @brief Get cell identifier
-     * @return Unique cell ID
-     */
-    [[nodiscard]] size_t idx() const noexcept { return idx_; }
+    /// Get cell identifier
+    [[nodiscard]] size_t idx() const noexcept
+    {
+        return idx_;
+    }
 
-    /**
-     * @brief Get bounding face indices
-     * @return Vector of face indices
-     */
+    /// Get bounding face indices
     [[nodiscard]] std::span<const size_t> faceIndices() const noexcept
     {
         return faceIndices_;
     }
 
-    /**
-     * @brief Get neighboring cell indices
-     * @return Vector of neighbor cell indices
-     */
+    /// Get neighboring cell indices
     [[nodiscard]] std::span<const size_t> neighborCellIndices() const noexcept
     {
         return neighborCellIndices_;
     }
 
-    /**
-     * @brief Get face normal direction signs
-     * @return Vector of signs (+1/-1)
-     */
+    /// Get face normal direction signs
     [[nodiscard]] std::span<const int8_t> faceSigns() const noexcept
     {
         return faceSigns_;
     }
 
-    /**
-     * @brief Get cell centroid
-     * @return Cell center coordinates
-     */
+    /// Get cell centroid
     [[nodiscard]] const Vector& centroid() const noexcept
     {
         return centroid_;
     }
 
-    /**
-     * @brief Get cell volume
-     * @return Cell volume value
-     */
-    [[nodiscard]] Scalar volume() const noexcept { return volume_; }
+    /// Get cell volume
+    [[nodiscard]] Scalar volume() const noexcept
+    {
+        return volume_;
+    }
 
-    /**
-     * @brief Check if geometric properties calculated
-     * @return True if geometry computed
-     */
+    /// Check if geometric properties calculated
     [[nodiscard]] bool geometricPropertiesCalculated() const noexcept
     {
         return geometricPropertiesCalculated_;
     }
 
-    /**
-     * @brief Calculate geometric properties of the cell
-     *
-     * @details
-     * - Calculates cell volume using the divergence theorem:
-     *   V = (1/3) * Σ(face_centroid · face_area_vector)
-     * - Calculates cell centroid using second moments of the faces.
-     * - Sets geometricPropertiesCalculated flag to true when success.
-     *
-     * @param allFaces Vector containing all mesh faces
-     * @param allFaceIntegrals Face integrals for volume/centroid computation
-     */
+    /// Calculate cell volume and centroid
     void calculateGeometricProperties
     (
         std::span<const Face> allFaces,
@@ -182,10 +146,5 @@ private:
 
 };
 
-/**
- * @brief Stream output operator for Cell
- * @param os Output stream
- * @param c Cell to output
- * @return Reference to output stream
- */
+/// Stream output operator for Cell
 std::ostream& operator<<(std::ostream& os, const Cell& c);

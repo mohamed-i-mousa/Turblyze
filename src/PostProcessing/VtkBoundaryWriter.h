@@ -20,13 +20,7 @@
 namespace VTK
 {
 
-/**
- * @brief Write wall boundary face data to VTK PolyData (.vtp) file
- * @param filename Output VTK file path (should end with .vtp extension)
- * @param mesh Mesh view (nodes, faces, cells)
- * @param scalarFaceFields Map of scalar field names to face-centered data
- * @param debug Enable verbose output
- */
+/// Write wall boundary face data to VTK PolyData (.vtp) file
 void writeWallBoundaryData
 (
     const std::string& filename,

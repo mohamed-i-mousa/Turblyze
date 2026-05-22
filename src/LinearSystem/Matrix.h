@@ -39,11 +39,7 @@ public:
     using SparseMatrix = Eigen::SparseMatrix<Scalar, Eigen::RowMajor>;
     using Vec = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
 
-    /**
-     * @brief Constructor for matrix assembly
-     * @param mesh Mesh view (nodes, faces, cells)
-     * @param boundaryConds Boundary conditions manager
-     */
+    /// Constructor for matrix assembly
     Matrix
     (
         const Mesh& mesh,
@@ -61,60 +57,36 @@ public:
     /// Destructor
     ~Matrix() noexcept = default;
 
-    /**
-     * @brief Build transport equation matrix
-     * @param equation Transport equation data
-     */
+    /// Build transport equation matrix
     void buildMatrix(const TransportEquation& equation);
 
 // Accessor methods
 
-    /**
-     * @brief Get assembled sparse matrix A (const)
-     * @return Const reference to coefficient matrix
-     */
+    /// Get assembled sparse matrix A (const)
     [[nodiscard]] const SparseMatrix& matrixA() const noexcept
     {
         return matrixA_;
     }
 
-    /**
-     * @brief Get assembled sparse matrix A (non-const)
-     * @return Mutable reference to coefficient matrix
-     */
+    /// Get assembled sparse matrix A (non-const)
     [[nodiscard]] SparseMatrix& matrixA() noexcept
     {
         return matrixA_;
     }
 
-    /**
-     * @brief Get right-hand side vector b (const)
-     * @return Const reference to RHS vector
-     */
+    /// Get right-hand side vector b (const)
     [[nodiscard]] const Vec& vectorB() const noexcept
     {
         return vectorB_;
     }
 
-    /**
-     * @brief Get right-hand side vector b (non-const)
-     * @return Mutable reference to RHS vector
-     */
+    /// Get right-hand side vector b
     [[nodiscard]] Vec& vectorB() noexcept
     {
         return vectorB_;
     }
 
-    /**
-     * @brief Apply Patankar implicit under-relaxation
-     * @param alpha Relaxation factor (0 < alpha <= 1)
-     * @param phiPrev Previous iteration field values
-     *
-     * @details 
-     * Modifies the assembled system (Ax=b):
-     * - Diagonal: a_P <- a_P / alpha
-     * - RHS: b <- b + ((1-alpha)/alpha) * aPOriginal * phiPrev
-     */
+    /// Apply Patankar implicit under-relaxation
     void relax(Scalar alpha, const ScalarField& phiPrev);
 
     /**
@@ -140,8 +112,10 @@ private:
 
 // Private members
 
-    /// Mesh and boundary data references
+    /// Mesh data reference
     const Mesh& mesh_;
+
+    /// Boundary data references
     const BoundaryConditions& bcManager_;
 
     /// Sparse linear system components
@@ -164,18 +138,10 @@ private:
 
 // Private methods
 
-    /**
-     * @brief Clear matrix and vector for new assembly
-     */
+    /// Clear matrix and vector for new assembly
     void clear();
 
-    /**
-     * @brief Assemble internal face contributions
-     * @param face Internal face to process
-     * @param equation Transport equation data
-     * @param triplets Output triplet list (thread-local buffer)
-     * @param localB Output RHS contributions (thread-local buffer)
-     */
+    /// Assemble internal face contributions
     void assembleInternalFace
     (
         const Face& face,
@@ -184,13 +150,7 @@ private:
         Vec& localB
     ) const;
 
-    /**
-     * @brief Assemble boundary face contributions
-     * @param face Boundary face to process
-     * @param equation Transport equation data
-     * @param triplets Output triplet list (thread-local buffer)
-     * @param localB Output RHS contributions (thread-local buffer)
-     */
+    /// Assemble boundary face contributions
     void assembleBoundaryFace
     (
         const Face& face,
@@ -199,12 +159,7 @@ private:
         Vec& localB
     ) const;
 
-    /**
-     * @brief Resolve the diffusion coefficient at a face.
-     * @param face Face being assembled
-     * @param equation Transport equation data
-     * @return Face diffusion coefficient
-     */
+    /// Resolve the diffusion coefficient at a face
     [[nodiscard]] Scalar faceDiffusionCoefficient
     (
         const Face& face,
@@ -212,11 +167,7 @@ private:
     ) const;
 };
 
-/**
- * @brief Convert a size_t index to Eigen's signed index type
- * @param value Unsigned index from STL/mesh containers
- * @return Equivalent Eigen::Index for sparse-matrix/vector access
- */
+/// Convert a size_t index to Eigen's signed index type
 [[nodiscard]] inline Eigen::Index eIdx(std::size_t value) noexcept
 {
     return static_cast<Eigen::Index>(value);

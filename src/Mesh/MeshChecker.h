@@ -27,10 +27,7 @@ class MeshChecker
 {
 public:
 
-    /**
-     * @brief Construct a MeshChecker with a mesh view
-     * @param mesh Mesh view (nodes, faces, cells)
-     */
+    /// Construct a MeshChecker with a mesh view
     MeshChecker(const Mesh& mesh) noexcept
     :
         mesh_(mesh)
@@ -76,13 +73,7 @@ private:
 
 // Private methods
 
-    /**
-     * @brief Calculate face non-orthogonality (OpenFOAM method)
-     * @param ownerCellCentroid Owner cell center
-     * @param neighborCellCentroid Neighbor cell center
-     * @param faceNormal Face normal vector (unit vector)
-     * @return Cosine of angle between cell centers line and face normal
-     */
+    /// Calculate face non-orthogonality using the OpenFOAM method
     [[nodiscard]] Scalar faceOrthogonality
     (
         const Vector& ownerCellCentroid,
@@ -90,13 +81,7 @@ private:
         const Vector& faceNormal
     ) const noexcept;
 
-    /**
-     * @brief Calculate face skewness (OpenFOAM method)
-     * @param face Face object for accessing vertices and geometry
-     * @param ownerCellCentroid Owner cell center
-     * @param neighborCellCentroid Neighbor cell center
-     * @return Skewness value
-     */
+    /// Calculate face skewness using the OpenFOAM method
     [[nodiscard]] Scalar faceSkewness
     (
         const Face& face,
@@ -104,29 +89,17 @@ private:
         const Vector& neighborCellCentroid
     ) const;
 
-    /**
-     * @brief Calculate boundary face skewness
-     * @param face Face object for accessing vertices and geometry
-     * @param ownerCellCentroid Owner cell center
-     * @return Boundary skewness value
-     */
+    /// Calculate boundary face skewness
     [[nodiscard]] Scalar boundaryFaceSkewness
     (
         const Face& face,
         const Vector& ownerCellCentroid
     ) const;
 
-    /**
-     * @brief Calculate cell aspect ratio (OpenFOAM method)
-     * @param cell Cell object
-     * @return Aspect ratio (1.0 = perfect cube, higher = elongated)
-     */
+    /// Calculate cell aspect ratio using the OpenFOAM method
     [[nodiscard]] Scalar cellAspectRatio(const Cell& cell) const;
 
-    /**
-     * @brief Validate mesh connectivity indices are in range
-     * @return True if all indices are valid, false otherwise
-     */
+    /// Validate mesh connectivity indices are in range
     bool validateConnectivity() const;
 
     /// Print up to 10 IDs from a list, with truncation

@@ -38,18 +38,10 @@ public:
 
 // Setter methods
 
-    /**
-     * @brief Add a boundary patch from mesh reader
-     * @param patch Boundary patch to add
-     */
+    /// Add a boundary patch from mesh reader
     void addPatch(BoundaryPatch patch);
 
-    /**
-     * @brief Set generic boundary condition
-     * @param patchName Name of the boundary patch
-     * @param field Field identifier
-     * @param bcData Boundary condition data
-     */
+    /// Set generic boundary condition
     void setBC
     (
         const std::string& patchName,
@@ -60,12 +52,7 @@ public:
         patchBoundaryData_[patchName][field] = std::move(bcData);
     }
 
-    /**
-     * @brief Set fixed scalar value boundary condition
-     * @param patchName Name of the boundary patch
-     * @param field Field identifier
-     * @param value Scalar value to fix at boundary
-     */
+    /// Set fixed scalar value boundary condition
     void setFixedValue
     (
         const std::string& patchName,
@@ -73,12 +60,7 @@ public:
         Scalar value
     );
 
-    /**
-     * @brief Set fixed scalar gradient boundary condition
-     * @param patchName Name of the boundary patch
-     * @param field Field identifier
-     * @param gradient Scalar gradient to fix at boundary
-     */
+    /// Set fixed scalar gradient boundary condition
     void setFixedGradient
     (
         const std::string& patchName,
@@ -86,35 +68,21 @@ public:
         Scalar gradient
     );
 
-    /**
-     * @brief Set zero gradient boundary condition
-     * @param patchName Name of the boundary patch
-     * @param field Field identifier
-     */
+    /// Set zero gradient boundary condition
     void setZeroGradient
     (
         const std::string& patchName,
         Field field
     );
 
-    /**
-     * @brief Set no-slip boundary condition (for velocity)
-     * @param patchName Name of the boundary patch
-     * @param field Field identifier
-     */
+    /// Set no-slip boundary condition
     void setNoSlip
     (
         const std::string& patchName,
         Field field
     );
 
-    /**
-     * @brief Set wall function boundary condition type
-     * @param patchName Name of the boundary patch
-     * @param field Field identifier
-     * @param wallType The wall function type (K_WALL_FUNCTION,
-     *                 OMEGA_WALL_FUNCTION, or NUT_WALL_FUNCTION)
-     */
+    /// Set wall function boundary condition type
     void setWallFunctionType
     (
         const std::string& patchName,
@@ -124,52 +92,29 @@ public:
 
 // Accessor methods
 
-    /**
-     * @brief Get boundary patch by name
-     * @param name Name of the patch to retrieve
-     * @return Reference to the found patch
-     * @note Terminates the program if patch not found
-     */
+    /// Get boundary patch by name
     [[nodiscard]] const BoundaryPatch& patch(const std::string& name) const;
 
-    /**
-     * @brief Get all boundary patches
-     * @return Const reference to vector of boundary patches
-     */
+    /// Get all boundary patches
     [[nodiscard]] const std::vector<BoundaryPatch>& patches() const noexcept
     {
         return patches_;
     }
 
-    /**
-     * @brief Get number of patches
-     * @return Number of boundary patches
-     */
+    /// Get number of patches
     [[nodiscard]] size_t numPatches() const noexcept
     {
         return patches_.size();
     }
 
-    /**
-     * @brief Get boundary condition for a field on a patch
-     * @param patchName Name of the boundary patch
-     * @param field Field identifier
-     * @return Reference to boundary data
-     * @note Terminates the program if not found
-     */
+    /// Get boundary condition for a field on a patch
     [[nodiscard]] const BoundaryData& fieldBC
     (
         const std::string& patchName,
         Field field
     ) const;
 
-    /**
-     * @brief Calculate boundary face value for scalar field
-     * @param field Field identifier
-     * @param phi Scalar field
-     * @param face Boundary face
-     * @return Boundary value based on boundary condition
-     */
+    /// Calculate boundary face value for scalar field
     [[nodiscard]] Scalar boundaryFaceValue
     (
         Field field,
@@ -177,28 +122,13 @@ public:
         const Face& face
     ) const;
 
-    /**
-     * @brief Link boundary faces to their owning patches
-     * @param faces All mesh faces (boundary faces get patch pointers set)
-     * @note This is a state-changing initialization method; must be called
-     *       exactly once before solving, and prevents further addPatch() calls
-     */
+    /// Link boundary faces to their owning patches
     void linkFaces(std::span<Face> faces);
 
-    /**
-     * @brief Convert boundary condition type to string
-     * @param bctype Boundary condition type enumeration
-     * @return String representation of BC type
-     * @note Terminates the program if unknown BC type
-     * @note It's used in printSummary
-     */
+    /// Convert boundary condition type to string
     [[nodiscard]] static std::string bcTypeToString(BCType bctype) noexcept;
 
-    /**
-     * @brief Validate that all patch names in boundary data
-     *        exist in the mesh patches
-     * @note Terminates the program if an unknown patch name is found
-     */
+    /// Validate boundary condition patch names against mesh patch names
     void validatePatchNames() const;
 
     /// Print summary of all boundary conditions

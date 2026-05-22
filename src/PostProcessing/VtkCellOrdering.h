@@ -26,37 +26,21 @@
 namespace VTK
 {
 
-/**
- * @brief Compute the arithmetic centroid of a polygonal face
- * @param faceNodes Indices into allNodes for this face
- * @param allNodes Mesh node coordinates
- * @return Face centroid
- */
+/// Compute the arithmetic centroid of a polygonal face
 [[nodiscard]] Vector faceCentroid
 (
     std::span<const size_t> faceNodes,
     std::span<const Vector> allNodes
 );
 
-/**
- * @brief Compute an unnormalized face normal from the first three vertices
- * @param faceNodes Indices into allNodes for this face
- * @param allNodes Mesh node coordinates
- * @return Cross product of edges (v1-v0) x (v2-v0)
- */
+/// Compute an unnormalized face normal from the first three vertices
 [[nodiscard]] Vector faceNormal
 (
     std::span<const size_t> faceNodes,
     std::span<const Vector> allNodes
 );
 
-/**
- * @brief Produce VTK_HEXAHEDRON node ordering from face connectivity
- * @param faceNodeLists Per-face lists of node indices
- * @param uniqueNodes All distinct node indices in the cell
- * @param allNodes Mesh node coordinates
- * @return 8-element VTK-ordered node list, or empty on failure
- */
+/// Produce VTK_HEXAHEDRON node ordering from face connectivity
 [[nodiscard]] std::vector<vtkIdType> orderHexahedronNodes
 (
     const std::vector<std::vector<size_t>>& faceNodeLists,
@@ -64,13 +48,7 @@ namespace VTK
     std::span<const Vector> allNodes
 );
 
-/**
- * @brief Produce VTK_WEDGE node ordering from face connectivity
- * @param faceNodeLists Per-face lists of node indices
- * @param uniqueNodes All distinct node indices in the cell
- * @param allNodes Mesh node coordinates
- * @return 6-element VTK-ordered node list, or empty on failure
- */
+/// Produce VTK_WEDGE node ordering from face connectivity
 [[nodiscard]] std::vector<vtkIdType> orderWedgeNodes
 (
     const std::vector<std::vector<size_t>>& faceNodeLists,
@@ -78,13 +56,7 @@ namespace VTK
     std::span<const Vector> allNodes
 );
 
-/**
- * @brief Produce VTK_PYRAMID node ordering from face connectivity
- * @param faceNodeLists Per-face lists of node indices
- * @param uniqueNodes All distinct node indices in the cell
- * @param allNodes Mesh node coordinates
- * @return 5-element VTK-ordered node list, or empty on failure
- */
+/// Produce VTK_PYRAMID node ordering from face connectivity
 [[nodiscard]] std::vector<vtkIdType> orderPyramidNodes
 (
     const std::vector<std::vector<size_t>>& faceNodeLists,

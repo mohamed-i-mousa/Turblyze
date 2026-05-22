@@ -41,14 +41,11 @@ public:
 
     /// Construct zero-initialized field
     FaceData()
-    : 
+    :
         internalField_(Mesh::faceCount(), T{})
     {}
 
-    /**
-     * @brief Construct field with initial value
-     * @param initialValue Value to initialize all faces with
-     */
+    /// Construct field with initial value
     explicit FaceData(const T& initialValue)
     :
         internalField_(Mesh::faceCount(), initialValue)
@@ -56,10 +53,7 @@ public:
 
 // Setter methods
 
-    /**
-     * @brief Set all field values to a given value
-     * @param value Value to assign to all faces
-     */
+    /// Set all field values to a given value
     void setAll(const T& value)
     {
         std::fill(internalField_.begin(), internalField_.end(), value);
@@ -67,25 +61,16 @@ public:
 
 // Accessor methods
 
-    /**
-     * @brief Get number of faces in the field
-     * @return Number of faces
-     */
+    /// Get number of faces in the field
     [[nodiscard]] size_t size() const noexcept
     {
         return internalField_.size();
     }
 
-    /**
-     * @brief Get pointer to field storage
-     * @return Pointer to first element
-     */
+    /// Get pointer to field storage
     [[nodiscard]] T* data() noexcept { return internalField_.data(); }
 
-    /**
-     * @brief Get const pointer to field storage
-     * @return Const pointer to first element
-     */
+    /// Get const pointer to field storage
     [[nodiscard]] const T* data() const noexcept
     {
         return internalField_.data();
@@ -99,21 +84,13 @@ public:
 
 // Operator methods
 
-    /**
-     * @brief Unchecked subscript operator
-     * @param faceIndex Index of the face to access
-     * @return Reference to field value at the face
-     */
+    /// Unchecked subscript operator
     T& operator[](size_t faceIndex) noexcept
     {
         return internalField_[faceIndex];
     }
 
-    /**
-     * @brief Unchecked const subscript operator
-     * @param faceIndex Index of the face to access
-     * @return Const reference to field value at the face
-     */
+    /// Unchecked const subscript operator
     const T& operator[](size_t faceIndex) const noexcept
     {
         return internalField_[faceIndex];
@@ -121,10 +98,7 @@ public:
 
 // Helper methods
 
-    /**
-     * @brief Print field summary for debugging
-     * @param itemsToShow Number of items to display
-     */
+    /// Print field summary for debugging
     void printSummary(size_t itemsToShow) const
     {
         std::cout

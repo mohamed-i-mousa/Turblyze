@@ -31,12 +31,7 @@ public:
     /// Default constructor
     Vector() noexcept = default;
 
-    /**
-     * @brief Constructs vector with specified components
-     * @param xValue X component
-     * @param yValue Y component
-     * @param zValue Z component
-     */
+    /// Construct vector with specified components
     Vector(Scalar xValue, Scalar yValue, Scalar zValue) noexcept
     :
         x_(xValue),
@@ -46,51 +41,29 @@ public:
 
 // Setter methods
 
-    /**
-     * @brief Set X component
-     * @param xValue New X component value
-     */
+    /// Set X component
     void setX(Scalar xValue) noexcept { x_ = xValue; }
 
-    /**
-     * @brief Set Y component
-     * @param yValue New Y component value
-     */
+    /// Set Y component
     void setY(Scalar yValue) noexcept { y_ = yValue; }
 
-    /**
-     * @brief Set Z component
-     * @param zValue New Z component value
-     */
+    /// Set Z component
     void setZ(Scalar zValue) noexcept { z_ = zValue; }
 
 // Accessor methods
 
-    /**
-     * @brief Get X component
-     * @return X component value
-     */
+    /// Get X component
     [[nodiscard]] Scalar x() const noexcept { return x_; }
 
-    /**
-     * @brief Get Y component
-     * @return Y component value
-     */
+    /// Get Y component
     [[nodiscard]] Scalar y() const noexcept { return y_; }
 
-    /**
-     * @brief Get Z component
-     * @return Z component value
-     */
+    /// Get Z component
     [[nodiscard]] Scalar z() const noexcept { return z_; }
 
 // Operator methods
 
-    /**
-     * @brief Vector addition operator
-     * @param other Vector to add
-     * @return Sum of the two vectors
-     */
+    /// Vector addition operator
     Vector operator+(const Vector& other) const noexcept
     {
         Vector result(*this);
@@ -98,11 +71,7 @@ public:
         return result;
     }
 
-    /**
-     * @brief Vector subtraction operator
-     * @param other Vector to subtract
-     * @return Difference of the two vectors
-     */
+    /// Vector subtraction operator
     Vector operator-(const Vector& other) const noexcept
     {
         Vector result(*this);
@@ -110,11 +79,7 @@ public:
         return result;
     }
 
-    /**
-     * @brief Scalar multiplication operator
-     * @param scalar Scalar to multiply by
-     * @return Vector scaled by scalar
-     */
+    /// Scalar multiplication operator
     Vector operator*(Scalar scalar) const noexcept
     {
         Vector result(*this);
@@ -122,12 +87,7 @@ public:
         return result;
     }
 
-    /**
-     * @brief Scalar division operator
-     * @param scalar Scalar to divide by
-     * @return Vector divided by scalar
-     * @note Terminates the program if scalar is zero
-     */
+    /// Scalar division operator
     Vector operator/(Scalar scalar) const noexcept
     {
         Vector result(*this);
@@ -135,11 +95,7 @@ public:
         return result;
     }
 
-    /**
-     * @brief Compound addition assignment operator
-     * @param other Vector to add
-     * @return Reference to this vector
-     */
+    /// Compound addition assignment operator
     Vector& operator+=(const Vector& other) noexcept
     {
         x_ += other.x_;
@@ -149,11 +105,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Compound subtraction assignment operator
-     * @param other Vector to subtract
-     * @return Reference to this vector
-     */
+    /// Compound subtraction assignment operator
     Vector& operator-=(const Vector& other) noexcept
     {
         x_ -= other.x_;
@@ -163,11 +115,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Compound multiplication assignment operator
-     * @param scalar Scalar to multiply by
-     * @return Reference to this vector
-     */
+    /// Compound multiplication assignment operator
     Vector& operator*=(Scalar scalar) noexcept
     {
         x_ *= scalar;
@@ -177,14 +125,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Compound division assignment operator
-     * @param scalar Scalar to divide by
-     * @return Reference to this vector
-     * @note Terminates the program if scalar is near zero
-     * @note Using inverse is a micro-optimization to reduce the number
-     *       of divisions, which are more expensive than multiplications
-     */
+    /// Compound division assignment operator
     Vector& operator/=(Scalar scalar) noexcept
     {
         if (std::abs(scalar) <= vSmallValue)
@@ -200,12 +141,7 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Equality comparison operator
-     * @param other Vector to compare with
-     * @return True if vectors are equal within tolerance
-     * @note the compiler will auto-synthesize operator!= from operator==
-     */
+    /// Equality comparison operator
     bool operator==(const Vector& other) const noexcept
     {
         return (std::abs(x_ - other.x_) <= vSmallValue)
@@ -215,33 +151,23 @@ public:
 
 // Geometric calculations
 
-    /**
-     * @brief Calculates squared magnitude of vector
-     * @return Squared magnitude (x² + y² + z²)
-     */
+    /// Calculate squared magnitude of vector
     [[nodiscard]] Scalar magnitudeSquared() const noexcept
     {
         return x_ * x_ + y_ * y_ + z_ * z_;
     }
 
-    /**
-     * @brief Calculates magnitude (length) of vector
-     * @return Vector magnitude
-     */
+    /// Calculate magnitude of vector
     [[nodiscard]] Scalar magnitude() const noexcept
     {
         return std::sqrt(magnitudeSquared());
     }
 
-    /**
-     * @brief Returns normalized copy of this vector
-     * @return Normalized vector
-     * @note Terminates the program if vector has zero magnitude
-     */
+    /// Return normalized copy of this vector
     [[nodiscard]] Vector normalized() const noexcept
     {
         const Scalar mag = magnitude();
-        
+
         if (mag < vSmallValue)
         {
             FatalError("Division by zero in Vector::normalized");
@@ -261,23 +187,13 @@ private:
 
 // Non-member methods
 
-/**
- * @brief Computes dot product of two vectors
- * @param p1 First vector
- * @param p2 Second vector
- * @return Scalar dot product
- */
+/// Compute dot product of two vectors
 [[nodiscard]] inline Scalar dot(const Vector& p1, const Vector& p2) noexcept
 {
     return p1.x() * p2.x() + p1.y() * p2.y() + p1.z() * p2.z();
 }
 
-/**
- * @brief Computes cross product of two vectors
- * @param p1 First vector
- * @param p2 Second vector
- * @return Cross product vector
- */
+/// Compute cross product of two vectors
 [[nodiscard]] inline Vector cross(const Vector& p1, const Vector& p2) noexcept
 {
     return
@@ -289,21 +205,11 @@ private:
         );
 }
 
-/**
- * @brief Scalar multiplication operator (scalar * vector)
- * @param scalar Scalar multiplier
- * @param p Vector to multiply
- * @return Scaled vector
- */
+/// Scalar multiplication operator
 inline Vector operator*(Scalar scalar, const Vector& p) noexcept
 {
     return p * scalar;
 }
 
-/**
- * @brief Stream output operator for Vector
- * @param os Output stream
- * @param p Vector to output
- * @return Reference to output stream
- */
+/// Stream output operator for Vector
 std::ostream& operator<<(std::ostream& os, const Vector& p);

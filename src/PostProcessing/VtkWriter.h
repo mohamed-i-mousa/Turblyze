@@ -25,20 +25,7 @@
 namespace VTK
 {
 
-/**
- * @brief Write simulation results to VTK UnstructuredGrid (.vtu) file
- *
- * @details Exports 3D volumetric mesh and field data to VTK
- * UnstructuredGrid format (.vtu) which enables full 3D visualization
- * including volume rendering, slicing, clipping, and isosurfaces.
- *
- * @param filename Output VTK file path (should end with .vtu extension)
- * @param mesh Mesh view (nodes, faces, cells)
- * @param scalarCellFields Map of scalar field names to cell-centered data
- * @param vectorCellFields Map of vector field names to their three scalar
- *        component fields (x, y, z)
- * @param debug Enable verbose output of cell-type diagnostics
- */
+/// Write simulation results to VTK UnstructuredGrid (.vtu) file
 void writeVtkUnstructuredGrid
 (
     const std::string& filename,

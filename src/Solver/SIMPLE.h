@@ -41,13 +41,7 @@ class SIMPLE
 {
 public:
 
-    /**
-     * @brief Constructor for SIMPLE solver
-     * @param mesh Mesh view (nodes, faces, cells)
-     * @param bc Reference to boundary conditions
-     * @param gradScheme Reference to gradient scheme
-     * @param convSchemes Reference to per-equation convection schemes
-     */
+    /// Constructor for SIMPLE solver
     SIMPLE
     (
         const Mesh& mesh,
@@ -70,14 +64,7 @@ public:
     /// Main SIMPLE algorithm execution
     void solve();
 
-    /**
-     * @brief Initialize solution fields
-     * @param initialVelocity Initial velocity field
-     * @param initialPressure Initial pressure field
-     * @param initialK Initial turbulent kinetic energy
-     * @param initialOmega Initial specific dissipation rate
-     * @param enableTurbulence Enable k-omega SST turbulence modeling
-     */
+    /// Initialize solution fields
     void initialize
     (
         const Vector& initialVelocity,
@@ -89,29 +76,17 @@ public:
 
 // Accessor methods
 
-    /**
-     * @brief Get velocity field
-     * @return Const reference to velocity vector field
-     */
+    /// Get velocity field
     [[nodiscard]] const ScalarField& Ux() const noexcept { return Ux_; }
     [[nodiscard]] const ScalarField& Uy() const noexcept { return Uy_; }
     [[nodiscard]] const ScalarField& Uz() const noexcept { return Uz_; }
 
-    /**
-     * @brief Get pressure field
-     * @return Const reference to pressure scalar field
-     */
+    /// Get pressure field
     [[nodiscard]] const ScalarField& pressure() const noexcept { return p_; }
 
 // Setter methods
 
-    /**
-     * @brief Set under-relaxation factors
-     * @param alphaU Velocity under-relaxation factor
-     * @param alphaP Pressure under-relaxation factor
-     * @param alphaK k under-relaxation factor (default: 0.5)
-     * @param alphaOmega omega under-relaxation factor (default: 0.5)
-     */
+    /// Set under-relaxation factors
     void setRelaxationFactors
     (
         Scalar alphaU,
@@ -126,29 +101,16 @@ public:
         alphaOmega_ = alphaOmega;
     }
 
-    /**
-     * @brief Set convergence tolerance
-     * @param tol Convergence tolerance for residuals
-     */
+    /// Set convergence tolerance
     void setConvergenceTolerance(Scalar tol) noexcept { tolerance_ = tol; }
 
-    /**
-     * @brief Set maximum number of iterations
-     * @param maxIter Maximum number of SIMPLE iterations
-     */
+    /// Set maximum number of iterations
     void setMaxIterations(int maxIter) noexcept { maxIterations_ = maxIter; }
 
-    /**
-     * @brief Enable or disable verbose console output
-     * @param d True to enable debug output
-     */
+    /// Enable or disable verbose console output
     void setDebug(bool d) noexcept { debug_ = d; }
 
-    /**
-     * @brief Set physical properties
-     * @param rho Fluid density
-     * @param mu Dynamic viscosity
-     */
+    /// Set physical properties
     void setPhysicalProperties(Scalar rho, Scalar mu) noexcept
     {
         if (rho <= S(0.0))
@@ -161,29 +123,19 @@ public:
         nu_  = mu / rho;
     }
 
-    /**
-     * @brief Set linear solver for momentum equations
-     * @param solver Owning pointer to configured solver
-     */
+    /// Set linear solver for momentum equations
     void setMomentumSolver(std::unique_ptr<LinearSolver> solver) noexcept
     {
         momentumSolver_ = std::move(solver);
     }
 
-    /**
-     * @brief Set linear solver for pressure correction equation
-     * @param solver Owning pointer to configured solver
-     */
+    /// Set linear solver for pressure correction equation
     void setPressureSolver(std::unique_ptr<LinearSolver> solver) noexcept
     {
         pressureSolver_ = std::move(solver);
     }
 
-    /**
-     * @brief Set linear solvers for turbulence equations
-     * @param kSolver Owning pointer to configured solver for k equation
-     * @param omegaSolver Owning pointer to configured solver for omega
-     */
+    /// Set linear solvers for turbulence equations
     void setTurbulenceSolvers
     (
         std::unique_ptr<LinearSolver> kSolver,
@@ -192,73 +144,49 @@ public:
 
 // Getter methods
 
-    /**
-     * @brief Get constraint system
-     * @return Reference to constraint system
-     */
+    /// Get constraint system
     [[nodiscard]] Constraint& constraintSystem() noexcept
     {
         return *constraintSystem_;
     }
 
-    /**
-     * @brief Get turbulent kinetic energy field
-     * @return Reference to k field
-     */
+    /// Get turbulent kinetic energy field
     [[nodiscard]] const ScalarField& turbulentKineticEnergy() const noexcept
     {
         return turbulenceModel_->k();
     }
 
-    /**
-     * @brief Get specific dissipation rate field
-     * @return Reference to omega field
-     */
+    /// Get specific dissipation rate field
     [[nodiscard]] const ScalarField& specificDissipationRate() const noexcept
     {
         return turbulenceModel_->omega();
     }
 
-    /**
-     * @brief Get turbulent viscosity field
-     * @return Reference to nut field
-     */
+    /// Get turbulent viscosity field
     [[nodiscard]] const ScalarField& turbulentViscosity() const noexcept
     {
         return turbulenceModel_->turbulentViscosity();
     }
 
-    /**
-     * @brief Get wall distance field
-     * @return Reference to wall distance field
-     */
+    /// Get wall distance field
     [[nodiscard]] const ScalarField& wallDistance() const noexcept
     {
         return turbulenceModel_->wallDistance();
     }
 
-    /**
-     * @brief Get y+ field
-     * @return Reference to y+ field
-     */
+    /// Get y+ field
     [[nodiscard]] const FaceData<Scalar>& yPlus() const noexcept
     {
         return turbulenceModel_->yPlus();
     }
 
-    /**
-     * @brief Get wall shear stress field
-     * @return Reference to wall shear stress field
-     */
+    /// Get wall shear stress field
     [[nodiscard]] const FaceData<Scalar>& wallShearStress() const noexcept
     {
         return turbulenceModel_->wallShearStress();
     }
 
-    /**
-     * @brief Whether the meshWave wall-distance loop converged during init
-     * @return True if convergence reached before the iteration cap
-     */
+    /// Whether the meshWave wall-distance loop converged during initialization
     [[nodiscard]] bool wallDistanceConverged() const noexcept
     {
         return turbulenceModel_ && turbulenceModel_->wallDistanceConverged();
@@ -424,12 +352,7 @@ private:
 
 // Private methods
 
-    /**
-     * @brief Compute limited velocity gradients and assemble gradU_
-     * @param gradUx Output gradient field for x-velocity
-     * @param gradUy Output gradient field for y-velocity
-     * @param gradUz Output gradient field for z-velocity
-     */
+    /// Compute limited velocity gradients and assemble gradU_
     void updateVelocityGradients
     (
         VectorField& gradUx,
@@ -446,21 +369,8 @@ private:
     /// Compute pressure residual
     Scalar pressureResidual() const noexcept;
 
-    /**
-     * @brief Calculate transpose gradient source term for momentum equations
-     *
-     * @details Computes the explicit source term: ∇·(ν_eff · (∇U)^T)
-     * This term arises from the full viscous stress tensor τ = μ(∇U + (∇U)^T)
-     * and is non-zero when viscosity varies spatially (turbulent flows).
-     *
-     * Implemented as face-based divergence:
-     * Σ_f (ν_eff)_f · (∇U)_f^T · S_f
-     *
-     * @param nuEffFace Face-based effective viscosity (ν + ν_t)
-     * @param transposeSourceX Output: x-momentum source term
-     * @param transposeSourceY Output: y-momentum source term
-     * @param transposeSourceZ Output: z-momentum source term
-     */
+    /// Calculate transpose gradient source term for momentum equations
+    /// Σf (νEff)f · (∇U)f^T · Sf
     void transposeGradientSource
     (
         const FaceData<Scalar>& nuEffFace,
@@ -469,20 +379,10 @@ private:
         ScalarField& transposeSourceZ
     ) const;
 
-    /**
-     * @brief Solve a single momentum component equation
-     *
-     * @details Builds and solves the discretized momentum equation for one
-     * velocity component. Handles matrix assembly, under-relaxation, and
-     * linear solver iteration.
-     *
-     * @param eq Transport equation data for this component
-     * @param componentPrev Previous iteration velocity component
-     */
+    /// Solve a single momentum component equation
     void solveMomentumEquation
     (
         TransportEquation& eq,
         const ScalarField& componentPrev
     );
-
 };

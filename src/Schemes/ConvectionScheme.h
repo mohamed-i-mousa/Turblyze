@@ -47,28 +47,19 @@ public:
 
 // Accessor methods
 
-    /**
-     * @brief Get scheme for momentum equations
-     * @return Reference to momentum scheme if set, otherwise default scheme
-     */
+    /// Get scheme for momentum equations
     const ConvectionSchemes& momentum() const
     {
         return resolve(momentumScheme.get());
     }
 
-    /**
-     * @brief Get scheme for k equation
-     * @return Reference to k scheme if set, otherwise default scheme
-     */
+    /// Get scheme for k equation
     const ConvectionSchemes& k() const
     {
         return resolve(kScheme.get());
     }
 
-    /**
-     * @brief Get scheme for omega equation
-     * @return Reference to omega scheme if set, otherwise default scheme
-     */
+    /// Get scheme for omega equation
     const ConvectionSchemes& omega() const
     {
         return resolve(omegaScheme.get());

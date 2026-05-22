@@ -59,16 +59,10 @@ private:
 
 namespace Logger
 {
-    /**
-     * @brief Print a generic 80-char framed banner with the given title
-     * @param title Title text shown on the second line of the banner
-     */
+    /// Print a generic 80-char framed banner with the given title
     void sectionHeader(std::string_view title);
 
-    /**
-     * @brief Print the per-iteration banner
-     * @param n Iteration number
-     */
+    /// Print the per-iteration banner
     void iterationHeader(int n);
 
     /// Print the closing rule that terminates a framed block
@@ -77,13 +71,7 @@ namespace Logger
     /// Print the column header row for the linear solver configuration table
     void linearSolverConfigHeader();
 
-    /**
-     * @brief Print one row of the linear solver configuration table
-     * @param equation Label for the equation column ("U", "p", "k", "omega")
-     * @param solver Solver name ("BiCGSTAB", "PCG")
-     * @param tolerance Linear solver tolerance
-     * @param maxIters Linear solver iteration cap
-     */
+    /// Print one row of the linear solver configuration table
     void linearSolverConfigRow
     (
         std::string_view equation,
@@ -92,37 +80,19 @@ namespace Logger
         int maxIters
     );
 
-    /**
-     * @brief Print one indented "label  value" row with a Scalar value
-     * @param label Row label (left-justified, padded to 24 chars)
-     * @param value Scalar value, printed in scientific notation
-     */
+    /// Print one indented label-value row with a Scalar value
     void keyValue(std::string_view label, Scalar value);
 
-    /**
-     * @brief Print one indented "label  value" row with an int value
-     * @param label Row label (left-justified, padded to 24 chars)
-     * @param value Integer value, right-aligned to 12 chars
-     */
+    /// Print one indented label-value row with an int value
     void keyValue(std::string_view label, int value);
 
-    /**
-     * @brief Print one indented "label  value" row with a string value
-     * @param label Row label (left-justified, padded to 24 chars)
-     * @param value String value (e.g. "kOmegaSST", "[-1e5, 1e5] Pa")
-     */
+    /// Print one indented label-value row with a string value
     void keyValue(std::string_view label, std::string_view value);
 
     /// Print the column header row for the table
     void residualTableHeader();
 
-    /**
-     * @brief Print one row of the per-iteration residual table
-     * @param equation Label for the equation column ("Ux", "p'", "k", ...)
-     * @param solver Solver name ("BiCGSTAB", "PCG")
-     * @param iterations Linear-solver iterations performed
-     * @param linearSolverResidual Final linear-solver residual
-     */
+    /// Print one row of the per-iteration residual table
     void residualRow
     (
         std::string_view equation,
@@ -131,19 +101,10 @@ namespace Logger
         Scalar linearSolverResidual
     );
 
-    /**
-     * @brief Print a sub-section title line with two-space indentation
-     * @param title Title text (without trailing newline)
-     */
+    /// Print a sub-section title line with two-space indentation
     void subsection(std::string_view title);
 
-    /**
-     * @brief Print one min/max/mean statistics line for a scalar field
-     * @param name Field label ("k", "omega", "nut")
-     * @param minVal Minimum value over all cells
-     * @param maxVal Maximum value over all cells
-     * @param meanVal Cell-averaged mean value
-     */
+    /// Print one min/max/mean statistics line for a scalar field
     void scalarStat
     (
         std::string_view name,
@@ -152,29 +113,13 @@ namespace Logger
         Scalar meanVal
     );
 
-    /**
-     * @brief Print one labelled scaled-residual line
-     * @param name  Residual label ("mass", "velocity", ...)
-     * @param value Scaled residual value
-     */
+    /// Print one labelled scaled-residual line
     void scaledResidual(std::string_view name, Scalar value);
 
-    /**
-     * @brief Print the non-debug one-line per-iteration residual summary
-     * @param mass     Scaled mass-imbalance residual
-     * @param velocity Scaled velocity residual
-     * @param pressure Scaled pressure residual
-     */
+    /// Print the non-debug one-line per-iteration residual summary
     void residualSummary(Scalar mass, Scalar velocity, Scalar pressure);
 
-    /**
-     * @brief Print the non-debug one-line residual summary with turbulence
-     * @param mass     Scaled mass-imbalance residual
-     * @param velocity Scaled velocity residual
-     * @param pressure Scaled pressure residual
-     * @param k        Scaled k residual
-     * @param omega    Scaled omega residual
-     */
+    /// Print the non-debug one-line residual summary with turbulence
     void residualSummary
     (
         Scalar mass,
