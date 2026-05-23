@@ -104,7 +104,7 @@ public:
 
 // Public interface
 
-    Scalar correction
+    [[nodiscard]] Scalar correction
     (
         const Face& face,
         const ScalarField& phi,
@@ -121,7 +121,7 @@ public:
 
 // Public interface
 
-    Scalar correction
+    [[nodiscard]] Scalar correction
     (
         const Face& face,
         const ScalarField& phi,
@@ -138,7 +138,7 @@ public:
 
 // Public interface
 
-    Scalar correction
+    [[nodiscard]] Scalar correction
     (
         const Face& face,
         const ScalarField& phi,
