@@ -345,13 +345,13 @@ void BoundaryConditions::printSummary() const
                 {
                     std::cout
                         << ", Value: "
-                        << fbc.scalarValue();
+                        << fbc.fixedScalarValue();
                 }
                 else if (fbc.type() == BCType::FIXED_GRADIENT)
                 {
                     std::cout
                         << ", Gradient: "
-                        << fbc.scalarGradient();
+                        << fbc.fixedScalarGradient();
                 }
                 else if (fbc.type() == BCType::ZERO_GRADIENT)
                 {

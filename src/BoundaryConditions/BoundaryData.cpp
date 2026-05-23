@@ -46,15 +46,15 @@ void BoundaryData::setWallFunctionType(BCType wallType) noexcept
 
 Scalar BoundaryData::fixedScalarValue() const noexcept
 {
-    if (type_ == BCType::FIXED_VALUE)
+    if (type_ == BCType::FIXED_VALUE || type_ == BCType::NO_SLIP)
     {
         return scalarValue_;
     }
 
     FatalError
     (
-        "Attempted to get fixed scalar value, "
-        "but BC is not set to FIXED_VALUE."
+        "Attempted to get fixed scalar value, but BC is not set to "
+        "FIXED_VALUE or NO_SLIP."
     );
 }
 

@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <string_view>
+
 #include "Scalar.h"
 
 
@@ -60,19 +62,10 @@ public:
     /// Get boundary condition type
     [[nodiscard]] BCType type() const noexcept { return type_; }
 
-    /// Get scalar value
-    [[nodiscard]] Scalar scalarValue() const noexcept { return scalarValue_; }
-
-    /// Get scalar gradient
-    [[nodiscard]] Scalar scalarGradient() const noexcept
-    {
-        return scalarGradient_;
-    }
-
-    /// Get fixed scalar value
+    /// Get fixed scalar value (FIXED_VALUE or NO_SLIP)
     [[nodiscard]] Scalar fixedScalarValue() const noexcept;
 
-    /// Get fixed scalar gradient
+    /// Get fixed scalar gradient (FIXED_GRADIENT)
     [[nodiscard]] Scalar fixedScalarGradient() const noexcept;
 
 private:
