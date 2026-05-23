@@ -13,6 +13,11 @@
  * catch and retry, so unrecoverable errors terminate immediately rather
  * than throwing exceptions. std::abort() preserves the entire memory snapshot
  * for post-crash debugging.
+ *
+ * @note FatalError is declared `[[noreturn]] noexcept` and calls
+ * std::abort() unconditionally. It can therefore be invoked from any
+ * function marked `noexcept` (including accessors and destructors) without
+ * risking a silent std::terminate from a propagated exception.
  *****************************************************************************/
 
 #pragma once
