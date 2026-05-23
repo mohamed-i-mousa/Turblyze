@@ -51,7 +51,7 @@ FaceIntegrals Face::calculateGeometricProperties
         const Vector vecA = p2 - p1;
         const Vector vecB = p3 - p1;
         const Vector crossProd = cross(vecB, vecA);
-        const Scalar crossProdMag = crossProd.magnitude();
+        const Scalar crossProdMag = magnitude(crossProd);
 
         if (crossProdMag < vSmallValue)
         {
@@ -109,7 +109,7 @@ FaceIntegrals Face::calculateGeometricProperties
             const Vector vecATri = p2Tri - p1Tri;
             const Vector vecBTri = p3Tri - p1Tri;
             const Vector crossProdTri = cross(vecBTri, vecATri);
-            const Scalar triangleArea = S(0.5) * crossProdTri.magnitude();
+            const Scalar triangleArea = S(0.5) * magnitude(crossProdTri);
             normalSum += crossProdTri;
 
             // Weighted integrals using each sub-triangle's normal
@@ -136,14 +136,14 @@ FaceIntegrals Face::calculateGeometricProperties
             weightedCentroidSum += triangleCentroid * triangleArea;
         }
 
-        projectedArea_ = normalSum.magnitude() / S(2.0);
+        projectedArea_ = magnitude(normalSum) / S(2.0);
 
         contactArea_ = weightedAreaSum;
 
         // Centroid uses contact area weighting (sum of triangle areas)
         centroid_ = weightedCentroidSum / (weightedAreaSum + vSmallValue);
 
-        normal_ = normalSum.normalized();
+        normal_ = normalized(normalSum);
 
         geometricPropertiesCalculated_ = true;
     }
@@ -156,7 +156,7 @@ FaceIntegrals Face::calculateGeometricProperties
 void Face::calculateDistanceProperties(std::span<const Vector> cellCentroids)
 {
     dPf_ = centroid_ - cellCentroids[ownerCell_];
-    dPfMag_ = dPf_.magnitude();
+    dPfMag_ = magnitude(dPf_);
 
     // Calculate dNf only for internal faces
     if (!isBoundary())
@@ -164,7 +164,7 @@ void Face::calculateDistanceProperties(std::span<const Vector> cellCentroids)
         const size_t N = neighborCell_.value();
         const Vector dNfVec = centroid_ - cellCentroids[N];
         dNf_ = dNfVec;
-        dNfMag_ = dNfVec.magnitude();
+        dNfMag_ = magnitude(dNfVec);
     }
     distancePropertiesCalculated_ = true;
 }

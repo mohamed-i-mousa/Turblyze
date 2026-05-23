@@ -45,24 +45,6 @@ public:
         zx_(zx), zy_(zy), zz_(zz)
     {}
 
-// Factory methods
-
-    /// Constructs tensor from three row vectors
-    [[nodiscard]] static Tensor fromRows
-    (
-        const Vector& row0,
-        const Vector& row1,
-        const Vector& row2
-    ) noexcept
-    {
-        return Tensor
-        (
-            row0.x(), row0.y(), row0.z(),
-            row1.x(), row1.y(), row1.z(),
-            row2.x(), row2.y(), row2.z()
-        );
-    }
-
 // Setter methods
 
     /// Set component (0,0)
@@ -299,6 +281,22 @@ private:
 };
 
 // Non-member methods
+
+/// Construct a tensor from three row vectors
+[[nodiscard]] inline Tensor tensorFromRows
+(
+    const Vector& row0,
+    const Vector& row1,
+    const Vector& row2
+) noexcept
+{
+    return Tensor
+    (
+        row0.x(), row0.y(), row0.z(),
+        row1.x(), row1.y(), row1.z(),
+        row2.x(), row2.y(), row2.z()
+    );
+}
 
 /// Double-dot product of two tensors: A:B = A_ij B_ij
 [[nodiscard]] inline Scalar doubleDot

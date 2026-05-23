@@ -492,7 +492,7 @@ Scalar MeshChecker::faceOrthogonality
 ) const noexcept
 {
     const Vector dPN = neighborCellCentroid - ownerCellCentroid;
-    const Scalar dPNMag = dPN.magnitude();
+    const Scalar dPNMag = magnitude(dPN);
 
     const Scalar cosAngle =
         dot(dPN, faceNormal) / (dPNMag + vSmallValue);
@@ -517,13 +517,13 @@ Scalar MeshChecker::faceSkewness
       / (dot(face.normal(), dPN) + vSmallValue))
       * dPN;
 
-    const Scalar skewnessMag = skewnessVector.magnitude();
+    const Scalar skewnessMag = magnitude(skewnessVector);
 
     const Vector skewnessDirection =
         skewnessVector / (skewnessMag + smallValue);
 
     // Characteristic face dimension: empirical approximation
-    Scalar faceCharacteristicLength = S(0.2) * dPN.magnitude() + vSmallValue;
+    Scalar faceCharacteristicLength = S(0.2) * magnitude(dPN) + vSmallValue;
 
     // Refine by finding max vertex extent in skewness direction
     const std::span<const size_t> nodeIndices = face.nodeIndices();
@@ -559,13 +559,13 @@ Scalar MeshChecker::boundaryFaceSkewness
     const Vector skewnessVector = 
         dPf - dot(face.normal(), dPf) * face.normal();
 
-    const Scalar skewnessMag = skewnessVector.magnitude();
+    const Scalar skewnessMag = magnitude(skewnessVector);
 
     const Vector skewnessDirection =
         skewnessVector / (skewnessMag + smallValue);
 
     // Characteristic face dimension: empirical approximation
-    Scalar faceCharacteristicLength = S(0.4) * dPN.magnitude() + vSmallValue;
+    Scalar faceCharacteristicLength = S(0.4) * magnitude(dPN) + vSmallValue;
 
     // Refine by finding max vertex extent in skewness direction
     const std::span<const size_t> nodeIndices = face.nodeIndices();

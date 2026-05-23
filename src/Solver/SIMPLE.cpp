@@ -229,7 +229,7 @@ void SIMPLE::updateVelocityGradients
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         gradU_[cellIdx] =
-            Tensor::fromRows
+            tensorFromRows
             (
                 gradUx[cellIdx],
                 gradUy[cellIdx],

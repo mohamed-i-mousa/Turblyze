@@ -55,7 +55,7 @@ void GradientScheme::precomputeInverseATA()
                 mesh_.cells()[neighborIdx].centroid()
               - cell.centroid();
 
-            const Scalar rMagSqr = r.magnitudeSquared();
+            const Scalar rMagSqr = magnitudeSquared(r);
             const Scalar w = S(1.0) / (rMagSqr + smallValue);
 
             rVector << r.x(), r.y(), r.z();
@@ -70,7 +70,7 @@ void GradientScheme::precomputeInverseATA()
             if (!face.isBoundary()) continue;
 
             const Vector r = face.centroid() - cell.centroid();
-            const Scalar rMagSqr = r.magnitudeSquared();
+            const Scalar rMagSqr = magnitudeSquared(r);
             const Scalar w = S(1.0) / (rMagSqr + smallValue);
 
             rVector << r.x(), r.y(), r.z();
@@ -154,7 +154,7 @@ Vector GradientScheme::cellGradient
         const Cell& neighbor = mesh_.cells()[neighborIdx];
         const Vector r = neighbor.centroid() - cell.centroid();
 
-        const Scalar rMagSqr = r.magnitudeSquared();
+        const Scalar rMagSqr = magnitudeSquared(r);
         const Scalar w = S(1.0) / (rMagSqr + smallValue);
 
         const Scalar wDeltaPhi =
@@ -173,7 +173,7 @@ Vector GradientScheme::cellGradient
         if (!face.isBoundary()) continue;
 
         const Vector r = face.centroid() - cell.centroid();
-        const Scalar rMagSqr = r.magnitudeSquared();
+        const Scalar rMagSqr = magnitudeSquared(r);
         const Scalar w = S(1.0) / (rMagSqr + smallValue);
 
         Scalar phiBoundary = S(0.0);
@@ -336,7 +336,7 @@ Vector GradientScheme::faceGradient
     const size_t N = face.neighborCell().value();
     const Vector dPN =
         mesh_.cells()[N].centroid() - mesh_.cells()[P].centroid();
-    const Scalar dPNMag = dPN.magnitude();
+    const Scalar dPNMag = magnitude(dPN);
     const Vector ePN = dPN / (dPNMag + vSmallValue);
     const Vector gradAvg = averageFaceGradient(face, gradPhiP, gradPhiN);
     const Scalar phiDiff = phi[N] - phi[P];

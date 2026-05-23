@@ -149,34 +149,6 @@ public:
             && (std::abs(z_ - other.z_) <= vSmallValue);
     }
 
-// Geometric calculations
-
-    /// Calculate squared magnitude of vector
-    [[nodiscard]] Scalar magnitudeSquared() const noexcept
-    {
-        return x_ * x_ + y_ * y_ + z_ * z_;
-    }
-
-    /// Calculate magnitude of vector
-    [[nodiscard]] Scalar magnitude() const noexcept
-    {
-        return std::sqrt(magnitudeSquared());
-    }
-
-    /// Return normalized copy of this vector
-    [[nodiscard]] Vector normalized() const noexcept
-    {
-        const Scalar mag = magnitude();
-
-        if (mag < vSmallValue)
-        {
-            FatalError("Division by zero in Vector::normalized");
-        }
-
-        const Scalar inverse = S(1.0) / mag;
-        return Vector(x_ * inverse, y_ * inverse, z_ * inverse);
-    }
-
 private:
 
     /// x, y, z components of the vector
@@ -203,6 +175,32 @@ private:
             p1.z() * p2.x() - p1.x() * p2.z(),
             p1.x() * p2.y() - p1.y() * p2.x()
         );
+}
+
+/// Squared magnitude of a vector
+[[nodiscard]] inline Scalar magnitudeSquared(const Vector& v) noexcept
+{
+    return v.x() * v.x() + v.y() * v.y() + v.z() * v.z();
+}
+
+/// Magnitude of a vector
+[[nodiscard]] inline Scalar magnitude(const Vector& v) noexcept
+{
+    return std::sqrt(magnitudeSquared(v));
+}
+
+/// Return a normalized copy of a vector
+[[nodiscard]] inline Vector normalized(const Vector& v) noexcept
+{
+    const Scalar mag = magnitude(v);
+
+    if (mag < vSmallValue)
+    {
+        FatalError("Division by zero in normalized(Vector)");
+    }
+
+    const Scalar inverse = S(1.0) / mag;
+    return Vector(v.x() * inverse, v.y() * inverse, v.z() * inverse);
 }
 
 /// Scalar multiplication operator

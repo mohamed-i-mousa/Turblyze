@@ -125,9 +125,6 @@ public:
     /// Link boundary faces to their owning patches
     void linkFaces(std::span<Face> faces);
 
-    /// Convert boundary condition type to string
-    [[nodiscard]] static std::string bcTypeToString(BCType bctype) noexcept;
-
     /// Validate boundary condition patch names against mesh patch names
     void validatePatchNames() const;
 

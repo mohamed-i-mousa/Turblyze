@@ -20,12 +20,12 @@ namespace VTK
 
 ScalarField computeMagnitude(const VectorField& field)
 {
-    ScalarField magnitude;
+    ScalarField result;
     for (size_t idx = 0; idx < field.size(); ++idx)
     {
-        magnitude[idx] = field[idx].magnitude();
+        result[idx] = magnitude(field[idx]);
     }
-    return magnitude;
+    return result;
 }
 
 // *********************** Public API: Derived Fields **************************
@@ -37,17 +37,17 @@ ScalarField velocityMagnitude
     const ScalarField& Uz
 )
 {
-    ScalarField magnitude;
+    ScalarField result;
     for (size_t idx = 0; idx < Ux.size(); ++idx)
     {
-        magnitude[idx] = std::sqrt
+        result[idx] = std::sqrt
         (
             Ux[idx] * Ux[idx]
           + Uy[idx] * Uy[idx]
           + Uz[idx] * Uz[idx]
         );
     }
-    return magnitude;
+    return result;
 }
 
 ScalarField vorticityMagnitude(const VectorField& vorticity)
@@ -67,7 +67,7 @@ ScalarField QCriterion
     for (size_t i = 0; i < gradUx.size(); ++i)
     {
         // Q = 0.5 * (||Omega||^2 - ||S||^2)
-        const Tensor gradU = Tensor::fromRows(gradUx[i], gradUy[i], gradUz[i]);
+        const Tensor gradU = tensorFromRows(gradUx[i], gradUy[i], gradUz[i]);
 
         const Scalar sMagSq = gradU.symm().magnitudeSquared();
         const Scalar oMagSq = gradU.skew().magnitudeSquared();
@@ -90,7 +90,7 @@ ScalarField strainRateMagnitude
     for (size_t idx = 0; idx < gradUx.size(); ++idx)
     {
         // Strain rate magnitude = sqrt(2 * S_ij * S_ij)
-        const Tensor gradU = Tensor::fromRows
+        const Tensor gradU = tensorFromRows
         (
             gradUx[idx],
             gradUy[idx],

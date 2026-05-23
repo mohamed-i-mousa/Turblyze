@@ -88,3 +88,8 @@ private:
     /// Scalar boundary gradient (normal component)
     Scalar scalarGradient_ = S(0.0);
 };
+
+// Non-member methods
+
+/// Convert BCType to human-readable string
+[[nodiscard]] std::string_view bcTypeToString(BCType bctype) noexcept;

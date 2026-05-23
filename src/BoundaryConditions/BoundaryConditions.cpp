@@ -243,25 +243,6 @@ void BoundaryConditions::linkFaces(std::span<Face> faces)
 }
 
 
-std::string BoundaryConditions::bcTypeToString(BCType bctype) noexcept
-{
-    using enum BCType;
-    switch (bctype)
-    {
-        case UNDEFINED: return "UNDEFINED";
-        case FIXED_VALUE: return "FIXED_VALUE";
-        case FIXED_GRADIENT: return "FIXED_GRADIENT";
-        case ZERO_GRADIENT: return "ZERO_GRADIENT";
-        case NO_SLIP: return "NO_SLIP";
-        case K_WALL_FUNCTION: return "K_WALL_FUNCTION";
-        case OMEGA_WALL_FUNCTION: return "OMEGA_WALL_FUNCTION";
-        case NUT_WALL_FUNCTION: return "NUT_WALL_FUNCTION";
-    }
-
-    FatalError("Corrupted BCType value");
-}
-
-
 void BoundaryConditions::validatePatchNames() const
 {
     // std::set guarantees uniqueness

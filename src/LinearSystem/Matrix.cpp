@@ -217,13 +217,13 @@ void Matrix::assembleInternalFace
     const Vector dPN =
         mesh_.cells()[neighborIdx].centroid()
       - mesh_.cells()[ownerIdx].centroid();
-    const Scalar dPNMag = dPN.magnitude();
+    const Scalar dPNMag = magnitude(dPN);
     const Vector ePN = dPN / (dPNMag + vSmallValue);
 
     // Orthogonal component (over-relaxed)
     const Vector Ef = (dot(Sf, Sf) / dot(Sf, ePN)) * ePN;
     const Scalar Gammaf = faceDiffusionCoefficient(face, equation);
-    const Scalar aDiff = Gammaf * Ef.magnitude() / (dPNMag + vSmallValue);
+    const Scalar aDiff = Gammaf * magnitude(Ef) / (dPNMag + vSmallValue);
 
     // Convection coefficients
     Scalar aPConv = S(0.0);
@@ -300,11 +300,11 @@ void Matrix::assembleBoundaryFace
     const BoundaryData& bc =
         bcManager_.fieldBC(face.patch()->get().patchName(), equation.field);
     const Vector Sf = face.normal() * face.projectedArea();
-    const Vector ePf = face.dPf().normalized();
+    const Vector ePf = normalized(face.dPf());
     const Scalar dPfMag = face.dPfMag();
     const Vector Ef = (dot(Sf, Sf) / dot(Sf, ePf)) * ePf;
     const Scalar Gammaf = faceDiffusionCoefficient(face, equation);
-    const Scalar aDiff = Gammaf * Ef.magnitude() / (dPfMag + vSmallValue);
+    const Scalar aDiff = Gammaf * magnitude(Ef) / (dPfMag + vSmallValue);
 
     using enum BCType;
     if
