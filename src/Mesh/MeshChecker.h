@@ -28,7 +28,7 @@ class MeshChecker
 public:
 
     /// Construct a MeshChecker with a mesh view
-    MeshChecker(const Mesh& mesh) noexcept
+    explicit MeshChecker(const Mesh& mesh) noexcept
     :
         mesh_(mesh)
     {}
