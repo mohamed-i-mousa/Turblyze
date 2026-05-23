@@ -24,6 +24,7 @@
 #include "Face.h"
 #include "Cell.h"
 #include "BoundaryPatch.h"
+#include "ErrorHandler.h"
 
 
 class Mesh
@@ -41,12 +42,21 @@ public:
         std::vector<Cell> cells,
         std::vector<BoundaryPatch> patches
     )
-    : 
+    :
         nodes_(std::move(nodes)),
         faces_(std::move(faces)),
         cells_(std::move(cells)),
         patches_(std::move(patches))
     {
+        if (cellCount_ != 0 || faceCount_ != 0)
+        {
+            FatalError
+            (
+                "Mesh: a populated mesh already exists. "
+                "Only one Mesh instance may carry data per program."
+            );
+        }
+
         cellCount_ = cells_.size();
         faceCount_ = faces_.size();
     }
