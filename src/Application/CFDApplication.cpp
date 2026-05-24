@@ -709,6 +709,9 @@ void CFDApplication::setupBoundaryConditions()
     // Validate patch names against mesh patches
     bcManager_.validatePatchNames();
 
+    // Validate wall-function configuration consistency
+    validateWallFunctionSetup();
+
     if (debug_)
     {
         bcManager_.printSummary();
@@ -737,6 +740,11 @@ void CFDApplication::configureSolver()
 
     solver_->setDebug(debug_);
 
+    solver_->setPhysicalProperties(rho_, mu_);
+    solver_->setRelaxationFactors(alphaU_, alphaP_, alphaK_, alphaOmega_);
+    solver_->setConvergenceTolerance(convergenceTolerance_);
+    solver_->setMaxIterations(maxIterations_);
+
     solver_->
         initialize
         (
@@ -746,11 +754,6 @@ void CFDApplication::configureSolver()
             initialOmega_,
             turbulenceEnabled_
         );
-
-    solver_->setPhysicalProperties(rho_, mu_);
-    solver_->setRelaxationFactors(alphaU_, alphaP_, alphaK_, alphaOmega_);
-    solver_->setConvergenceTolerance(convergenceTolerance_);
-    solver_->setMaxIterations(maxIterations_);
 
     // Linear solver settings (defaults per equation)
     std::string uSolverName     = "BiCGSTAB";
@@ -1158,6 +1161,44 @@ void CFDApplication::unknownBCType
       + "' on patch '" + std::string(patchName)
       + "'. Valid types: " + std::string(validList)
     );
+}
+
+// ************************ validateWallFunctionTriplets **********************
+
+void CFDApplication::validateWallFunctionSetup() const
+{
+    if (!turbulenceEnabled_) return;
+
+    for (const auto& patch : mesh_.patches())
+    {
+        if (patch.type() != PatchType::WALL) continue;
+
+        const std::string& patchName = patch.patchName();
+
+        const bool kIsWF =
+            bcManager_.fieldBC(patchName, Field::k).type()
+         == BCType::K_WALL_FUNCTION;
+        const bool omegaIsWF =
+            bcManager_.fieldBC(patchName, Field::omega).type()
+         == BCType::OMEGA_WALL_FUNCTION;
+        const bool nutIsWF =
+            bcManager_.fieldBC(patchName, Field::nut).type()
+         == BCType::NUT_WALL_FUNCTION;
+
+        const int wfCount = int(kIsWF) + int(omegaIsWF) + int(nutIsWF);
+
+        if (wfCount == 0 || wfCount == 3) continue;
+
+        FatalError
+        (
+            "Wall patch '" + patchName
+          + "': wall functions must be configured as a complete triplet "
+            "(k + omega + nut) or omitted entirely. Found: k="
+          + (kIsWF     ? "WF" : "non-WF")
+          + ", omega=" + (omegaIsWF ? "WF" : "non-WF")
+          + ", nut="   + (nutIsWF   ? "WF" : "non-WF") + "."
+        );
+    }
 }
 
 // ********************* readAndValidateSolverConfig **********************

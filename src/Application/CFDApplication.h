@@ -116,6 +116,9 @@ private:
         std::string_view validList
     );
 
+    /// Verify k/omega/nut wall functions are set as a complete set
+    void validateWallFunctionSetup() const;
+
 // Private members
 
     /// Path to case file
