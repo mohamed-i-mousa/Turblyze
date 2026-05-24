@@ -84,6 +84,25 @@ void kOmegaSST::solve
     const TensorField& gradU
 )
 {
+    if (!kSolver_)
+    {
+        FatalError
+        (
+            "kOmegaSST::solve: k linear solver not set; "
+            "call setKSolver() (or SIMPLE::setTurbulenceSolvers()) "
+            "before solve()."
+        );
+    }
+    if (!omegaSolver_)
+    {
+        FatalError
+        (
+            "kOmegaSST::solve: omega linear solver not set; "
+            "call setOmegaSolver() (or SIMPLE::setTurbulenceSolvers()) "
+            "before solve()."
+        );
+    }
+
     // Update y+ on wall faces
     updateYPlus();
 
@@ -167,7 +186,7 @@ Scalar kOmegaSST::inletK
     Scalar turbulenceIntensity
 ) noexcept
 {
-    const Scalar uPrime = turbulenceIntensity * velocity.magnitude();
+    const Scalar uPrime = turbulenceIntensity * magnitude(velocity);
     return std::max(S(1.5) * uPrime * uPrime, S(1e-8));
 }
 
@@ -208,9 +227,8 @@ void kOmegaSST::yPlusLam()
 void kOmegaSST::updateWallDistance()
 {
     wallDistanceConverged_ = false;
-
-    // Initialize: large sentinel distance, zero wall point
     wallDistance_.setAll(S(1e10));
+    nearestWallPoint_.setAll(Vector{S(1e15), S(1e15), S(1e15)});
 
     // Seed wall-adjacent cells with the perpendicular distance to each
     // wall face centroid
@@ -258,7 +276,7 @@ void kOmegaSST::updateWallDistance()
             {
                 const Vector candidatePoint = nearestWallPoint_[neighbor];
                 const Scalar newDist =
-                    (ownerCenter - candidatePoint).magnitude();
+                    magnitude(ownerCenter - candidatePoint);
 
                 if (newDist < wallDistance_[owner])
                 {
@@ -273,7 +291,7 @@ void kOmegaSST::updateWallDistance()
             {
                 const Vector candidatePoint = nearestWallPoint_[owner];
                 const Scalar newDist =
-                    (neighborCenter - candidatePoint).magnitude();
+                    magnitude(neighborCenter - candidatePoint);
 
                 if (newDist < wallDistance_[neighbor])
                 {
@@ -608,7 +626,7 @@ void kOmegaSST::overrideWallCellProduction
             // Log layer: G = sqr(uStar*magGradUw*y/uPlus) / (nu*kappa*yPlus)
             const Vector Ucell(Ux[cellIdx], Uy[cellIdx], Uz[cellIdx]);
             const Scalar magGradUw =
-                Ucell.magnitude() / y_[face.idx()];
+                magnitude(Ucell) / y_[face.idx()];
             const Scalar uStar = Cmu25_ * std::sqrt(k_[cellIdx]);
             const Scalar uPlus =
                 std::log(std::max(coeffs_.E * yPlus_[face.idx()], S(1.0)))
@@ -1125,7 +1143,7 @@ void kOmegaSST::updateWallShearStress
         const Scalar normalVelocity = dot(Ucell, face.normal());
         const Vector tangentVelocity =
             Ucell - face.normal() * normalVelocity;
-        const Scalar tangentVelocityMag = tangentVelocity.magnitude();
+        const Scalar tangentVelocityMag = magnitude(tangentVelocity);
 
         const Scalar tau =
             yPlus_[face.idx()] < yPlusLam_

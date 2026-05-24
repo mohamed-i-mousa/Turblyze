@@ -244,7 +244,7 @@ private:
     /// Distance to nearest wall
     ScalarField wallDistance_{S(1.0)};
 
-    /// Coordinates of the nearest wall point per cell (for mesh-wave propagation)
+    /// Coordinates of the nearest wall point per cell (for mesh-wave)
     VectorField nearestWallPoint_;
 
     /// Kinematic wall shear stress magnitude (tau/rho) [m^2/s^2]

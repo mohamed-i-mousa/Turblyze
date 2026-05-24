@@ -49,6 +49,23 @@ void SIMPLE::setTurbulenceSolvers
 
 void SIMPLE::solve()
 {
+    if (!momentumSolver_)
+    {
+        FatalError
+        (
+            "SIMPLE::solve: momentum linear solver not set; "
+            "call setMomentumSolver() before solve()."
+        );
+    }
+    if (!pressureSolver_)
+    {
+        FatalError
+        (
+            "SIMPLE::solve: pressure-correction linear solver not set; "
+            "call setPressureSolver() before solve()."
+        );
+    }
+
     Logger::sectionHeader("Starting SIMPLE Loop");
 
     // Reset first-iteration residual references for convergence tracking
