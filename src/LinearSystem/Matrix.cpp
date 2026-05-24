@@ -38,6 +38,21 @@ Matrix::Matrix
         eIdx(numCells)
     );
     vectorB_.resize(eIdx(numCells));
+
+    // Reserve reusable per-thread assembly buffers.
+    const size_t T = static_cast<size_t>(omp_get_max_threads());
+    const size_t estimatedTriplets = 4 * numInternalFaces_ + numBoundaryFaces_;
+    const size_t reservePerThread = (estimatedTriplets / T) + 1;
+
+    tripletList_.reserve(estimatedTriplets);
+
+    perThreadTriplets_.resize(T);
+    for (auto& triplets : perThreadTriplets_)
+    {
+        triplets.reserve(reservePerThread);
+    }
+
+    perThreadB_.assign(T, Vec::Zero(eIdx(numCells)));
 }
 
 // ****************************** Public Methods ******************************
@@ -48,7 +63,6 @@ void Matrix::buildMatrix(const TransportEquation& equation)
 
     const size_t numCells = mesh_.numCells();
     const size_t numFaces = mesh_.numFaces();
-    const Eigen::Index numCellsIdx = eIdx(numCells);
 
     // Cell-source contribution: race-free per-cell write directly to vectorB_
     #pragma omp parallel for schedule(static)
@@ -57,26 +71,21 @@ void Matrix::buildMatrix(const TransportEquation& equation)
         vectorB_(eIdx(cellIdx)) += equation.source[cellIdx];
     }
 
-    // Each thread has its own triplet vector and RHS vector
-    const int T = omp_get_max_threads();
-
-    const size_t estimatedTriplets = 4 * numInternalFaces_ + numBoundaryFaces_;
-
-    const size_t reservePerThread =
-        (estimatedTriplets / static_cast<size_t>(T)) + 1;
-
-    std::vector<std::vector<Eigen::Triplet<Scalar>>>
-    tlsTriplets(static_cast<size_t>(T));
-
-    std::vector<Vec>
-    tlsB(static_cast<size_t>(T), Vec::Zero(numCellsIdx));
+    // Reset per-thread scratch (capacity retained from constructor)
+    for (auto& triplets : perThreadTriplets_)
+    {
+        triplets.clear();
+    }
+    for (auto& localB : perThreadB_)
+    {
+        localB.setZero();
+    }
 
     #pragma omp parallel
     {
         const int tid = omp_get_thread_num();
-        auto& triplets = tlsTriplets[static_cast<size_t>(tid)];
-        auto& localB = tlsB[static_cast<size_t>(tid)];
-        triplets.reserve(reservePerThread);
+        auto& triplets = perThreadTriplets_[static_cast<size_t>(tid)];
+        auto& localB = perThreadB_[static_cast<size_t>(tid)];
 
         #pragma omp for schedule(static)
         for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
@@ -96,9 +105,9 @@ void Matrix::buildMatrix(const TransportEquation& equation)
 
     // Merge per-thread triplet lists into the member tripletList_
     size_t totalTriplets = 0;
-    for (const auto& v : tlsTriplets) totalTriplets += v.size();
+    for (const auto& v : perThreadTriplets_) totalTriplets += v.size();
     tripletList_.reserve(totalTriplets);
-    for (auto& v : tlsTriplets)
+    for (auto& v : perThreadTriplets_)
     {
         tripletList_.insert
         (
@@ -109,7 +118,7 @@ void Matrix::buildMatrix(const TransportEquation& equation)
     }
 
     // Merge per-thread RHS contributions into vectorB_
-    for (const auto& v : tlsB)
+    for (const auto& v : perThreadB_)
     {
         vectorB_ += v;
     }

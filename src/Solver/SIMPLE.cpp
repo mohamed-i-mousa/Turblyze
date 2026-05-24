@@ -218,29 +218,24 @@ void SIMPLE::initialize
 }
 
 
-void SIMPLE::updateVelocityGradients
-(
-    VectorField& gradUx,
-    VectorField& gradUy,
-    VectorField& gradUz
-)
+void SIMPLE::updateVelocityGradients()
 {
     const size_t numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        gradUx[cellIdx] =
+        gradUx_[cellIdx] =
             gradientScheme_.cellGradient(Field::Ux, Ux_, cellIdx);
-        gradUy[cellIdx] =
+        gradUy_[cellIdx] =
             gradientScheme_.cellGradient(Field::Uy, Uy_, cellIdx);
-        gradUz[cellIdx] =
+        gradUz_[cellIdx] =
             gradientScheme_.cellGradient(Field::Uz, Uz_, cellIdx);
     }
 
-    gradientScheme_.limitGradient(Field::Ux, Ux_, gradUx);
-    gradientScheme_.limitGradient(Field::Uy, Uy_, gradUy);
-    gradientScheme_.limitGradient(Field::Uz, Uz_, gradUz);
+    gradientScheme_.limitGradient(Field::Ux, Ux_, gradUx_);
+    gradientScheme_.limitGradient(Field::Uy, Uy_, gradUy_);
+    gradientScheme_.limitGradient(Field::Uz, Uz_, gradUz_);
 
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -248,9 +243,9 @@ void SIMPLE::updateVelocityGradients
         gradU_[cellIdx] =
             tensorFromRows
             (
-                gradUx[cellIdx],
-                gradUy[cellIdx],
-                gradUz[cellIdx]
+                gradUx_[cellIdx],
+                gradUy_[cellIdx],
+                gradUz_[cellIdx]
             );
     }
 }
@@ -260,11 +255,6 @@ void SIMPLE::solveMomentumEquations()
 {
     const size_t numCells = mesh_.numCells();
     const size_t numFaces = mesh_.numFaces();
-
-    ScalarField nuEff;
-    ScalarField UxSource;
-    ScalarField UySource;
-    ScalarField UzSource;
 
     // Reset diagonals accumulator
     DU_.setAll(S(0.0));
@@ -277,22 +267,20 @@ void SIMPLE::solveMomentumEquations()
         if (turbulenceModel_)
         {
             const ScalarField& nut = turbulenceModel_->turbulentViscosity();
-            nuEff[cellIdx] = nu_ + nut[cellIdx];
+            nuEff_[cellIdx] = nu_ + nut[cellIdx];
         }
         else
         {
-            nuEff[cellIdx] = nu_;
+            nuEff_[cellIdx] = nu_;
         }
 
         // Calculate pressure gradients source term
-        UxSource[cellIdx] = -gradP_[cellIdx].x() * mesh_.cells()[cellIdx].volume();
-        UySource[cellIdx] = -gradP_[cellIdx].y() * mesh_.cells()[cellIdx].volume();
-        UzSource[cellIdx] = -gradP_[cellIdx].z() * mesh_.cells()[cellIdx].volume();
+        UxSource_[cellIdx] = -gradP_[cellIdx].x() * mesh_.cells()[cellIdx].volume();
+        UySource_[cellIdx] = -gradP_[cellIdx].y() * mesh_.cells()[cellIdx].volume();
+        UzSource_[cellIdx] = -gradP_[cellIdx].z() * mesh_.cells()[cellIdx].volume();
     }
 
     // Build face-based effective viscosity
-    FaceData<Scalar> nuEffFace(nu_);
-
     #pragma omp parallel for schedule(static)
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
@@ -312,53 +300,31 @@ void SIMPLE::solveMomentumEquations()
                 if (bc.type() == BCType::nutWallFunction)
                 {
                     // Use wall-function nut instead of cell-center nut
-                    nuEffFace[faceIdx] =
+                    nuEffFace_[faceIdx] =
                         nu_ + turbulenceModel_->nutWall()[faceIdx];
                     continue;
                 }
             }
 
             // Other boundary faces: use owner cell value
-            nuEffFace[faceIdx] = nuEff[ownerIdx];
+            nuEffFace_[faceIdx] = nuEff_[ownerIdx];
         }
         else
         {
             // Internal faces: linear interpolation
-            nuEffFace[faceIdx] = interpolateToFace(face, nuEff);
+            nuEffFace_[faceIdx] = interpolateToFace(face, nuEff_);
         }
     }
 
     // Reset interpolated diagonals accumulator
     DUf_.setAll(S(0.0));
 
-    VectorField gradUx;
-    VectorField gradUy;
-    VectorField gradUz;
-    updateVelocityGradients(gradUx, gradUy, gradUz);
+    updateVelocityGradients();
 
     // Add transpose gradient source term
     if (turbulenceModel_)
     {
-        ScalarField transposeSourceX;
-        ScalarField transposeSourceY;
-        ScalarField transposeSourceZ;
-
-        transposeGradientSource
-        (
-            nuEffFace,
-            transposeSourceX,
-            transposeSourceY,
-            transposeSourceZ
-        );
-
-        // Add transpose gradient contribution to momentum source terms
-        #pragma omp parallel for schedule(static)
-        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
-        {
-            UxSource[cellIdx] += transposeSourceX[cellIdx];
-            UySource[cellIdx] += transposeSourceY[cellIdx];
-            UzSource[cellIdx] += transposeSourceZ[cellIdx];
-        }
+        addTransposeGradientSource();
     }
 
     // Solve momentum equations for each component
@@ -369,9 +335,9 @@ void SIMPLE::solveMomentumEquations()
         .flowRate       = std::cref(RhieChowFlowRatePrev_),
         .convScheme     = std::cref(convectionScheme_.momentum()),
         .Gamma          = std::nullopt,
-        .GammaFace      = std::cref(nuEffFace),
-        .source         = UxSource,
-        .gradPhi        = gradUx,
+        .GammaFace      = std::cref(nuEffFace_),
+        .source         = UxSource_,
+        .gradPhi        = gradUx_,
         .gradScheme     = gradientScheme_
     };
     solveMomentumEquation(equationUx, UxPrev_);
@@ -383,9 +349,9 @@ void SIMPLE::solveMomentumEquations()
         .flowRate       = std::cref(RhieChowFlowRatePrev_),
         .convScheme     = std::cref(convectionScheme_.momentum()),
         .Gamma          = std::nullopt,
-        .GammaFace      = std::cref(nuEffFace),
-        .source         = UySource,
-        .gradPhi        = gradUy,
+        .GammaFace      = std::cref(nuEffFace_),
+        .source         = UySource_,
+        .gradPhi        = gradUy_,
         .gradScheme     = gradientScheme_
     };
     solveMomentumEquation(equationUy, UyPrev_);
@@ -397,9 +363,9 @@ void SIMPLE::solveMomentumEquations()
         .flowRate       = std::cref(RhieChowFlowRatePrev_),
         .convScheme     = std::cref(convectionScheme_.momentum()),
         .Gamma          = std::nullopt,
-        .GammaFace      = std::cref(nuEffFace),
-        .source         = UzSource,
-        .gradPhi        = gradUz,
+        .GammaFace      = std::cref(nuEffFace_),
+        .source         = UzSource_,
+        .gradPhi        = gradUz_,
         .gradScheme     = gradientScheme_
     };
     solveMomentumEquation(equationUz, UzPrev_);
@@ -505,12 +471,9 @@ void SIMPLE::solvePressureCorrection()
 {
     const size_t numCells = mesh_.numCells();
 
-    VectorField gradPCorrPrecomputed;
-    gradientScheme_.fieldGradient(Field::pCorr, pCorr_, gradPCorrPrecomputed);
+    gradientScheme_.fieldGradient(Field::pCorr, pCorr_, gradPCorrPrecomputed_);
 
     // Compute mass imbalance source term
-    ScalarField massImbalance;
-
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
@@ -523,7 +486,7 @@ void SIMPLE::solvePressureCorrection()
             net += signs[j] * RhieChowFlowRate_[faceIndices[j]];
         }
 
-        massImbalance[cellIdx] = -net;
+        massImbalance_[cellIdx] = -net;
     }
 
     TransportEquation equationPCorr
@@ -534,8 +497,8 @@ void SIMPLE::solvePressureCorrection()
         .convScheme = std::nullopt,
         .Gamma      = std::nullopt,
         .GammaFace  = std::cref(DUf_),
-        .source     = massImbalance,
-        .gradPhi    = gradPCorrPrecomputed,
+        .source     = massImbalance_,
+        .gradPhi    = gradPCorrPrecomputed_,
         .gradScheme = gradientScheme_
     };
 
@@ -720,16 +683,13 @@ void SIMPLE::solveTurbulence()
     {
         const size_t numCells = mesh_.numCells();
 
-        VectorField gradUx;
-        VectorField gradUy;
-        VectorField gradUz;
-        updateVelocityGradients(gradUx, gradUy, gradUz);
+        updateVelocityGradients();
 
         const auto& kField = turbulenceModel_->k();
         const auto& omegaField = turbulenceModel_->omega();
 
-        ScalarField kPrev = kField;
-        ScalarField omegaPrev = omegaField;
+        kPrev_ = kField;
+        omegaPrev_ = omegaField;
 
         turbulenceModel_->solve(Ux_, Uy_, Uz_, RhieChowFlowRate_, gradU_);
 
@@ -743,13 +703,13 @@ void SIMPLE::solveTurbulence()
             reduction(+:kDiffSq, kPrevSq, omDiffSq, omPrevSq)
         for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
-            const Scalar dk = kField[cellIdx] - kPrev[cellIdx];
+            const Scalar dk = kField[cellIdx] - kPrev_[cellIdx];
             kDiffSq += dk * dk;
-            kPrevSq += kPrev[cellIdx] * kPrev[cellIdx];
+            kPrevSq += kPrev_[cellIdx] * kPrev_[cellIdx];
 
-            const Scalar dw = omegaField[cellIdx] - omegaPrev[cellIdx];
+            const Scalar dw = omegaField[cellIdx] - omegaPrev_[cellIdx];
             omDiffSq += dw * dw;
-            omPrevSq += omegaPrev[cellIdx] * omegaPrev[cellIdx];
+            omPrevSq += omegaPrev_[cellIdx] * omegaPrev_[cellIdx];
         }
 
         lastKResidual_ =
@@ -919,13 +879,7 @@ Scalar SIMPLE::pressureResidual() const noexcept
 }
 
 
-void SIMPLE::transposeGradientSource
-(
-    const FaceData<Scalar>& nuEffFace,
-    ScalarField& transposeSourceX,
-    ScalarField& transposeSourceY,
-    ScalarField& transposeSourceZ
-) const
+void SIMPLE::addTransposeGradientSource()
 {
     const size_t numCells = mesh_.numCells();
 
@@ -948,7 +902,7 @@ void SIMPLE::transposeGradientSource
 
             const Vector Sf =
                 face.normal() * face.projectedArea() * sign;
-            const Scalar nuEfff = nuEffFace[faceIdx];
+            const Scalar nuEfff = nuEffFace_[faceIdx];
 
             Tensor gradUf;
             if (face.isBoundary())
@@ -965,9 +919,9 @@ void SIMPLE::transposeGradientSource
             sumZ += nuEfff * dot(gradUf.col(2), Sf);
         }
 
-        transposeSourceX[cellIdx] = sumX;
-        transposeSourceY[cellIdx] = sumY;
-        transposeSourceZ[cellIdx] = sumZ;
+        UxSource_[cellIdx] += sumX;
+        UySource_[cellIdx] += sumY;
+        UzSource_[cellIdx] += sumZ;
     }
 }
 

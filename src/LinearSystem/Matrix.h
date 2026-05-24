@@ -125,6 +125,12 @@ private:
     /// Triplet storage for efficient sparse matrix assembly
     std::vector<Eigen::Triplet<Scalar>> tripletList_;
 
+    /// Per-thread triplet lists for parallel face-assembly
+    std::vector<std::vector<Eigen::Triplet<Scalar>>> perThreadTriplets_;
+
+    /// Per-thread RHS contributions for parallel face-assembly scatter.
+    std::vector<Vec> perThreadB_;
+
     /// Cached face counts for triplet list reservation
     size_t numInternalFaces_ = 0;
     size_t numBoundaryFaces_ = 0;

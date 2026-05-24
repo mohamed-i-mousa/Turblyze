@@ -275,10 +275,10 @@ private:
     /// Mass flux from previous iteration
     FaceFluxField RhieChowFlowRatePrev_;
 
-    /// Cell diffusion coefficients for momentum
+    /// Momentum diagonal coefficients
     ScalarField DU_;
 
-    /// Face diffusion coefficients for momentum
+    /// Face Momentum diagonal coefficients
     FaceFluxField DUf_;
 
     /// Flag to allow one-time computation of DU_
@@ -294,6 +294,40 @@ private:
 
     /// Velocity gradient tensor field
     TensorField gradU_;
+
+    /// Per-component velocity gradients
+    VectorField gradUx_;
+    VectorField gradUy_;
+    VectorField gradUz_;
+
+    /// Pressure-correction gradient
+    VectorField gradPCorrPrecomputed_;
+
+// Momentum assembly fields
+
+    /// Effective viscosity (laminar + turbulent)
+    ScalarField nuEff_;
+
+    /// Effective viscosity at face centres
+    FaceData<Scalar> nuEffFace_;
+
+    /// Momentum source terms
+    ScalarField UxSource_;
+    ScalarField UySource_;
+    ScalarField UzSource_;
+
+// Pressure-correction assembly fields
+
+    /// Mass imbalance source for pressure correction
+    ScalarField massImbalance_;
+
+// Turbulence residual fields
+
+    /// Previous-iteration turbulence fields used for residual computation
+    ScalarField kPrev_;
+    ScalarField omegaPrev_;
+
+// Matrix and solver fields
 
     /// Matrix constructor and solver object
     std::unique_ptr<Matrix> matrixConstruct_ = nullptr;
@@ -352,13 +386,9 @@ private:
 
 // Private methods
 
-    /// Compute limited velocity gradients and assemble gradU_
-    void updateVelocityGradients
-    (
-        VectorField& gradUx,
-        VectorField& gradUy,
-        VectorField& gradUz
-    );
+    /// Compute limited velocity gradients into gradUx_/gradUy_/gradUz_
+    /// and assemble gradU_
+    void updateVelocityGradients();
 
     /// Compute mass imbalance across domain
     Scalar massImbalance() const noexcept;
@@ -369,15 +399,8 @@ private:
     /// Compute pressure residual
     Scalar pressureResidual() const noexcept;
 
-    /// Calculate transpose gradient source term for momentum equations
-    /// Σf (νEff)f · (∇U)f^T · Sf
-    void transposeGradientSource
-    (
-        const FaceData<Scalar>& nuEffFace,
-        ScalarField& transposeSourceX,
-        ScalarField& transposeSourceY,
-        ScalarField& transposeSourceZ
-    ) const;
+    /// Add Σf (νEff)f · (∇U)f^T · Sf to momentum source terms
+    void addTransposeGradientSource();
 
     /// Solve a single momentum component equation
     void solveMomentumEquation

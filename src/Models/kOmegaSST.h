@@ -283,6 +283,42 @@ private:
     /// Area-weighted wall-function omega per wall cell
     std::vector<Scalar> wallCellOmega_;
 
+    /// Strain-rate magnitude per cell: ||S|| = sqrt(2 S_ij S_ij)
+    ScalarField strainRateMag_;
+
+    /// Velocity divergence per cell
+    ScalarField divUField_;
+
+    /// Cross-diffusion term per cell
+    ScalarField CDkOmega_;
+
+    /// SST blending functions
+    ScalarField f1_;
+    ScalarField f2_;
+    ScalarField f3_;
+    ScalarField f23_;
+
+    /// Effective diffusivities for the k and omega transport equations
+    ScalarField GammaK_;
+    ScalarField GammaOmega_;
+
+    /// Source-term scratch (kept zero; consumed by Matrix::buildMatrix)
+    ScalarField kSource_;
+    ScalarField omegaSource_;
+
+    /// Cell gradients of k and omega
+    VectorField gradK_;
+    VectorField gradOmega_;
+
+    /// Per-cell accumulator of wall-function production contributions
+    ScalarField wallProductionAccum_;
+
+    /// Per-cell flag (0/1) marking cells touched by a wall override
+    std::vector<char> hasWallOverride_;
+
+    /// Per-cell accumulator of area-weighted wall-function omega values
+    std::vector<Scalar> omegaAccum_;
+
     /// Precomputed Cmu^0.25 (avoids repeated std::pow calls)
     const Scalar Cmu25_ = std::sqrt(std::sqrt(coeffs_.betaStar));
 
@@ -349,17 +385,14 @@ private:
     /// Update wall-function nut on wall faces (nutkWallFunction)
     void updateNutWall();
 
-    /// Compute strain rate magnitude from velocity gradient tensor
-    ScalarField strainRate(const TensorField& gradU) const;
+    /// Compute strain rate magnitude into strainRateMag_
+    void strainRate(const TensorField& gradU);
 
-    /// Compute cell velocity divergence from face mass fluxes
-    ScalarField divU(const FaceFluxField& flowRateFace) const;
+    /// Compute cell velocity divergence into divUField_
+    void divU(const FaceFluxField& flowRateFace);
 
-    /// Compute k production term
-    void kProduction
-    (
-        const ScalarField& strainRate
-    );
+    /// Compute k production term into Pk_ (uses strainRateMag_)
+    void kProduction();
 
     /// Update dynamic omega wall-function boundary values per face
     void updateOmegaWallValues();
@@ -367,71 +400,40 @@ private:
     /// Pre-set wall-cell omega to area-weighted wall-function values
     void applyOmegaWallCellValues();
 
-    /// Override k production at wall-adjacent cells
+    /// Override k production at wall-adjacent cells (mutates Pk_)
     void overrideWallCellProduction
     (
         const ScalarField& Ux,
         const ScalarField& Uy,
-        const ScalarField& Uz,
-        ScalarField& productionK
-    ) const;
-
-    /// Compute cross-diffusion term from k and omega gradients
-    ScalarField crossDiffusion
-    (
-        const VectorField& gradK,
-        const VectorField& gradOmega
-    ) const;
-
-    /// Compute F1 blending function
-    ScalarField F1(const ScalarField& CDkOmega) const;
-
-    /// Compute F2 blending function
-    ScalarField F2() const;
-
-    /// Compute F3 blending switch function (optional)
-    ScalarField F3() const;
-
-    /// Compute F23 blending selector
-    ScalarField F23(const ScalarField& f2, const ScalarField& f3) const;
-
-    /// Compute omega production term
-    void omegaProduction
-    (
-        const ScalarField& f1,
-        const ScalarField& strainRate
+        const ScalarField& Uz
     );
 
-    /// Limit production terms for the SST model
-    void limitProduction
-    (
-        ScalarField& productionK,
-        ScalarField& productionOmega,
-        const ScalarField& f1,
-        const ScalarField& f23,
-        const ScalarField& strainRate
-    ) const;
+    /// Compute cross-diffusion term into CDkOmega_ (uses gradK_/gradOmega_)
+    void crossDiffusion();
+
+    /// Compute F1 blending function into f1_ (uses CDkOmega_)
+    void F1();
+
+    /// Compute F2 blending function into f2_
+    void F2();
+
+    /// Compute F3 blending switch function (optional) into f3_
+    void F3();
+
+    /// Compute F23 blending selector into f23_ (uses f2_/f3_)
+    void F23();
+
+    /// Compute omega production into POmega_ (uses f1_/strainRateMag_)
+    void omegaProduction();
+
+    /// Limit Pk_/POmega_ in place using f1_/f23_/strainRateMag_
+    void limitProduction();
 
     /// Solve the omega transport equation
-    void solveOmegaEquation
-    (
-        const FaceFluxField& flowRateFace,
-        const ScalarField& f1,
-        const ScalarField& productionOmega,
-        const ScalarField& CDkOmega,
-        const ScalarField& divUField,
-        const VectorField& gradOmega
-    );
+    void solveOmegaEquation(const FaceFluxField& flowRateFace);
 
     /// Solve the k transport equation
-    void solveKEquation
-    (
-        const FaceFluxField& flowRateFace,
-        const ScalarField& f1,
-        const ScalarField& productionK,
-        const ScalarField& divUField,
-        const VectorField& gradK
-    );
+    void solveKEquation(const FaceFluxField& flowRateFace);
 
     /// Bound omega with viscosity-ratio limit
     void boundOmega();
@@ -439,12 +441,8 @@ private:
     /// Bound k to minimum value
     void boundK();
 
-    /// Update SST turbulent viscosity with limiter
-    void updateTurbulentViscosity
-    (
-        const ScalarField& f23,
-        const ScalarField& strainRate
-    );
+    /// Update SST turbulent viscosity (uses f23_/strainRateMag_)
+    void updateTurbulentViscosity();
 
     /// Update wall shear stress using parallel velocity only
     void updateWallShearStress
