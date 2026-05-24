@@ -1038,10 +1038,10 @@ void CFDApplication::exportResults()
 
     // Determine VTU filename
     std::string vtuFilename = vtkOutputFilename_;
-    const std::string ext = ".vtu";
-    if (!vtuFilename.ends_with(ext))
+    static constexpr std::string_view extension = ".vtu";
+    if (!vtuFilename.ends_with(extension))
     {
-        vtuFilename += ext;
+        vtuFilename += extension;
     }
 
     if (debug_)
