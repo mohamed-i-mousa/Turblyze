@@ -582,7 +582,7 @@ void CFDApplication::setupBoundaryConditions()
                 (
                     patchName,
                     Field::k,
-                    BCType::K_WALL_FUNCTION
+                    BCType::kWallFunction
                 );
             }
             else if (bcType == "zeroGradient")
@@ -624,7 +624,7 @@ void CFDApplication::setupBoundaryConditions()
                         bcManager_.fieldBC(patchName, Field::k);
 
                     const Scalar kValue =
-                        kPatchBC.type() == BCType::FIXED_VALUE
+                        kPatchBC.type() == BCType::fixedValue
                       ? kPatchBC.fixedScalarValue()
                       : kOmegaSST::inletK(initialVelocity_, turbIntensity_);
 
@@ -649,7 +649,7 @@ void CFDApplication::setupBoundaryConditions()
                 (
                     patchName,
                     Field::omega,
-                    BCType::OMEGA_WALL_FUNCTION
+                    BCType::omegaWallFunction
                 );
             }
             else if (bcType == "zeroGradient")
@@ -692,7 +692,7 @@ void CFDApplication::setupBoundaryConditions()
                 (
                     patchName,
                     Field::nut,
-                    BCType::NUT_WALL_FUNCTION
+                    BCType::nutWallFunction
                 );
             }
             else
@@ -1171,19 +1171,19 @@ void CFDApplication::validateWallFunctionSetup() const
 
     for (const auto& patch : mesh_.patches())
     {
-        if (patch.type() != PatchType::WALL) continue;
+        if (patch.type() != PatchType::wall) continue;
 
         const std::string& patchName = patch.patchName();
 
         const bool kIsWF =
             bcManager_.fieldBC(patchName, Field::k).type()
-         == BCType::K_WALL_FUNCTION;
+         == BCType::kWallFunction;
         const bool omegaIsWF =
             bcManager_.fieldBC(patchName, Field::omega).type()
-         == BCType::OMEGA_WALL_FUNCTION;
+         == BCType::omegaWallFunction;
         const bool nutIsWF =
             bcManager_.fieldBC(patchName, Field::nut).type()
-         == BCType::NUT_WALL_FUNCTION;
+         == BCType::nutWallFunction;
 
         const int wfCount = int(kIsWF) + int(omegaIsWF) + int(nutIsWF);
 

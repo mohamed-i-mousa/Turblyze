@@ -156,19 +156,19 @@ private:
     /// Lookup table for Fluent BC type string to enum mapping
     static constexpr BCMapping bcMappings_[] =
     {
-        {"velocity-inlet",   PatchType::VELOCITY_INLET},
-        {"pressure-inlet",   PatchType::PRESSURE_INLET},
-        {"pressure-outlet",  PatchType::PRESSURE_OUTLET},
-        {"wall",             PatchType::WALL},
-        {"symmetry",         PatchType::SYMMETRY},
-        {"periodic",         PatchType::PERIODIC},
-        {"periodic-shadow",  PatchType::PERIODIC},
-        {"mass-flow-inlet",  PatchType::MASS_FLOW_INLET},
-        {"outflow",          PatchType::OUTFLOW},
-        {"interface",        PatchType::INTERFACE},
-        {"interior",         PatchType::INTERIOR},
-        {"solid",            PatchType::SOLID},
-        {"fluid",            PatchType::FLUID}
+        {"velocity-inlet",   PatchType::velocityInlet},
+        {"pressure-inlet",   PatchType::pressureInlet},
+        {"pressure-outlet",  PatchType::pressureOutlet},
+        {"wall",             PatchType::wall},
+        {"symmetry",         PatchType::symmetry},
+        {"periodic",         PatchType::periodic},
+        {"periodic-shadow",  PatchType::periodic},
+        {"mass-flow-inlet",  PatchType::massFlowInlet},
+        {"outflow",          PatchType::outflow},
+        {"interface",        PatchType::interface},
+        {"interior",         PatchType::interior},
+        {"solid",            PatchType::solid},
+        {"fluid",            PatchType::fluid}
     };
 
     /// Map Fluent boundary type string to enumeration

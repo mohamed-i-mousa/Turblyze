@@ -302,14 +302,14 @@ void SIMPLE::solveMomentumEquations()
         {
             const size_t ownerIdx = face.ownerCell();
 
-            // Check for NUT_WALL_FUNCTION BC on wall faces
+            // Check for nutWallFunction BC on wall faces
             if (turbulenceModel_)
             {
                 const BoundaryPatch& patch = face.patch()->get();
                 const BoundaryData& bc =
                     bcManager_.fieldBC(patch.patchName(), Field::nut);
 
-                if (bc.type() == BCType::NUT_WALL_FUNCTION)
+                if (bc.type() == BCType::nutWallFunction)
                 {
                     // Use wall-function nut instead of cell-center nut
                     nuEffFace[faceIdx] =
@@ -415,7 +415,7 @@ void SIMPLE::solveMomentumEquations()
             const BoundaryData& bc =
                 bcManager_.fieldBC(face.patch()->get().patchName(), Field::p);
 
-            if (bc.type() == BCType::FIXED_VALUE)
+            if (bc.type() == BCType::fixedValue)
             {
                 // Fixed pressure boundary: normal pressure-velocity coupling
                 DUf_[faceIdx] = DU_[face.ownerCell()];
@@ -675,8 +675,8 @@ void SIMPLE::correctFlowRate()
 
             if
             (
-                bc.type() == BCType::FIXED_VALUE
-             || bc.type() == BCType::ZERO_GRADIENT
+                bc.type() == BCType::fixedValue
+             || bc.type() == BCType::zeroGradient
             )
             {
                 continue;

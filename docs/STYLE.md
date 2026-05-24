@@ -192,6 +192,10 @@ std::cerr << "\n" << "Error: " << msg << "\n";
 - **Member variables**: camelCase with trailing underscore (e.g., `tolerance_`, `fieldName_`)
 - **Local variables**: camelCase (e.g., `cellVolume`, `faceArea`)
 - **Type aliases**: PascalCase (e.g., `VectorField`, `ScalarField`)
+- **Enum class names**: PascalCase (e.g., `Field`, `BCType`, `PatchType`)
+- **Enumerators**: lowerCamelCase (e.g., `Field::Ux`, `BCType::fixedValue`,
+  `PatchType::wall`). Avoid `ALL_CAPS` — it collides with preprocessor macros
+  (C++ Core Guidelines Enum.5). Prefer `enum class` over plain `enum` (Enum.3).
 
 ## Special Member Functions
 

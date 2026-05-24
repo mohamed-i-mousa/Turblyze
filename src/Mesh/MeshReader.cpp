@@ -680,7 +680,7 @@ PatchType MeshReader::mapFluentBCToEnum(std::string_view fluentType)
       + std::string(fluentType)
     );
 
-    return PatchType::UNDEFINED;
+    return PatchType::undefined;
 }
 
 

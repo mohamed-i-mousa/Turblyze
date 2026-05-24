@@ -156,27 +156,27 @@ Scalar BoundaryConditions::boundaryFaceValue
     using enum BCType;
     switch (bc.type())
     {
-        case NO_SLIP:
+        case noSlip:
         {
             return S(0.0);
         }
         
-        case FIXED_VALUE:
+        case fixedValue:
         {
             // Fixed value: φf = φb
             return bc.fixedScalarValue();
         }
 
-        case K_WALL_FUNCTION:
-        case OMEGA_WALL_FUNCTION:
-        case NUT_WALL_FUNCTION:
-        case ZERO_GRADIENT:
+        case kWallFunction:
+        case omegaWallFunction:
+        case nutWallFunction:
+        case zeroGradient:
         {
             // Zero gradient: φf = φP
             return phi[face.ownerCell()];
         }
 
-        case FIXED_GRADIENT:
+        case fixedGradient:
         {
             // Fixed gradient: φf = φP + grad * distance
             const Scalar dn = dot(face.dPf(), face.normal());
@@ -186,7 +186,7 @@ Scalar BoundaryConditions::boundaryFaceValue
               + bc.fixedScalarGradient() * dn;
         }
 
-        case UNDEFINED:
+        case undefined:
         default:
         {
             FatalError
@@ -339,30 +339,30 @@ void BoundaryConditions::printSummary() const
 
                 if
                 (
-                    fbc.type() == BCType::FIXED_VALUE
-                 || fbc.type() == BCType::NO_SLIP
+                    fbc.type() == BCType::fixedValue
+                 || fbc.type() == BCType::noSlip
                 )
                 {
                     std::cout
                         << ", Value: "
                         << fbc.fixedScalarValue();
                 }
-                else if (fbc.type() == BCType::FIXED_GRADIENT)
+                else if (fbc.type() == BCType::fixedGradient)
                 {
                     std::cout
                         << ", Gradient: "
                         << fbc.fixedScalarGradient();
                 }
-                else if (fbc.type() == BCType::ZERO_GRADIENT)
+                else if (fbc.type() == BCType::zeroGradient)
                 {
                     std::cout
                         << " (implies zero gradient)";
                 }
                 else if
                 (
-                    fbc.type() == BCType::K_WALL_FUNCTION
-                 || fbc.type() == BCType::OMEGA_WALL_FUNCTION
-                 || fbc.type() == BCType::NUT_WALL_FUNCTION
+                    fbc.type() == BCType::kWallFunction
+                 || fbc.type() == BCType::omegaWallFunction
+                 || fbc.type() == BCType::nutWallFunction
                 )
                 {
                     std::cout

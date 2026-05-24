@@ -22,19 +22,19 @@
 
 enum class PatchType
 {
-    VELOCITY_INLET,         ///< Velocity inlet boundary
-    PRESSURE_INLET,         ///< Pressure inlet boundary
-    PRESSURE_OUTLET,        ///< Pressure outlet boundary
-    WALL,                   ///< Wall boundary
-    SYMMETRY,               ///< Symmetry boundary
-    PERIODIC,               ///< Periodic boundary
-    MASS_FLOW_INLET,        ///< Mass flow inlet boundary
-    OUTFLOW,                ///< Outflow boundary
-    INTERFACE,              ///< Interface boundary
-    INTERIOR,               ///< Interior boundary
-    SOLID,                  ///< Solid boundary
-    FLUID,                  ///< Fluid boundary
-    UNDEFINED               ///< Undefined boundary type
+    velocityInlet,          ///< Velocity inlet boundary
+    pressureInlet,          ///< Pressure inlet boundary
+    pressureOutlet,         ///< Pressure outlet boundary
+    wall,                   ///< Wall boundary
+    symmetry,               ///< Symmetry boundary
+    periodic,               ///< Periodic boundary
+    massFlowInlet,          ///< Mass flow inlet boundary
+    outflow,                ///< Outflow boundary
+    interface,              ///< Interface boundary
+    interior,               ///< Interior boundary
+    solid,                  ///< Solid boundary
+    fluid,                  ///< Fluid boundary
+    undefined               ///< Undefined boundary type
 };
 
 
@@ -106,7 +106,7 @@ private:
     std::string patchName_;
 
     /// Mapped boundary condition type
-    PatchType type_ = PatchType::UNDEFINED;
+    PatchType type_ = PatchType::undefined;
 
     /// Zone identifier from mesh file
     size_t zoneIdx_;

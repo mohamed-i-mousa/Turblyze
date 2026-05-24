@@ -238,7 +238,7 @@ void kOmegaSST::updateWallDistance()
 
         const BoundaryPatch& patch = face.patch()->get();
 
-        if (patch.type() != PatchType::WALL) continue;
+        if (patch.type() != PatchType::wall) continue;
 
         const size_t cellIdx = face.ownerCell();
         const Vector cellCenter = mesh_.cells()[cellIdx].centroid();
@@ -325,11 +325,11 @@ void kOmegaSST::wallFunctionWeights()
         if (!face.isBoundary()) continue;
 
         const BoundaryPatch& patch = face.patch()->get();
-        if (patch.type() != PatchType::WALL) continue;
+        if (patch.type() != PatchType::wall) continue;
 
         const BoundaryData& bc =
             bcManager_.fieldBC(patch.patchName(), Field::omega);
-        if (bc.type() != BCType::OMEGA_WALL_FUNCTION) continue;
+        if (bc.type() != BCType::omegaWallFunction) continue;
 
         wallFunctionFaceIndices_.push_back(faceIdx);
 
@@ -379,7 +379,7 @@ void kOmegaSST::wallFunctionWeights()
 
             const auto& patch = face.patch();
             if (patch.has_value()
-                && patch->get().type() == PatchType::WALL)
+                && patch->get().type() == PatchType::wall)
             {
                 totalPolyWallArea[cellIdx] += face.projectedArea();
             }

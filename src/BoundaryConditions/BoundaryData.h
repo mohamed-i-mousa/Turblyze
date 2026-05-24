@@ -11,7 +11,7 @@
  *
  * @class BoundaryData
  * - Type-safe storage for BC parameters (scalar values, gradients)
- * - Enumerations for supported BC types (FIXED_VALUE, ZERO_GRADIENT, etc.)
+ * - Enumerations for supported BC types (fixedValue, zeroGradient, etc.)
  * - Validation logic to ensure data consistency
  * - Conditional accessors based on the active configuration
  *****************************************************************************/
@@ -25,14 +25,14 @@
 
 enum class BCType
 {
-    FIXED_VALUE,            ///< Fixed value (Dirichlet) boundary condition
-    FIXED_GRADIENT,         ///< Fixed gradient (Neumann) boundary condition
-    ZERO_GRADIENT,          ///< Zero gradient boundary condition
-    NO_SLIP,                ///< No-slip wall boundary condition
-    K_WALL_FUNCTION,        ///< kWallFunction-like boundary condition
-    OMEGA_WALL_FUNCTION,    ///< omegaWallFunction-like boundary condition
-    NUT_WALL_FUNCTION,      ///< nutWallFunction-like boundary condition
-    UNDEFINED               ///< Undefined boundary condition type
+    fixedValue,             ///< Fixed value (Dirichlet) boundary condition
+    fixedGradient,          ///< Fixed gradient (Neumann) boundary condition
+    zeroGradient,           ///< Zero gradient boundary condition
+    noSlip,                 ///< No-slip wall boundary condition
+    kWallFunction,          ///< kWallFunction-like boundary condition
+    omegaWallFunction,      ///< omegaWallFunction-like boundary condition
+    nutWallFunction,        ///< nutWallFunction-like boundary condition
+    undefined               ///< Undefined boundary condition type
 };
 
 
@@ -62,10 +62,10 @@ public:
     /// Get boundary condition type
     [[nodiscard]] BCType type() const noexcept { return type_; }
 
-    /// Get fixed scalar value (FIXED_VALUE or NO_SLIP)
+    /// Get fixed scalar value (fixedValue or noSlip)
     [[nodiscard]] Scalar fixedScalarValue() const noexcept;
 
-    /// Get fixed scalar gradient (FIXED_GRADIENT)
+    /// Get fixed scalar gradient (fixedGradient)
     [[nodiscard]] Scalar fixedScalarGradient() const noexcept;
 
 private:
@@ -73,7 +73,7 @@ private:
 // Private members
 
     /// Boundary condition type
-    BCType type_ = BCType::UNDEFINED;
+    BCType type_ = BCType::undefined;
 
     /// Scalar boundary value
     Scalar scalarValue_ = S(0.0);

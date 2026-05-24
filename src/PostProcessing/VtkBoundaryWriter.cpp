@@ -50,7 +50,7 @@ void writeWallBoundaryData
 
         const auto& patch = face.patch();
 
-        if (patch.has_value() && patch->get().type() == PatchType::WALL)
+        if (patch.has_value() && patch->get().type() == PatchType::wall)
         {
             wallFaceIndices.push_back(faceIdx);
         }

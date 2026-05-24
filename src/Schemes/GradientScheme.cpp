@@ -396,12 +396,12 @@ Vector GradientScheme::boundaryFaceGradient
     using enum BCType;
     switch (bc.type())
     {
-        case NO_SLIP:
-        case FIXED_VALUE:
+        case noSlip:
+        case fixedValue:
         {
-            Scalar boundaryValue = S(0.0);  // Default for NO_SLIP
+            Scalar boundaryValue = S(0.0);  // Default for noSlip
 
-            if (bc.type() == FIXED_VALUE)
+            if (bc.type() == fixedValue)
             {
                 boundaryValue = bc.fixedScalarValue();
             }
@@ -421,16 +421,16 @@ Vector GradientScheme::boundaryFaceGradient
             return tangentialGradient + normalGradient * face.normal();
         }
 
-        case K_WALL_FUNCTION:
-        case NUT_WALL_FUNCTION:
-        case OMEGA_WALL_FUNCTION:
-        case ZERO_GRADIENT:
+        case kWallFunction:
+        case nutWallFunction:
+        case omegaWallFunction:
+        case zeroGradient:
         {
             // Zero normal gradient: retain only tangential
             return tangentialGradient;
         }
 
-        case FIXED_GRADIENT:
+        case fixedGradient:
         {
             const Scalar specifiedGradient = bc.fixedScalarGradient();
 

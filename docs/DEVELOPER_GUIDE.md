@@ -111,13 +111,13 @@ Notes:
 
 ### BoundaryData Implementation
 **Supported BC Types**:
-- `FIXED_VALUE`: Dirichlet boundary conditions
-- `FIXED_GRADIENT`: Neumann boundary conditions
-- `ZERO_GRADIENT`: Natural boundary conditions
-- `NO_SLIP`: Special case for velocity (each component fixed to 0)
-- `K_WALL_FUNCTION`: Wall function for turbulent kinetic energy
-- `OMEGA_WALL_FUNCTION`: Wall function for specific dissipation rate
-- `NUT_WALL_FUNCTION`: Wall function for turbulent viscosity
+- `fixedValue`: Dirichlet boundary conditions
+- `fixedGradient`: Neumann boundary conditions
+- `zeroGradient`: Natural boundary conditions
+- `noSlip`: Special case for velocity (each component fixed to 0)
+- `kWallFunction`: Wall function for turbulent kinetic energy
+- `omegaWallFunction`: Wall function for specific dissipation rate
+- `nutWallFunction`: Wall function for turbulent viscosity
 
 **Value Storage**:
 - Scalar-only — one `scalarValue_`, one `scalarGradient_`; there is no
@@ -135,11 +135,11 @@ Notes:
 
 ### BC Evaluation Logic
 **Scalar Boundary Values**:
-- **FIXED_VALUE**: `φf = φBoundary`
-- **ZERO_GRADIENT**: `φf = φOwner`  
-- **FIXED_GRADIENT**: `φf = φOwner + gradient × dn`
+- **fixedValue**: `φf = φBoundary`
+- **zeroGradient**: `φf = φOwner`  
+- **fixedGradient**: `φf = φOwner + gradient × dn`
   where `dn = dot(dPf, faceNormal)`
-- **NO_SLIP**: `φf = 0` (velocity components `Ux`/`Uy`/`Uz`)
+- **noSlip**: `φf = 0` (velocity components `Ux`/`Uy`/`Uz`)
 
 **Fallbacks**:
 - Missing BC specifications default to zero-gradient
@@ -180,14 +180,14 @@ Notes:
 #### Boundary Face Gradients (`boundaryFaceGradient`)
 **Approach**: Normal/tangential decomposition
 
-**FIXED_VALUE BC**:
+**fixedValue BC**:
 1. Calculate normal gradient: `∂φ/∂n = (φ_boundary - φ_cell)/d_n`
 2. Extract tangential components: `∇φ_tan = ∇φ_cell - (∇φ_cell·n)n`
 3. Combine: `∇φ_f = ∇φ_tan + (∂φ/∂n)n`
 
-**ZERO_GRADIENT BC**: `∇φ_f = ∇φ_cell`
+**zeroGradient BC**: `∇φ_f = ∇φ_cell`
 
-**FIXED_GRADIENT BC**: 
+**fixedGradient BC**: 
 1. Extract tangential: `∇φ_tan = ∇φ_cell - (∇φ_cell·n)n`
 2. Apply normal gradient: `∇φ_f = ∇φ_tan + gradient_specified×n`
 
@@ -270,7 +270,7 @@ struct TransportEquation
   - **Pressure correction**: face-based diffusion via `GammaFace` (DUf), no convection (flowRate = nullopt)
   - **Turbulence k/omega**: convection + diffusion
 - Internal faces: assembles diffusion and convection with non-orthogonal correction
-- Boundary faces: handles FIXED_VALUE, ZERO_GRADIENT, NO_SLIP, and wall function types
+- Boundary faces: handles fixedValue, zeroGradient, noSlip, and wall function types
 - Deferred-correction for CDS/SOU added to RHS
 
 ### Under-relaxation

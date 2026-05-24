@@ -309,14 +309,14 @@ void Matrix::assembleBoundaryFace
     using enum BCType;
     if
     (
-        bc.type() == FIXED_VALUE
-     || bc.type() == NO_SLIP
+        bc.type() == fixedValue
+     || bc.type() == noSlip
     )
     {
         // Dirichlet BC: phiB is prescribed
         Scalar phiB = S(0.0);
 
-        if (bc.type() != NO_SLIP)
+        if (bc.type() != noSlip)
         {
             phiB = bc.fixedScalarValue();
         }
@@ -333,7 +333,7 @@ void Matrix::assembleBoundaryFace
         }
 
     }
-    else if (bc.type() == FIXED_GRADIENT)
+    else if (bc.type() == fixedGradient)
     {
         const Scalar gradient = bc.fixedScalarGradient(); 
         const Scalar dn = dot(face.dPf(), face.normal());
@@ -352,10 +352,10 @@ void Matrix::assembleBoundaryFace
     }
     else if
     (
-        bc.type() == ZERO_GRADIENT
-     || bc.type() == K_WALL_FUNCTION
-     || bc.type() == NUT_WALL_FUNCTION
-     || bc.type() == OMEGA_WALL_FUNCTION
+        bc.type() == zeroGradient
+     || bc.type() == kWallFunction
+     || bc.type() == nutWallFunction
+     || bc.type() == omegaWallFunction
     )
     {
         // Zero normal gradient: only convection

@@ -11,28 +11,28 @@
 
 void BoundaryData::setFixedValue(Scalar scalarValue) noexcept
 {
-    type_ = BCType::FIXED_VALUE;
+    type_ = BCType::fixedValue;
     scalarValue_ = scalarValue;
 }
 
 
 void BoundaryData::setFixedGradient(Scalar scalarGradient) noexcept
 {
-    type_ = BCType::FIXED_GRADIENT;
+    type_ = BCType::fixedGradient;
     scalarGradient_ = scalarGradient;
 }
 
 
 void BoundaryData::setZeroGradient() noexcept
 {
-    type_ = BCType::ZERO_GRADIENT;
+    type_ = BCType::zeroGradient;
     scalarGradient_ = S(0.0);
 }
 
 
 void BoundaryData::setNoSlip() noexcept
 {
-    type_ = BCType::NO_SLIP;
+    type_ = BCType::noSlip;
     scalarValue_ = S(0.0);
 }
 
@@ -46,7 +46,7 @@ void BoundaryData::setWallFunctionType(BCType wallType) noexcept
 
 Scalar BoundaryData::fixedScalarValue() const noexcept
 {
-    if (type_ == BCType::FIXED_VALUE || type_ == BCType::NO_SLIP)
+    if (type_ == BCType::fixedValue || type_ == BCType::noSlip)
     {
         return scalarValue_;
     }
@@ -54,14 +54,14 @@ Scalar BoundaryData::fixedScalarValue() const noexcept
     FatalError
     (
         "Attempted to get fixed scalar value, but BC is not set to "
-        "FIXED_VALUE or NO_SLIP."
+        "fixedValue or noSlip."
     );
 }
 
 
 Scalar BoundaryData::fixedScalarGradient() const noexcept
 {
-    if (type_ == BCType::FIXED_GRADIENT)
+    if (type_ == BCType::fixedGradient)
     {
         return scalarGradient_;
     }
@@ -69,7 +69,7 @@ Scalar BoundaryData::fixedScalarGradient() const noexcept
     FatalError
     (
         "Attempted to get fixed scalar gradient, "
-        "but BC is not set to FIXED_GRADIENT."
+        "but BC is not set to fixedGradient."
     );
 }
 
@@ -80,14 +80,14 @@ std::string_view bcTypeToString(BCType bctype) noexcept
     using enum BCType;
     switch (bctype)
     {
-        case UNDEFINED:           return "UNDEFINED";
-        case FIXED_VALUE:         return "FIXED_VALUE";
-        case FIXED_GRADIENT:      return "FIXED_GRADIENT";
-        case ZERO_GRADIENT:       return "ZERO_GRADIENT";
-        case NO_SLIP:             return "NO_SLIP";
-        case K_WALL_FUNCTION:     return "K_WALL_FUNCTION";
-        case OMEGA_WALL_FUNCTION: return "OMEGA_WALL_FUNCTION";
-        case NUT_WALL_FUNCTION:   return "NUT_WALL_FUNCTION";
+        case undefined:         return "undefined";
+        case fixedValue:        return "fixedValue";
+        case fixedGradient:     return "fixedGradient";
+        case zeroGradient:      return "zeroGradient";
+        case noSlip:            return "noSlip";
+        case kWallFunction:     return "kWallFunction";
+        case omegaWallFunction: return "omegaWallFunction";
+        case nutWallFunction:   return "nutWallFunction";
     }
 
     FatalError("Corrupted BCType value");
