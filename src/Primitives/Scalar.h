@@ -26,14 +26,6 @@
 #endif
 
 
-/// Numerical tolerances
-constexpr Scalar smallValue = std::numeric_limits<Scalar>::epsilon();
-
-constexpr Scalar vSmallValue = std::numeric_limits<Scalar>::min();
-
-constexpr Scalar largeValue = Scalar(1.0) / smallValue;
-
-
 /// Numeric types that may be converted to Scalar via S()
 template<typename T>
 concept ScalarLiteral =
@@ -50,3 +42,11 @@ template<ScalarLiteral T>
 {
     return static_cast<Scalar>(value);
 }
+
+
+/// Numerical tolerances
+constexpr Scalar smallValue = std::numeric_limits<Scalar>::epsilon();
+
+constexpr Scalar vSmallValue = std::numeric_limits<Scalar>::min();
+
+constexpr Scalar largeValue = S(1.0) / smallValue;

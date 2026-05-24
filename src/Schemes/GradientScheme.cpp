@@ -399,24 +399,22 @@ Vector GradientScheme::boundaryFaceGradient
         case noSlip:
         case fixedValue:
         {
-            Scalar boundaryValue = S(0.0);  // Default for noSlip
+            const Scalar boundaryValue =
+                (bc.type() == fixedValue)
+              ? bc.fixedScalarValue()
+              : S(0.0);
 
-            if (bc.type() == fixedValue)
-            {
-                boundaryValue = bc.fixedScalarValue();
-            }
             const Scalar cellValue = phi[face.ownerCell()];
             const Scalar dn = dot(face.dPf(), face.normal());
             const Scalar dPfMag = face.dPfMag();
-            
+
             // Stabilization: clamp dn to minNormalFraction_ * ||dPf||
             const Scalar dnStabilized =
                 std::max(dn, minNormalFraction_ * dPfMag);
 
             // ∂φ/∂n = (φ_boundary - φ_cell) / dnStabilized
             const Scalar normalGradient =
-                (boundaryValue - cellValue)
-              / dnStabilized;
+                (boundaryValue - cellValue) / dnStabilized;
 
             return tangentialGradient + normalGradient * face.normal();
         }

@@ -962,7 +962,7 @@ void CFDApplication::postProcess()
     // Calculate velocity magnitude
     const ScalarField velocityMag = VTK::velocityMagnitude(Ux, Uy, Uz);
 
-    if (Ux.size() == 0)
+    if (Ux.empty())
     {
         Warning("Solution fields are empty. Skipping statistics.");
         return;

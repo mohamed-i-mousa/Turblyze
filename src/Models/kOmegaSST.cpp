@@ -187,7 +187,7 @@ Scalar kOmegaSST::inletK
 ) noexcept
 {
     const Scalar uPrime = turbulenceIntensity * magnitude(velocity);
-    return std::max(S(1.5) * uPrime * uPrime, S(1e-8));
+    return std::max(S(1.5) * uPrime * uPrime, smallValue);
 }
 
 
@@ -203,7 +203,7 @@ Scalar kOmegaSST::inletOmega
         std::sqrt(std::max(k, S(0.0)))
       / (std::pow(coeffs_.betaStar, S(0.25)) * lengthScale);
 
-    return std::max(omegaValue, S(1e-4));
+    return std::max(omegaValue, smallValue);
 }
 
 // ****************************** Private Methods *****************************
@@ -257,7 +257,7 @@ void kOmegaSST::updateWallDistance()
     // Iterative propagation: carry wall-point coordinates through
     // internal faces so each cell computes its own Euclidean distance
     const size_t maxIterations = 100;
-    const Scalar tolerance = S(1e-12);
+    const Scalar tolerance = smallValue;
 
     for (size_t iter = 0; iter < maxIterations; ++iter)
     {
@@ -354,7 +354,7 @@ void kOmegaSST::wallFunctionWeights()
         y_[face.idx()] = std::max
         (
             std::abs(dot(face.dPf(), face.normal())),
-            minWallDist_
+            vSmallValue
         );
     }
 
@@ -581,7 +581,7 @@ void kOmegaSST::applyOmegaWallCellValues()
     for (size_t i = 0; i < wallCellIndices_.size(); ++i)
     {
         const size_t cellIdx = wallCellIndices_[i];
-        wallCellOmega_[i] = std::max(omegaAccum[cellIdx], omegaMin_);
+        wallCellOmega_[i] = std::max(omegaAccum[cellIdx], smallValue);
 
         const Scalar f = wallCellFraction_[i];
         omega_[cellIdx] = std::lerp(omega_[cellIdx], wallCellOmega_[i], f);
@@ -672,7 +672,7 @@ ScalarField kOmegaSST::crossDiffusion
         CD[cellIdx] =
             S(2.0) * coeffs_.sigmaOmega2
           * dot(gradK[cellIdx], gradOmega[cellIdx])
-          / std::max(omega_[cellIdx], omegaMin_);
+          / std::max(omega_[cellIdx], smallValue);
     }
 
     return CD;
@@ -682,6 +682,7 @@ ScalarField kOmegaSST::crossDiffusion
 ScalarField kOmegaSST::F1(const ScalarField& CDkOmega) const
 {
     const size_t numCells = mesh_.numCells();
+    constexpr Scalar CDkOmegaMin = S(1e-10);
     ScalarField f1;
 
     #pragma omp parallel for schedule(static)
@@ -691,7 +692,7 @@ ScalarField kOmegaSST::F1(const ScalarField& CDkOmega) const
         const Scalar sqrtK = std::sqrt(k_[cellIdx]);
 
         // Cross-diffusion clipped to positive
-        const Scalar CDkw = std::max(CDkOmega[cellIdx], S(1e-10));
+        const Scalar CDkw = std::max(CDkOmega[cellIdx], CDkOmegaMin);
 
         const Scalar arg1 =
             std::min
@@ -757,7 +758,7 @@ ScalarField kOmegaSST::F3() const
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        const Scalar y = std::max(wallDistance_[cellIdx], S(1e-12));
+        const Scalar y = std::max(wallDistance_[cellIdx], vSmallValue);
 
         const Scalar arg3 =
             std::min
@@ -1085,7 +1086,7 @@ void kOmegaSST::boundOmega()
             k_[cellIdx] / (maxViscosityRatio_ * nu_ + vSmallValue);
 
         omega_[cellIdx] =
-            std::max(omega_[cellIdx], std::max(omegaMin_, omegaLowerBound));
+            std::max(omega_[cellIdx], std::max(smallValue, omegaLowerBound));
     }
 }
 
@@ -1097,7 +1098,7 @@ void kOmegaSST::boundK()
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        k_[cellIdx] = std::max(k_[cellIdx], kMin_);
+        k_[cellIdx] = std::max(k_[cellIdx], smallValue);
     }
 }
 

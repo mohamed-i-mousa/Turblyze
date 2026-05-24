@@ -337,36 +337,36 @@ void BoundaryConditions::printSummary() const
                     << "': Type: "
                     << bcTypeToString(fbc.type());
 
-                if
-                (
-                    fbc.type() == BCType::fixedValue
-                 || fbc.type() == BCType::noSlip
-                )
+                using enum BCType;
+                switch (fbc.type())
                 {
-                    std::cout
-                        << ", Value: "
-                        << fbc.fixedScalarValue();
-                }
-                else if (fbc.type() == BCType::fixedGradient)
-                {
-                    std::cout
-                        << ", Gradient: "
-                        << fbc.fixedScalarGradient();
-                }
-                else if (fbc.type() == BCType::zeroGradient)
-                {
-                    std::cout
-                        << " (implies zero gradient)";
-                }
-                else if
-                (
-                    fbc.type() == BCType::kWallFunction
-                 || fbc.type() == BCType::omegaWallFunction
-                 || fbc.type() == BCType::nutWallFunction
-                )
-                {
-                    std::cout
-                        << " (wall function)";
+                    case fixedValue:
+                    case noSlip:
+                        std::cout
+                            << ", Value: "
+                            << fbc.fixedScalarValue();
+                        break;
+
+                    case fixedGradient:
+                        std::cout
+                            << ", Gradient: "
+                            << fbc.fixedScalarGradient();
+                        break;
+
+                    case zeroGradient:
+                        std::cout
+                            << " (implies zero gradient)";
+                        break;
+
+                    case kWallFunction:
+                    case omegaWallFunction:
+                    case nutWallFunction:
+                        std::cout
+                            << " (wall function)";
+                        break;
+
+                    case undefined:
+                        break;
                 }
 
                 std::cout

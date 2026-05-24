@@ -108,9 +108,9 @@ public:
     {
         switch (i)
         {
-            case 0: return Vector(xx_, xy_, xz_);
-            case 1: return Vector(yx_, yy_, yz_);
-            case 2: return Vector(zx_, zy_, zz_);
+            case 0: return Vector{xx_, xy_, xz_};
+            case 1: return Vector{yx_, yy_, yz_};
+            case 2: return Vector{zx_, zy_, zz_};
         }
 
         FatalError("Tensor::row index out of range");
@@ -122,9 +122,9 @@ public:
     {
         switch (j)
         {
-            case 0: return Vector(xx_, yx_, zx_);
-            case 1: return Vector(xy_, yy_, zy_);
-            case 2: return Vector(xz_, yz_, zz_);
+            case 0: return Vector{xx_, yx_, zx_};
+            case 1: return Vector{xy_, yy_, zy_};
+            case 2: return Vector{xz_, yz_, zz_};
         }
 
         FatalError("Tensor::col index out of range");

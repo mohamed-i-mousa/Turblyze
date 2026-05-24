@@ -289,9 +289,6 @@ private:
     /// y+ crossover between viscous sublayer and log region
     Scalar yPlusLam_ = S(11.225);
 
-    /// Minimum wall-normal distance to prevent division by zero
-    static constexpr Scalar minWallDist_ = S(1e-20);
-
 // Physical properties
 
     /// Laminar kinematic viscosity
@@ -302,12 +299,6 @@ private:
 
     /// meshWave wall-distance loop convergence flag
     bool wallDistanceConverged_ = false;
-
-    /// Positive floor for k
-    Scalar kMin_ = S(smallValue);
-
-    /// Positive floor for omega
-    Scalar omegaMin_ = S(smallValue);
 
     /// Maximum turbulent-to-laminar viscosity ratio for omega bound
     Scalar maxViscosityRatio_ = S(1e5);

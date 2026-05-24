@@ -71,6 +71,12 @@ public:
         return internalField_.size();
     }
 
+    /// Check whether the field contains no cells
+    [[nodiscard]] bool empty() const noexcept
+    {
+        return internalField_.empty();
+    }
+
     /// Get pointer to field storage
     [[nodiscard]] T* data() noexcept { return internalField_.data(); }
 
