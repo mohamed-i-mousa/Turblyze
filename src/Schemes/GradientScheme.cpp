@@ -5,8 +5,6 @@
 
 #include "GradientScheme.h"
 
-#include <iostream>
-#include <cmath>
 #include <algorithm>
 
 #include <omp.h>
@@ -133,8 +131,7 @@ Vector GradientScheme::cellGradient
 (
     Field field,
     const ScalarField& phi,
-    size_t cellIndex,
-    const FaceData<Scalar>* boundaryFaceValues
+    size_t cellIndex
 ) const
 {
     const Cell& cell = mesh_.cells()[cellIndex];
@@ -176,30 +173,13 @@ Vector GradientScheme::cellGradient
         const Scalar rMagSqr = magnitudeSquared(r);
         const Scalar w = S(1.0) / (rMagSqr + smallValue);
 
-        Scalar phiBoundary = S(0.0);
-        const bool useOverride =
-            boundaryFaceValues
-         && face.idx() < boundaryFaceValues->size()
-         && std::isfinite
+        const Scalar phiBoundary =
+            bcManager_.boundaryFaceValue
             (
-                (*boundaryFaceValues)[face.idx()]
+                field,
+                phi,
+                face
             );
-
-        if (useOverride)
-        {
-            phiBoundary =
-                (*boundaryFaceValues)[face.idx()];
-        }
-        else
-        {
-            phiBoundary =
-                bcManager_.boundaryFaceValue
-                (
-                    field,
-                    phi,
-                    face
-                );
-        }
 
         const Scalar wDeltaPhi =
             w * (phiBoundary - phi[cellIndex]);

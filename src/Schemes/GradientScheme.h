@@ -21,13 +21,11 @@
 #include <vector>
 #include <array>
 #include <string>
-#include <optional>
 
 #include "Scalar.h"
 #include "Mesh.h"
 #include "BoundaryConditions.h"
 #include "CellData.h"
-#include "FaceData.h"
 #include "Field.h"
 
 
@@ -58,8 +56,7 @@ public:
     (
         Field field,
         const ScalarField& phi,
-        size_t cellIdx,
-        const FaceData<Scalar>* boundaryFaceValues = nullptr
+        size_t cellIdx
     ) const;
 
     /// Interpolate gradient at a single face
