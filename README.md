@@ -13,7 +13,7 @@ A 3D incompressible CFD solver implementing the SIMPLE algorithm with k-omega SS
 
 - **Gradient Reconstruction**: Weighted least-squares cell-centered gradients
 
-- **Boundary Conditions**: flexible per-field BC system with direct face-to-patch linking and robust fallback mechanisms for all boundary types
+- **Boundary Conditions**: flexible per-field BC system with direct face-to-patch linking and per-component velocity handling; unrecognized BC types are rejected with a fatal error listing the valid types
 
 - **Turbulence Modeling**: k-omega SST model with wall distance calculation and wall functions
 
@@ -32,7 +32,7 @@ A 3D incompressible CFD solver implementing the SIMPLE algorithm with k-omega SS
 
 ### System Requirements
 - **C++20** compatible compiler (GCC 11+, Clang 15+, MSVC 2022+)
-- **CMake** 3.10 or later
+- **CMake** 3.20 or later
 - **Linux/Unix** environment
 
 ### Dependencies
@@ -66,27 +66,26 @@ brew install cmake eigen vtk libomp
 #### VTK Configuration Issues:
 If CMake cannot locate VTK automatically:
 ```bash
-cmake -DVTK_DIR=/usr/lib/cmake/vtk-9.1 ..
+cmake -S . -B build.nosync -DVTK_DIR=/usr/lib/cmake/vtk-9.1
 ```
 
 ## Building the Solver
 
 ### Standard Build Process
 ```bash
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
+cmake -S . -B build.nosync -DCMAKE_BUILD_TYPE=Release
+cmake --build build.nosync
 ```
 
 ### Build Types
 ```bash
 # Release build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j$(nproc)
+cmake -S . -B build.nosync -DCMAKE_BUILD_TYPE=Release
+cmake --build build.nosync
 
 # Debug build
-cmake -DCMAKE_BUILD_TYPE=Debug ..
-make -j$(nproc)
+cmake -S . -B build.nosync -DCMAKE_BUILD_TYPE=Debug
+cmake --build build.nosync
 ```
 
 ### Build Options
@@ -97,13 +96,15 @@ make -j$(nproc)
 
 ```bash
 # Single-precision Release build
-cmake -DCMAKE_BUILD_TYPE=Release -DTURBLYZE_USE_DOUBLE_PRECISION=OFF ..
+cmake -S . -B build.nosync -DCMAKE_BUILD_TYPE=Release \
+    -DTURBLYZE_USE_DOUBLE_PRECISION=OFF
 
 # Portable (no -march=native) Release build
-cmake -DCMAKE_BUILD_TYPE=Release -DTURBLYZE_NATIVE_ARCH=OFF ..
+cmake -S . -B build.nosync -DCMAKE_BUILD_TYPE=Release \
+    -DTURBLYZE_NATIVE_ARCH=OFF
 ```
 
-The executable `Turblyze` will be generated in the `build/` directory.
+The executable `Turblyze` will be generated in the `build.nosync/` directory.
 
 ## Running Simulations
 
@@ -120,19 +121,19 @@ The solver uses a case file system (default file: `defaultCase`). This allows ru
 
 ### Default Case
 The default `defaultCase` file contains:
-- **Mesh**: `../inputFiles/channel.msh` (channel mesh)
+- **Mesh**: `../inputFiles/sphere.msh` (sphere in a channel)
 - **Boundary Conditions**:
-  - Inlet: Fixed velocity (0, 0, -10.0) m/s, zero gradient pressure
+  - Inlet: Fixed velocity (0, 0, -20.0) m/s, zero gradient pressure
   - Outlet: Zero gradient velocity, fixed pressure (0 Pa)
-  - Walls (`wall1`–`wall4`): No-slip velocity, zero gradient pressure; `kWallFunction`, `omegaWallFunction`, `nutWallFunction` for turbulence
-- **Discretization**: Second-Order Upwind convection scheme for momentum equations and Upwind scheme for turbulence. Least-squares for gradients computation
-- **SIMPLE Parameters**: αU = 0.7, αp = 0.3, αk = 0.5, αω = 0.5, tolerance = 1e-3 (scaled residuals), max iterations = 300
+  - Walls (`sphere`, `wall1`–`wall4`): No-slip velocity, zero gradient pressure; `kWallFunction`, `omegaWallFunction`, `nutWallFunction` for turbulence
+- **Discretization**: Upwind convection scheme for momentum and turbulence equations. Least-squares for gradients computation
+- **SIMPLE Parameters**: αU = 0.7, αp = 0.3, αk = 0.5, αω = 0.5, tolerance = 1e-3 (scaled residuals), max iterations = 500
 - **Turbulence**: Enabled by default with k-omega SST model
-- **Output**: `../outputFiles.nosync/channel.vtu`
+- **Output**: `../outputFiles.nosync/sphere.vtu`
 
 ### Flow Physics
 - **Fluid Properties**: Air (ρ = 1.225 kg/m³, μ = 1.7894e-5 Pa·s)
-- **Flow Type**: Channel flow at 10 m/s
+- **Flow Type**: Flow over a sphere at 20 m/s
 - **Turbulence Inlet Conditions**: Turbulence intensity 5%, hydraulic diameter 0.01 m
 
 ## Input/Output
@@ -147,7 +148,7 @@ The default `defaultCase` file contains:
 - **Format**: VTK UnstructuredGrid (`.vtu`) for ParaView
 - **Fields Exported**:
   - Main `.vtu`: `pressure`, `velocityMagnitude`, `k`, `omega`, `nut`, `wallDistance` (turbulence fields only when turbulence is enabled)
-  - Wall `.vtp` (e.g. `channel_wall.vtp`): `yPlus`, `wallShearStress` (written separately when turbulence is enabled)
+  - Wall `.vtp` (e.g. `sphere_wall.vtp`): `yPlus`, `wallShearStress` (written separately when turbulence is enabled)
 
 ### ParaView Visualization
 1. Open the `.vtu` file in ParaView
@@ -216,30 +217,40 @@ numericalSchemes
 Switch between single and double precision:
 
 **Double Precision (default)**:
-```cmake
-target_compile_definitions(Turblyze PUBLIC PROJECT_USE_DOUBLE_PRECISION)
+```bash
+cmake -S . -B build.nosync -DTURBLYZE_USE_DOUBLE_PRECISION=ON
 ```
 
 **Single Precision**:
-```cmake
-# Comment out or remove the above line
+```bash
+cmake -S . -B build.nosync -DTURBLYZE_USE_DOUBLE_PRECISION=OFF
 ```
 
 The solver prints precision mode at runtime via `SCALAR_MODE`.
 
 ## Project Structure
 
-### Header Organization (`include/`)
-- **`Application/`**: Top-level driver (`CFDApplication.h`)
-- **`Mesh/`**: Geometric entities (`Face.h`, `Cell.h`), data containers (`CellData.h`, `FaceData.h`), fundamental types (`Scalar.h`, `Vector.h`), I/O (`MeshReader.h`, `MeshChecker.h`)
-- **`BoundaryConditions/`**: BC system (`BoundaryConditions.h`, `BoundaryData.h`, `BoundaryPatch.h`)
-- **`Numerics/`**: Schemes (`GradientScheme.h`, `ConvectionScheme.h`), matrix assembly (`Matrix.h`), solvers (`LinearSolvers.h`, `SIMPLE.h`), interpolation (`LinearInterpolation.h`), constraints (`Constraint.h`)
-- **`Models/`**: Turbulence modeling (`kOmegaSST.h`)
-- **`PostProcessing/`**: Output (`VtkWriter.h`)
-- **`Case/`**: Case file system (`CaseReader.h`)
+Headers and implementations live together under `src/`, following the
+OpenFOAM convention:
 
-### Source Organization (`src/`)
-Mirrors header organization with corresponding `.cpp` implementations.
+- **`src/Application/`**: Top-level orchestration and solver assembly
+  (`CFDApplication.h/.cpp`, `SolverAssembly.h/.cpp`)
+- **`src/Primitives/`**: Core scalar/vector/tensor types, logging, errors
+- **`src/Mesh/`**: Geometric entities, topology, mesh I/O, mesh checking
+- **`src/Fields/`**: Typed cell and face field containers
+- **`src/BoundaryConditions/`**: Patch-based boundary condition storage,
+  evaluation, and case loading
+- **`src/Schemes/`**: Gradient, interpolation, and convection schemes
+- **`src/LinearSystem/`**: Matrix assembly, transport equations, linear solvers
+- **`src/Solver/`**: SIMPLE algorithm and solution constraints
+- **`src/Models/`**: Physical models
+  - **`src/Models/Turbulence/`**: Turbulence modeling
+    (`kOmegaSST.h/.cpp`)
+- **`src/PostProcessing/`**: Derived fields and output orchestration
+  (`PostProcess.h/.cpp`)
+  - **`src/PostProcessing/VTK/`**: VTK/PVD writers and VTK cell ordering
+- **`src/Case/`**: Case file system
+  (`CaseReader.h/.cpp`, `CaseConfiguration.h/.cpp`)
 
 ## Documentation
 
@@ -262,14 +273,12 @@ sudo apt install doxygen graphviz
 
 ## Numerical Method Validation
 
-### Tested and Verified Components
-All core numerical methods have been comprehensively tested and validated:
-
-
-### Validation Results
-- **Mathematical Consistency**: All coefficient calculations follow established CFD theory
-- **Numerical Robustness**: Comprehensive error handling and fallback mechanisms
-- **Production Readiness**: Extensive testing confirms reliability for industrial applications
+There is no committed automated test suite. Changes are validated by a
+successful build and a representative case run. For numerics or solver-behavior
+changes, output is compared against the reference OpenFOAM case under
+`verification/`. See `docs/DEVELOPER_GUIDE.md` (§ "Testing and Debugging") for
+the validation workflow and the component-level checks (boundary conditions,
+convection coefficients, gradient conditioning).
 
 ## Development and Extension
 
@@ -289,7 +298,6 @@ This solver implements standard CFD methodologies:
 
 ## License and Support
 
-
-
-
+No license has been specified for this project yet. For questions or bug
+reports, contact the author or open an issue on the project's issue tracker.
 

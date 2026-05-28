@@ -24,39 +24,47 @@ Headers (`.h`) and implementations (`.cpp`) live together in the same folder und
 following the OpenFOAM convention.
 
 - **`src/Primitives/`**: foundation types with no mesh-specific semantics
-  - `Scalar.h`, `Vector.h/.cpp`, `Tensor.h/.cpp`, `OptionalRef.h`, `ErrorHandler.h`
+  - `Scalar.h`, `Vector.h/.cpp`, `Tensor.h/.cpp`, `OptionalRef.h`,
+    `ErrorHandler.h`, `Logger.h/.cpp`
 - **`src/Mesh/`**: mesh topology — geometric entities and mesh I/O
-  - `BoundaryPatch.h`, `Face.h/.cpp`, `Cell.h/.cpp`, `Mesh.h`, `MeshReader.h/.cpp`, `MeshChecker.h/.cpp`
+  - `BoundaryPatch.h`, `Face.h/.cpp`, `Cell.h/.cpp`, `Mesh.h`,
+    `MeshReader.h/.cpp`, `MeshChecker.h/.cpp`, `MeshPreparation.h/.cpp`
 - **`src/Fields/`**: typed field containers and field identity used by all layers
-  - `CellData.h/.cpp`, `FaceData.h/.cpp`, `Field.h/.cpp`
+  - `CellData.h`, `FaceData.h`, `Field.h/.cpp`
 - **`src/BoundaryConditions/`**: patch metadata and physical BC configuration
-  - `BoundaryData.h/.cpp`, `BoundaryConditions.h/.cpp`
+  - `BoundaryData.h/.cpp`, `BoundaryConditions.h/.cpp`,
+    `BoundaryConditionLoader.h/.cpp`
 - **`src/Schemes/`**: discretization schemes
-  - `ConvectionScheme.h`, `ConvectionSchemes.h/.cpp`, `GradientScheme.h/.cpp`, `LinearInterpolation.h`
+  - `ConvectionSchemes.h/.cpp`, `GradientScheme.h/.cpp`, `LinearInterpolation.h`
 - **`src/LinearSystem/`**: algebraic system assembly and solving
-  - `Matrix.h/.cpp`, `LinearSolvers.h/.cpp`, `TransportEquation.h`
+  - `Matrix.h/.cpp`, `LinearSolvers.h`, `TransportEquation.h`
 - **`src/Solver/`**: SIMPLE pressure–velocity algorithm and field constraints
   - `SIMPLE.h/.cpp`, `Constraint.h/.cpp`
-- **`src/Models/`**: turbulence modeling
-  - `kOmegaSST.h/.cpp`
-- **`src/PostProcessing/`**: output
-  - `VtkWriter.h/.cpp` (`.vtu` unstructured grid writer)
-  - `VtkCellOrdering.h/.cpp` (internal hex/wedge/pyramid node ordering)
-  - `VtkBoundaryWriter.h/.cpp` (`.vtp` wall boundary writer)
+- **`src/Models/`**: physical models
+  - `Turbulence/kOmegaSST.h/.cpp` (k–omega SST turbulence model)
+- **`src/PostProcessing/`**: derived fields and output orchestration
   - `DerivedFields.h/.cpp` (velocity/vorticity magnitude, Q-criterion, strain rate)
-  - `PvdTimeSeries.h/.cpp` (PVD transient collection file helpers)
+  - `PostProcess.h/.cpp` (after-solve statistics and VTK export orchestration)
+  - `VTK/VtkWriter.h/.cpp` (`.vtu` unstructured grid writer)
+  - `VTK/VtkCellOrdering.h/.cpp` (internal hex/wedge/pyramid node ordering)
+  - `VTK/VtkBoundaryWriter.h/.cpp` (`.vtp` wall boundary writer)
+  - `VTK/PvdTimeSeries.h/.cpp` (PVD transient collection file helpers)
 - **`src/Case/`**: OpenFOAM-style case file parser
-  - `CaseReader.h/.cpp`
-- **`src/Application/`**: top-level driver
-  - `CFDApplication.h/.cpp`
-- **`src/main.cpp`**: entry point — loads configuration and runs the solver
+  - `CaseReader.h/.cpp`, `CaseConfiguration.h/.cpp`
+- **`src/Application/`**: top-level orchestration and solver assembly
+  - `CFDApplication.h/.cpp`, `SolverAssembly.h/.cpp`
+- **`src/main.cpp`**: command-line entry point — creates `CFDApplication` and
+  starts the simulation workflow
 
 
 ## Core data structures
 
 ### Scalar precision
-- `Scalar` is aliased to `double` by default via `PROJECT_USE_DOUBLE_PRECISION` (set in `CMakeLists.txt`).
-- Switch to float by removing that definition. The program prints the mode via `SCALAR_MODE`.
+- `Scalar` is aliased to `double` by default because the CMake option
+  `TURBLYZE_USE_DOUBLE_PRECISION` is `ON`; CMake then defines
+  `PROJECT_USE_DOUBLE_PRECISION` for the target.
+- Switch to float with `-DTURBLYZE_USE_DOUBLE_PRECISION=OFF`. The program
+  prints the active mode via `SCALAR_MODE`.
 - Global tolerances in `src/Primitives/Scalar.h` (e.g., `smallValue`, `vSmallValue`, `largeValue`).
 
 ### Vector
@@ -64,23 +72,26 @@ following the OpenFOAM convention.
 - Used throughout for geometry (centroids, normals) and vector fields.
 
 ### Fields
-- `CellData<T>`: typed cell-centered fields with bounds-checked access.
-- `FaceData<T>`: typed face-centered fields.
+- `CellData<T>`: typed cell-centered fields sized from `Mesh::cellCount()`.
+- `FaceData<T>`: typed face-centered fields sized from `Mesh::faceCount()`.
 - Type aliases:
-  - `VectorField`, `ScalarField`, `VelocityField`, `PressureField`
+  - `VectorField`, `ScalarField`, `TensorField`
   - `FaceFluxField` (Scalar), `FaceVectorField` (Vector)
 
 ### Mesh entities
 - `Face`
-  - Topology: `nodeIndices`, `ownerCell`, optional `neighbourCell` (boundary if empty).
+  - Topology: `nodeIndices`, `ownerCell`, optional `neighborCell` (boundary if empty).
   - Geometry computed in `calculateGeometricProperties(allNodes)`:
     - Triangles via cross product; polygons triangulated about the face center.
-    - Fields: `centroid`, `normal` (unit), `area`, and integrals (`x2Integral`, ...).
-  - Metric distances `calculateDistanceProperties(allCells)`:
-    - `dPf`, `dNf` vectors and magnitudes; `ePf`, `eNf` unit vectors.
+    - Fields: `centroid`, `normal` (unit), `projectedArea`,
+      `contactArea`, and returned `FaceIntegrals` (`x2`, `y2`, `z2`,
+      `volume`).
+  - Metric distances `calculateDistanceProperties(cellCentroids)`:
+    - `dPf`, optional `dNf`, and their stored magnitudes.
 - `Cell`
-  - Topology: lists of `faceIndices`, `neighbourCellIndices`, and `faceSigns` (outward normal convention).
-  - `calculateGeometricProperties(allFaces)`:
+  - Topology: lists of `faceIndices`, `neighborCellIndices`, and
+    `faceSigns` (owner `+1`, neighbor `-1`).
+  - `calculateGeometricProperties(allFaces, allFaceIntegrals)`:
     - Volume via divergence theorem: `V = (1/3) Σ (rf · Sf)` using face integrals.
     - Centroid via second-moment accumulation.
 
@@ -91,21 +102,24 @@ following the OpenFOAM convention.
 - Sections: comments `(0)`, dimension `(2)`, nodes `(10)`, cells `(12)`, faces `(13)`, boundaries `(45)`.
 - Fluent uses hexadecimal indices for declarations; helpers convert hex→dec robustly.
 - Faces section returns owner and optional neighbor cell; neighbor absent implies boundary.
-- Boundaries section maps `zoneID` to `BoundaryPatch` name/type via `MeshReader::mapFluentBCToEnum`.
+- Boundaries section maps `zoneIdx` to `BoundaryPatch` name/type via `MeshReader::mapFluentBCToEnum`.
 - After reading:
-  - Builds `Cell.faceIndices`, `Cell.faceSigns` (+1 owner, -1 neighbor), and unique `neighbourCellIndices`.
-  - Validates: min faces per cell, min nodes per face; prints a summary.
+  - Builds `Cell.faceIndices`, `Cell.faceSigns` (+1 owner, -1 neighbor),
+    and `neighborCellIndices`.
+  - Validates face node counts plus owner/neighbor cell index ranges; prints
+    a summary.
 
 Notes:
-- 2D meshes are rejected early (`dimension == 2`).
-- Errors throw `std::runtime_error` with descriptive messages.
+- Any mesh dimension other than `3` is rejected early.
+- Fatal errors route through `FatalError`, which prints source location and
+  aborts the process rather than throwing exceptions.
 
 
 ## Boundary conditions system
 
 ### Architecture
 **Classes**:
-- `BoundaryPatch`: Mesh patch metadata (name, Fluent type, `zoneID`, first/last face indices)
+- `BoundaryPatch`: Mesh patch metadata (name, Fluent type, `zoneIdx`, first/last face indices)
 - `BoundaryData`: Type-safe storage with robust value/gradient handling
 - `BoundaryConditions`: Manager class with comprehensive BC operations
 
@@ -128,10 +142,10 @@ Notes:
 **Data Structure**: `patchBoundaryData[patchName][field] = BoundaryData`, where `field` is the `Field` enum (`src/Fields/Field.h`: `Field::{Ux, Uy, Uz, p, pCorr, k, omega, nut}`). Field identity is a compiler-checked enum, not a string key.
 
 **Key Features**:
-1. **Direct Patch Lookup**: `Face::patch()` returns `const BoundaryPatch*` directly, linked at startup via `BoundaryConditions::linkFaces()`
-2. **Per-Component Velocity BCs**: velocity has no vector BC type — it is registered as three independent scalar BCs under `Field::Ux/Uy/Uz`. `CFDApplication` splits the case file's `U` vector at registration (`setFixedValue(patch, Field::Ux, value.x())`, etc.)
+1. **Direct Patch Lookup**: `Face::patch()` returns an `OptionalRef<BoundaryPatch>` linked at startup via `BoundaryConditions::linkFaces()`
+2. **Per-Component Velocity BCs**: velocity has no vector BC type — it is registered as three independent scalar BCs under `Field::Ux/Uy/Uz`. `BoundaryConditionLoader` splits the case file's `U` vector at registration (`setFixedValue(patch, Field::Ux, value.x())`, etc.)
 3. **Robust Retrieval**: `fieldBC()` with comprehensive error handling
-4. **Boundary Value Calculation**: `boundaryFaceValue()` resolves a face value for any field — every field (`Ux`, `Uy`, `Uz`, `p`, `k`, `omega`, `nut`) is scalar
+4. **Boundary Value Calculation**: `boundaryFaceValue()` resolves a face value for any field — every field (`Ux`, `Uy`, `Uz`, `p`, `pCorr`, `k`, `omega`, `nut`) is scalar
 
 ### BC Evaluation Logic
 **Scalar Boundary Values**:
@@ -140,29 +154,40 @@ Notes:
 - **fixedGradient**: `φf = φOwner + gradient × dn`
   where `dn = dot(dPf, faceNormal)`
 - **noSlip**: `φf = 0` (velocity components `Ux`/`Uy`/`Uz`)
+- **wall functions**: `kWallFunction`, `omegaWallFunction`, and
+  `nutWallFunction` evaluate as owner-cell values in generic scalar face
+  value lookups; model-specific wall values are handled inside `kOmegaSST`.
 
-**Fallbacks**:
-- Missing BC specifications default to zero-gradient
-- Invalid patches use cell values
+**Error handling**:
+- Missing patch/field BC entries in `fieldBC()` are fatal configuration
+  errors.
+- Boundary faces must be linked to patches before solving; unlinked faces are
+  fatal errors.
+- `Matrix::assembleBoundaryFace()` has a defensive warning path for
+  `BCType::undefined`, applying zero-gradient only for that specific
+  unexpected enum state.
 
 
 ## Numerical schemes
 
 ### Gradient reconstruction (`GradientScheme`)
 
-#### Cell Gradient Computation (`CellGradient`)
+#### Cell Gradient Computation (`cellGradient`)
 **Method**: Weighted least-squares gradient reconstruction
 
 **Algorithm**:
-1. **Neighbor Analysis**: Validate neighbor cells and compute distance vectors
-2. **Weight Calculation**: `w = 1/r²` for inverse-distance-squared weighting
+1. **Geometric precompute**: `GradientScheme` builds one inverse `ATA` per
+   cell in its constructor from neighbor-cell and boundary-face stencil
+   vectors.
+2. **Weight Calculation**: `w = 1/(|r|² + smallValue)` for
+   inverse-distance-squared weighting.
 3. **Matrix Assembly**: Form normal equations `ATA·∇φ = ATb`
-   - `ATA = Σ w·(r ⊗ r)` (3×3 matrix)
-   - `ATb = Σ w·Δφ·r` (3×1 vector)
-4. **Regularization**: Add small diagonal term to prevent singularity
-5. **Solution**: Eigen LLT decomposition
+   - `ATA = Σ w·(r ⊗ r)` (3×3 matrix, cached as its inverse)
+   - `ATb = Σ w·Δφ·r` (3×1 vector, rebuilt for each field)
+4. **Solution**: Multiply by cached `invATA`; the precompute uses Eigen LLT,
+   then FullPivLU fallback. Degenerate cells get a zero inverse and a warning.
 
-#### Face Gradient Computation (`FaceGradient`)
+#### Face Gradient Computation (`faceGradient`)
 **Method**: Corrected interpolation of cell gradients
 
 **Algorithm**:
@@ -181,17 +206,19 @@ Notes:
 **Approach**: Normal/tangential decomposition
 
 **fixedValue BC**:
-1. Calculate normal gradient: `∂φ/∂n = (φ_boundary - φ_cell)/d_n`
+1. Calculate normal gradient:
+   `∂φ/∂n = (φ_boundary - φ_cell)/max(d_n, minNormalFraction_ |d_Pf|)`
 2. Extract tangential components: `∇φ_tan = ∇φ_cell - (∇φ_cell·n)n`
 3. Combine: `∇φ_f = ∇φ_tan + (∂φ/∂n)n`
 
-**zeroGradient BC**: `∇φ_f = ∇φ_cell`
+**zeroGradient/wall-function BCs**: retain only the tangential cell-gradient
+component, giving zero normal gradient.
 
 **fixedGradient BC**: 
 1. Extract tangential: `∇φ_tan = ∇φ_cell - (∇φ_cell·n)n`
 2. Apply normal gradient: `∇φ_f = ∇φ_tan + gradient_specified×n`
 
-### Convection schemes (`ConvectionScheme`)
+### Convection schemes (`ConvectionSchemes`)
 
 #### Upwind Differencing Scheme (UDS)
 **Coefficients**: 
@@ -213,13 +240,15 @@ Notes:
 
 **Face Value Calculation**:
 ```cpp
-φ_f = φ_P × w + φ_N × (1-w) + (∇φ_f · d_Pf)
+const Scalar wN = d_P / (d_P + d_N);
+φ_f = (1 - wN) * φ_P + wN * φ_N;
 ```
-where `w = d_N/(d_P + d_N)` (inverse distance weighting)
+where `wN` is the neighbor-cell distance weight used by the
+`interpolateToFace()` free function in `LinearInterpolation.h`.
 
 **Features**:
 - Second-order accurate on structured grids
-- Requires face gradients for non-orthogonal correction
+- Does not add an extra face-gradient term to the CDS deferred correction
 - Stable via deferred correction approach
 
 #### Second-Order Upwind (SOU)
@@ -235,12 +264,16 @@ else
 
 **Correction Term**: `mdot × (φ_SOU - φ_UDS)`
 
-**Properties**: Second-order accurate, bounded, TVD-like behavior
+**Properties**: Second-order upwind reconstruction using the limited cell
+gradients supplied by `GradientScheme`; there is no separate TVD flux limiter.
 
 ### Diffusion treatment
-**Orthogonal Component**: Handled implicitly via `E_f = (S_f · e_PN) e_PN`
+**Orthogonal Component**: Handled implicitly via the over-relaxed vector
+`E_f = (S_f · S_f)/(S_f · e_PN) e_PN` for internal faces (with `e_Pf` on
+boundary faces)
 **Non-orthogonal Correction**: Explicit via `T_f = S_f - E_f` using face gradients
-**Formula**: `∇φ_f · T_f` added to RHS for non-orthogonal meshes
+**Formula**: `Gamma_f (∇φ_f · T_f)` is added to the owner RHS and subtracted
+from the neighbor RHS on internal faces
 
 
 ## Linear system assembly (`Matrix`)
@@ -254,7 +287,7 @@ struct TransportEquation
     Field field;                        // Ux, Uy, Uz, p, pCorr, k, omega, nut
     ScalarField& phi;                   // Current field values (mutable for zero-copy solve)
     OptionalRef<FaceFluxField> flowRate = std::nullopt;    // Face flow rates (nullopt = no convection)
-    OptionalRef<ConvectionScheme> convScheme = std::nullopt;
+    OptionalRef<ConvectionSchemes> convScheme = std::nullopt;
     OptionalRef<ScalarField> Gamma = std::nullopt;         // Cell-based diffusion coefficient
     OptionalRef<FaceFluxField> GammaFace = std::nullopt;   // Face-based diffusion coefficient
     const ScalarField& source;          // Explicit source term
@@ -266,7 +299,7 @@ struct TransportEquation
 ### Unified build method
 `buildMatrix(const TransportEquation& eq)`:
 - Single method handles all equation types:
-  - **Momentum**: convection + diffusion via cell-based `Gamma` (nuEff)
+  - **Momentum**: convection + diffusion via face-based `GammaFace` (`nuEffFace_`)
   - **Pressure correction**: face-based diffusion via `GammaFace` (DUf), no convection (flowRate = nullopt)
   - **Turbulence k/omega**: convection + diffusion
 - Internal faces: assembles diffusion and convection with non-orthogonal correction
@@ -279,10 +312,9 @@ struct TransportEquation
 
 ## Parallelization (OpenMP)
 
-The solver uses shared-memory OpenMP. Every major loop is annotated with
-`#pragma omp parallel for`. There is **no domain decomposition** — that is an
-MPI concept. OpenMP threads share the same address space and operate on the
-full mesh simultaneously.
+The solver uses shared-memory OpenMP for hot cell and face loops. There is
+**no domain decomposition** — that is an MPI concept. OpenMP threads share the
+same address space and operate on the full mesh simultaneously.
 
 ### Eigen RowMajor requirement
 
@@ -306,26 +338,33 @@ and neighbor cells, so a naive parallel face loop would race on `tripletList_`
 and `vectorB_`. The chosen strategy is thread-local buffers + serial merge:
 
 ```cpp
-// T tracks parallelism.numThreads via the OpenMP runtime
-// (set in CFDApplication::initParallelism via omp_set_num_threads)
-const int T = omp_get_max_threads();
-std::vector<std::vector<Triplet>> tlsTriplets(T);
-std::vector<VectorB> tlsB(T, VectorB::Zero(numCells));
+// T tracks the OpenMP runtime thread count
+// (set in Runtime::initParallelism via omp_set_num_threads)
+const size_t T = static_cast<size_t>(omp_get_max_threads());
+std::vector<std::vector<Eigen::Triplet<Scalar>>> perThreadTriplets_(T);
+std::vector<Matrix::Vec> perThreadB_(T, Matrix::Vec::Zero(eIdx(numCells)));
 
 #pragma omp parallel
 {
-    auto& triplets = tlsTriplets[omp_get_thread_num()];
-    auto& localB = tlsB[omp_get_thread_num()];
+    const int tid = omp_get_thread_num();
+    auto& triplets = perThreadTriplets_[static_cast<size_t>(tid)];
+    auto& localB = perThreadB_[static_cast<size_t>(tid)];
 
     #pragma omp for schedule(static)
     for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
-        assembleFace(faceIdx, triplets, localB, equation);
+    {
+        const Face& face = mesh_.faces()[faceIdx];
+        if (face.isBoundary())
+            assembleBoundaryFace(face, equation, triplets, localB);
+        else
+            assembleInternalFace(face, equation, triplets, localB);
+    }
 }
 
 // serial merge — O(numFaces), not on the hot path
-for (auto& v : tlsTriplets)
+for (auto& v : perThreadTriplets_)
     tripletList_.insert(tripletList_.end(), move_iterator(v.begin()), ...);
-for (const auto& v : tlsB) vectorB_ += v;
+for (const auto& v : perThreadB_) vectorB_ += v;
 
 matrixA_.setFromTriplets(...);
 ```
@@ -349,9 +388,9 @@ is a scatter loop with a write race. There are two safe approaches:
    loop over cells instead of faces; inside each cell loop, iterate
    `cell.faceIndices()` + `cell.faceSigns()` to sum face contributions.
 
-`SIMPLE::calculateTransposeGradientSource` and `kOmegaSST::computeDivU`
-use the gather approach. Prefer gather for new code — it is race-free, avoids
-temporary allocations, and often has better cache behavior.
+`SIMPLE::addTransposeGradientSource` and `kOmegaSST::divU` use the gather
+approach. Prefer gather for new code — it is race-free, avoids temporary
+allocations, and often has better cache behavior.
 
 ### What is and is not parallel
 
@@ -364,7 +403,7 @@ temporary allocations, and often has better cache behavior.
 | `Matrix::relax()` | YES | Per-row, no neighbor writes |
 | `Matrix::setValues()` | NO | Small; left serial intentionally |
 | SIMPLE cell-update loops | YES | Per-cell, no neighbor writes |
-| Gradient precomputation | YES | Per-cell LLT, no shared write |
+| Gradient precomputation | YES | Per-cell LLT/LU, no shared write |
 | `limitGradient` | YES | Per-cell |
 | kOmegaSST cell loops | YES | Per-cell |
 | `updateWallDistance` | NO | Iterative wave propagation with owner+neighbor writes; runs once at startup |
@@ -390,7 +429,8 @@ Follow this checklist before adding `#pragma omp parallel for`:
 Apple's stock Clang omits OpenMP. `CMakeLists.txt` detects this and sets the
 Homebrew libomp prefix and `-Xpreprocessor -fopenmp` flags automatically before
 calling `find_package(OpenMP REQUIRED)`. This shim is macOS-only; it is guarded
-by `if(APPLE)` and does not affect Linux builds.
+by `if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")` and does not affect Linux
+builds.
 
 
 ## SIMPLE algorithm
@@ -398,7 +438,7 @@ by `if(APPLE)` and does not affect Linux builds.
 Entry point: `SIMPLE::solve()` performs the outer iteration until convergence or `maxIterations`:
 1) Store previous-iteration fields (U, face velocities, flow rates), compute gradP.
 2) `solveMomentumEquations()`: computes velocity gradients once into the `gradU_` member, then solves the `Ux_`/`Uy_`/`Uz_` component fields the solver owns directly — each via `solveMomentumEquation()` with `buildMatrix()` + Patankar relaxation.
-3) `calculateRhieChowFlowRate()`: compute face velocities and mass fluxes.
+3) `updateRhieChowFlowRate()`: compute Rhie-Chow face mass fluxes.
 4) `solvePressureCorrection()`: pre-compute mass imbalance source, build and solve p' equation using `buildMatrix()` with face-based diffusion (DUf), no convection.
 5) `correctVelocity()`: update U using `U = U* - D ∇p'`.
 6) `correctFlowRate()`: update face mass fluxes.
@@ -407,36 +447,70 @@ Entry point: `SIMPLE::solve()` performs the outer iteration until convergence or
 9) `checkConvergence()`: monitor mass imbalance (normalized per-cell average), velocity residual (normalized L2), and pressure correction residual (normalized RMS).
 
 Controls:
-- `setRelaxationFactors(α_U, α_p, α_k, α_omega)`, `setConvergenceTolerance(tol)`, `setMaxIterations(n)`. Turbulence is enabled by passing `enableTurbulence = true` to `initialize()`.
+- `SIMPLE` is fully initialized by its constructor. Runtime controls (rho, mu,
+  initial fields, under-relaxation factors, tolerances, constraints, debug
+  flag) are passed as individual constructor parameters, OpenFOAM-style — no
+  intermediate POD config struct. The two linear solvers (`momentum`,
+  `pressure`) are likewise passed as plain `LinearSolver&` parameters.
+- Turbulence is **not owned by `SIMPLE`**. `SolverRuntime` owns
+  `unique_ptr<kOmegaSST>` as a sibling of the SIMPLE solver and constructs it
+  *before* SIMPLE (mirroring `simpleFoam`'s `createFields.H` ordering). The
+  raw pointer `runtime.turbulenceModel.get()` is passed as the final
+  constructor argument to `SIMPLE`; `nullptr` selects the laminar path.
+- `Case::loadConfiguration()` parses non-BC runtime input into
+  `CaseConfiguration`. `SolverAssembly::configure()` owns selected linear
+  solvers, gradient and convection schemes, and the optional `kOmegaSST`
+  through `SolverRuntime`, then constructs `SIMPLE` last so it is destroyed
+  first.
 
 
 ## Rhie–Chow face-velocity interpolation
 
-Used in `calculateRhieChowFlowRate()` to prevent pressure checkerboarding:
-- Start with linear-interpolated face velocity `U_f_lin`.
+Used in `updateRhieChowFlowRate()` to prevent pressure checkerboarding:
+- Start with linear-interpolated internal-face velocity `U_f_lin`.
 - Compute face D-like coefficient from interpolated momentum diagonals and geometry.
-- Apply correction with face pressure gradient: `U_f = U_f_lin + D_f (∇p_f_lin - ∇p_f_cache)`.
-- Add previous-iteration face under-relaxation term `(1-α_U)(U_f_prev - U_f_lin_prev)`.
+- Apply the pressure-gradient correction to the face flux:
+  `F_f = U_f_lin·S_f - D_f(∇p_f - ∇p_f_lin)·S_f`.
+- Add previous-iteration face under-relaxation as
+  `(1-α_U)(F_f_prev - U_f_prev·S_f)`.
 - Boundary faces use centralized BC evaluation.
 
 
 ## Turbulence model (k–omega SST)
 
 Class `kOmegaSST`:
-- Initializes `k`, `ω`, `nut`, and computes `wallDistance` via mesh wave iterative propagation from wall boundaries.
-- `solve(U, flowRateFace, gradU)` accepts pre-computed velocity gradients from SIMPLE.
+- Is fully initialized by its constructor from inlined parameters (laminar
+  viscosity, initial k/omega, under-relaxation factors, debug flag) — no
+  config-struct indirection.
+- Owned by `SolverRuntime` as a sibling of `SIMPLE`; never owned by `SIMPLE`
+  itself. SIMPLE holds a non-owning `kOmegaSST*` (nullptr = laminar).
+- Owns `k`, `ω`, `nut`, wall distance, wall-function weights, `yPlus`,
+  `wallShearStress`, and wall `nut` state.
+- Borrows mesh, boundary conditions, gradient scheme, per-equation
+  convection schemes, and the `k`/`omega` linear solvers (all bound at
+  construction). It does not own any of them.
+- `solve(Ux, Uy, Uz, flowRateFace, gradU)` accepts pre-computed velocity
+  gradients from `SIMPLE`; the linear solvers were captured by reference in
+  the constructor and are not passed per call.
 - Solves ω and k transport with variable diffusion (`ν + σ·ν_t`), production/destruction, and cross-diffusion for SST.
-- Calculates blending functions `F1`/`F2`, turbulent viscosity `ν_t = a1 k / max(a1 ω, S F2)`, and applies wall corrections.
-- Provides getters used by SIMPLE to form effective viscosity and for post-processing: `k`, `ω`, `nut`, `wallDistance`, `wallShearStress`.
+- Calculates blending functions `F1`/`F2`/`F23`, turbulent viscosity
+  `ν_t = a1 k / max(a1 ω, F23 ||S||)`, and applies wall corrections.
+- Provides getters used by SIMPLE to form effective viscosity and for
+  post-processing: `k`, `ω`, `nut`, `wallDistance`, `yPlus`,
+  `wallShearStress`.
 
 
 ## Post-processing and VTK export
 
-`writeVtkUnstructuredGrid(filename, allNodes, allCells, allFaces, scalarCellFields, vectorCellFields)`:
+`writeVtkUnstructuredGrid(filename, mesh, scalarCellFields, vectorCellFields)`:
 - Writes VTK UnstructuredGrid (`.vtu`) with 3D volume cells (tetrahedra, hexahedra, wedges, pyramids).
 - Exports cell-centered scalar fields (pressure, turbulence quantities) and vector fields (velocity).
 - Uses topology-aware node ordering for proper VTK cell types (hexahedron, wedge, pyramid).
-- Used in `main.cpp` to export pressure, velocity vector `U`, and when available: `k`, `ω`, `μ_t`, `wallDistance`, and derived quantities (`turbulentIntensity`, `turbulentViscosityRatio`, `yPlus`).
+- Used by `PostProcess::exportResults()` to export pressure,
+  `velocityMagnitude`, vector field `velocity`, and, when turbulence is enabled:
+  `k`, `omega`, `nut`, and `wallDistance`.
+- Wall quantities are written separately with `writeWallBoundaryData()` to a
+  `_wall.vtp` file containing `yPlus` and `wallShearStress`.
 
 
 ## Linear solvers
@@ -460,14 +534,18 @@ pressure-correction system:
 
 ## Precision and numerical tolerances
 
-- Precision selected at compile time via `PROJECT_USE_DOUBLE_PRECISION`.
+- Precision is selected at configure/build time via
+  `TURBLYZE_USE_DOUBLE_PRECISION`; the target compile definition consumed by
+  `Scalar.h` is `PROJECT_USE_DOUBLE_PRECISION`.
 - Tolerance constants adapt to `Scalar` (e.g., comparisons, divisions, gradient detection).
 - Many algorithms include small epsilons to guard against degeneracy.
 
 
 ## Class ownership patterns
 
-Every class in Turblyze declares all five special members explicitly when any one of them is non-default. The three recurring patterns are:
+The codebase uses explicit special-member declarations when ownership or
+borrowing makes compiler-generated operations unsafe. The recurring patterns
+are:
 
 ### Pattern 1 — Non-owning reference member (rule of five, all deleted)
 
@@ -487,27 +565,27 @@ GradientScheme& operator=(GradientScheme&&) = delete;
 ~GradientScheme() noexcept = default;
 ```
 
-Used by: `GradientScheme`, `Matrix`, `MeshChecker`, `kOmegaSST`, `SIMPLE`, `LinearInterpolation`.
+Used by: `GradientScheme`, `Matrix`, `kOmegaSST`, `SIMPLE`, `Constraint`,
+`StreamStateGuard`.
 
-### Pattern 2 — Unique-ownership member (rule of five, copy deleted, move defaulted)
+### Pattern 2 — Runtime-owned polymorphic services
 
-Classes holding `std::unique_ptr` members can be moved but not copied.
-`unique_ptr` destructs automatically; no manual delete needed.
+Polymorphic runtime services are owned through `std::unique_ptr`.
+`SolverRuntime` deletes copy and move because `SIMPLE` stores references into
+these services; keeping runtime ownership stationary avoids dangling references.
 
 ```cpp
-/// Copy constructor and assignment — Not copyable (unique_ptr members)
-ConvectionScheme(const ConvectionScheme&) = delete;
-ConvectionScheme& operator=(const ConvectionScheme&) = delete;
+SolverRuntime(const SolverRuntime&) = delete;
+SolverRuntime& operator=(const SolverRuntime&) = delete;
 
-/// Move constructor and assignment
-ConvectionScheme(ConvectionScheme&&) = default;
-ConvectionScheme& operator=(ConvectionScheme&&) = default;
+SolverRuntime(SolverRuntime&&) = delete;
+SolverRuntime& operator=(SolverRuntime&&) = delete;
 
-/// Destructor
-~ConvectionScheme() noexcept = default;
+std::unique_ptr<ConvectionSchemes> momentumConvectionScheme;
+std::unique_ptr<SIMPLE> solver;  // declared last, destroyed first
 ```
 
-Used by: `ConvectionScheme`.
+Used by: `SolverRuntime`.
 
 ### Pattern 3 — Eigen iterative solver member (rule of five, copy/move deleted)
 
@@ -536,6 +614,31 @@ Declare nothing; the compiler generates correct defaults.
 
 Used by: `Face`, `Cell`, `BoundaryData`, `BoundaryPatch`, `CellData<T>`, `FaceData<T>`.
 
+### Runtime ownership boundaries
+
+`CFDApplication` is intentionally thin: it owns only the case-file path and
+coordinates the phases in `run()`.
+
+`CaseConfiguration` owns typed non-BC runtime input. Boundary conditions are
+kept asymmetric by design: `BoundaryConditionLoader` streams the raw
+`boundaryConditions` case section directly into `BoundaryConditions` because
+the data is patch-indexed and field-specific.
+
+`SolverRuntime` owns user-selected runtime services:
+`GradientScheme`, the default and per-equation `ConvectionSchemes`, one
+`LinearSolver` instance per solved equation, and the optional `kOmegaSST`
+turbulence model. `solver` is declared last so it is destroyed before the
+services and model whose references are stored by `SIMPLE`.
+
+`SIMPLE` owns the flow solution fields, pressure-correction state,
+Rhie-Chow fields, constraints, and matrix assembler. It borrows the optional
+`kOmegaSST` model as a raw pointer for the non-const turbulence solve step; it
+does not own the model, parse case input, or own linear solver objects.
+
+`kOmegaSST` owns turbulence fields and wall-function state. It borrows mesh,
+boundary conditions, numerical schemes, and the `k`/`omega` linear solvers
+(all bound at construction).
+
 
 ## Extending the codebase (recipes)
 
@@ -543,18 +646,29 @@ Used by: `Face`, `Cell`, `BoundaryData`, `BoundaryPatch`, `CellData<T>`, `FaceDa
 1) Add a `Field` enumerator for the new field in `src/Fields/Field.h` (lowercase for scalar fields, matching `p`/`k`/`omega`) and a matching `case` in `fieldToString()` (`Field.cpp`).
 2) Create the field in your driver: `ScalarField phi(initialValue);` (cell count comes from `Mesh::cellCount()`; use `ScalarField phi;` for zero-init).
 3) Build an effective diffusion field `Gamma` and a source `phi_source` per cell.
-4) Pre-compute cell gradients `gradPhi` via `GradientScheme::cellGradient()`.
+4) Pre-compute the limited cell-gradient field `gradPhi` via
+   `GradientScheme::fieldGradient()`.
 5) Create a `TransportEquation` struct with all required fields:
    ```cpp
-   TransportEquation eq{Field::phi, phi, flowRate, convScheme,
-       Gamma, std::nullopt, source, gradPhi, gradScheme};
+   TransportEquation eq
+   {
+       .field      = Field::myField,
+       .phi        = phi,
+       .flowRate   = std::cref(flowRate),
+       .convScheme = std::cref(myConvectionScheme),
+       .Gamma      = std::cref(Gamma),
+       .GammaFace  = std::nullopt,
+       .source     = source,
+       .gradPhi    = gradPhi,
+       .gradScheme = gradScheme
+   };
    ```
 6) Call `matrix.buildMatrix(eq)`, then solve through a configured
    `LinearSolver` instance.
 7) Apply under-relaxation via `matrix.relax(alpha, phiPrev)` if needed.
 
 ### Add a new convection scheme
-1) Derive from `ConvectionScheme` (base `getFluxCoefficients` returns `FluxCoefficients` struct).
+1) Derive from `ConvectionSchemes` (base `getFluxCoefficients` returns `FluxCoefficients` struct).
 2) Optionally add high-order face value and correction methods (see CDS/SOU) and integrate as deferred-correction in `Matrix`.
 
 ### Add a new boundary condition
@@ -562,80 +676,83 @@ Used by: `Face`, `Cell`, `BoundaryData`, `BoundaryPatch`, `CellData<T>`, `FaceDa
 2) **Update BoundaryData**: Add setters/getters for new BC type
 3) **Extend evaluation**: Update `BoundaryConditions::boundaryFaceValue()` and `GradientScheme::boundaryFaceGradient()`
 4) **Matrix integration**: Update boundary handling in `Matrix::buildMatrix()`
-5) **Case file parsing**: Add parsing support in `CFDApplication::setupBoundaryConditions()`
+5) **Case file parsing**: Add parsing support in `BoundaryConditionLoader`
 
-**Example Implementation**:
-```cpp
-// 1. Add to BCType enum
-PERIODIC,  // New BC type
+Follow the existing `fixedValue` and `fixedGradient` pattern: add a
+lower-camel `BCType` enumerator, store any needed scalar payload in
+`BoundaryData`, register it through `BoundaryConditions`, and handle it in the
+three evaluation/assembly call sites listed above.
 
-// 2. Add BoundaryData methods
-void setPeriodicValue(Scalar offset) {
-    type = BCType::PERIODIC;
-    scalarValue = offset;
-}
-
-// 3. Update evaluation logic
-case BCType::PERIODIC:
-    return calculatePeriodicValue(face, phi, bc->scalarValue);
-```
-
-### Expose fluid properties as inputs
-- Add setters on `SIMPLE` for `rho` and `mu`, thread through to `Matrix` and `KOmegaSST` calls as needed.
+### Expose new solver or model parameters
+- Add the case entry to `defaultCase` and document it in `docs/CASE.md`.
+- Parse and validate the value in `Case::loadConfiguration()` and add a field
+  to `CaseConfiguration`.
+- Add a new parameter to the `SIMPLE` or `kOmegaSST` constructor (each
+  parameter on its own line per `docs/STYLE.md`), forward it from
+  `SolverAssembly::configure()`, and store it as a member.
+- Keep user-selected services such as linear solvers, gradient schemes, and
+  convection schemes owned by `SolverRuntime`; pass non-owning references to
+  `SIMPLE` or to model solve calls.
 
 
 ## Testing and Debugging
 
-### Comprehensive Testing Methodology
+### Current validation workflow
 
-#### Boundary Conditions Testing
-**Testing Strategy**: Add comprehensive std::cout debugging to trace:
-1. **Patch Registration**: Verify patch names, zones, face ranges
-2. **BC Storage**: Confirm type-safe storage of scalar values and gradients
-3. **Field Lookup**: Test `fieldBC()` with various `Field` values
-4. **Per-Component Velocity**: Verify `Ux`/`Uy`/`Uz` are registered as independent scalar BCs
-5. **Boundary Values**: Test `boundaryFaceValue()` for all BC types
-6. **Patch Linking**: Verify `Face::patch()` returns correct patch after `linkFaces()`
+There is no committed CTest/unit-test target. For code changes, validate with
+a successful build and a representative case run. For numerics or solver
+behavior changes, compare output against the OpenFOAM material under
+`verification/`.
 
-**Key Tests**:
+#### Boundary Conditions Checks
+Use `BoundaryConditions::printSummary()` in debug mode and focused temporary
+checks to verify:
+1. **Patch Registration**: patch names, zones, and face ranges from `MeshReader`
+2. **BC Storage**: scalar values/gradients in `BoundaryData`
+3. **Field Lookup**: `fieldBC()` with `Field::{Ux, Uy, Uz, p, pCorr, k, omega, nut}`
+4. **Per-Component Velocity**: `BoundaryConditionLoader` registers `Ux`/`Uy`/`Uz`
+   independently for case-file `U`
+5. **Boundary Values**: `boundaryFaceValue()` for supported scalar BC types
+6. **Patch Linking**: boundary `Face::patch()` has a value after `linkFaces()`
+
+**Focused checks**:
 ```cpp
-// Test all BC types — patch names stay strings, fields are the Field enum
+// Patch names stay strings; fields use the Field enum.
 setFixedValue("inlet", Field::Ux, 1.0);   // velocity is per component
 setZeroGradient("outlet", Field::p);
 setNoSlip("wall", Field::Ux);
 setFixedGradient("inlet", Field::k, 100.0);
 ```
 
-#### Convection Schemes Testing
-**Testing Strategy**: Verify coefficient calculation and face values:
+#### Convection Scheme Checks
+Verify coefficient calculation and face values:
 1. **Coefficient Logic**: Test `getFluxCoefficients()` for +/- mass flow rates
 2. **Flow Direction**: Verify upwind cell selection
 3. **Face Values**: Test interpolation and extrapolation methods
 4. **Correction Terms**: Verify deferred correction calculations
-5. **Boundary Integration**: Test BC application in schemes
 
-**Critical Tests**:
+**Critical checks**:
 ```cpp
 // Test flow direction handling
 massFlowRate = +1.0: a_P_conv = 1.0, a_N_conv = 0.0  // Owner→Neighbor
 massFlowRate = -1.0: a_P_conv = 0.0, a_N_conv = -1.0 // Neighbor→Owner
 ```
 
-#### Gradient Schemes Testing
-**Testing Strategy**: Verify mathematical correctness:
+#### Gradient Scheme Checks
+Verify mathematical correctness:
 1. **Neighbor Validation**: Check distance calculations and weighting
-2. **Matrix Assembly**: Verify ATA matrix conditioning and determinant
-3. **Solver Robustness**: Test LLT/LU fallback mechanisms
+2. **Matrix Precompute**: Verify cached `invATA_` behavior for regular and
+   degenerate stencils
+3. **Solver Robustness**: Check LLT/FullPivLU fallback behavior
 4. **Gradient Limiting**: Verify limiter activation in high-gradient regions
 5. **Face Interpolation**: Test averaging weights and corrections
 6. **Boundary Gradients**: Verify normal/tangential decomposition
 
-**Matrix Verification**:
+**Matrix checks**:
 ```cpp
-// Check matrix properties
-ATA.determinant() > 0  // Well-conditioned system
-regularization = totalWeight × 1e-12  // Prevents singularity
-gradMag * maxDistance < 10.0 * phiRange  // Gradient limiting
+// Check matrix properties during local instrumentation.
+LLT(ATA).info() == Eigen::Success || FullPivLU(ATA).isInvertible()
+0.0 <= limiter_alpha && limiter_alpha <= 1.0
 ```
 
 ### Debugging Strategies
@@ -681,7 +798,7 @@ Strip it before committing if it isn't gated by a persistent flag.
 #### Common Issues and Solutions
 
 **Boundary Condition Issues**:
-- **Symptom**: "No BC specified" warnings
+- **Symptom**: fatal "Boundary condition not found" diagnostics
 - **Solution**: Check patch names match mesh exactly
 - **Debug**: Use `printSummary()` to list all patches and BCs
 
@@ -691,9 +808,10 @@ Strip it before committing if it isn't gated by a persistent flag.
 - **Debug**: Log `massFlowRate`, `a_P_conv`, `a_N_conv` values
 
 **Gradient Issues**:
-- **Symptom**: "Gradient computation failed" errors
+- **Symptom**: degenerate least-squares warning or unstable gradients
 - **Solution**: Check mesh quality and neighbor connectivity
-- **Debug**: Log ATA matrix condition number and rank
+- **Debug**: Instrument `precomputeInverseATA()` to inspect `ATA` and the
+  LLT/FullPivLU fallback path
 
 #### Best Practices
 1. **Modular Testing**: Test individual components before integration
@@ -705,12 +823,13 @@ Strip it before committing if it isn't gated by a persistent flag.
 ### Development Tips
 
 - **BCs**: Use `BoundaryConditions::printSummary()` to inspect configuration
-- **Gradients**: Check matrix conditioning with `ATA.determinant()`
+- **Gradients**: Inspect the `precomputeInverseATA()` LLT/LU path for poor stencils
 - **Convection**: Verify upwind logic with simple 1D test cases
 - **Solver logs**: High residuals indicate BC or relaxation issues
-- **Mesh validation**: Reader throws early for malformed `.msh` files
+- **Mesh validation**: Reader aborts early through `FatalError` for malformed `.msh` files
 - **ParaView**: UnstructuredGrid cells are 3D volume cells; color by cell arrays
-- **Debugging**: Use comprehensive std::cout for method tracing
+- **Debugging**: Use `Logger` for solver-iteration output; reserve temporary
+  `std::cout` tracing for local development and remove or gate it before commit
 
 
 ## Case System
@@ -739,15 +858,17 @@ boundaryConditions { U { patch { type value; } } p { ... } }
 numericalSchemes { convection { default scheme; U scheme; k scheme; omega scheme; } }
 SIMPLE { numIterations int; convergenceTolerance scalar; relaxationFactors { U scalar; p scalar; k scalar; omega scalar; } }
 linearSolvers { U { solver type; preconditioner type; tolerance scalar; maxIter int; } p { ... } }
-turbulence { model string; enabled bool; }
-output { filename string; }
+turbulence { model string; enabled bool; turbulenceIntensity scalar; hydraulicDiameter scalar; }
+output { filename string; debug bool; }
 constraints { velocity { enabled bool; maxVelocity scalar; } pressure { enabled bool; ... } }
 ```
 
 ### Adding New Case Parameters
 1. Add entry to appropriate section in `defaultCase`
-2. Read in `main.cpp` using `caseReader.lookup<Type>("parameter")`
-3. Apply to solver/model as needed
+2. Read and validate it in `Case::loadConfiguration()`
+3. If the value belongs to a solver/model, add it to the appropriate
+   construction config
+4. Apply it through the config or through an owned application service
 
 Example:
 ```cpp
@@ -757,33 +878,45 @@ SIMPLE
     newParameter    0.5;    // New parameter
 }
 
-// In main.cpp
-auto simpleDict = caseReader.section("SIMPLE");
-Scalar newParam = simpleDict.lookup<Scalar>("newParameter");
-simpleSolver.setNewParameter(newParam);
+// In Case::loadConfiguration()
+const auto& simple = reader.section("SIMPLE");
+config.newParameter = simple.lookupOrDefault<Scalar>("newParameter", S(0.5));
+
+// In SolverAssembly::configure(), forward into the SIMPLE constructor
+// (one parameter per line, after adding the matching constructor param and
+//  member to SIMPLE):
+runtime.solver =
+    std::make_unique<SIMPLE>
+    (
+        // ...existing args...
+        config.newParameter,
+        // ...remaining args...
+    );
 ```
 
 ### Error Handling
-- **File not found**: Throws `std::runtime_error` with clear message
-- **Parse errors**: Reports file name and line number
-- **Type conversion**: Fails gracefully with conversion error messages
-- **Missing parameters**: `lookup()` throws, `lookupOrDefault()` uses fallback
+- **File not found**: `FatalError` with the missing case-file path
+- **Parse errors**: `FatalError`; several parser paths include line number or
+  file context in the message
+- **Type conversion**: `FatalError` with conversion-specific messages
+- **Missing parameters**: `lookup()` calls `FatalError`,
+  `lookupOrDefault()` uses the supplied fallback
 
 
 ## Call flow
 
 ```mermaid
 flowchart TD
-  A[main.cpp / CFDApplication] --> B[readMshFile]
-  B --> C[compute face geometry]
-  C --> D[compute face distances]
-  D --> E[compute cell geometry]
-  E --> F[BoundaryConditions]
-  F --> G[SIMPLE constructor]
+  A[main.cpp / CFDApplication] --> B[CaseReader]
+  B --> C[Case::loadConfiguration]
+  C --> D[Runtime::initParallelism]
+  D --> E[MeshPreparation::prepare]
+  E --> F[BoundaryConditionLoader]
+  F --> G[SolverAssembly::configure]
   G --> H[SIMPLE.solve]
   H --> I[compute gradP]
   I --> J[solveMomentumEquations]
-  J --> K[calculateRhieChowFlowRate]
+  J --> K[updateRhieChowFlowRate]
   K --> L[solvePressureCorrection]
   L --> M[correctVelocity]
   M --> N[correctFlowRate]
@@ -791,5 +924,5 @@ flowchart TD
   O -.-> T[solveTurbulence]
   T --> P[checkConvergence]
   P -->|loop| I
-  P --> Q[postProcess + VTK]
+  P --> Q[PostProcess::reportStatistics/exportResults]
 ```

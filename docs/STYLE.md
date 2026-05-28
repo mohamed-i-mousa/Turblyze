@@ -103,17 +103,17 @@ if (numNodes == 3)
 ## Function Signature Formatting
 Multi-parameter functions use Allman-style with each parameter on its own line:
 ```cpp
-bool setFixedValue
+void setFixedValue
 (
     const std::string& patchName,
-    const std::string& fieldName,
+    Field field,
     Scalar value
 );
 ```
 
 Single-parameter or short-signature functions can stay on one line:
 ```cpp
-void addPatch(const BoundaryPatch& patch);
+void addPatch(BoundaryPatch patch);
 ```
 
 ## Brace Style
@@ -187,7 +187,7 @@ std::cerr << "\n" << "Error: " << msg << "\n";
 ```
 
 ## Naming Conventions
-- **Classes**: PascalCase (e.g., `LinearSolver`, `KOmegaSST`)
+- **Classes**: PascalCase (e.g., `LinearSolver`, `GradientScheme`)
 - **Methods**: camelCase (e.g., `solveMomentum`, `computeGradient`)
 - **Member variables**: camelCase with trailing underscore (e.g., `tolerance_`, `fieldName_`)
 - **Local variables**: camelCase (e.g., `cellVolume`, `faceArea`)
@@ -227,7 +227,7 @@ The brief reason on the `///` comment documents *why* the operation is restricte
 |---|---|---|---|
 | `const T&` or `T&` reference | `= delete` | `= delete` | `= default` (noexcept) |
 | `std::unique_ptr<T>` | `= delete` | `= default` | `= default` (noexcept) |
-| Eigen iterative solver | `= default` (custom) | `= delete` | `= default` (noexcept) |
+| Eigen iterative solver | `= delete` | `= delete` | `= default` (noexcept) |
 | No non-trivial members | *(declare none — rule of zero)* | | |
 
 **Rule of zero**: If the compiler-generated defaults are correct, declare nothing.

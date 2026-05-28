@@ -57,7 +57,7 @@ Specify the mesh file and control the quality checking.
 ```cpp
 mesh
 {
-    file            ../inputFiles/pipe_320k.msh;    // Required: Path to mesh file
+    file            ../inputFiles/sphere.msh;       // Required: Path to mesh file
     checkQuality    true;                           // Optional: Enable mesh quality check
 }
 ```
@@ -133,14 +133,21 @@ boundaryConditions
     {
         inlet           { type fixedValue; value calculated; }
         outlet          { type zeroGradient; }
-        walls           { type fixedValue; value 0; }
+        walls           { type kWallFunction; }
     }
 
     omega   // Specific dissipation rate
     {
         inlet           { type fixedValue; value calculated; }
         outlet          { type zeroGradient; }
-        walls           { type fixedValue; value 1000; }
+        walls           { type omegaWallFunction; }
+    }
+
+    nut   // Turbulent kinematic viscosity
+    {
+        inlet           { type zeroGradient; }
+        outlet          { type zeroGradient; }
+        walls           { type nutWallFunction; }
     }
 }
 ```
@@ -149,14 +156,24 @@ boundaryConditions
 - `fixedValue`: Fixed value at boundary (requires `value`)
 - `zeroGradient`: Zero normal gradient
 - `noSlip`: No-slip condition for velocity (equivalent to `fixedValue (0 0 0)`)
-- `fixedGradient`: **⚠️ Not yet implemented** - infrastructure exists but case file parsing not available
+- `kWallFunction` / `omegaWallFunction` / `nutWallFunction`: Wall-function
+  conditions for `k`, `omega`, and `nut` on wall patches. They must be
+  configured as a complete triplet on a given wall patch (all three) or
+  omitted entirely; a partial set is a fatal configuration error.
+- `fixedGradient`: **⚠️ Not selectable from case files** — the
+  `BCType::fixedGradient` storage and evaluation paths exist in the solver, but
+  `BoundaryConditionLoader` does not parse it.
   ```cpp
   // Example syntax (NOT FUNCTIONAL - for future reference only):
-  // T { walls { type fixedGradient; gradient 100; } }
-  // U { walls { type fixedGradient; gradient (0 0 0.5); } }
+  // k { walls  { type fixedGradient; gradient 100; } }
+  // p { outlet { type fixedGradient; gradient 0.5; } }
   ```
 
-**Note**: Attempting to use `fixedGradient` in case files will result in the solver defaulting to `zeroGradient` behavior without warning. This feature is planned for future implementation.
+**Note**: Using `fixedGradient` — or any unrecognized type — in a case file is a
+fatal configuration error. `BoundaryConditionLoader` aborts with
+`Unknown boundary condition type '...' for field '...' on patch '...'. Valid types: ...`
+rather than falling back silently. Case-file support for `fixedGradient` is
+planned for future work.
 
 **Calculated values:** For `k` and `omega` boundary conditions, `value`
 can be set to `calculated` instead of a numeric value. The solver will
@@ -284,7 +301,8 @@ turbulence
 - `turbulenceIntensity` and `hydraulicDiameter` are used to auto-compute
   initial values for `k` and `omega` when they are not explicitly
   specified in `initialConditions` (see [initialConditions](#3-initialconditions))
-- k-omega SST model constants are hardcoded in `kOmegaSST.h`
+- k-omega SST model constants are hardcoded in
+  `src/Models/Turbulence/kOmegaSST.h`
   and cannot be changed via case file
 - Wall distance is computed using meshWave iterative propagation method
   (not configurable)
