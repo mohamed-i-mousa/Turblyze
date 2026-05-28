@@ -22,13 +22,18 @@ class Constraint
 {
 public:
 
-    /// Construct constraint manager with field references
+    /// Constructor
     Constraint
     (
         ScalarField& Ux,
         ScalarField& Uy,
         ScalarField& Uz,
-        ScalarField& pressureField
+        ScalarField& pressureField,
+        const bool velocityEnabled,
+        const bool pressureEnabled,
+        const Scalar maxVelocityMagnitude,
+        const Scalar minPressure,
+        const Scalar maxPressure
     ) noexcept;
 
     /// Copy constructor and assignment - Not copyable (reference member)
@@ -41,28 +46,6 @@ public:
 
     /// Destructor
     ~Constraint() noexcept = default;
-
-// Setter methods
-
-    /// Set velocity field constraints
-    void setVelocityConstraints(Scalar maxVelocity) noexcept
-    {
-        maxVelocityMagnitude_ = std::abs(maxVelocity);
-    }
-
-    /// Set pressure field constraints
-    void setPressureConstraints
-    (
-        Scalar minPressure,
-        Scalar maxPressure
-    ) noexcept;
-
-    /// Enable or disable field constraints
-    void enableConstraints
-    (
-        bool enableVel,
-        bool enablePress
-    ) noexcept;
 
     /// Apply velocity field constraints
     [[nodiscard]] size_t applyVelocityConstraints() noexcept;
@@ -87,17 +70,17 @@ private:
     ScalarField& p_;
 
     /// Enable velocity field constraints
-    bool enableVelocityConstraints_ = false;
+    bool enableVelocityConstraints_;
 
     /// Enable pressure field constraints
-    bool enablePressureConstraints_ = false;
+    bool enablePressureConstraints_;
 
     /// Maximum allowed velocity magnitude
-    Scalar maxVelocityMagnitude_ = S(100);
+    Scalar maxVelocityMagnitude_;
 
     /// Minimum allowed pressure
-    Scalar minPressure_ = S(-1e6);
+    Scalar minPressure_;
 
     /// Maximum allowed pressure
-    Scalar maxPressure_ = S(1e6);
+    Scalar maxPressure_;
 };

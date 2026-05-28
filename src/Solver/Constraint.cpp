@@ -12,36 +12,24 @@ Constraint::Constraint
     ScalarField& Ux,
     ScalarField& Uy,
     ScalarField& Uz,
-    ScalarField& pressureField
+    ScalarField& pressureField,
+    const bool velocityEnabled,
+    const bool pressureEnabled,
+    const Scalar maxVelocityMagnitude,
+    const Scalar minPressure,
+    const Scalar maxPressure
 ) noexcept
 :
     Ux_(Ux),
     Uy_(Uy),
     Uz_(Uz),
-    p_(pressureField)
+    p_(pressureField),
+    enableVelocityConstraints_(velocityEnabled),
+    enablePressureConstraints_(pressureEnabled),
+    maxVelocityMagnitude_(maxVelocityMagnitude),
+    minPressure_(minPressure),
+    maxPressure_(maxPressure)
 {}
-
-// ****************************** Setter Methods ******************************
-
-void Constraint::setPressureConstraints
-(
-    Scalar minPressure,
-    Scalar maxPressure
-) noexcept
-{
-    minPressure_ = minPressure;
-    maxPressure_ = maxPressure;
-}
-
-void Constraint::enableConstraints
-(
-    bool enableVel,
-    bool enablePress
-) noexcept
-{
-    enableVelocityConstraints_ = enableVel;
-    enablePressureConstraints_ = enablePress;
-}
 
 size_t Constraint::applyVelocityConstraints() noexcept
 {
