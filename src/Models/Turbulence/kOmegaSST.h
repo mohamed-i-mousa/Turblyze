@@ -40,6 +40,7 @@
 /// Forward declaration
 class Matrix;
 
+
 class kOmegaSST
 {
 public:
@@ -51,7 +52,15 @@ public:
         const BoundaryConditions& bc,
         const GradientScheme& gradScheme,
         const ConvectionSchemes& kScheme,
-        const ConvectionSchemes& omegaScheme
+        const ConvectionSchemes& omegaScheme,
+        LinearSolver& kSolver,
+        LinearSolver& omegaSolver,
+        const Scalar nu,
+        const Scalar initialK,
+        const Scalar initialOmega,
+        const Scalar alphaK,
+        const Scalar alphaOmega,
+        const bool debug
     );
 
     /// Copy constructor and assignment - Not copyable (const T& members)
@@ -64,16 +73,6 @@ public:
 
     /// Destructor
     ~kOmegaSST() noexcept;
-
-    /// Initialize turbulence fields with initial conditions
-    void initialize
-    (
-        Scalar nu,
-        Scalar initialK,
-        Scalar initialOmega,
-        Scalar alphaK,
-        Scalar alphaOmega
-    );
 
     /// Solve turbulence equations for current iteration
     void solve
@@ -128,21 +127,6 @@ public:
     {
         return nutWall_;
     }
-
-    /// Replace the k-equation linear solver
-    void setKSolver(std::unique_ptr<LinearSolver> solver) noexcept
-    {
-        kSolver_ = std::move(solver);
-    }
-
-    /// Replace the omega-equation linear solver
-    void setOmegaSolver(std::unique_ptr<LinearSolver> solver) noexcept
-    {
-        omegaSolver_ = std::move(solver);
-    }
-
-    /// Enable or disable verbose console output
-    void setDebug(bool d) noexcept { debug_ = d; }
 
 // Model constants
 
@@ -223,6 +207,12 @@ private:
 
     /// Reference to omega convection scheme
     const ConvectionSchemes& omegaConvectionScheme_;
+
+    /// Linear solver for k equation
+    LinearSolver& kSolver_;
+
+    /// Linear solver for omega equation
+    LinearSolver& omegaSolver_;
 
 // Turbulence fields
 
@@ -328,7 +318,7 @@ private:
 // Physical properties
 
     /// Laminar kinematic viscosity
-    Scalar nu_ = S(1.7894e-5 / 1.225);
+    Scalar nu_;
 
     /// Optional SST F3 switch
     bool useF3_ = false;
@@ -340,24 +330,18 @@ private:
     Scalar maxViscosityRatio_ = S(1e5);
 
     /// Under-relaxation factor for k equation
-    Scalar alphaK_ = S(0.5);
+    Scalar alphaK_;
 
     /// Under-relaxation factor for omega equation
-    Scalar alphaOmega_ = S(0.5);
+    Scalar alphaOmega_;
 
     /// Enable verbose console output
-    bool debug_ = false;
+    bool debug_;
 
 // Numerical tools
 
     /// Matrix constructor
     std::unique_ptr<Matrix> matrixConstruct_;
-
-    /// Linear solver for k equation
-    std::unique_ptr<LinearSolver> kSolver_;
-
-    /// Linear solver for omega equation
-    std::unique_ptr<LinearSolver> omegaSolver_;
 
 // Private methods
 

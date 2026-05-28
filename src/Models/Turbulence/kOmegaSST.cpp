@@ -23,7 +23,15 @@ kOmegaSST::kOmegaSST
     const BoundaryConditions& bc,
     const GradientScheme& gradientScheme,
     const ConvectionSchemes& kScheme,
-    const ConvectionSchemes& omegaScheme
+    const ConvectionSchemes& omegaScheme,
+    LinearSolver& kSolver,
+    LinearSolver& omegaSolver,
+    const Scalar nu,
+    const Scalar initialK,
+    const Scalar initialOmega,
+    const Scalar alphaK,
+    const Scalar alphaOmega,
+    const bool debug
 )
 :
     mesh_(mesh),
@@ -31,26 +39,14 @@ kOmegaSST::kOmegaSST
     gradientScheme_(gradientScheme),
     kConvectionScheme_(kScheme),
     omegaConvectionScheme_(omegaScheme),
+    kSolver_(kSolver),
+    omegaSolver_(omegaSolver),
+    nu_(nu),
+    alphaK_(alphaK),
+    alphaOmega_(alphaOmega),
+    debug_(debug),
     matrixConstruct_(std::make_unique<Matrix>(mesh_, bcManager_))
-{}
-
-kOmegaSST::~kOmegaSST() noexcept = default;
-
-// ****************************** Public Methods ******************************
-
-void kOmegaSST::initialize
-(
-    Scalar nu,
-    Scalar initialK,
-    Scalar initialOmega,
-    Scalar alphaK,
-    Scalar alphaOmega
-)
 {
-    nu_ = nu;
-    alphaK_ = alphaK;
-    alphaOmega_ = alphaOmega;
-
     hasWallOverride_.assign(mesh_.numCells(), 0);
     omegaAccum_.assign(mesh_.numCells(), S(0.0));
 
@@ -77,6 +73,9 @@ void kOmegaSST::initialize
     updateNutWall();
 }
 
+kOmegaSST::~kOmegaSST() noexcept = default;
+
+// ****************************** Public Methods ******************************
 
 void kOmegaSST::solve
 (
@@ -87,25 +86,6 @@ void kOmegaSST::solve
     const TensorField& gradU
 )
 {
-    if (!kSolver_)
-    {
-        FatalError
-        (
-            "kOmegaSST::solve: k linear solver not set; "
-            "call setKSolver() (or SIMPLE::setTurbulenceSolvers()) "
-            "before solve()."
-        );
-    }
-    if (!omegaSolver_)
-    {
-        FatalError
-        (
-            "kOmegaSST::solve: omega linear solver not set; "
-            "call setOmegaSolver() (or SIMPLE::setTurbulenceSolvers()) "
-            "before solve()."
-        );
-    }
-
     // Update y+ on wall faces
     updateYPlus();
 
@@ -566,7 +546,7 @@ void kOmegaSST::overrideWallCellProduction
     const ScalarField& Uz
 )
 {
-    // Reset per-cell accumulators (capacity from default ctor / initialize())
+    // Reset per-cell accumulators (capacity from construction)
     wallProductionAccum_.setAll(S(0.0));
     std::fill(hasWallOverride_.begin(), hasWallOverride_.end(), 0);
 
@@ -888,12 +868,12 @@ void kOmegaSST::solveOmegaEquation(const FaceFluxField& flowRateFace)
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
     omegaSolution(omega_.data(), eIdx(numCells));
 
-    omegaSolver_->solve(omegaSolution, matrixA, vectorB);
+    omegaSolver_.solve(omegaSolution, matrixA, vectorB);
 
     if (debug_)
     {
         const SolvePerformance& omegaPerformance =
-            omegaSolver_->lastPerformance();
+            omegaSolver_.lastPerformance();
 
         Logger::residualRow
         (
@@ -966,11 +946,11 @@ void kOmegaSST::solveKEquation(const FaceFluxField& flowRateFace)
     Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
     kSolution(k_.data(), eIdx(numCells));
 
-    kSolver_->solve(kSolution, matrixA, vectorB);
+    kSolver_.solve(kSolution, matrixA, vectorB);
 
     if (debug_)
     {
-        const SolvePerformance& kPerformance = kSolver_->lastPerformance();
+        const SolvePerformance& kPerformance = kSolver_.lastPerformance();
 
         Logger::residualRow
         (

@@ -50,18 +50,23 @@ add_executable(${PROJECT_NAME}
     src/Fields/Field.cpp
     src/BoundaryConditions/BoundaryData.cpp
     src/BoundaryConditions/BoundaryConditions.cpp
+    src/BoundaryConditions/BoundaryConditionLoader.cpp
     src/Schemes/GradientScheme.cpp
     src/Schemes/ConvectionSchemes.cpp
     src/LinearSystem/Matrix.cpp
     src/Solver/SIMPLE.cpp
     src/Solver/Constraint.cpp
-    src/Models/kOmegaSST.cpp
-    src/PostProcessing/VtkWriter.cpp
-    src/PostProcessing/VtkCellOrdering.cpp
-    src/PostProcessing/VtkBoundaryWriter.cpp
+    src/Models/Turbulence/kOmegaSST.cpp
+    src/PostProcessing/VTK/VtkWriter.cpp
+    src/PostProcessing/VTK/VtkCellOrdering.cpp
+    src/PostProcessing/VTK/VtkBoundaryWriter.cpp
+    src/PostProcessing/VTK/PvdTimeSeries.cpp
+    src/PostProcessing/PostProcess.cpp
     src/PostProcessing/DerivedFields.cpp
-    src/PostProcessing/PvdTimeSeries.cpp
     src/Case/CaseReader.cpp
+    src/Case/CaseConfiguration.cpp
+    src/Mesh/MeshPreparation.cpp
+    src/Application/SolverAssembly.cpp
     src/Application/CFDApplication.cpp
 )
 
@@ -73,9 +78,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     src/BoundaryConditions/
     src/Schemes/
     src/Models/
+    src/Models/Turbulence/
     src/Case/
     src/Application/
     src/PostProcessing/
+    src/PostProcessing/VTK/
     src/Solver/
     src/LinearSystem/
 )
