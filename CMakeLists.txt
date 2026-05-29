@@ -33,7 +33,7 @@ find_package(OpenMP REQUIRED)
 find_package(VTK 9 REQUIRED COMPONENTS
   CommonCore
   CommonDataModel
-  IOLegacy
+  FiltersGeneral
   IOXML
 )
 
@@ -59,7 +59,6 @@ add_executable(${PROJECT_NAME}
     src/Solver/Constraint.cpp
     src/Models/Turbulence/kOmegaSST.cpp
     src/PostProcessing/VTK/VtkWriter.cpp
-    src/PostProcessing/VTK/VtkCellOrdering.cpp
     src/PostProcessing/VTK/VtkBoundaryWriter.cpp
     src/PostProcessing/VTK/PvdTimeSeries.cpp
     src/PostProcessing/PostProcess.cpp
@@ -82,7 +81,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     src/Case/
     src/Application/
     src/PostProcessing/
-    src/PostProcessing/VTK/
     src/Solver/
     src/LinearSystem/
 )
@@ -130,7 +128,7 @@ endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE
     VTK::CommonCore
     VTK::CommonDataModel
-    VTK::IOLegacy
+    VTK::FiltersGeneral
     VTK::IOXML
     Eigen3::Eigen
     OpenMP::OpenMP_CXX
@@ -139,5 +137,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 # VTK 9 needs autoinit to register module factories at link time.
 vtk_module_autoinit(
     TARGETS ${PROJECT_NAME}
-    MODULES VTK::CommonCore VTK::CommonDataModel VTK::IOLegacy VTK::IOXML
+    MODULES VTK::CommonCore VTK::CommonDataModel VTK::FiltersGeneral VTK::IOXML
 )

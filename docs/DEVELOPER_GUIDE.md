@@ -45,9 +45,8 @@ following the OpenFOAM convention.
 - **`src/PostProcessing/`**: derived fields and output orchestration
   - `DerivedFields.h/.cpp` (velocity/vorticity magnitude, Q-criterion, strain rate)
   - `PostProcess.h/.cpp` (after-solve statistics and VTK export orchestration)
-  - `VTK/VtkWriter.h/.cpp` (`.vtu` unstructured grid writer)
-  - `VTK/VtkCellOrdering.h/.cpp` (internal hex/wedge/pyramid node ordering)
-  - `VTK/VtkBoundaryWriter.h/.cpp` (`.vtp` wall boundary writer)
+  - `VTK/VtkWriter.h/.cpp` (`.vtu` polyhedron unstructured grid writer)
+  - `VTK/VtkBoundaryWriter.h/.cpp` (`.vtp` boundary patch writer)
   - `VTK/PvdTimeSeries.h/.cpp` (PVD transient collection file helpers)
 - **`src/Case/`**: OpenFOAM-style case file parser
   - `CaseReader.h/.cpp`, `CaseConfiguration.h/.cpp`
@@ -503,14 +502,35 @@ Class `kOmegaSST`:
 ## Post-processing and VTK export
 
 `writeVtkUnstructuredGrid(filename, mesh, scalarCellFields, vectorCellFields)`:
-- Writes VTK UnstructuredGrid (`.vtu`) with 3D volume cells (tetrahedra, hexahedra, wedges, pyramids).
+- Writes VTK UnstructuredGrid (`.vtu`) with every volume cell encoded as
+  `VTK_POLYHEDRON`.
+- Uses the full mesh node table directly; volume cell face streams reference
+  global node indices and do not build a local point remap.
+- Orients each exported polyhedron face with a Newell normal compared against
+  `face.centroid() - cell.centroid()`. It does not use `Cell::faceSigns()`,
+  because mesh normal correction can flip stored normals without reordering
+  face nodes.
 - Exports cell-centered scalar fields (pressure, turbulence quantities) and vector fields (velocity).
-- Uses topology-aware node ordering for proper VTK cell types (hexahedron, wedge, pyramid).
 - Used by `PostProcess::exportResults()` to export pressure,
   `velocityMagnitude`, vector field `velocity`, and, when turbulence is enabled:
   `k`, `omega`, `nut`, and `wallDistance`.
-- Wall quantities are written separately with `writeWallBoundaryData()` to a
-  `_wall.vtp` file containing `yPlus` and `wallShearStress`.
+- In debug output mode, runs `vtkCellValidator` and reports invalid cell
+  counts plus sample IDs/states as warnings; validation does not block file
+  writing.
+- Polyhedron output preserves Turblyze's face topology for mixed and
+  polyhedral meshes, but it can produce larger files and may make some
+  downstream VTK/ParaView filters slower.
+
+`writeBoundaryData(filename, mesh, scalarFaceFields)`:
+- Writes all boundary patches to `_boundary.vtp` by iterating
+  `mesh.patches()` in order and then each patch's face-index range.
+- Builds a deterministic boundary-only global-to-local point remap for the
+  `.vtp` file.
+- Adds integer cell arrays `patchID`, `patchZoneID`, `patchTypeID`, and
+  `isWall`. `patchID` is the zero-based ordinal in `mesh.patches()` order;
+  `patchZoneID` is the Fluent zone ID.
+- Adds `yPlus` and `wallShearStress` only when turbulence is enabled, indexed
+  by global `face.idx()`.
 
 
 ## Linear solvers

@@ -2,10 +2,10 @@
  * @file VtkWriter.h
  * @brief VTK UnstructuredGrid (.vtu) writer for 3D volume cell data
  *
- * @details Exports the 3D unstructured mesh (tetrahedra, hexahedra, wedges,
- * pyramids) together with cell-centered scalar and vector fields in the
- * VTK UnstructuredGrid format, suitable for ParaView volume rendering,
- * slicing, clipping, and isosurface extraction.
+ * @details Exports the 3D unstructured mesh as VTK polyhedron cells together
+ * with cell-centered scalar and vector fields in the VTK UnstructuredGrid
+ * format, suitable for ParaView volume rendering, slicing, clipping, and
+ * isosurface extraction.
  *
  * @see ParaView: https://www.paraview.org/
  * @see VTK Documentation: https://vtk.org/documentation/
@@ -13,14 +13,19 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <array>
 #include <map>
 #include <string>
 
+// Project headers
 #include "Scalar.h"
 #include "Mesh.h"
 #include "CellData.h"
 
+// ******************************* namespace VTK ******************************
 
 namespace VTK
 {

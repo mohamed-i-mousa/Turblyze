@@ -340,16 +340,26 @@ output
 ```
 
 **Notes**:
-- Output format is always VTK
-- All computed fields are written to the output file
+- Output format is always VTK. The configured filename writes the volume
+  `.vtu`; a sibling `_boundary.vtp` file is also written for all boundary
+  patches.
+- All computed volume fields are written to the `.vtu` file. Boundary patch
+  metadata (`patchID`, `patchZoneID`, `patchTypeID`, `isWall`) is written to
+  `_boundary.vtp`; turbulence wall diagnostics (`yPlus`,
+  `wallShearStress`) are added there only when turbulence is enabled.
+- Volume cells are encoded as `VTK_POLYHEDRON` to preserve the mesh's
+  face-based topology. This can produce larger files and may make some
+  downstream ParaView filters slower than native tetra/hex/wedge/pyramid
+  output.
 - Output is written at the end of the simulation only
 - `debug` (default: `false`): When `true`, enables verbose
   console output including mesh geometry details, boundary
   condition summaries, solver configuration, per-equation
   solver convergence, turbulence field diagnostics, and VTK
-  export statistics. When `false`, only essential output is
-  shown (phase headers, iteration residuals, convergence
-  status, flow statistics, and error/warning messages).
+  export statistics. VTK cell validation is also run in debug mode; validation
+  issues are reported as warnings and do not block writing the files. When
+  `false`, only essential output is shown (phase headers, iteration residuals,
+  convergence status, flow statistics, and error/warning messages).
 
 ### 11. parallelism (Optional)
 Shared-memory parallelism settings.

@@ -145,17 +145,28 @@ The default `defaultCase` file contains:
 - **Boundary Patches**: Named patches for boundary condition assignment
 
 ### Output Visualization
-- **Format**: VTK UnstructuredGrid (`.vtu`) for ParaView
+- **Format**: VTK UnstructuredGrid (`.vtu`) and boundary PolyData
+  (`_boundary.vtp`) for ParaView
 - **Fields Exported**:
-  - Main `.vtu`: `pressure`, `velocityMagnitude`, `k`, `omega`, `nut`, `wallDistance` (turbulence fields only when turbulence is enabled)
-  - Wall `.vtp` (e.g. `sphere_wall.vtp`): `yPlus`, `wallShearStress` (written separately when turbulence is enabled)
+  - Main `.vtu`: `pressure`, `velocityMagnitude`, vector `velocity`,
+    and, when turbulence is enabled, `k`, `omega`, `nut`, `wallDistance`
+  - Boundary `.vtp` (e.g. `sphere_boundary.vtp`): all boundary patches with
+    integer `patchID`, `patchZoneID`, `patchTypeID`, and `isWall` metadata.
+    When turbulence is enabled, it also includes `yPlus` and
+    `wallShearStress`
+- **Cell Encoding**: volume cells are written as `VTK_POLYHEDRON` to preserve
+  Turblyze's face topology. This is more robust for mixed/polyhedral meshes,
+  but files can be larger and some ParaView filters may run slower than with
+  native tetra/hex/wedge/pyramid cells.
 
 ### ParaView Visualization
 1. Open the `.vtu` file in ParaView
 2. Apply the file and click the "eye" icon to make it visible
 3. Color by desired field (e.g., `pressure`, `velocityMagnitude`)
-4. For wall quantities (`yPlus`, `wallShearStress`), open the corresponding `_wall.vtp` file
-5. Note: Fields are cell-centered data (3D volume cells)
+4. Open the corresponding `_boundary.vtp` file to inspect boundary patches
+   or wall quantities (`yPlus`, `wallShearStress` when available)
+5. Note: volume fields are cell-centered data; boundary metadata and wall
+   diagnostics are boundary-face data
 
 ## Case Configuration
 
@@ -248,7 +259,7 @@ OpenFOAM convention:
     (`kOmegaSST.h/.cpp`)
 - **`src/PostProcessing/`**: Derived fields and output orchestration
   (`PostProcess.h/.cpp`)
-  - **`src/PostProcessing/VTK/`**: VTK/PVD writers and VTK cell ordering
+  - **`src/PostProcessing/VTK/`**: VTK/PVD volume and boundary writers
 - **`src/Case/`**: Case file system
   (`CaseReader.h/.cpp`, `CaseConfiguration.h/.cpp`)
 
@@ -300,4 +311,3 @@ This solver implements standard CFD methodologies:
 
 No license has been specified for this project yet. For questions or bug
 reports, contact the author or open an issue on the project's issue tracker.
-

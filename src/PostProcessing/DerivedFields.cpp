@@ -3,20 +3,26 @@
  * @brief Implementation of derived cell-centered scalar fields
  *****************************************************************************/
 
-// Own header
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "DerivedFields.h"
 
-// STL includes
+// Standard library headers
 #include <cmath>
 
-// Header includes
+// Project headers
 #include "Tensor.h"
 
+// ******************************* namespace VTK ******************************
 
 namespace VTK
 {
 
-// ****************** Internal Helper Methods: Field Utilities *****************
+// **************************** Internal Helpers ******************************
+
+namespace
+{
 
 ScalarField computeMagnitude(const VectorField& field)
 {
@@ -28,7 +34,9 @@ ScalarField computeMagnitude(const VectorField& field)
     return result;
 }
 
-// *********************** Public API: Derived Fields **************************
+} // namespace
+
+// ***************************** Public Functions *****************************
 
 ScalarField velocityMagnitude
 (

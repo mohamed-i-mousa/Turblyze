@@ -3,27 +3,233 @@
  * @brief Implementation of VTK UnstructuredGrid writer
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "VtkWriter.h"
 
+// External library headers
 #include <vtkCellData.h>
 #include <vtkCellType.h>
+#include <vtkCellValidator.h>
 #include <vtkDoubleArray.h>
+#include <vtkGenericCell.h>
 #include <vtkPoints.h>
 #include <vtkSmartPointer.h>
 #include <vtkUnstructuredGrid.h>
 #include <vtkXMLUnstructuredGridWriter.h>
 
+// Standard library headers
+#include <algorithm>
 #include <iostream>
+#include <sstream>
+#include <span>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
+// Project headers
 #include "ErrorHandler.h"
-#include "VtkCellOrdering.h"
 
+// ******************************* namespace VTK ******************************
 
 namespace VTK
 {
+
+namespace
+{
+
+Vector newellNormal
+(
+    std::span<const size_t> faceNodes,
+    std::span<const Vector> allNodes
+)
+{
+    Vector normal;
+
+    for (size_t i = 0; i < faceNodes.size(); ++i)
+    {
+        const Vector& current = allNodes[faceNodes[i]];
+        const Vector& next = allNodes[faceNodes[(i + 1) % faceNodes.size()]];
+
+        normal += Vector
+        (
+            (current.y() - next.y()) * (current.z() + next.z()),
+            (current.z() - next.z()) * (current.x() + next.x()),
+            (current.x() - next.x()) * (current.y() + next.y())
+        );
+    }
+
+    return normal;
+}
+
+
+void appendUniqueNodeId
+(
+    std::vector<vtkIdType>& uniquePointIds,
+    size_t nodeIdx
+)
+{
+    const vtkIdType vtkNodeIdx = static_cast<vtkIdType>(nodeIdx);
+
+    if
+    (
+        std::find
+        (
+            uniquePointIds.begin(),
+            uniquePointIds.end(),
+            vtkNodeIdx
+        ) == uniquePointIds.end()
+    )
+    {
+        uniquePointIds.push_back(vtkNodeIdx);
+    }
+}
+
+
+void appendValidationStateName
+(
+    std::string& result,
+    const vtkCellValidator::State state,
+    const vtkCellValidator::State bit,
+    const char* const name
+)
+{
+    if ((state & bit) == bit)
+    {
+        if (!result.empty())
+        {
+            result += '|';
+        }
+
+        result += name;
+    }
+}
+
+
+std::string cellValidationStateName(vtkCellValidator::State state)
+{
+    if (state == vtkCellValidator::Valid)
+    {
+        return "Valid";
+    }
+
+    std::string result;
+
+    appendValidationStateName
+    (
+        result,
+        state,
+        vtkCellValidator::WrongNumberOfPoints,
+        "WrongNumberOfPoints"
+    );
+    appendValidationStateName
+    (
+        result,
+        state,
+        vtkCellValidator::IntersectingEdges,
+        "IntersectingEdges"
+    );
+    appendValidationStateName
+    (
+        result,
+        state,
+        vtkCellValidator::IntersectingFaces,
+        "IntersectingFaces"
+    );
+    appendValidationStateName
+    (
+        result,
+        state,
+        vtkCellValidator::NoncontiguousEdges,
+        "NoncontiguousEdges"
+    );
+    appendValidationStateName
+    (
+        result,
+        state,
+        vtkCellValidator::Nonconvex,
+        "Nonconvex"
+    );
+    appendValidationStateName
+    (
+        result,
+        state,
+        vtkCellValidator::FacesAreOrientedIncorrectly,
+        "FacesAreOrientedIncorrectly"
+    );
+
+    return result.empty() ? "Unknown" : result;
+}
+
+
+void validateCellsForDebug(vtkUnstructuredGrid* unstructuredGrid)
+{
+    vtkSmartPointer<vtkGenericCell> genericCell =
+        vtkSmartPointer<vtkGenericCell>::New();
+
+    size_t invalidCellCount = 0;
+    std::vector<std::string> invalidSamples;
+    constexpr size_t maxSamples = 8;
+
+    const vtkIdType numCells = unstructuredGrid->GetNumberOfCells();
+
+    for (vtkIdType cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    {
+        unstructuredGrid->GetCell(cellIdx, genericCell);
+
+        const vtkCellValidator::State state =
+            vtkCellValidator::Check
+            (
+                genericCell.GetPointer(),
+                static_cast<double>(smallValue)
+            );
+
+        if (state == vtkCellValidator::Valid)
+        {
+            continue;
+        }
+
+        ++invalidCellCount;
+
+        if (invalidSamples.size() < maxSamples)
+        {
+            std::ostringstream sample;
+            sample
+                << cellIdx << '=' << cellValidationStateName(state);
+            invalidSamples.push_back(sample.str());
+        }
+    }
+
+    if (invalidCellCount == 0)
+    {
+        return;
+    }
+
+    std::ostringstream message;
+    message
+        << "VTK cell validation reported " << invalidCellCount
+        << " invalid cell(s). Output will still be written.";
+
+    if (!invalidSamples.empty())
+    {
+        message << " First samples: ";
+
+        for (size_t i = 0; i < invalidSamples.size(); ++i)
+        {
+            if (i > 0)
+            {
+                message << ", ";
+            }
+
+            message << invalidSamples[i];
+        }
+    }
+
+    Warning(message.str());
+}
+
+} // namespace
+
 
 void writeVtkUnstructuredGrid
 (
@@ -46,6 +252,7 @@ void writeVtkUnstructuredGrid
 
     // Create vtkPoints from nodes
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+    points->SetDataTypeToDouble();
     points->SetNumberOfPoints(static_cast<vtkIdType>(allNodes.size()));
 
     for (size_t nodeIdx = 0; nodeIdx < allNodes.size(); ++nodeIdx)
@@ -61,119 +268,90 @@ void writeVtkUnstructuredGrid
     }
 
     unstructuredGrid->SetPoints(points);
+    unstructuredGrid->Allocate(static_cast<vtkIdType>(allCells.size()));
 
-    // Add cells to unstructured grid with proper topology preservation
-    // Build a node connectivity graph to determine proper VTK node ordering
-
-    // Cell type statistics for diagnostics
-    size_t numTets = 0;
-    size_t numHexes = 0;
-    size_t numWedges = 0;
-    size_t numPyramids = 0;
-    size_t numConvex = 0;
-    size_t numWedgeOrderingFailures = 0;
-
+    // Add cells as polyhedra using the mesh's face-based topology directly.
     for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
     {
         const Cell& cell = allCells[cellIdx];
         const auto faceIndices = cell.faceIndices();
 
-        // Collect all unique nodes and build connectivity
-        std::unordered_set<size_t> uniqueNodeSet;
-        std::vector<std::vector<size_t>> faceNodeLists;
-        faceNodeLists.reserve(faceIndices.size());
+        std::vector<vtkIdType> uniquePointIds;
+        std::vector<vtkIdType> faceStream;
+        uniquePointIds.reserve(faceIndices.size() * 4);
+        faceStream.reserve(faceIndices.size() * 5);
 
         for (size_t faceIdx : faceIndices)
         {
             const Face& face = allFaces[faceIdx];
             const auto nodeIndices = face.nodeIndices();
-            uniqueNodeSet.insert(nodeIndices.begin(), nodeIndices.end());
-            faceNodeLists.emplace_back(nodeIndices.begin(), nodeIndices.end());
-        }
 
-        const size_t numNodes = uniqueNodeSet.size();
-        const size_t numFaces = faceIndices.size();
-
-        // Determine cell type
-        int cellType = VTK_CONVEX_POINT_SET; // Fallback
-        std::vector<vtkIdType> orderedNodes;
-
-        if (numNodes == 4 && numFaces == 4)
-        {
-            // Tetrahedron - VTK ordering:
-            // any vertex, then 3 neighbors forming base
-            cellType = VTK_TETRA;
-            numTets++;
-            orderedNodes.reserve(4);
-            for (size_t nodeIdx : uniqueNodeSet)
+            if (nodeIndices.size() < 3)
             {
-                orderedNodes.push_back(static_cast<vtkIdType>(nodeIdx));
+                FatalError
+                (
+                    "Cannot write VTK polyhedron cell "
+                  + std::to_string(cellIdx) + ": face "
+                  + std::to_string(faceIdx)
+                  + " has fewer than three nodes."
+                );
             }
-        }
-        else if (numNodes == 8 && numFaces == 6)
-        {
-            // Hexahedron - need to find proper ordering
-            cellType = VTK_HEXAHEDRON;
-            numHexes++;
-            orderedNodes =
-                orderHexahedronNodes(faceNodeLists, uniqueNodeSet, allNodes);
-        }
-        else if (numNodes == 6 && numFaces == 5)
-        {
-            // Wedge (prism)
-            cellType = VTK_WEDGE;
-            numWedges++;
-            orderedNodes =
-                orderWedgeNodes(faceNodeLists, uniqueNodeSet, allNodes);
 
-            if (orderedNodes.empty())
+            for (size_t nodeIdx : nodeIndices)
             {
-                numWedgeOrderingFailures++;
-                // Fallback to convex point set
-                cellType = VTK_CONVEX_POINT_SET;
-                for (size_t nodeIdx : uniqueNodeSet)
-                {
-                    orderedNodes.push_back(static_cast<vtkIdType>(nodeIdx));
-                }
+                appendUniqueNodeId(uniquePointIds, nodeIdx);
             }
-        }
-        else if (numNodes == 5 && numFaces == 5)
-        {
-            // Pyramid
-            cellType = VTK_PYRAMID;
-            numPyramids++;
-            orderedNodes =
-                orderPyramidNodes(faceNodeLists, uniqueNodeSet, allNodes);
-        }
-        else
-        {
-            // Use convex point set for unknown topology
-            numConvex++;
-            orderedNodes.reserve(numNodes);
-            for (size_t nodeIdx : uniqueNodeSet)
+
+            std::vector<vtkIdType> orientedFaceNodes;
+            orientedFaceNodes.reserve(nodeIndices.size());
+
+            for (size_t nodeIdx : nodeIndices)
             {
-                orderedNodes.push_back(static_cast<vtkIdType>(nodeIdx));
+                orientedFaceNodes.push_back(static_cast<vtkIdType>(nodeIdx));
             }
+
+            const Vector faceNormal = newellNormal(nodeIndices, allNodes);
+            const Vector outwardDirection =
+                face.centroid() - cell.centroid();
+
+            if (dot(faceNormal, outwardDirection) < S(0.0))
+            {
+                std::reverse
+                (
+                    orientedFaceNodes.begin(),
+                    orientedFaceNodes.end()
+                );
+            }
+
+            faceStream.push_back
+            (
+                static_cast<vtkIdType>(orientedFaceNodes.size())
+            );
+            faceStream.insert
+            (
+                faceStream.end(),
+                orientedFaceNodes.begin(),
+                orientedFaceNodes.end()
+            );
         }
 
-        // Insert cell with ordered nodes
-        if (orderedNodes.empty())
-        {
-            // Fallback: use arbitrary ordering
-            orderedNodes.reserve(numNodes);
-            for (size_t nodeIdx : uniqueNodeSet)
-            {
-                orderedNodes.push_back(static_cast<vtkIdType>(nodeIdx));
-            }
-            cellType = VTK_CONVEX_POINT_SET;
-        }
-
-        unstructuredGrid->InsertNextCell
+        const vtkIdType insertedCell = unstructuredGrid->InsertNextCell
         (
-            cellType,
-            static_cast<vtkIdType>(orderedNodes.size()),
-            orderedNodes.data()
+            VTK_POLYHEDRON,
+            static_cast<vtkIdType>(uniquePointIds.size()),
+            uniquePointIds.data(),
+            static_cast<vtkIdType>(faceIndices.size()),
+            faceStream.data()
         );
+
+        if (insertedCell < 0)
+        {
+            FatalError
+            (
+                "Failed to insert VTK polyhedron cell "
+              + std::to_string(cellIdx) + "."
+            );
+        }
     }
 
     // Add scalar cell fields
@@ -254,6 +432,11 @@ void writeVtkUnstructuredGrid
         unstructuredGrid->GetCellData()->AddArray(dataArray);
     }
 
+    if (debug)
+    {
+        validateCellsForDebug(unstructuredGrid);
+    }
+
     // Write the unstructured grid to file
     vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer =
         vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
@@ -281,44 +464,7 @@ void writeVtkUnstructuredGrid
             << "  - Number of cells: " << allCells.size() << '\n';
 
         std::cout
-            << "  - Cell types:" << '\n';
-
-        if (numTets > 0)
-        {
-            std::cout
-                << "    - Tetrahedra: " << numTets << '\n';
-        }
-
-        if (numHexes > 0)
-        {
-            std::cout
-                << "    - Hexahedra: " << numHexes << '\n';
-        }
-
-        if (numWedges > 0)
-        {
-            std::cout
-                << "    - Wedges (prisms): " << numWedges << '\n';
-        }
-
-        if (numPyramids > 0)
-        {
-            std::cout
-                << "    - Pyramids: " << numPyramids << '\n';
-        }
-
-        if (numConvex > 0)
-        {
-            std::cout
-                << "    - Convex point sets: " << numConvex << '\n';
-        }
-
-        if (numWedgeOrderingFailures > 0)
-        {
-            std::cout
-                << "  - WARNING: " << numWedgeOrderingFailures
-                << " wedge cells failed proper ordering" << '\n';
-        }
+            << "  - Cell type: VTK_POLYHEDRON" << '\n';
 
         std::cout
             << "  - Number of scalar fields: "

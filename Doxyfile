@@ -1027,7 +1027,6 @@ WARN_LOGFILE           =
 # Note: If this tag is empty the current directory is searched.
 
 INPUT                  = README.md \
-                         include \
                          src \
                          docs/DEVELOPER_GUIDE.md \
                          docs/CASE.md \
