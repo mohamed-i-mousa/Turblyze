@@ -22,14 +22,17 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+/// Standard library headers
 #include <vector>
 #include <memory>
-#include <string>
-#include <utility>
+#include <limits>
 
+/// Project headers
 #include "Scalar.h"
-#include "Mesh.h"
 #include "Vector.h"
+#include "Mesh.h"
 #include "CellData.h"
 #include "FaceData.h"
 #include "BoundaryConditions.h"
@@ -37,13 +40,17 @@
 #include "ConvectionSchemes.h"
 #include "LinearSolvers.h"
 
-/// Forward declaration
+// *************************** Forward Declarations ***************************
+
 class Matrix;
 
+// ****************************** class kOmegaSST *****************************
 
 class kOmegaSST
 {
 public:
+
+// ************************* Special Member Functions *************************
 
     /// Constructor
     kOmegaSST
@@ -52,8 +59,8 @@ public:
         const BoundaryConditions& bc,
         const GradientScheme& gradScheme,
         const ConvectionSchemes& kScheme,
-        const ConvectionSchemes& omegaScheme,
         LinearSolver& kSolver,
+        const ConvectionSchemes& omegaScheme,
         LinearSolver& omegaSolver,
         const Scalar nu,
         const Scalar initialK,
@@ -74,6 +81,8 @@ public:
     /// Destructor
     ~kOmegaSST() noexcept;
 
+// ***************************** Solve kOmegaSST *****************************
+
     /// Solve turbulence equations for current iteration
     void solve
     (
@@ -84,13 +93,31 @@ public:
         const TensorField& gradU
     );
 
-// Accessor methods
+// ***************************** Accessor Methods *****************************
 
     /// Get turbulent kinetic energy field
-    [[nodiscard]] const ScalarField& k() const noexcept { return k_; }
+    [[nodiscard]] const ScalarField& k() const noexcept
+    {
+        return k_;
+    }
 
     /// Get specific dissipation rate field
-    [[nodiscard]] const ScalarField& omega() const noexcept { return omega_; }
+    [[nodiscard]] const ScalarField& omega() const noexcept
+    {
+        return omega_;
+    }
+
+    /// Get normalised k change from the most recent solve
+    [[nodiscard]] Scalar lastKResidual() const noexcept
+    {
+        return lastKResidual_;
+    }
+
+    /// Get normalised omega change from the most recent solve
+    [[nodiscard]] Scalar lastOmegaResidual() const noexcept
+    {
+        return lastOmegaResidual_;
+    }
 
     /// Get turbulent kinematic viscosity field
     [[nodiscard]] const ScalarField& turbulentViscosity() const noexcept
@@ -128,7 +155,7 @@ public:
         return nutWall_;
     }
 
-// Model constants
+// ***************************** Model Constants *****************************
 
     /// Structure containing all model constants
     struct ModelConstants
@@ -172,7 +199,7 @@ public:
         .betaStar    = S(0.09)
     };
 
-// Inlet/initial condition calculators
+// *********************** Inlet Condition Calculators ***********************
 
     /// Calculate inlet/initial turbulent kinetic energy
     [[nodiscard]] static Scalar inletK
@@ -188,10 +215,11 @@ public:
         Scalar hydraulicDiameter
     ) noexcept;
 
+// ****************************** Private Members *****************************
 
 private:
 
-// Mesh references
+// Dependencies and services
 
     /// Mesh view (nodes, faces, cells)
     const Mesh& mesh_;
@@ -205,14 +233,37 @@ private:
     /// Reference to k convection scheme
     const ConvectionSchemes& kConvectionScheme_;
 
-    /// Reference to omega convection scheme
-    const ConvectionSchemes& omegaConvectionScheme_;
-
     /// Linear solver for k equation
     LinearSolver& kSolver_;
 
+    /// Reference to omega convection scheme
+    const ConvectionSchemes& omegaConvectionScheme_;
+
     /// Linear solver for omega equation
     LinearSolver& omegaSolver_;
+
+    /// Matrix constructor
+    std::unique_ptr<Matrix> matrixConstruct_;
+
+// Physical and algorithm parameters
+
+    /// Laminar kinematic viscosity
+    Scalar nu_;
+
+    /// Under-relaxation factor for k equation
+    Scalar alphaK_;
+
+    /// Under-relaxation factor for omega equation
+    Scalar alphaOmega_;
+
+    /// Enable verbose console output
+    bool debug_;
+
+    /// Optional SST F3 switch
+    bool useF3_ = false;
+
+    /// Maximum turbulent-to-laminar viscosity ratio for omega bound
+    Scalar maxViscosityRatio_ = S(1e5);
 
 // Turbulence fields
 
@@ -225,53 +276,23 @@ private:
     /// Turbulent kinematic viscosity
     ScalarField nut_{S(0.0)};
 
-    /// k production term (mutated by productionTerms())
+// Residual tracking
+
+    /// Previous-iteration k/omega snapshots for residual computation
+    ScalarField kPrev_;
+    ScalarField omegaPrev_;
+
+    /// Normalised k/omega change from the most recent solve
+    Scalar lastKResidual_ = S(1e9);
+    Scalar lastOmegaResidual_ = S(1e9);
+
+// Production and model-term fields
+
+    /// k production term
     ScalarField Pk_;
 
-    /// Omega production term (mutated by productionTerms())
+    /// Omega production term
     ScalarField POmega_;
-
-    /// Distance to nearest wall
-    ScalarField wallDistance_{S(1.0)};
-
-    /// Coordinates of the nearest wall point per cell (for mesh-wave)
-    VectorField nearestWallPoint_;
-
-    /// Kinematic wall shear stress magnitude (tau/rho) [m^2/s^2]
-    FaceData<Scalar> wallShearStress_;
-
-    /// Owner-cell to wall-face perpendicular distance
-    FaceData<Scalar> y_;
-
-    /// y+
-    FaceData<Scalar> yPlus_;
-
-
-// Auxiliary fields
-
-    /// Wall-function nut values on wall faces (nutkWallFunction)
-    FaceData<Scalar> nutWall_;
-
-    /// Dynamic omega wall-function values on faces
-    FaceData<Scalar> omegaWall_
-    {
-        std::numeric_limits<Scalar>::quiet_NaN()
-    };
-
-    /// Area-based weight per wall face (face area / total wall area of cell)
-    FaceData<Scalar> wallFaceWeight_;
-
-    /// Indices into mesh_.faces for faces with wall-function BCs
-    std::vector<size_t> wallFunctionFaceIndices_;
-
-    /// Unique cell indices adjacent to wall-function faces
-    std::vector<size_t> wallCellIndices_;
-
-    /// Wall-to-total boundary area fraction per wall cell
-    std::vector<Scalar> wallCellFraction_;
-
-    /// Area-weighted wall-function omega per wall cell
-    std::vector<Scalar> wallCellOmega_;
 
     /// Strain-rate magnitude per cell: ||S|| = sqrt(2 S_ij S_ij)
     ScalarField strainRateMag_;
@@ -300,6 +321,50 @@ private:
     VectorField gradK_;
     VectorField gradOmega_;
 
+// Wall distance and wall-function state
+
+    /// Distance to nearest wall
+    ScalarField wallDistance_{S(1.0)};
+
+    /// Coordinates of the nearest wall point per cell (for mesh-wave)
+    VectorField nearestWallPoint_;
+
+    /// meshWave wall-distance loop convergence flag
+    bool wallDistanceConverged_ = false;
+
+    /// Kinematic wall shear stress magnitude (tau/rho) [m^2/s^2]
+    FaceData<Scalar> wallShearStress_;
+
+    /// Owner-cell to wall-face perpendicular distance
+    FaceData<Scalar> y_;
+
+    /// y+
+    FaceData<Scalar> yPlus_;
+
+    /// Wall-function nut values on wall faces (nutkWallFunction)
+    FaceData<Scalar> nutWall_;
+
+    /// Dynamic omega wall-function values on faces
+    FaceData<Scalar> omegaWall_
+    {
+        std::numeric_limits<Scalar>::quiet_NaN()
+    };
+
+    /// Area-based weight per wall face (face area / total wall area of cell)
+    FaceData<Scalar> wallFaceWeight_;
+
+    /// Indices into mesh_.faces for faces with wall-function BCs
+    std::vector<size_t> wallFunctionFaceIndices_;
+
+    /// Unique cell indices adjacent to wall-function faces
+    std::vector<size_t> wallCellIndices_;
+
+    /// Wall-to-total boundary area fraction per wall cell
+    std::vector<Scalar> wallCellFraction_;
+
+    /// Area-weighted wall-function omega per wall cell
+    std::vector<Scalar> wallCellOmega_;
+
     /// Per-cell accumulator of wall-function production contributions
     ScalarField wallProductionAccum_;
 
@@ -315,41 +380,17 @@ private:
     /// y+ crossover between viscous sublayer and log region
     Scalar yPlusLam_ = S(11.225);
 
-// Physical properties
+// ***************************** Private Methods *****************************
 
-    /// Laminar kinematic viscosity
-    Scalar nu_;
-
-    /// Optional SST F3 switch
-    bool useF3_ = false;
-
-    /// meshWave wall-distance loop convergence flag
-    bool wallDistanceConverged_ = false;
-
-    /// Maximum turbulent-to-laminar viscosity ratio for omega bound
-    Scalar maxViscosityRatio_ = S(1e5);
-
-    /// Under-relaxation factor for k equation
-    Scalar alphaK_;
-
-    /// Under-relaxation factor for omega equation
-    Scalar alphaOmega_;
-
-    /// Enable verbose console output
-    bool debug_;
-
-// Numerical tools
-
-    /// Matrix constructor
-    std::unique_ptr<Matrix> matrixConstruct_;
-
-// Private methods
+// Utility helpers
 
     /// Blend two constants using SST blending function
     static Scalar blend(Scalar f, Scalar cInner, Scalar cOuter) noexcept
     {
         return f * (cInner - cOuter) + cOuter;
     }
+
+// Initialization helpers
 
     /// Compute y+ crossover via fixed-point iteration
     void yPlusLam();
@@ -363,20 +404,13 @@ private:
     /// Initialize turbulent viscosity with k/omega estimate
     void initializeTurbulentViscosity();
 
+// Wall-function helpers
+
     /// Update y+ field on wall-function faces
     void updateYPlus();
 
     /// Update wall-function nut on wall faces (nutkWallFunction)
     void updateNutWall();
-
-    /// Compute strain rate magnitude into strainRateMag_
-    void strainRate(const TensorField& gradU);
-
-    /// Compute cell velocity divergence into divUField_
-    void divU(const FaceFluxField& flowRateFace);
-
-    /// Compute k production term into Pk_ (uses strainRateMag_)
-    void kProduction();
 
     /// Update dynamic omega wall-function boundary values per face
     void updateOmegaWallValues();
@@ -391,6 +425,17 @@ private:
         const ScalarField& Uy,
         const ScalarField& Uz
     );
+
+// Per-iteration model terms
+
+    /// Compute strain rate magnitude into strainRateMag_
+    void strainRate(const TensorField& gradU);
+
+    /// Compute cell velocity divergence into divUField_
+    void divU(const FaceFluxField& flowRateFace);
+
+    /// Compute k production term into Pk_ (uses strainRateMag_)
+    void kProduction();
 
     /// Compute cross-diffusion term into CDkOmega_ (uses gradK_/gradOmega_)
     void crossDiffusion();
@@ -413,17 +458,21 @@ private:
     /// Limit Pk_/POmega_ in place using f1_/f23_/strainRateMag_
     void limitProduction();
 
+// Equation solves and bounds
+
     /// Solve the omega transport equation
     void solveOmegaEquation(const FaceFluxField& flowRateFace);
-
-    /// Solve the k transport equation
-    void solveKEquation(const FaceFluxField& flowRateFace);
 
     /// Bound omega with viscosity-ratio limit
     void boundOmega();
 
+    /// Solve the k transport equation
+    void solveKEquation(const FaceFluxField& flowRateFace);
+
     /// Bound k to minimum value
     void boundK();
+
+// Post-solve updates and diagnostics
 
     /// Update SST turbulent viscosity (uses f23_/strainRateMag_)
     void updateTurbulentViscosity();
@@ -435,6 +484,9 @@ private:
         const ScalarField& Uy,
         const ScalarField& Uz
     );
+
+    /// Compute normalised k/omega change against the pre-solve snapshots
+    void updateResiduals();
 
     /// Log min/max/mean for k, omega, nut fields
     void logFieldDiagnostics() const;

@@ -8,8 +8,6 @@
  * pressure correction and includes the k-omega SST turbulence modeling.
  *
  * @class SIMPLE
- *
- * The SIMPLE class provides:
  * - Pressure-velocity coupling via SIMPLE algorithm
  * - Rhie-Chow interpolation for collocated grid arrangement
  * - Momentum equations with implicit under-relaxation
@@ -20,34 +18,59 @@
 
 #pragma once
 
-#include <vector>
-#include <memory>
-#include <utility>
+// ********************************** Headers *********************************
 
+/// Standard library headers
+#include <vector>
+
+/// Project headers
 #include "Mesh.h"
+#include "Vector.h"
 #include "BoundaryConditions.h"
 #include "CellData.h"
 #include "FaceData.h"
 #include "GradientScheme.h"
-#include "ConvectionScheme.h"
+#include "ConvectionSchemes.h"
 #include "Matrix.h"
 #include "LinearSolvers.h"
-#include "ErrorHandler.h"
-#include "kOmegaSST.h"
 #include "Constraint.h"
 
+// *************************** Forward Declarations ***************************
+
+class kOmegaSST;
+
+// ******************************* class SIMPLE *******************************
 
 class SIMPLE
 {
 public:
 
-    /// Constructor for SIMPLE solver
+// ************************* Special Member Functions *************************
+
+    /// Constructor
     SIMPLE
     (
         const Mesh& mesh,
         const BoundaryConditions& bc,
         const GradientScheme& gradScheme,
-        const ConvectionScheme& convSchemes
+        const ConvectionSchemes& momentumConvectionScheme,
+        LinearSolver& momentumSolver,
+        LinearSolver& pressureSolver,
+        kOmegaSST* turbulence,
+        const Scalar rho,
+        const Scalar mu,
+        const Vector& initialVelocity,
+        const Scalar initialPressure,
+        const Scalar alphaU,
+        const Scalar alphaP,
+        const int maxIterations,
+        const Scalar convergenceTolerance,
+        const bool velocityConstraintEnabled,
+        const bool pressureConstraintEnabled,
+        const Scalar maxVelocityMagnitude,
+        const Scalar minPressure,
+        const Scalar maxPressure,
+        const bool debug
     );
 
     /// Copy constructor and assignment - Not copyable (const T& members)
@@ -61,20 +84,12 @@ public:
     /// Destructor
     ~SIMPLE() noexcept = default;
 
-    /// Main SIMPLE algorithm execution
+// ******************************* SIMPLE Solve *******************************
+
+    /// Main solve loop for SIMPLE algorithm
     void solve();
 
-    /// Initialize solution fields
-    void initialize
-    (
-        const Vector& initialVelocity,
-        Scalar initialPressure,
-        Scalar initialK = S(1e-6),
-        Scalar initialOmega = S(1.0),
-        bool enableTurbulence = false
-    );
-
-// Accessor methods
+// ***************************** Accessor methods *****************************
 
     /// Get velocity field
     [[nodiscard]] const ScalarField& Ux() const noexcept { return Ux_; }
@@ -84,162 +99,57 @@ public:
     /// Get pressure field
     [[nodiscard]] const ScalarField& pressure() const noexcept { return p_; }
 
-// Setter methods
-
-    /// Set under-relaxation factors
-    void setRelaxationFactors
-    (
-        Scalar alphaU,
-        Scalar alphaP,
-        Scalar alphaK = S(0.5),
-        Scalar alphaOmega = S(0.5)
-    ) noexcept
-    {
-        alphaU_ = alphaU;
-        alphaP_ = alphaP;
-        alphaK_ = alphaK;
-        alphaOmega_ = alphaOmega;
-    }
-
-    /// Set convergence tolerance
-    void setConvergenceTolerance(Scalar tol) noexcept { tolerance_ = tol; }
-
-    /// Set maximum number of iterations
-    void setMaxIterations(int maxIter) noexcept { maxIterations_ = maxIter; }
-
-    /// Enable or disable verbose console output
-    void setDebug(bool d) noexcept { debug_ = d; }
-
-    /// Set physical properties
-    void setPhysicalProperties(Scalar rho, Scalar mu) noexcept
-    {
-        if (rho <= S(0.0))
-        {
-            FatalError("setPhysicalProperties: density must be positive");
-        }
-
-        rho_ = rho;
-        mu_  = mu;
-        nu_  = mu / rho;
-    }
-
-    /// Set linear solver for momentum equations
-    void setMomentumSolver(std::unique_ptr<LinearSolver> solver) noexcept
-    {
-        momentumSolver_ = std::move(solver);
-    }
-
-    /// Set linear solver for pressure correction equation
-    void setPressureSolver(std::unique_ptr<LinearSolver> solver) noexcept
-    {
-        pressureSolver_ = std::move(solver);
-    }
-
-    /// Set linear solvers for turbulence equations
-    void setTurbulenceSolvers
-    (
-        std::unique_ptr<LinearSolver> kSolver,
-        std::unique_ptr<LinearSolver> omegaSolver
-    ) noexcept;
-
-// Getter methods
-
-    /// Get constraint system
-    [[nodiscard]] Constraint& constraintSystem() noexcept
-    {
-        return *constraintSystem_;
-    }
-
-    /// Get turbulent kinetic energy field
-    [[nodiscard]] const ScalarField& turbulentKineticEnergy() const noexcept
-    {
-        return turbulenceModel_->k();
-    }
-
-    /// Get specific dissipation rate field
-    [[nodiscard]] const ScalarField& specificDissipationRate() const noexcept
-    {
-        return turbulenceModel_->omega();
-    }
-
-    /// Get turbulent viscosity field
-    [[nodiscard]] const ScalarField& turbulentViscosity() const noexcept
-    {
-        return turbulenceModel_->turbulentViscosity();
-    }
-
-    /// Get wall distance field
-    [[nodiscard]] const ScalarField& wallDistance() const noexcept
-    {
-        return turbulenceModel_->wallDistance();
-    }
-
-    /// Get y+ field
-    [[nodiscard]] const FaceData<Scalar>& yPlus() const noexcept
-    {
-        return turbulenceModel_->yPlus();
-    }
-
-    /// Get wall shear stress field
-    [[nodiscard]] const FaceData<Scalar>& wallShearStress() const noexcept
-    {
-        return turbulenceModel_->wallShearStress();
-    }
-
-    /// Whether the meshWave wall-distance loop converged during initialization
-    [[nodiscard]] bool wallDistanceConverged() const noexcept
-    {
-        return turbulenceModel_ && turbulenceModel_->wallDistanceConverged();
-    }
+// ****************************** Private members *****************************
 
 private:
 
-// Private members
+// Dependencies
 
-// Mesh & Numerical
+    /// Mesh view (nodes, faces, cells)
     const Mesh& mesh_;
+
+    /// Reference to BCs
     const BoundaryConditions& bcManager_;
+
+    /// Reference to gradient scheme
     const GradientScheme& gradientScheme_;
-    const ConvectionScheme& convectionScheme_;
+
+    /// Reference to momentum convection scheme
+    const ConvectionSchemes& momentumConvectionScheme_;
+
+    /// Linear solver for momentum equations
+    LinearSolver& momentumSolver_;
+
+    /// Linear solver for pressure correction equation
+    LinearSolver& pressureSolver_;
+
+    /// Turbulence model
+    kOmegaSST* turbulence_ = nullptr;
+
+    /// Matrix constructor and solver object
+    Matrix matrixConstruct_;
 
 // Physical properties
 
-    /// Fluid density
-    Scalar rho_ = S(1.225);
-
-    /// Dynamic viscosity
-    Scalar mu_ = S(1.7894e-5);
-
     /// Kinematic viscosity
-    Scalar nu_ = S(1.7894e-5/1.225);
+    Scalar nu_;
 
 // Algorithm parameters
 
     /// Under-relaxation factor for velocity
-    Scalar alphaU_ = S(0.7);
+    Scalar alphaU_;
 
     /// Under-relaxation factor for pressure
-    Scalar alphaP_= S(0.3);
-
-    /// Under-relaxation factor for k
-    Scalar alphaK_ = S(0.5);
-
-    /// Under-relaxation factor for omega
-    Scalar alphaOmega_ = S(0.5);
+    Scalar alphaP_;
 
     /// Maximum number of iterations
-    int maxIterations_ = 500;
+    int maxIterations_;
 
     /// Convergence tolerance
-    Scalar tolerance_ = S(1e-3);
+    Scalar tolerance_;
 
-/// Turbulence and constraints
-
-    /// Turbulence model
-    std::unique_ptr<kOmegaSST> turbulenceModel_ = nullptr;
-
-    /// Field constraint system
-    std::unique_ptr<Constraint> constraintSystem_ = nullptr;
+    /// Enable verbose console output
+    bool debug_;
 
 // Solution fields
 
@@ -250,6 +160,9 @@ private:
 
     /// Pressure field
     ScalarField p_;
+
+    /// Field constraint system
+    Constraint constraintSystem_;
 
     /// Pressure correction field
     ScalarField pCorr_;
@@ -321,23 +234,6 @@ private:
     /// Mass imbalance source for pressure correction
     ScalarField massImbalance_;
 
-// Turbulence residual fields
-
-    /// Previous-iteration turbulence fields used for residual computation
-    ScalarField kPrev_;
-    ScalarField omegaPrev_;
-
-// Matrix and solver fields
-
-    /// Matrix constructor and solver object
-    std::unique_ptr<Matrix> matrixConstruct_ = nullptr;
-
-    /// Linear solver for momentum equations
-    std::unique_ptr<LinearSolver> momentumSolver_;
-
-    /// Linear solver for pressure correction equation
-    std::unique_ptr<LinearSolver> pressureSolver_;
-
 // Residual tracking for convergence
 
     /// Track pressure correction RMS before reset
@@ -354,11 +250,7 @@ private:
     Scalar kResidual0_ = S(0.0);
     Scalar omegaResidual0_ = S(0.0);
 
-// Enable verbose console output
-
-    bool debug_ = false;
-
-// Algorithm steps (called only by solve())
+// ****************************** Private methods *****************************
 
     /// Solve momentum equations for each velocity component
     void solveMomentumEquations();
@@ -372,11 +264,11 @@ private:
     /// Apply SIMPLE velocity correction: U = U* - D*gradPCorr
     void correctVelocity();
 
-    /// Update pressure with under-relaxation and reset pCorr
-    void correctPressure();
-
     /// Update face mass fluxes from pressure correction gradient
     void correctFlowRate();
+
+    /// Update pressure with under-relaxation and reset pCorr
+    void correctPressure();
 
     /// Advance k-omega SST turbulence equations (if enabled)
     void solveTurbulence();
@@ -384,11 +276,18 @@ private:
     /// Check convergence against scaled residual tolerance
     [[nodiscard]] bool checkConvergence();
 
-// Private methods
-
-    /// Compute limited velocity gradients into gradUx_/gradUy_/gradUz_
-    /// and assemble gradU_
+    /// Compute limited velocity gradients
     void updateVelocityGradients();
+
+    /// Add Σf (νEff)f · (∇U)f^T · Sf to momentum source terms
+    void addTransposeGradientSource();
+
+    /// Solve a single momentum component equation
+    void solveMomentumComponent
+    (
+        TransportEquation& eq,
+        const ScalarField& componentPrev
+    );
 
     /// Compute mass imbalance across domain
     Scalar massImbalance() const noexcept;
@@ -398,14 +297,4 @@ private:
 
     /// Compute pressure residual
     Scalar pressureResidual() const noexcept;
-
-    /// Add Σf (νEff)f · (∇U)f^T · Sf to momentum source terms
-    void addTransposeGradientSource();
-
-    /// Solve a single momentum component equation
-    void solveMomentumEquation
-    (
-        TransportEquation& eq,
-        const ScalarField& componentPrev
-    );
 };
