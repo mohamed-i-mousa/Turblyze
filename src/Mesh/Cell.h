@@ -16,18 +16,25 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <cstdint>
 #include <vector>
 #include <span>
 
+// Project headers
 #include "Scalar.h"
 #include "Vector.h"
 #include "Face.h"
 
+// ******************************** class Cell ********************************
 
 class Cell
 {
 public:
+
+// ************************* Special Member Functions *************************
 
     /// Default constructor
     Cell() noexcept = default;
@@ -53,10 +60,13 @@ public:
         faceSigns_(std::move(signs))
     {}
 
-// Setter methods
+// ****************************** Setter Methods ******************************
 
     /// Set cell identifier
-    void setIdx(size_t cellIdx) noexcept { idx_ = cellIdx; }
+    void setIdx(size_t cellIdx) noexcept
+    {
+        idx_ = cellIdx;
+    }
 
     /// Add a bounding face with its normal direction sign
     void addFace(size_t faceIdx, int8_t sign)
@@ -71,7 +81,7 @@ public:
         neighborCellIndices_.assign(neighbors.begin(), neighbors.end());
     }
 
-// Accessor methods
+// ***************************** Accessor Methods *****************************
 
     /// Get cell identifier
     [[nodiscard]] size_t idx() const noexcept
@@ -109,6 +119,8 @@ public:
         return volume_;
     }
 
+// ************************ Geometric Property Methods ************************
+
     /// Check if geometric properties calculated
     [[nodiscard]] bool geometricPropertiesCalculated() const noexcept
     {
@@ -116,13 +128,16 @@ public:
     }
 
     /// Calculate cell volume and centroid
-    void calculateGeometricProperties
+    void geometricProperties
     (
         std::span<const Face> allFaces,
         std::span<const FaceIntegrals> allFaceIntegrals
     );
 
+// ****************************** Private Members *****************************
+
 private:
+
     /// Unique cell identifier
     size_t idx_ = 0;
 
@@ -145,6 +160,8 @@ private:
     bool geometricPropertiesCalculated_ = false;
 
 };
+
+// *************************** Non-Member Methods *****************************
 
 /// Stream output operator for Cell
 std::ostream& operator<<(std::ostream& os, const Cell& c);

@@ -28,7 +28,7 @@ following the OpenFOAM convention.
     `ErrorHandler.h`, `Logger.h/.cpp`
 - **`src/Mesh/`**: mesh topology — geometric entities and mesh I/O
   - `BoundaryPatch.h`, `Face.h/.cpp`, `Cell.h/.cpp`, `Mesh.h`,
-    `MeshReader.h/.cpp`, `MeshChecker.h/.cpp`, `MeshPreparation.h/.cpp`
+    `MeshReader.h/.cpp`, `MeshChecker.h/.cpp`, `MeshCreator.h/.cpp`
 - **`src/Fields/`**: typed field containers and field identity used by all layers
   - `CellData.h`, `FaceData.h`, `Field.h/.cpp`
 - **`src/BoundaryConditions/`**: patch metadata and physical BC configuration
@@ -143,7 +143,7 @@ Notes:
 
 **Key Features**:
 1. **Direct Patch Lookup**: `Face::patch()` returns an `OptionalRef<BoundaryPatch>` linked at startup via `BoundaryConditions::linkFaces()`
-2. **Per-Component Velocity BCs**: velocity has no vector BC type — it is registered as three independent scalar BCs under `Field::Ux/Uy/Uz`. `BoundaryConditionLoader` splits the case file's `U` vector at registration (`setFixedValue(patch, Field::Ux, value.x())`, etc.)
+2. **Per-Component Velocity BCs**: velocity has no vector BC type — it is registered as three independent scalar BCs under `Field::Ux/Uy/Uz`. `BCLoader` splits the case file's `U` vector at registration (`setFixedValue(patch, Field::Ux, value.x())`, etc.)
 3. **Robust Retrieval**: `fieldBC()` with comprehensive error handling
 4. **Boundary Value Calculation**: `boundaryFaceValue()` resolves a face value for any field — every field (`Ux`, `Uy`, `Uz`, `p`, `pCorr`, `k`, `omega`, `nut`) is scalar
 
@@ -452,15 +452,15 @@ Controls:
   flag) are passed as individual constructor parameters, OpenFOAM-style — no
   intermediate POD config struct. The two linear solvers (`momentum`,
   `pressure`) are likewise passed as plain `LinearSolver&` parameters.
-- Turbulence is **not owned by `SIMPLE`**. `SolverRuntime` owns
+- Turbulence is **not owned by `SIMPLE`**. `SolverModules` owns
   `unique_ptr<kOmegaSST>` as a sibling of the SIMPLE solver and constructs it
   *before* SIMPLE (mirroring `simpleFoam`'s `createFields.H` ordering). The
   raw pointer `runtime.turbulenceModel.get()` is passed as the final
   constructor argument to `SIMPLE`; `nullptr` selects the laminar path.
-- `Case::loadConfiguration()` parses non-BC runtime input into
-  `CaseConfiguration`. `SolverAssembly::configure()` owns selected linear
+- `CaseConfig::loadConfiguration()` parses non-BC runtime input into
+  `CaseConfiguration`. `SolverSetup::configure()` owns selected linear
   solvers, gradient and convection schemes, and the optional `kOmegaSST`
-  through `SolverRuntime`, then constructs `SIMPLE` last so it is destroyed
+  through `SolverModules`, then constructs `SIMPLE` last so it is destroyed
   first.
 
 
@@ -482,7 +482,7 @@ Class `kOmegaSST`:
 - Is fully initialized by its constructor from inlined parameters (laminar
   viscosity, initial k/omega, under-relaxation factors, debug flag) — no
   config-struct indirection.
-- Owned by `SolverRuntime` as a sibling of `SIMPLE`; never owned by `SIMPLE`
+- Owned by `SolverModules` as a sibling of `SIMPLE`; never owned by `SIMPLE`
   itself. SIMPLE holds a non-owning `kOmegaSST*` (nullptr = laminar).
 - Owns `k`, `ω`, `nut`, wall distance, wall-function weights, `yPlus`,
   `wallShearStress`, and wall `nut` state.
@@ -571,21 +571,21 @@ Used by: `GradientScheme`, `Matrix`, `kOmegaSST`, `SIMPLE`, `Constraint`,
 ### Pattern 2 — Runtime-owned polymorphic services
 
 Polymorphic runtime services are owned through `std::unique_ptr`.
-`SolverRuntime` deletes copy and move because `SIMPLE` stores references into
+`SolverModules` deletes copy and move because `SIMPLE` stores references into
 these services; keeping runtime ownership stationary avoids dangling references.
 
 ```cpp
-SolverRuntime(const SolverRuntime&) = delete;
-SolverRuntime& operator=(const SolverRuntime&) = delete;
+SolverModules(const SolverModules&) = delete;
+SolverModules& operator=(const SolverModules&) = delete;
 
-SolverRuntime(SolverRuntime&&) = delete;
-SolverRuntime& operator=(SolverRuntime&&) = delete;
+SolverModules(SolverModules&&) = delete;
+SolverModules& operator=(SolverModules&&) = delete;
 
 std::unique_ptr<ConvectionSchemes> momentumConvectionScheme;
 std::unique_ptr<SIMPLE> solver;  // declared last, destroyed first
 ```
 
-Used by: `SolverRuntime`.
+Used by: `SolverModules`.
 
 ### Pattern 3 — Eigen iterative solver member (rule of five, copy/move deleted)
 
@@ -620,11 +620,11 @@ Used by: `Face`, `Cell`, `BoundaryData`, `BoundaryPatch`, `CellData<T>`, `FaceDa
 coordinates the phases in `run()`.
 
 `CaseConfiguration` owns typed non-BC runtime input. Boundary conditions are
-kept asymmetric by design: `BoundaryConditionLoader` streams the raw
+kept asymmetric by design: `BCLoader` streams the raw
 `boundaryConditions` case section directly into `BoundaryConditions` because
 the data is patch-indexed and field-specific.
 
-`SolverRuntime` owns user-selected runtime services:
+`SolverModules` owns user-selected runtime services:
 `GradientScheme`, the default and per-equation `ConvectionSchemes`, one
 `LinearSolver` instance per solved equation, and the optional `kOmegaSST`
 turbulence model. `solver` is declared last so it is destroyed before the
@@ -676,7 +676,7 @@ boundary conditions, numerical schemes, and the `k`/`omega` linear solvers
 2) **Update BoundaryData**: Add setters/getters for new BC type
 3) **Extend evaluation**: Update `BoundaryConditions::boundaryFaceValue()` and `GradientScheme::boundaryFaceGradient()`
 4) **Matrix integration**: Update boundary handling in `Matrix::buildMatrix()`
-5) **Case file parsing**: Add parsing support in `BoundaryConditionLoader`
+5) **Case file parsing**: Add parsing support in `BCLoader`
 
 Follow the existing `fixedValue` and `fixedGradient` pattern: add a
 lower-camel `BCType` enumerator, store any needed scalar payload in
@@ -685,13 +685,13 @@ three evaluation/assembly call sites listed above.
 
 ### Expose new solver or model parameters
 - Add the case entry to `defaultCase` and document it in `docs/CASE.md`.
-- Parse and validate the value in `Case::loadConfiguration()` and add a field
+- Parse and validate the value in `CaseConfig::loadConfiguration()` and add a field
   to `CaseConfiguration`.
 - Add a new parameter to the `SIMPLE` or `kOmegaSST` constructor (each
   parameter on its own line per `docs/STYLE.md`), forward it from
-  `SolverAssembly::configure()`, and store it as a member.
+  `SolverSetup::configure()`, and store it as a member.
 - Keep user-selected services such as linear solvers, gradient schemes, and
-  convection schemes owned by `SolverRuntime`; pass non-owning references to
+  convection schemes owned by `SolverModules`; pass non-owning references to
   `SIMPLE` or to model solve calls.
 
 
@@ -710,7 +710,7 @@ checks to verify:
 1. **Patch Registration**: patch names, zones, and face ranges from `MeshReader`
 2. **BC Storage**: scalar values/gradients in `BoundaryData`
 3. **Field Lookup**: `fieldBC()` with `Field::{Ux, Uy, Uz, p, pCorr, k, omega, nut}`
-4. **Per-Component Velocity**: `BoundaryConditionLoader` registers `Ux`/`Uy`/`Uz`
+4. **Per-Component Velocity**: `BCLoader` registers `Ux`/`Uy`/`Uz`
    independently for case-file `U`
 5. **Boundary Values**: `boundaryFaceValue()` for supported scalar BC types
 6. **Patch Linking**: boundary `Face::patch()` has a value after `linkFaces()`
@@ -865,7 +865,7 @@ constraints { velocity { enabled bool; maxVelocity scalar; } pressure { enabled 
 
 ### Adding New Case Parameters
 1. Add entry to appropriate section in `defaultCase`
-2. Read and validate it in `Case::loadConfiguration()`
+2. Read and validate it in `CaseConfig::loadConfiguration()`
 3. If the value belongs to a solver/model, add it to the appropriate
    construction config
 4. Apply it through the config or through an owned application service
@@ -878,11 +878,11 @@ SIMPLE
     newParameter    0.5;    // New parameter
 }
 
-// In Case::loadConfiguration()
+// In CaseConfig::loadConfiguration()
 const auto& simple = reader.section("SIMPLE");
 config.newParameter = simple.lookupOrDefault<Scalar>("newParameter", S(0.5));
 
-// In SolverAssembly::configure(), forward into the SIMPLE constructor
+// In SolverSetup::configure(), forward into the SIMPLE constructor
 // (one parameter per line, after adding the matching constructor param and
 //  member to SIMPLE):
 runtime.solver =
@@ -908,11 +908,11 @@ runtime.solver =
 ```mermaid
 flowchart TD
   A[main.cpp / CFDApplication] --> B[CaseReader]
-  B --> C[Case::loadConfiguration]
+  B --> C[CaseConfig::loadConfiguration]
   C --> D[Runtime::initParallelism]
-  D --> E[MeshPreparation::prepare]
-  E --> F[BoundaryConditionLoader]
-  F --> G[SolverAssembly::configure]
+  D --> E[MeshCreator::create]
+  E --> F[BCLoader]
+  F --> G[SolverSetup::configure]
   G --> H[SIMPLE.solve]
   H --> I[compute gradP]
   I --> J[solveMomentumEquations]

@@ -162,7 +162,7 @@ boundaryConditions
   omitted entirely; a partial set is a fatal configuration error.
 - `fixedGradient`: **⚠️ Not selectable from case files** — the
   `BCType::fixedGradient` storage and evaluation paths exist in the solver, but
-  `BoundaryConditionLoader` does not parse it.
+  `BCLoader` does not parse it.
   ```cpp
   // Example syntax (NOT FUNCTIONAL - for future reference only):
   // k { walls  { type fixedGradient; gradient 100; } }
@@ -170,7 +170,7 @@ boundaryConditions
   ```
 
 **Note**: Using `fixedGradient` — or any unrecognized type — in a case file is a
-fatal configuration error. `BoundaryConditionLoader` aborts with
+fatal configuration error. `BCLoader` aborts with
 `Unknown boundary condition type '...' for field '...' on patch '...'. Valid types: ...`
 rather than falling back silently. Case-file support for `fixedGradient` is
 planned for future work.

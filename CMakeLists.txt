@@ -46,11 +46,12 @@ add_executable(${PROJECT_NAME}
     src/Mesh/Face.cpp
     src/Mesh/Cell.cpp
     src/Mesh/MeshReader.cpp
+    src/Mesh/MeshCreator.cpp
     src/Mesh/MeshChecker.cpp
     src/Fields/Field.cpp
     src/BoundaryConditions/BoundaryData.cpp
     src/BoundaryConditions/BoundaryConditions.cpp
-    src/BoundaryConditions/BoundaryConditionLoader.cpp
+    src/BoundaryConditions/BoundaryConditionsLoader.cpp
     src/Schemes/GradientScheme.cpp
     src/Schemes/ConvectionSchemes.cpp
     src/LinearSystem/Matrix.cpp
@@ -65,8 +66,7 @@ add_executable(${PROJECT_NAME}
     src/PostProcessing/DerivedFields.cpp
     src/Case/CaseReader.cpp
     src/Case/CaseConfiguration.cpp
-    src/Mesh/MeshPreparation.cpp
-    src/Application/SolverAssembly.cpp
+    src/Application/SolverSetup.cpp
     src/Application/CFDApplication.cpp
 )
 

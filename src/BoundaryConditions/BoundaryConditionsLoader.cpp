@@ -1,0 +1,415 @@
+/******************************************************************************
+ * @file BoundaryConditionLoader.cpp
+ * @brief Case-file boundary condition registration
+ *****************************************************************************/
+
+// ********************************** Headers *********************************
+
+// Implementation header
+#include "BoundaryConditionsLoader.h"
+
+// Standard library headers
+#include <iostream>
+#include <string_view>
+
+// Project headers
+#include "CaseReader.h"
+#include "ErrorHandler.h"
+#include "kOmegaSST.h"
+
+// **************************** namespace BCLoader ****************************
+
+namespace BCLoader
+{
+
+// ************************* Helpers (internal linkage) ***********************
+
+namespace
+{
+
+[[noreturn]] void unknownBCType
+(
+    std::string_view bcType,
+    std::string_view fieldName,
+    std::string_view patchName,
+    std::string_view validList
+)
+{
+    FatalError
+    (
+        "Unknown boundary condition type '" + std::string(bcType)
+      + "' for field '" + std::string(fieldName)
+      + "' on patch '" + std::string(patchName)
+      + "'. Valid types: " + std::string(validList)
+    );
+}
+
+
+void validateWallFunctionSetup
+(
+    const Mesh& mesh,
+    const BoundaryConditions& bcManager,
+    const CaseConfiguration& config
+)
+{
+    if (!config.turbulenceEnabled)
+    {
+        return;
+    }
+
+    for (const auto& patch : mesh.patches())
+    {
+        if (patch.type() != PatchType::wall)
+        {
+            continue;
+        }
+
+        const std::string& patchName = patch.patchName();
+
+        const bool kIsWF =
+            bcManager.fieldBC(patchName, Field::k).type()
+         == BCType::kWallFunction;
+        const bool omegaIsWF =
+            bcManager.fieldBC(patchName, Field::omega).type()
+         == BCType::omegaWallFunction;
+        const bool nutIsWF =
+            bcManager.fieldBC(patchName, Field::nut).type()
+         == BCType::nutWallFunction;
+
+        const int wfCount = int(kIsWF) + int(omegaIsWF) + int(nutIsWF);
+
+        if (wfCount == 0 || wfCount == 3)
+        {
+            continue;
+        }
+
+        FatalError
+        (
+            "Wall patch '" + patchName
+          + "': wall functions must be configured as a complete triplet "
+            "(k + omega + nut) or omitted entirely. Found: k="
+          + (kIsWF     ? "WF" : "non-WF")
+          + ", omega=" + (omegaIsWF ? "WF" : "non-WF")
+          + ", nut="   + (nutIsWF   ? "WF" : "non-WF") + "."
+        );
+    }
+}
+
+} // namespace (unnamed)
+
+
+// *********************************** Load ***********************************
+
+void load
+(
+    const CaseReader& reader,
+    const CaseConfiguration& config,
+    Mesh& mesh,
+    BoundaryConditions& bcManager
+)
+{
+    std::cout
+        << '\n' << "--- 2. Setting Boundary Conditions ---" << '\n';
+
+    for (const auto& patch : mesh.patches())
+    {
+        bcManager.addPatch(patch);
+    }
+
+    bcManager.linkFaces(mesh.faces());
+
+    for (const auto& face : mesh.faces())
+    {
+        if (face.isBoundary() && !face.patch().has_value())
+        {
+            FatalError
+            (
+                "Boundary face "
+              + std::to_string(face.idx())
+              + " has no patch after linking."
+            );
+        }
+    }
+
+    const auto& BCs = reader.section("boundaryConditions");
+
+    if (BCs.hasSection("U"))
+    {
+        const auto& velocityBCs = BCs.section("U");
+
+        for (const auto& patchName : velocityBCs.sectionNames())
+        {
+            const auto& patchBC = velocityBCs.section(patchName);
+            const std::string bcType = patchBC.lookup<std::string>("type");
+
+            if (bcType == "fixedValue")
+            {
+                const Vector value = patchBC.lookup<Vector>("value");
+                bcManager.setFixedValue(patchName, Field::Ux, value.x());
+                bcManager.setFixedValue(patchName, Field::Uy, value.y());
+                bcManager.setFixedValue(patchName, Field::Uz, value.z());
+            }
+            else if (bcType == "noSlip")
+            {
+                bcManager.setNoSlip(patchName, Field::Ux);
+                bcManager.setNoSlip(patchName, Field::Uy);
+                bcManager.setNoSlip(patchName, Field::Uz);
+            }
+            else if (bcType == "zeroGradient")
+            {
+                bcManager.setZeroGradient(patchName, Field::Ux);
+                bcManager.setZeroGradient(patchName, Field::Uy);
+                bcManager.setZeroGradient(patchName, Field::Uz);
+            }
+            else
+            {
+                unknownBCType
+                (
+                    bcType, "U", patchName,
+                    "fixedValue, noSlip, zeroGradient"
+                );
+            }
+        }
+    }
+
+    bool hasFixedPressure = false;
+
+    if (BCs.hasSection("p"))
+    {
+        const auto& pressureBCs = BCs.section("p");
+
+        for (const auto& patchName : pressureBCs.sectionNames())
+        {
+            const auto& patchBC = pressureBCs.section(patchName);
+            const std::string bcType = patchBC.lookup<std::string>("type");
+
+            if (bcType == "fixedValue")
+            {
+                const Scalar value = patchBC.lookup<Scalar>("value");
+                bcManager.setFixedValue(patchName, Field::p, value);
+                hasFixedPressure = true;
+            }
+            else if (bcType == "zeroGradient")
+            {
+                bcManager.setZeroGradient(patchName, Field::p);
+            }
+            else
+            {
+                unknownBCType
+                (
+                    bcType, "p", patchName,
+                    "fixedValue, zeroGradient"
+                );
+            }
+        }
+
+        for (const auto& patchName : pressureBCs.sectionNames())
+        {
+            const auto& patchBC = pressureBCs.section(patchName);
+            const std::string bcType = patchBC.lookup<std::string>("type");
+
+            if (bcType == "fixedValue")
+            {
+                bcManager.setFixedValue(patchName, Field::pCorr, S(0.0));
+            }
+            else if (bcType == "zeroGradient")
+            {
+                bcManager.setZeroGradient(patchName, Field::pCorr);
+            }
+        }
+    }
+
+    if (!hasFixedPressure)
+    {
+        Warning
+        (
+            "No fixedValue pressure boundary condition found. "
+            "The pressure field has no reference value, which "
+            "may cause a singular pressure matrix."
+        );
+    }
+
+    if (BCs.hasSection("k"))
+    {
+        const auto& kBCs = BCs.section("k");
+
+        for (const auto& patchName : kBCs.sectionNames())
+        {
+            const auto& patchBC = kBCs.section(patchName);
+            const std::string bcType = patchBC.lookup<std::string>("type");
+
+            if (bcType == "fixedValue")
+            {
+                const std::string valStr =
+                    patchBC.lookup<std::string>("value");
+
+                Scalar value = S(0.0);
+
+                if (valStr == "calculated")
+                {
+                    value =
+                        kOmegaSST::inletK
+                        (
+                            config.initialVelocity,
+                            config.turbulenceIntensity
+                        );
+
+                    std::cout
+                        << "Inlet turbulence kinetic energy : " << value
+                        << '\n';
+                }
+                else
+                {
+                    value = patchBC.lookup<Scalar>("value");
+                }
+
+                bcManager.setFixedValue(patchName, Field::k, value);
+            }
+            else if (bcType == "kWallFunction")
+            {
+                bcManager.setWallFunctionType
+                (
+                    patchName,
+                    Field::k,
+                    BCType::kWallFunction
+                );
+            }
+            else if (bcType == "zeroGradient")
+            {
+                bcManager.setZeroGradient(patchName, Field::k);
+            }
+            else
+            {
+                unknownBCType
+                (
+                    bcType, "k", patchName,
+                    "fixedValue, kWallFunction, zeroGradient"
+                );
+            }
+        }
+    }
+
+    if (BCs.hasSection("omega"))
+    {
+        const auto& omegaBCs = BCs.section("omega");
+
+        for (const auto& patchName : omegaBCs.sectionNames())
+        {
+            const auto& patchBC = omegaBCs.section(patchName);
+            const std::string bcType = patchBC.lookup<std::string>("type");
+
+            if (bcType == "fixedValue")
+            {
+                const std::string valStr =
+                    patchBC.lookup<std::string>("value");
+
+                Scalar value = S(0.0);
+
+                if (valStr == "calculated")
+                {
+                    const BoundaryData& kPatchBC =
+                        bcManager.fieldBC(patchName, Field::k);
+
+                    const Scalar kValue =
+                        kPatchBC.type() == BCType::fixedValue
+                      ? kPatchBC.fixedScalarValue()
+                      : kOmegaSST::inletK
+                        (
+                            config.initialVelocity,
+                            config.turbulenceIntensity
+                        );
+
+                    value =
+                        kOmegaSST::inletOmega
+                        (
+                            kValue,
+                            config.hydraulicDiameter
+                        );
+
+                    std::cout
+                        << "Inlet specific dissipation : " << value << '\n';
+                }
+                else
+                {
+                    value = patchBC.lookup<Scalar>("value");
+                }
+
+                bcManager.setFixedValue(patchName, Field::omega, value);
+            }
+            else if (bcType == "omegaWallFunction")
+            {
+                bcManager.setWallFunctionType
+                (
+                    patchName,
+                    Field::omega,
+                    BCType::omegaWallFunction
+                );
+            }
+            else if (bcType == "zeroGradient")
+            {
+                bcManager.setZeroGradient(patchName, Field::omega);
+            }
+            else
+            {
+                unknownBCType
+                (
+                    bcType, "omega", patchName,
+                    "fixedValue, omegaWallFunction, zeroGradient"
+                );
+            }
+        }
+    }
+
+    if (BCs.hasSection("nut"))
+    {
+        const auto& nutBCs = BCs.section("nut");
+
+        for (const auto& patchName : nutBCs.sectionNames())
+        {
+            const auto& patchBC = nutBCs.section(patchName);
+            const std::string bcType = patchBC.lookup<std::string>("type");
+
+            if (bcType == "fixedValue")
+            {
+                const Scalar value = patchBC.lookup<Scalar>("value");
+                bcManager.setFixedValue(patchName, Field::nut, value);
+            }
+            else if (bcType == "zeroGradient")
+            {
+                bcManager.setZeroGradient(patchName, Field::nut);
+            }
+            else if (bcType == "nutWallFunction")
+            {
+                bcManager.setWallFunctionType
+                (
+                    patchName,
+                    Field::nut,
+                    BCType::nutWallFunction
+                );
+            }
+            else
+            {
+                unknownBCType
+                (
+                    bcType, "nut", patchName,
+                    "fixedValue, zeroGradient, nutWallFunction"
+                );
+            }
+        }
+    }
+
+    bcManager.validatePatchNames();
+
+    validateWallFunctionSetup(mesh, bcManager, config);
+
+    if (config.debug)
+    {
+        bcManager.printSummary();
+    }
+
+    std::cout
+        << "Boundary conditions set for "
+        << mesh.patches().size() << " patches." << '\n';
+}
+
+} // namespace BCLoader

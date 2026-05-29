@@ -21,16 +21,25 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <vector>
 #include <string>
 #include <optional>
 #include <span>
 
+// Project headers
 #include "Scalar.h"
 #include "Vector.h"
 #include "OptionalRef.h"
 #include "BoundaryPatch.h"
 
+// *************************** Forward Declarations ***************************
+
+class Cell;
+
+// *************************** struct FaceIntegrals ***************************
 
 struct FaceIntegrals
 {
@@ -40,10 +49,13 @@ struct FaceIntegrals
     Scalar volume = S(0.0);
 };
 
+// ******************************** class Face ********************************
 
 class Face
 {
 public:
+
+// ************************* Special Member Functions *************************
 
     /// Default constructor
     Face() = default;
@@ -77,13 +89,19 @@ public:
         neighborCell_(std::nullopt)
     {}
 
-// Setter methods
+// ****************************** Setter Methods ******************************
 
     /// Set face identifier
-    void setIdx(size_t faceIdx) noexcept { idx_ = faceIdx; }
+    void setIdx(size_t faceIdx) noexcept
+    {
+        idx_ = faceIdx;
+    }
 
     /// Set owner cell index
-    void setOwnerCell(size_t owner) noexcept { ownerCell_ = owner; }
+    void setOwnerCell(size_t owner) noexcept
+    {
+        ownerCell_ = owner;
+    }
 
     /// Set neighbor cell index
     void setNeighborCell(size_t neighbor) noexcept
@@ -98,18 +116,30 @@ public:
     }
 
     /// Add node index to face connectivity
-    void addNodeIndex(size_t nodeIdx) { nodeIndices_.push_back(nodeIdx); }
+    void addNodeIndex(size_t nodeIdx)
+    {
+        nodeIndices_.push_back(nodeIdx);
+    }
 
     /// Clear all node indices
-    void clearNodeIndices() noexcept { nodeIndices_.clear(); }
+    void clearNodeIndices() noexcept
+    {
+        nodeIndices_.clear();
+    }
 
     /// Set the boundary patch this face belongs to
-    void setPatch(const BoundaryPatch& p) noexcept { patch_ = std::cref(p); }
+    void setPatch(const BoundaryPatch& p) noexcept
+    {
+        patch_ = std::cref(p);
+    }
 
-// Accessor methods
+// ***************************** Accessor Methods *****************************
 
     /// Get face identifier
-    [[nodiscard]] size_t idx() const noexcept { return idx_; }
+    [[nodiscard]] size_t idx() const noexcept
+    {
+        return idx_;
+    }
 
     /// Get node connectivity
     [[nodiscard]] std::span<const size_t> nodeIndices() const noexcept
@@ -118,7 +148,10 @@ public:
     }
 
     /// Get owner cell index
-    [[nodiscard]] size_t ownerCell() const noexcept { return ownerCell_; }
+    [[nodiscard]] size_t ownerCell() const noexcept
+    {
+        return ownerCell_;
+    }
 
     /// Get neighbor cell index
     [[nodiscard]] const std::optional<size_t>& neighborCell() const noexcept
@@ -127,10 +160,16 @@ public:
     }
 
     /// Get face centroid
-    [[nodiscard]] const Vector& centroid() const noexcept { return centroid_; }
+    [[nodiscard]] const Vector& centroid() const noexcept
+    {
+        return centroid_;
+    }
 
     /// Get face normal vector
-    [[nodiscard]] const Vector& normal() const noexcept { return normal_; }
+    [[nodiscard]] const Vector& normal() const noexcept
+    {
+        return normal_;
+    }
 
     /// Get face area for flux calculations
     [[nodiscard]] Scalar projectedArea() const noexcept
@@ -139,10 +178,16 @@ public:
     }
 
     /// Get face contact area
-    [[nodiscard]] Scalar contactArea() const noexcept { return contactArea_; }
+    [[nodiscard]] Scalar contactArea() const noexcept
+    {
+        return contactArea_;
+    }
 
     /// Get owner cell distance vector
-    [[nodiscard]] const Vector& dPf() const noexcept { return dPf_; }
+    [[nodiscard]] const Vector& dPf() const noexcept
+    {
+        return dPf_;
+    }
 
     /// Get neighbor cell distance vector
     [[nodiscard]] const std::optional<Vector>& dNf() const noexcept
@@ -151,39 +196,15 @@ public:
     }
 
     /// Get owner cell distance magnitude
-    [[nodiscard]] Scalar dPfMag() const noexcept { return dPfMag_; }
+    [[nodiscard]] Scalar dPfMag() const noexcept
+    {
+        return dPfMag_;
+    }
 
     /// Get neighbor cell distance magnitude
     [[nodiscard]] const std::optional<Scalar>& dNfMag() const noexcept
     {
         return dNfMag_;
-    }
-
-    /// Check if geometric properties calculated
-    [[nodiscard]] bool geometricPropertiesCalculated() const noexcept
-    {
-        return geometricPropertiesCalculated_;
-    }
-
-    /// Check if distance properties calculated
-    [[nodiscard]] bool distancePropertiesCalculated() const noexcept
-    {
-        return distancePropertiesCalculated_;
-    }
-
-    /// Calculate Face centroid, normal, area, and second moment integral
-    [[nodiscard]] FaceIntegrals calculateGeometricProperties
-    (
-        std::span<const Vector> allNodes
-    );
-
-    /// Calculate distance properties of the face
-    void calculateDistanceProperties(std::span<const Vector> cellCentroids);
-
-    /// Check if this is a boundary face
-    [[nodiscard]] bool isBoundary() const noexcept
-    {
-        return !neighborCell_.has_value();
     }
 
     /// Get the boundary patch this face belongs to
@@ -192,8 +213,36 @@ public:
         return patch_;
     }
 
-    /// Flip the face normal direction
-    void flipNormal() noexcept { normal_ *= S(-1.0); }
+    /// Check if this is a boundary face
+    [[nodiscard]] bool isBoundary() const noexcept
+    {
+        return !neighborCell_.has_value();
+    }
+
+// ************************ Geometric Property Methods ************************
+
+    /// Check if geometric properties calculated
+    [[nodiscard]] bool geometricPropertiesCalculated() const noexcept
+    {
+        return geometricPropertiesCalculated_;
+    }
+
+    /// Calculate Face centroid, normal, area, and second moment integral
+    [[nodiscard]] FaceIntegrals geometricProperties
+    (
+        std::span<const Vector> allNodes
+    );
+
+    /// Check if distance properties calculated
+    [[nodiscard]] bool distancesCalculated() const noexcept
+    {
+        return distancePropertiesCalculated_;
+    }
+
+    /// Calculate distance properties of the face
+    void distances(std::span<const Cell> allCells);
+
+// ****************************** Private Members *****************************
 
 private:
 
@@ -242,6 +291,8 @@ private:
     /// Owning boundary patch (nullopt for internal or unlinked faces)
     OptionalRef<BoundaryPatch> patch_;
 
+// ***************************** Private Methods *****************************
+
     /// Symmetric second-moment polynomial for triangle integration
     /// Evaluates a² + b² + c² + ab + ac + bc
     /// ∫∫_triangle x² dA = (area / 6) × secondMoment(x₁, x₂, x₃)
@@ -256,6 +307,8 @@ private:
     }
 
 };
+
+// *************************** Non-Member Methods *****************************
 
 /// Stream output operator for Face
 std::ostream& operator<<(std::ostream& os, const Face& f);

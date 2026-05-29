@@ -3,18 +3,22 @@
  * @brief Implementation of cell geometric properties and operations
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "Cell.h"
 
+// Standard library headers
 #include <cmath>
 #include <ostream>
 #include <iomanip>
 
+// Project headers
 #include "ErrorHandler.h"
 
+// ************************ Geometric Property Methods ************************
 
-// *********************** Geometric Property Methods ***********************
-
-void Cell::calculateGeometricProperties
+void Cell::geometricProperties
 (
     std::span<const Face> allFaces,
     std::span<const FaceIntegrals> allFaceIntegrals
@@ -68,6 +72,7 @@ void Cell::calculateGeometricProperties
     geometricPropertiesCalculated_ = true;
 }
 
+// *************************** Non-Member Methods *****************************
 
 std::ostream& operator<<(std::ostream& os, const Cell& c)
 {

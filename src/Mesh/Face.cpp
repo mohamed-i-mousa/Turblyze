@@ -3,18 +3,23 @@
  * @brief Implementation of face geometric properties and operations
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "Face.h"
 
+// Standard library headers
 #include <cmath>
 #include <ostream>
 #include <iomanip>
 
+// Project headers
+#include "Cell.h"
 #include "ErrorHandler.h"
-
 
 // ************************ Geometric Property Methods ************************
 
-FaceIntegrals Face::calculateGeometricProperties
+FaceIntegrals Face::geometricProperties
 (
     std::span<const Vector> allNodes
 )
@@ -100,7 +105,8 @@ FaceIntegrals Face::calculateGeometricProperties
         for (size_t nodeIdx = 0; nodeIdx < numNodes; ++nodeIdx)
         {
             const Vector& pCurr = allNodes[nodeIndices_[nodeIdx]];
-            const Vector& pNext = allNodes[nodeIndices_[(nodeIdx + 1) % numNodes]];
+            const Vector& pNext =
+                allNodes[nodeIndices_[(nodeIdx + 1) % numNodes]];
 
             const Vector& p1Tri = faceCenter;
             const Vector& p2Tri = pCurr;
@@ -151,25 +157,24 @@ FaceIntegrals Face::calculateGeometricProperties
     return integrals;
 }
 
-// ************************* Distance Property Methods ************************
 
-void Face::calculateDistanceProperties(std::span<const Vector> cellCentroids)
+void Face::distances(std::span<const Cell> allCells)
 {
-    dPf_ = centroid_ - cellCentroids[ownerCell_];
+    dPf_ = centroid_ - allCells[ownerCell_].centroid();
     dPfMag_ = magnitude(dPf_);
 
     // Calculate dNf only for internal faces
     if (!isBoundary())
     {
         const size_t N = neighborCell_.value();
-        const Vector dNfVec = centroid_ - cellCentroids[N];
+        const Vector dNfVec = centroid_ - allCells[N].centroid();
         dNf_ = dNfVec;
         dNfMag_ = magnitude(dNfVec);
     }
     distancePropertiesCalculated_ = true;
 }
 
-// ***************************** Output Methods *******************************
+// *************************** Non-Member Methods *****************************
 
 std::ostream& operator<<(std::ostream& os, const Face& f)
 {
@@ -211,7 +216,7 @@ std::ostream& operator<<(std::ostream& os, const Face& f)
         os  << ", Geometry: N/A";
     }
 
-    if (f.distancePropertiesCalculated())
+    if (f.distancesCalculated())
     {
         // save the current format
         const auto flags = os.flags();
