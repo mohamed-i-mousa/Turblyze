@@ -3,8 +3,12 @@
  * @brief Mesh quality assessment utilities
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Implementation header 
 #include "MeshChecker.h"
 
+/// Standard library headers
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
@@ -15,8 +19,10 @@
 #include <string_view>
 #include <vector>
 
+/// Project headers
 #include "ErrorHandler.h"
 
+// *************************** namespace MeshChecker **************************
 
 namespace MeshChecker
 {
@@ -29,10 +35,13 @@ constexpr Scalar maxNonOrthThreshold = S(70.0);
 constexpr Scalar maxSkewThreshold = S(4.0);
 constexpr Scalar maxAspectThreshold = S(100.0);
 
-// ****************************** Static helpers  *****************************
+// ***************************** Internal helpers *****************************
+
+namespace
+{
 
 // Print up to 10 IDs from a list, with truncation indicator
-static void printIndicesList
+void printIndicesList
 (
     std::span<const size_t> indices,
     std::string_view entityName
@@ -76,7 +85,7 @@ static void printIndicesList
 }
 
 
-static Scalar faceOrthogonality
+Scalar faceOrthogonality
 (
     const Vector& ownerCellCentroid,
     const Vector& neighborCellCentroid,
@@ -93,7 +102,7 @@ static Scalar faceOrthogonality
 }
 
 
-static Scalar faceSkewness
+Scalar faceSkewness
 (
     const Mesh& mesh,
     const Face& face,
@@ -138,7 +147,7 @@ static Scalar faceSkewness
 }
 
 
-static Scalar boundaryFaceSkewness
+Scalar boundaryFaceSkewness
 (
     const Mesh& mesh,
     const Face& face,
@@ -180,7 +189,7 @@ static Scalar boundaryFaceSkewness
 }
 
 
-static Scalar cellAspectRatio
+Scalar cellAspectRatio
 (
     const Mesh& mesh,
     const Cell& cell
@@ -258,7 +267,7 @@ static Scalar cellAspectRatio
 }
 
 
-static bool validateConnectivity(const Mesh& mesh)
+bool validateConnectivity(const Mesh& mesh)
 {
     bool valid = true;
 
@@ -326,7 +335,9 @@ static bool validateConnectivity(const Mesh& mesh)
     return valid;
 }
 
-// ******************************** Public API ********************************
+}
+
+// ******************************** Mesh Check ********************************
 
 void check(const Mesh& mesh)
 {

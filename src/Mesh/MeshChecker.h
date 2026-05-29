@@ -18,8 +18,11 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
 #include "Mesh.h"
 
+// *************************** namespace MeshChecker **************************
 
 namespace MeshChecker
 {
