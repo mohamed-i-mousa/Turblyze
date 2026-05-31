@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file BoundaryConditionLoader.h
+ * @file BoundaryConditionsLoader.h
  * @brief Case-file boundary condition registration
  *****************************************************************************/
 

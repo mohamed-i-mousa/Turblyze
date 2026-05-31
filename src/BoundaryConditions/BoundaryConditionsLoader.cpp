@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file BoundaryConditionLoader.cpp
+ * @file BoundaryConditionsLoader.cpp
  * @brief Case-file boundary condition registration
  *****************************************************************************/
 
