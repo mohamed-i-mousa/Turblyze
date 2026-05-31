@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file SolverAssembly.cpp
+ * @file SolverSetup.cpp
  * @brief Runtime service ownership and SIMPLE solver assembly
  *****************************************************************************/
 
@@ -23,6 +23,8 @@
 #include "Logger.h"
 #include "Mesh.h"
 #include "SIMPLE.h"
+#include "TurbulenceModel.h"
+#include "Laminar.h"
 #include "kOmegaSST.h"
 
 // ***************************** Internal Helpers *****************************
@@ -223,6 +225,11 @@ void SolverSetup::configure
                 config.debug
             );
     }
+    else
+    {
+        modules.turbulenceModel =
+            std::make_unique<Laminar>(mesh, config.mu / config.rho);
+    }
 
     modules.solver =
         std::make_unique<SIMPLE>
@@ -237,7 +244,7 @@ void SolverSetup::configure
             ),
             *modules.momentumSolver,
             *modules.pressureSolver,
-            modules.turbulenceModel.get(),
+            *modules.turbulenceModel,
             config.rho,
             config.mu,
             config.initialVelocity,

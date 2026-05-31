@@ -1,5 +1,5 @@
 /******************************************************************************
- * @file SolverAssembly.h
+ * @file SolverSetup.h
  * @brief Runtime service ownership and SIMPLE solver assembly
  *****************************************************************************/
 
@@ -14,7 +14,7 @@
 class BoundaryConditions;
 class ConvectionSchemes;
 class GradientScheme;
-class kOmegaSST;
+class TurbulenceModel;
 class LinearSolver;
 class Mesh;
 class SIMPLE;
@@ -65,8 +65,8 @@ struct SolverModules
     /// omega equation linear solver
     std::unique_ptr<LinearSolver> omegaSolver;
 
-    /// Turbulence model (nullptr for laminar runs); destroyed after SIMPLE
-    std::unique_ptr<kOmegaSST> turbulenceModel;
+    /// Turbulence model
+    std::unique_ptr<TurbulenceModel> turbulenceModel;
 
     /// SIMPLE solver; declared last so it is destroyed first
     std::unique_ptr<SIMPLE> solver;

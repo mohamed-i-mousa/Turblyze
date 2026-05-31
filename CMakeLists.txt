@@ -57,6 +57,7 @@ add_executable(${PROJECT_NAME}
     src/LinearSystem/Matrix.cpp
     src/Solver/SIMPLE.cpp
     src/Solver/Constraint.cpp
+    src/Models/Turbulence/RANS.cpp
     src/Models/Turbulence/kOmegaSST.cpp
     src/PostProcessing/VTK/VtkWriter.cpp
     src/PostProcessing/VTK/VtkBoundaryWriter.cpp

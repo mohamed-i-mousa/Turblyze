@@ -3,12 +3,17 @@
  * @brief Implementations of the stateless solver-output formatting helpers
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "Logger.h"
 
+// Standard library headers
 #include <iomanip>
 #include <iostream>
 #include <string>
 
+// ***************************** namespace Logger *****************************
 
 void Logger::sectionHeader(std::string_view title)
 {
@@ -139,8 +144,7 @@ void Logger::residualSummary
     Scalar mass,
     Scalar velocity,
     Scalar pressure,
-    Scalar k,
-    Scalar omega
+    std::span<const Residuals> residuals
 )
 {
     StreamStateGuard guard(std::cout);
@@ -148,9 +152,15 @@ void Logger::residualSummary
     std::cout
         << " - Mass: " << std::scientific << mass
         << ", Velocity: " << velocity
-        << ", Pressure: " << pressure
-        << ", k: " << k
-        << ", omega: " << omega << '\n';
+        << ", Pressure: " << pressure;
+
+    for (const Residuals& residual : residuals)
+    {
+        std::cout
+            << ", " << residual.first << ": " << residual.second;
+    }
+
+    std::cout << '\n';
 }
 
 

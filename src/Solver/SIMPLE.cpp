@@ -21,7 +21,7 @@
 #include "Logger.h"
 #include "LinearInterpolation.h"
 #include "Constraint.h"
-#include "kOmegaSST.h"
+#include "TurbulenceModel.h"
 
 // ************************* Special Member Functions *************************
 
@@ -33,7 +33,7 @@ SIMPLE::SIMPLE
     const ConvectionSchemes& momentumConvectionScheme,
     LinearSolver& momentumSolver,
     LinearSolver& pressureSolver,
-    kOmegaSST* turbulence,
+    TurbulenceModel& turbulence,
     const Scalar rho,
     const Scalar mu,
     const Vector& initialVelocity,
@@ -128,8 +128,9 @@ void SIMPLE::solve()
     massImbalance0_    = S(0.0);
     velocityResidual0_ = S(0.0);
     pressureResidual0_ = S(0.0);
-    kResidual0_        = S(0.0);
-    omegaResidual0_    = S(0.0);
+    turbulenceResidualNames_.clear();
+    lastTurbulenceResiduals_.clear();
+    turbulenceResidual0_.clear();
 
     int iteration = 0;
     bool converged = false;
@@ -205,19 +206,13 @@ void SIMPLE::solveMomentumEquations()
     DU_.setAll(S(0.0));
     DUComputed_ = false;
 
-    // Build effective viscosity and pressure gradient source
+    // Build effective viscosity and pressure gradient source.
+    // nut is zero for the laminar model, so nuEff reduces to nu.
+    const ScalarField& nut = turbulence_.turbulentViscosity();
     #pragma omp parallel for schedule(static)
     for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        if (turbulence_)
-        {
-            const ScalarField& nut = turbulence_->turbulentViscosity();
-            nuEff_[cellIdx] = nu_ + nut[cellIdx];
-        }
-        else
-        {
-            nuEff_[cellIdx] = nu_;
-        }
+        nuEff_[cellIdx] = nu_ + nut[cellIdx];
 
         // Calculate pressure gradients source term
         const Scalar volume = mesh_.cells()[cellIdx].volume();
@@ -234,26 +229,9 @@ void SIMPLE::solveMomentumEquations()
 
         if (face.isBoundary())
         {
-            const size_t ownerIdx = face.ownerCell();
-
-            // Check for nutWallFunction BC on wall faces
-            if (turbulence_)
-            {
-                const BoundaryPatch& patch = face.patch()->get();
-                const BoundaryData& bc =
-                    bcManager_.fieldBC(patch.patchName(), Field::nut);
-
-                if (bc.type() == BCType::nutWallFunction)
-                {
-                    // Use wall-function nut instead of cell-center nut
-                    nuEffFace_[faceIdx] =
-                        nu_ + turbulence_->nutWall()[faceIdx];
-                    continue;
-                }
-            }
-
-            // Other boundary faces: use owner cell value
-            nuEffFace_[faceIdx] = nuEff_[ownerIdx];
+            // Turbulent models may provide wall-function boundary nut.
+            nuEffFace_[faceIdx] =
+                nu_ + turbulence_.boundaryTurbulentViscosity(face, bcManager_);
         }
         else
         {
@@ -267,8 +245,8 @@ void SIMPLE::solveMomentumEquations()
 
     updateVelocityGradients();
 
-    // Add transpose gradient source term
-    if (turbulence_)
+    // Add transpose gradient source term (only varies with turbulent nut)
+    if (turbulence_.isTurbulent())
     {
         addTransposeGradientSource();
     }
@@ -625,11 +603,11 @@ void SIMPLE::correctPressure()
 
 void SIMPLE::solveTurbulence()
 {
-    if (turbulence_)
+    if (turbulence_.isTurbulent())
     {
         updateVelocityGradients();
 
-        turbulence_->solve
+        turbulence_.solve
         (
             Ux_,
             Uy_,
@@ -638,8 +616,14 @@ void SIMPLE::solveTurbulence()
             gradU_
         );
 
-        lastKResidual_ = turbulence_->lastKResidual();
-        lastOmegaResidual_ = turbulence_->lastOmegaResidual();
+        turbulenceResidualNames_.clear();
+        lastTurbulenceResiduals_.clear();
+
+        for (const auto& residual : turbulence_.residualOutputs())
+        {
+            turbulenceResidualNames_.push_back(residual.first);
+            lastTurbulenceResiduals_.push_back(residual.second);
+        }
     }
 }
 
@@ -657,10 +641,9 @@ bool SIMPLE::checkConvergence()
         massImbalance0_ = massImbalance;
         velocityResidual0_ = velocityResidual;
         pressureResidual0_ = pressureResidual;
-        if (turbulence_)
+        if (turbulence_.isTurbulent())
         {
-            kResidual0_ = lastKResidual_;
-            omegaResidual0_ = lastOmegaResidual_;
+            turbulenceResidual0_ = lastTurbulenceResiduals_;
         }
     }
 
@@ -678,17 +661,37 @@ bool SIMPLE::checkConvergence()
      && (scaledVelocity < tolerance_)
      && (scaledPressure < tolerance_);
 
-    Scalar scaledK = S(0.0);
-    Scalar scaledOmega = S(0.0);
+    std::vector<Logger::Residuals> scaledTurbulenceResiduals;
 
-    if (turbulence_)
+    if (turbulence_.isTurbulent())
     {
-        scaledK = lastKResidual_ / (kResidual0_ + vSmallValue);
-        scaledOmega = lastOmegaResidual_ / (omegaResidual0_ + vSmallValue);
+        const size_t residualCount =
+            std::min
+            (
+                lastTurbulenceResiduals_.size(),
+                turbulenceResidual0_.size()
+            );
 
-        converged = converged
-            && (scaledK < tolerance_)
-            && (scaledOmega < tolerance_);
+        scaledTurbulenceResiduals.reserve(residualCount);
+
+        for (size_t i = 0; i < residualCount; ++i)
+        {
+            const Scalar scaled =
+                lastTurbulenceResiduals_[i]
+              / (turbulenceResidual0_[i] + vSmallValue);
+
+            scaledTurbulenceResiduals.push_back
+            (
+                {turbulenceResidualNames_[i], scaled}
+            );
+
+            converged = converged && (scaled < tolerance_);
+        }
+
+        if (residualCount != lastTurbulenceResiduals_.size())
+        {
+            converged = false;
+        }
     }
 
     if (debug_)
@@ -697,21 +700,22 @@ bool SIMPLE::checkConvergence()
         Logger::scaledResidual("mass",     scaledMass);
         Logger::scaledResidual("velocity", scaledVelocity);
         Logger::scaledResidual("pressure", scaledPressure);
-        if (turbulence_)
+        if (turbulence_.isTurbulent())
         {
-            Logger::scaledResidual("k",     scaledK);
-            Logger::scaledResidual("omega", scaledOmega);
+            for (const Logger::Residuals& residual : scaledTurbulenceResiduals)
+            {
+                Logger::scaledResidual(residual.first, residual.second);
+            }
         }
     }
-    else if (turbulence_)
+    else if (turbulence_.isTurbulent())
     {
         Logger::residualSummary
         (
             scaledMass,
             scaledVelocity,
             scaledPressure,
-            scaledK,
-            scaledOmega
+            scaledTurbulenceResiduals
         );
     }
     else

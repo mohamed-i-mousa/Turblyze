@@ -13,6 +13,7 @@
 #include <array>
 #include <iostream>
 #include <map>
+#include <string>
 #include <string_view>
 
 // Project headers
@@ -23,7 +24,7 @@
 #include "SIMPLE.h"
 #include "VTK/VtkBoundaryWriter.h"
 #include "VTK/VtkWriter.h"
-#include "kOmegaSST.h"
+#include "TurbulenceModel.h"
 
 // *************************** namespace PostProcess **************************
 
@@ -94,7 +95,7 @@ void reportStatistics
 void exportResults
 (
     const SIMPLE& solver,
-    const kOmegaSST* turbulence,
+    const TurbulenceModel& turbulence,
     const Mesh& mesh,
     const CaseConfiguration& config
 )
@@ -109,23 +110,17 @@ void exportResults
 
     const ScalarField velocityMag = VTK::velocityMagnitude(Ux, Uy, Uz);
 
-    std::map<std::string, const ScalarField*>
-    scalarFieldsToVtk;
+    std::map<std::string, const ScalarField*> scalarFieldsToVtk;
 
     scalarFieldsToVtk["pressure"] = &pressure;
     scalarFieldsToVtk["velocityMagnitude"] = &velocityMag;
 
-    if (config.turbulenceEnabled)
+    for (const auto& output : turbulence.cellDataOutputs())
     {
-        if (turbulence == nullptr)
+        if (output.second != nullptr)
         {
-            FatalError("Turbulence enabled but no turbulence model provided.");
+            scalarFieldsToVtk[std::string{output.first}] = output.second;
         }
-
-        scalarFieldsToVtk["k"] = &turbulence->k();
-        scalarFieldsToVtk["omega"] = &turbulence->omega();
-        scalarFieldsToVtk["nut"] = &turbulence->turbulentViscosity();
-        scalarFieldsToVtk["wallDistance"] = &turbulence->wallDistance();
     }
 
     std::map<std::string, std::array<const ScalarField*, 3>>
@@ -170,11 +165,13 @@ void exportResults
     std::map<std::string, const FaceData<Scalar>*>
     boundaryScalarFields;
 
-    if (config.turbulenceEnabled)
+    for (const auto& output : turbulence.boundaryDataOutputs())
     {
-        boundaryScalarFields["yPlus"] = &turbulence->yPlus();
-        boundaryScalarFields["wallShearStress"] =
-            &turbulence->wallShearStress();
+        if (output.second != nullptr)
+        {
+            boundaryScalarFields[std::string{output.first}] =
+                output.second;
+        }
     }
 
     VTK::writeBoundaryData

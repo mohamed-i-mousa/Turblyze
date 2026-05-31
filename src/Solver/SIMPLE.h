@@ -5,14 +5,14 @@
  * @details This header implements the Semi-Implicit Method for Pressure-Linked
  * Equations (SIMPLE) for solving incompressible flow on unstructured finite
  * volume meshes. The algorithm handles velocity-pressure coupling through
- * pressure correction and includes the k-omega SST turbulence modeling.
+ * pressure correction and turbulence through an abstract TurbulenceModel
  *
  * @class SIMPLE
  * - Pressure-velocity coupling via SIMPLE algorithm
  * - Rhie-Chow interpolation for collocated grid arrangement
  * - Momentum equations with implicit under-relaxation
  * - Pressure correction with mass conservation enforcement
- * - k-omega SST turbulence model with wall distance calculation
+ * - Turbulence model through a TurbulenceModel reference
  * - Field constraints for numerical stability
  *****************************************************************************/
 
@@ -21,6 +21,7 @@
 // ********************************** Headers *********************************
 
 /// Standard library headers
+#include <string_view>
 #include <vector>
 
 /// Project headers
@@ -37,7 +38,7 @@
 
 // *************************** Forward Declarations ***************************
 
-class kOmegaSST;
+class TurbulenceModel;
 
 // ******************************* class SIMPLE *******************************
 
@@ -56,7 +57,7 @@ public:
         const ConvectionSchemes& momentumConvectionScheme,
         LinearSolver& momentumSolver,
         LinearSolver& pressureSolver,
-        kOmegaSST* turbulence,
+        TurbulenceModel& turbulence,
         const Scalar rho,
         const Scalar mu,
         const Vector& initialVelocity,
@@ -124,7 +125,7 @@ private:
     LinearSolver& pressureSolver_;
 
     /// Turbulence model
-    kOmegaSST* turbulence_ = nullptr;
+    TurbulenceModel& turbulence_;
 
     /// Matrix constructor and solver object
     Matrix matrixConstruct_;
@@ -240,15 +241,14 @@ private:
     Scalar lastPressureCorrectionRMS_ = S(1e9);
 
     /// Track turbulence field changes between iterations
-    Scalar lastKResidual_ = S(1e9);
-    Scalar lastOmegaResidual_ = S(1e9);
+    std::vector<std::string_view> turbulenceResidualNames_;
+    std::vector<Scalar> lastTurbulenceResiduals_;
 
     /// First-iteration reference values for scaled residuals
     Scalar massImbalance0_ = S(0.0);
     Scalar velocityResidual0_ = S(0.0);
     Scalar pressureResidual0_ = S(0.0);
-    Scalar kResidual0_ = S(0.0);
-    Scalar omegaResidual0_ = S(0.0);
+    std::vector<Scalar> turbulenceResidual0_;
 
 // ****************************** Private methods *****************************
 

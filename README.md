@@ -245,7 +245,7 @@ Headers and implementations live together under `src/`, following the
 OpenFOAM convention:
 
 - **`src/Application/`**: Top-level orchestration and solver assembly
-  (`CFDApplication.h/.cpp`, `SolverAssembly.h/.cpp`)
+  (`CFDApplication.h/.cpp`, `SolverSetup.h/.cpp`)
 - **`src/Primitives/`**: Core scalar/vector/tensor types, logging, errors
 - **`src/Mesh/`**: Geometric entities, topology, mesh I/O, mesh checking
 - **`src/Fields/`**: Typed cell and face field containers

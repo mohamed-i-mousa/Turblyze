@@ -7,7 +7,7 @@
 
 // *************************** Forward Declarations ***************************
 
-class kOmegaSST;
+class TurbulenceModel;
 class Mesh;
 class SIMPLE;
 struct CaseConfiguration;
@@ -28,7 +28,7 @@ void reportStatistics
 void exportResults
 (
     const SIMPLE& solver,
-    const kOmegaSST* turbulence,
+    const TurbulenceModel& turbulence,
     const Mesh& mesh,
     const CaseConfiguration& config
 );

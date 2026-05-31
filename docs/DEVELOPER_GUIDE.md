@@ -33,7 +33,7 @@ following the OpenFOAM convention.
   - `CellData.h`, `FaceData.h`, `Field.h/.cpp`
 - **`src/BoundaryConditions/`**: patch metadata and physical BC configuration
   - `BoundaryData.h/.cpp`, `BoundaryConditions.h/.cpp`,
-    `BoundaryConditionLoader.h/.cpp`
+    `BoundaryConditionsLoader.h/.cpp`
 - **`src/Schemes/`**: discretization schemes
   - `ConvectionSchemes.h/.cpp`, `GradientScheme.h/.cpp`, `LinearInterpolation.h`
 - **`src/LinearSystem/`**: algebraic system assembly and solving
@@ -41,7 +41,10 @@ following the OpenFOAM convention.
 - **`src/Solver/`**: SIMPLE pressure–velocity algorithm and field constraints
   - `SIMPLE.h/.cpp`, `Constraint.h/.cpp`
 - **`src/Models/`**: physical models
-  - `Turbulence/kOmegaSST.h/.cpp` (k–omega SST turbulence model)
+  - `Turbulence/TurbulenceModel.h` (abstract interface),
+    `Turbulence/RANS.h/.cpp` (two-equation eddy-viscosity base),
+    `Turbulence/Laminar.h` (laminar null-object),
+    `Turbulence/kOmegaSST.h/.cpp` (k–omega SST model)
 - **`src/PostProcessing/`**: derived fields and output orchestration
   - `DerivedFields.h/.cpp` (velocity/vorticity magnitude, Q-criterion, strain rate)
   - `PostProcess.h/.cpp` (after-solve statistics and VTK export orchestration)
@@ -51,7 +54,7 @@ following the OpenFOAM convention.
 - **`src/Case/`**: OpenFOAM-style case file parser
   - `CaseReader.h/.cpp`, `CaseConfiguration.h/.cpp`
 - **`src/Application/`**: top-level orchestration and solver assembly
-  - `CFDApplication.h/.cpp`, `SolverAssembly.h/.cpp`
+  - `CFDApplication.h/.cpp`, `SolverSetup.h/.cpp`
 - **`src/main.cpp`**: command-line entry point — creates `CFDApplication` and
   starts the simulation workflow
 
@@ -387,8 +390,8 @@ is a scatter loop with a write race. There are two safe approaches:
    loop over cells instead of faces; inside each cell loop, iterate
    `cell.faceIndices()` + `cell.faceSigns()` to sum face contributions.
 
-`SIMPLE::addTransposeGradientSource` and `kOmegaSST::divU` use the gather
-approach. Prefer gather for new code — it is race-free, avoids temporary
+`SIMPLE::addTransposeGradientSource` and `RANS::velocityDivergence` use the
+gather approach. Prefer gather for new code — it is race-free, avoids temporary
 allocations, and often has better cache behavior.
 
 ### What is and is not parallel
@@ -405,7 +408,7 @@ allocations, and often has better cache behavior.
 | Gradient precomputation | YES | Per-cell LLT/LU, no shared write |
 | `limitGradient` | YES | Per-cell |
 | kOmegaSST cell loops | YES | Per-cell |
-| `updateWallDistance` | NO | Iterative wave propagation with owner+neighbor writes; runs once at startup |
+| `RANS::updateWallDistance` | NO | Iterative wave propagation with owner+neighbor writes; runs once at startup |
 
 ### Adding OpenMP to new loops
 
@@ -452,15 +455,16 @@ Controls:
   intermediate POD config struct. The two linear solvers (`momentum`,
   `pressure`) are likewise passed as plain `LinearSolver&` parameters.
 - Turbulence is **not owned by `SIMPLE`**. `SolverModules` owns
-  `unique_ptr<kOmegaSST>` as a sibling of the SIMPLE solver and constructs it
-  *before* SIMPLE (mirroring `simpleFoam`'s `createFields.H` ordering). The
-  raw pointer `runtime.turbulenceModel.get()` is passed as the final
-  constructor argument to `SIMPLE`; `nullptr` selects the laminar path.
+  `unique_ptr<TurbulenceModel>` as a sibling of the SIMPLE solver and
+  constructs it *before* SIMPLE (mirroring `simpleFoam`'s `createFields.H`
+  ordering). A non-owning `TurbulenceModel&` is passed as the final constructor
+  argument to `SIMPLE`; it is always valid — a `Laminar` null-object represents
+  the laminar path instead of `nullptr`.
 - `CaseConfig::loadConfiguration()` parses non-BC runtime input into
   `CaseConfiguration`. `SolverSetup::configure()` owns selected linear
-  solvers, gradient and convection schemes, and the optional `kOmegaSST`
-  through `SolverModules`, then constructs `SIMPLE` last so it is destroyed
-  first.
+  solvers, gradient and convection schemes, and the turbulence model
+  (`kOmegaSST` or `Laminar`) through `SolverModules`, then constructs `SIMPLE`
+  last so it is destroyed first.
 
 
 ## Rhie–Chow face-velocity interpolation
@@ -475,16 +479,37 @@ Used in `updateRhieChowFlowRate()` to prevent pressure checkerboarding:
 - Boundary faces use centralized BC evaluation.
 
 
-## Turbulence model (k–omega SST)
+## Turbulence models (TurbulenceModel / RANS / kOmegaSST / Laminar)
+
+Turbulence models implement the storage-free `TurbulenceModel` interface
+(`src/Models/Turbulence/TurbulenceModel.h`). The root type exposes only
+the hooks SIMPLE and post-processing need: turbulent viscosity, optional
+boundary turbulent viscosity, the turbulence solve step, wall-distance status,
+named VTK output fields, and named convergence residuals. It does not own mesh
+or field storage.
+
+`Laminar` (`Laminar.h`) is the null-object model for non-turbulent runs:
+it owns only a zero `nut` field, implements a no-op `solve()`, returns no
+residual or VTK output fields, and reports `isTurbulent() == false`.
+
+`RANS` (`RANS.{h,cpp}`) is the shared two-equation eddy-viscosity layer. It
+owns `nu`, `nut`, `k`, k/dissipation residual bookkeeping, wall distance,
+wall-function geometry/diagnostics (`nutWall`, `yPlus`, `wallShearStress`),
+and common helpers such as `velocityDivergence()`, strain-rate magnitude
+computation,
+and the turbulent-kinetic-energy inlet estimate.
 
 Class `kOmegaSST`:
 - Is fully initialized by its constructor from inlined parameters (laminar
   viscosity, initial k/omega, under-relaxation factors, debug flag) — no
   config-struct indirection.
 - Owned by `SolverModules` as a sibling of `SIMPLE`; never owned by `SIMPLE`
-  itself. SIMPLE holds a non-owning `kOmegaSST*` (nullptr = laminar).
-- Owns `k`, `ω`, `nut`, wall distance, wall-function weights, `yPlus`,
-  `wallShearStress`, and wall `nut` state.
+  itself. SIMPLE holds a non-owning, non-const `TurbulenceModel&` (a `Laminar`
+  null-object replaces the former `nullptr` for laminar runs, so the reference
+  is always valid; the reference — not a pointer — encodes that invariant).
+- Inherits common RANS state and owns only SST-specific persistent state such
+  as `ω`, its previous-iteration snapshot, SST constants/options, and dynamic
+  omega wall-function values.
 - Borrows mesh, boundary conditions, gradient scheme, per-equation
   convection schemes, and the `k`/`omega` linear solvers (all bound at
   construction). It does not own any of them.
@@ -493,10 +518,11 @@ Class `kOmegaSST`:
   the constructor and are not passed per call.
 - Solves ω and k transport with variable diffusion (`ν + σ·ν_t`), production/destruction, and cross-diffusion for SST.
 - Calculates blending functions `F1`/`F2`/`F23`, turbulent viscosity
-  `ν_t = a1 k / max(a1 ω, F23 ||S||)`, and applies wall corrections.
-- Provides getters used by SIMPLE to form effective viscosity and for
-  post-processing: `k`, `ω`, `nut`, `wallDistance`, `yPlus`,
-  `wallShearStress`.
+  `ν_t = a1 k / max(a1 ω, F23 ||S||)`, and applies wall corrections. These
+  per-iteration fields are local scratch returned from helper methods, not
+  persistent members.
+- Provides model output through the base hooks: `k`, `ω`, `nut`,
+  `wallDistance`, `yPlus`, and `wallShearStress`.
 
 
 ## Post-processing and VTK export
@@ -646,18 +672,19 @@ the data is patch-indexed and field-specific.
 
 `SolverModules` owns user-selected runtime services:
 `GradientScheme`, the default and per-equation `ConvectionSchemes`, one
-`LinearSolver` instance per solved equation, and the optional `kOmegaSST`
-turbulence model. `solver` is declared last so it is destroyed before the
-services and model whose references are stored by `SIMPLE`.
+`LinearSolver` instance per solved equation, and a `TurbulenceModel`
+(`kOmegaSST` or `Laminar`). `solver` is declared last so it is destroyed before
+the services and model whose references are stored by `SIMPLE`.
 
 `SIMPLE` owns the flow solution fields, pressure-correction state,
-Rhie-Chow fields, constraints, and matrix assembler. It borrows the optional
-`kOmegaSST` model as a raw pointer for the non-const turbulence solve step; it
-does not own the model, parse case input, or own linear solver objects.
+Rhie-Chow fields, constraints, and matrix assembler. It borrows a non-null
+`TurbulenceModel&` for the non-const turbulence solve step; it does not own the
+model, parse case input, or own linear solver objects.
 
-`kOmegaSST` owns turbulence fields and wall-function state. It borrows mesh,
-boundary conditions, numerical schemes, and the `k`/`omega` linear solvers
-(all bound at construction).
+`RANS` owns shared turbulence fields and wall-function state. `kOmegaSST`
+adds SST-specific persistent state and borrows mesh, boundary conditions,
+numerical schemes, and the `k`/`omega` linear solvers (all bound at
+construction).
 
 
 ## Extending the codebase (recipes)

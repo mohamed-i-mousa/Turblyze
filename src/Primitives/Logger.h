@@ -16,17 +16,27 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <ios>
 #include <ostream>
+#include <span>
 #include <string_view>
+#include <utility>
 
+// Project headers
 #include "Scalar.h"
 
+// ************************** class StreamStateGuard **************************
 
 class StreamStateGuard
 {
 public:
 
+// ************************* Special Member Functions *************************
+
+    /// Constructor
     explicit StreamStateGuard(std::ostream& os) noexcept
     :
         os_{os},
@@ -49,6 +59,8 @@ public:
         os_.precision(precision_);
     }
 
+// ****************************** Private Members *****************************
+
 private:
 
     std::ostream& os_;
@@ -56,9 +68,12 @@ private:
     const std::streamsize precision_;
 };
 
+// ***************************** namespace Logger *****************************
 
 namespace Logger
 {
+    using Residuals = std::pair<std::string_view, Scalar>;
+
     /// Print a generic 80-char framed banner with the given title
     void sectionHeader(std::string_view title);
 
@@ -119,13 +134,13 @@ namespace Logger
     /// Print the non-debug one-line per-iteration residual summary
     void residualSummary(Scalar mass, Scalar velocity, Scalar pressure);
 
-    /// Print the non-debug one-line residual summary with turbulence
+    /// Print the non-debug one-line residual summary with named extra terms
     void residualSummary
     (
         Scalar mass,
         Scalar velocity,
         Scalar pressure,
-        Scalar k,
-        Scalar omega
+        std::span<const Residuals> residuals
     );
-}
+
+} // namespace Logger

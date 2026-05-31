@@ -88,7 +88,7 @@ void CFDApplication::run()
     PostProcess::exportResults
     (
         *modules.solver,
-        modules.turbulenceModel.get(),
+        *modules.turbulenceModel,
         mesh,
         config
     );
