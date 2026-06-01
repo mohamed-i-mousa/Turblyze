@@ -52,9 +52,11 @@ add_executable(${PROJECT_NAME}
     src/BoundaryConditions/BoundaryData.cpp
     src/BoundaryConditions/BoundaryConditions.cpp
     src/BoundaryConditions/BoundaryConditionsLoader.cpp
-    src/Schemes/GradientScheme.cpp
-    src/Schemes/LeastSquares.cpp
-    src/Schemes/ConvectionSchemes.cpp
+    src/Schemes/GradientSchemes/GradientScheme.cpp
+    src/Schemes/GradientSchemes/LeastSquares.cpp
+    src/Schemes/ConvectionSchemes/UpwindScheme.cpp
+    src/Schemes/ConvectionSchemes/CentralDifferenceScheme.cpp
+    src/Schemes/ConvectionSchemes/SecondOrderUpwindScheme.cpp
     src/LinearSystem/Matrix.cpp
     src/Solver/SIMPLE.cpp
     src/Solver/Constraint.cpp
@@ -78,6 +80,9 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     src/Fields/
     src/BoundaryConditions/
     src/Schemes/
+    src/Schemes/Interpolation/
+    src/Schemes/GradientSchemes/
+    src/Schemes/ConvectionSchemes/
     src/Models/
     src/Models/Turbulence/
     src/Case/

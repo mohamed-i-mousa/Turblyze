@@ -16,6 +16,7 @@
 // Project headers
 #include "BoundaryConditions.h"
 #include "CaseConfiguration.h"
+#include "CentralDifferenceScheme.h"
 #include "ConvectionSchemes.h"
 #include "ErrorHandler.h"
 #include "GradientScheme.h"
@@ -24,7 +25,9 @@
 #include "Logger.h"
 #include "Mesh.h"
 #include "SIMPLE.h"
+#include "SecondOrderUpwindScheme.h"
 #include "TurbulenceModel.h"
+#include "UpwindScheme.h"
 #include "Laminar.h"
 #include "kOmegaSST.h"
 

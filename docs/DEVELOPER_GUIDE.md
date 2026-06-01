@@ -34,9 +34,13 @@ following the OpenFOAM convention.
 - **`src/BoundaryConditions/`**: patch metadata and physical BC configuration
   - `BoundaryData.h/.cpp`, `BoundaryConditions.h/.cpp`,
     `BoundaryConditionsLoader.h/.cpp`
-- **`src/Schemes/`**: discretization schemes
-  - `ConvectionSchemes.h/.cpp`, `GradientScheme.h/.cpp` (abstract base),
-    `LeastSquares.h/.cpp` (least-squares gradient scheme), `LinearInterpolation.h`
+- **`src/Schemes/`**: discretization schemes, grouped by family
+  - `ConvectionSchemes/`: `ConvectionSchemes.h` (abstract base) plus one
+    header/implementation pair per concrete scheme — `UpwindScheme.h/.cpp`,
+    `CentralDifferenceScheme.h/.cpp`, `SecondOrderUpwindScheme.h/.cpp`
+  - `GradientSchemes/`: `GradientScheme.h/.cpp` (abstract base),
+    `LeastSquares.h/.cpp` (least-squares gradient scheme)
+  - `Interpolation/`: `LinearInterpolation.h`
 - **`src/LinearSystem/`**: algebraic system assembly and solving
   - `Matrix.h/.cpp`, `LinearSolvers.h`, `TransportEquation.h`
 - **`src/Solver/`**: SIMPLE pressure–velocity algorithm and field constraints
@@ -185,7 +189,8 @@ read them). `fieldGradient` is a template method — it loops `cellGradient()`
 (dispatched through the vtable) then applies `limitGradient()`, so it needs no
 changes when a new scheme is added.
 
-`LeastSquares final : public GradientScheme` (`src/Schemes/LeastSquares.h/.cpp`)
+`LeastSquares final : public GradientScheme`
+(`src/Schemes/GradientSchemes/LeastSquares.h/.cpp`)
 is the only concrete scheme today. It owns the least-squares-specific
 `precomputeInverseATA()` and the cached `invATA_` table, and overrides
 `cellGradient`. The factory `makeGradientScheme()` in `SolverSetup.cpp` selects
