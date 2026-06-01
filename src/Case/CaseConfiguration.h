@@ -28,6 +28,9 @@ class CaseReader;
 
 struct SchemeConfig
 {
+    /// Gradient reconstruction scheme name (e.g. "leastSquares")
+    std::string gradientName;
+
     /// Default convection scheme name
     std::string defaultName;
 

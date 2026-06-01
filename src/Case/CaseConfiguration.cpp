@@ -131,6 +131,23 @@ void readLinearSolvers
 }
 
 
+void readGradientScheme
+(
+    const CaseReader& reader,
+    CaseConfiguration& config
+)
+{
+    const auto& schemesDict = reader.section("numericalSchemes");
+
+    config.schemes.gradientName =
+        schemesDict.lookupOrDefault<std::string>
+        (
+            "gradient",
+            "leastSquares"
+        );
+}
+
+
 void readConvectionSchemes
 (
     const CaseReader& reader,
@@ -241,6 +258,7 @@ CaseConfiguration loadConfiguration(const CaseReader& reader)
     const auto& outputDict = reader.section("output");
     config.debug = outputDict.lookupOrDefault<bool>("debug", false);
 
+    readGradientScheme(reader, config);
     readConvectionSchemes(reader, config);
 
     const auto& simple = reader.section("SIMPLE");

@@ -53,6 +53,7 @@ add_executable(${PROJECT_NAME}
     src/BoundaryConditions/BoundaryConditions.cpp
     src/BoundaryConditions/BoundaryConditionsLoader.cpp
     src/Schemes/GradientScheme.cpp
+    src/Schemes/LeastSquares.cpp
     src/Schemes/ConvectionSchemes.cpp
     src/LinearSystem/Matrix.cpp
     src/Solver/SIMPLE.cpp

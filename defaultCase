@@ -238,6 +238,9 @@ boundaryConditions
 // ============================================================================
 numericalSchemes
 {
+    // Options: leastSquares
+    gradient        leastSquares;
+
     // Options: Upwind, CentralDifference, SecondOrderUpwind
     convection
     {

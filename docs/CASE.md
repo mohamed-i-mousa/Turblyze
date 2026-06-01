@@ -189,6 +189,8 @@ Selects discretization schemes.
 ```cpp
 numericalSchemes
 {
+    gradient        leastSquares;           // Cell-gradient reconstruction
+
     convection
     {
         default     Upwind;                 // Fall back for unspecified scheme
@@ -202,12 +204,16 @@ numericalSchemes
 }
 ```
 
+**Gradient Scheme Options:**
+- `leastSquares`: Weighted least-squares with inverse-distance weighting (default)
+
+The `gradient` entry may be omitted, in which case it defaults to `leastSquares`.
+An unknown name is rejected at startup.
+
 **Convection Scheme Options:**
 - `Upwind`: First-order upwind (stable, diffusive)
 - `CentralDifference`: Second-order central difference (accurate, may oscillate)
 - `SecondOrderUpwind`: Second-order upwind (balance of accuracy and stability)
-
-**Note**: Gradient scheme is hardcoded to `leastSquares` and not configurable via case file.
 
 ### 6. SIMPLE
 SIMPLE algorithm parameters.

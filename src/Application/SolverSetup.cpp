@@ -19,6 +19,7 @@
 #include "ConvectionSchemes.h"
 #include "ErrorHandler.h"
 #include "GradientScheme.h"
+#include "LeastSquares.h"
 #include "LinearSolvers.h"
 #include "Logger.h"
 #include "Mesh.h"
@@ -31,6 +32,22 @@
 
 namespace
 {
+
+std::unique_ptr<GradientScheme> makeGradientScheme
+(
+    std::string_view name,
+    const Mesh& mesh,
+    const BoundaryConditions& bc
+)
+{
+    if (name == "leastSquares")
+    {
+        return std::make_unique<LeastSquares>(mesh, bc);
+    }
+
+    FatalError("Unknown gradient scheme: " + std::string(name));
+}
+
 
 std::unique_ptr<ConvectionSchemes> makeConvectionScheme
 (
@@ -171,7 +188,12 @@ void SolverSetup::configure
 )
 {
     modules.gradScheme =
-        std::make_unique<GradientScheme>(mesh, boundaryConditions);
+        makeGradientScheme
+        (
+            config.schemes.gradientName,
+            mesh,
+            boundaryConditions
+        );
 
     makeConvectionSchemes(modules, config.schemes);
 

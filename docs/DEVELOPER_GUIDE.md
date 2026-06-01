@@ -35,7 +35,8 @@ following the OpenFOAM convention.
   - `BoundaryData.h/.cpp`, `BoundaryConditions.h/.cpp`,
     `BoundaryConditionsLoader.h/.cpp`
 - **`src/Schemes/`**: discretization schemes
-  - `ConvectionSchemes.h/.cpp`, `GradientScheme.h/.cpp`, `LinearInterpolation.h`
+  - `ConvectionSchemes.h/.cpp`, `GradientScheme.h/.cpp` (abstract base),
+    `LeastSquares.h/.cpp` (least-squares gradient scheme), `LinearInterpolation.h`
 - **`src/LinearSystem/`**: algebraic system assembly and solving
   - `Matrix.h/.cpp`, `LinearSolvers.h`, `TransportEquation.h`
 - **`src/Solver/`**: SIMPLE pressure–velocity algorithm and field constraints
@@ -172,13 +173,31 @@ Notes:
 
 ## Numerical schemes
 
-### Gradient reconstruction (`GradientScheme`)
+### Gradient reconstruction (`GradientScheme` / `LeastSquares`)
 
-#### Cell Gradient Computation (`cellGradient`)
+`GradientScheme` is an **abstract base class**: it owns the scheme-independent
+services (`faceGradient`, `limitGradient`, `fieldGradient`, plus the private
+`averageFaceGradient`/`boundaryFaceGradient` helpers) and declares one pure
+virtual operation, `cellGradient`. The base constructor is `protected` and the
+destructor is `virtual`; copy/move are deleted (it holds `const Mesh&` and
+`const BoundaryConditions&` references, now `protected` so derived overrides can
+read them). `fieldGradient` is a template method — it loops `cellGradient()`
+(dispatched through the vtable) then applies `limitGradient()`, so it needs no
+changes when a new scheme is added.
+
+`LeastSquares final : public GradientScheme` (`src/Schemes/LeastSquares.h/.cpp`)
+is the only concrete scheme today. It owns the least-squares-specific
+`precomputeInverseATA()` and the cached `invATA_` table, and overrides
+`cellGradient`. The factory `makeGradientScheme()` in `SolverSetup.cpp` selects
+it from `numericalSchemes.gradient` (default `leastSquares`); an unknown name is
+a fatal error. To add another scheme (e.g. Green–Gauss), derive a new
+`final` class, override `cellGradient`, and add one branch to the factory.
+
+#### Cell Gradient Computation (`cellGradient` — `LeastSquares`)
 **Method**: Weighted least-squares gradient reconstruction
 
 **Algorithm**:
-1. **Geometric precompute**: `GradientScheme` builds one inverse `ATA` per
+1. **Geometric precompute**: `LeastSquares` builds one inverse `ATA` per
    cell in its constructor from neighbor-cell and boundary-face stencil
    vectors.
 2. **Weight Calculation**: `w = 1/(|r|² + smallValue)` for
@@ -607,12 +626,14 @@ GradientScheme& operator=(const GradientScheme&) = delete;
 GradientScheme(GradientScheme&&) = delete;
 GradientScheme& operator=(GradientScheme&&) = delete;
 
-/// Destructor
-~GradientScheme() noexcept = default;
+/// Destructor (virtual — GradientScheme is a polymorphic base)
+virtual ~GradientScheme() noexcept = default;
 ```
 
-Used by: `GradientScheme`, `Matrix`, `kOmegaSST`, `SIMPLE`, `Constraint`,
-`StreamStateGuard`.
+Used by: `GradientScheme` (abstract base; `LeastSquares` derives from it),
+`Matrix`, `kOmegaSST`, `SIMPLE`, `Constraint`, `StreamStateGuard`. Note the
+destructor is `virtual` only for the polymorphic `GradientScheme`; the
+non-polymorphic borrowers keep a non-virtual `= default` destructor.
 
 ### Pattern 2 — Runtime-owned polymorphic services
 
@@ -717,6 +738,19 @@ construction).
 ### Add a new convection scheme
 1) Derive from `ConvectionSchemes` (base `getFluxCoefficients` returns `FluxCoefficients` struct).
 2) Optionally add high-order face value and correction methods (see CDS/SOU) and integrate as deferred-correction in `Matrix`.
+
+### Add a new gradient scheme
+1) Create `src/Schemes/MyScheme.h/.cpp` with
+   `class MyScheme final : public GradientScheme`. Forward `(mesh, bc)` to the
+   `protected` base constructor; delete copy/move; give it an
+   `override` destructor.
+2) Override `[[nodiscard]] Vector cellGradient(Field, const ScalarField&, size_t) const override;`.
+   The base's `faceGradient`/`limitGradient`/`fieldGradient` are reused as-is —
+   `fieldGradient` dispatches to your `cellGradient` virtually.
+3) Add the `.cpp` to `CMakeLists.txt`.
+4) Add a branch to `makeGradientScheme()` in `SolverSetup.cpp` matching the
+   case-file name, and document the name under `numericalSchemes.gradient`
+   in `docs/CASE.md`.
 
 ### Add a new boundary condition
 1) **Extend enums**: Add new type to `BCType` enum in `BoundaryData.h`
@@ -902,7 +936,7 @@ mesh { file path; checkQuality bool; }
 physicalProperties { rho scalar; mu scalar; }
 initialConditions { U vector; p scalar; }
 boundaryConditions { U { patch { type value; } } p { ... } }
-numericalSchemes { convection { default scheme; U scheme; k scheme; omega scheme; } }
+numericalSchemes { gradient scheme; convection { default scheme; U scheme; k scheme; omega scheme; } }
 SIMPLE { numIterations int; convergenceTolerance scalar; relaxationFactors { U scalar; p scalar; k scalar; omega scalar; } }
 linearSolvers { U { solver type; preconditioner type; tolerance scalar; maxIter int; } p { ... } }
 turbulence { model string; enabled bool; turbulenceIntensity scalar; hydraulicDiameter scalar; }
