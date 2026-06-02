@@ -35,21 +35,114 @@ and `.cpp` files under `src/`.
 
 ## Section Separators
 
-**Header files (.h)** use plain comment separators inside classes:
+Both `.h` and `.cpp` files divide their contents with **79-character asterisk
+banners**. The label is centred in a field of `*`:
 ```cpp
-// Setter methods
-
-// Accessor methods
-
-// Private members
-
-// Private methods
+// ****************************** Setter Methods ******************************
 ```
 
-**Source files (.cpp)** use asterisk-decorated separators for major sections:
+**Exact geometry** (so every banner lines up identically):
+- The line is `// ` + left `*`s + ` ` + label + ` ` + right `*`s, **exactly 79
+  characters** total (never exceed 80).
+- After the `// ` prefix, 76 columns remain. With
+  `stars = 76 - len(label) - 2`, split them `left = (stars + 1) / 2` and
+  `right = stars - left` — so on an odd split the **extra `*` goes before the
+  label**.
+- A blank line precedes and follows every banner.
+
+### Headers banner
+
+The first banner in every file (after `#pragma once` in a header) is `Headers`.
+It groups the includes with `//` sub-comments — only the groups that apply, in
+this order:
 ```cpp
-// ****************************** Section Name ******************************
+// ********************************** Headers *********************************
+
+// Implementation header        (.cpp only — the matching .h)
+#include "MeshReader.h"
+
+// Standard library headers
+#include <vector>
+
+// External library headers     (Eigen, OpenMP, VTK)
+#include <eigen3/Eigen/SparseCore>
+
+// Project headers
+#include "ErrorHandler.h"
 ```
+A file whose includes form a single group needs no sub-comments. A header with
+no includes at all (e.g. one holding only forward declarations) has no `Headers`
+banner.
+
+### Type and section banners
+
+After `Headers`, banner each top-level definition and each member group:
+```cpp
+// ******************************* class Vector *******************************
+// ************************* struct TransportEquation *************************
+// ***************************** enum class Field *****************************
+// *************************** concept CellFieldType **************************
+// ******************************* namespace VTK ******************************
+```
+Each definition gets its own banner — a `concept` that constrains a class is
+banner-separated from the `class` it precedes.
+
+Inside a class, the canonical member-group labels are:
+
+| Label | Covers |
+|---|---|
+| `Special Member Functions` | constructors, the rule-of-five block, destructor |
+| `Setter Methods` / `Accessor Methods` | mutators / getters |
+| `Operator Methods` | in-class `operator…` overloads |
+| `Public Methods` | other public members |
+| `Protected Methods` | the `protected:` section |
+| `Private Methods` | private member functions |
+| `Private Members` | private data |
+| `Aliases` | trailing `using` type aliases |
+| `Non-Member Functions` | free functions declared alongside the type |
+
+`Private Members` / `Private Methods` (and `Protected Members` / `Protected
+Methods`) banners sit **before** the access specifier, not after it:
+```cpp
+// ****************************** Private Members *****************************
+
+private:
+
+    Scalar x_ = S(0.0);
+```
+When a class has both a private-data group and a private-method group, **repeat
+the `private:` specifier** so each banner still precedes one:
+```cpp
+// ****************************** Private Members *****************************
+
+private:
+
+    Scalar x_ = S(0.0);
+
+// ****************************** Private Methods *****************************
+
+private:
+
+    void helper() const;
+```
+This differs from the `public:` section, which opens immediately after the class
+brace and may carry several mid-section banners (`Special Member Functions`,
+`Setter Methods`, `Accessor Methods`, …) under a single `public:`.
+
+A `.cpp` reuses the **same** group names as its header, but only for the
+sections it actually defines — typically `Special Member Functions` plus
+`Private Methods`; inline accessors and data members never reappear in the
+`.cpp`.
+
+### "Methods" vs "Functions"
+
+`Methods` is reserved for members **inside** a class or struct. Free functions
+are never "Methods", and never "Public" (there is no access specifier for them
+to be public *to*):
+- A free function tied to a type or enum → `Non-Member Functions`.
+- A header of standalone free functions → name it for what the functions do,
+  suffixed with `Functions`: e.g. `Error Handling Functions`,
+  `Interpolation Functions`.
 
 ## Documentation Style
 

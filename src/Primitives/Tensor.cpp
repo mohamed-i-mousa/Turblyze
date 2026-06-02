@@ -3,11 +3,16 @@
  * @brief Stream output for the Tensor class
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "Tensor.h"
 
+// Standard library headers
 #include <iomanip>
 #include <ostream>
 
+// *************************** Non-Member Functions ***************************
 
 std::ostream& operator<<(std::ostream& os, const Tensor& T)
 {

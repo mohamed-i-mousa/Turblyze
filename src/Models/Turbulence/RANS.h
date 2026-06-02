@@ -37,7 +37,7 @@ class Face;
 enum class BCType;
 enum class Field;
 
-// ********************************* class RANS *******************************
+// ******************************** class RANS ********************************
 
 class RANS : public TurbulenceModel
 {

@@ -174,7 +174,7 @@ void Face::distances(std::span<const Cell> allCells)
     distancePropertiesCalculated_ = true;
 }
 
-// *************************** Non-Member Methods *****************************
+// *************************** Non-Member Functions ***************************
 
 std::ostream& operator<<(std::ostream& os, const Face& f)
 {

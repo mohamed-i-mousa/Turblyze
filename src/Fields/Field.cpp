@@ -3,10 +3,15 @@
  * @brief Implementation of Field identifier helpers
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "Field.h"
 
+// Project headers
 #include "ErrorHandler.h"
 
+// *************************** Non-Member Functions ***************************
 
 std::string_view fieldToString(Field field) noexcept
 {

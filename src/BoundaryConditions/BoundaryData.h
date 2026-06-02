@@ -18,10 +18,15 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <string_view>
 
+// Project headers
 #include "Scalar.h"
 
+// ***************************** enum class BCType ****************************
 
 enum class BCType
 {
@@ -35,12 +40,13 @@ enum class BCType
     undefined               ///< Undefined boundary condition type
 };
 
+// **************************** class BoundaryData ****************************
 
 class BoundaryData
 {
 public:
 
-// Setter methods
+// ****************************** Setter Methods ******************************
 
     /// Set fixed scalar value boundary condition
     void setFixedValue(Scalar scalarValue) noexcept;
@@ -57,7 +63,7 @@ public:
     /// Set wall function boundary condition type
     void setWallFunctionType(BCType wallType) noexcept;
 
-// Accessor methods
+// ***************************** Accessor Methods *****************************
 
     /// Get boundary condition type
     [[nodiscard]] BCType type() const noexcept { return type_; }
@@ -68,9 +74,9 @@ public:
     /// Get fixed scalar gradient (fixedGradient)
     [[nodiscard]] Scalar fixedScalarGradient() const noexcept;
 
-private:
+// ****************************** Private Members *****************************
 
-// Private members
+private:
 
     /// Boundary condition type
     BCType type_ = BCType::undefined;
@@ -82,7 +88,7 @@ private:
     Scalar scalarGradient_ = S(0.0);
 };
 
-// Non-member methods
+// *************************** Non-Member Functions ***************************
 
 /// Convert BCType to human-readable string
 [[nodiscard]] std::string_view bcTypeToString(BCType bctype) noexcept;

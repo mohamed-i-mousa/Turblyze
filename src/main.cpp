@@ -9,14 +9,19 @@
  * @author Mohamed Mousa
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <iostream>
 #include <string>
 #include <iomanip>
 #include <chrono>
 
+// Project headers
 #include "Scalar.h"
 #include "CFDApplication.h"
 
+// *********************************** main ***********************************
 
 int main(int argc, char* argv[])
 {

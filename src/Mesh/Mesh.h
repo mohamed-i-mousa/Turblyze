@@ -16,20 +16,27 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <span>
 #include <cstddef>
 #include <vector>
 
+// Project headers
 #include "Vector.h"
 #include "Face.h"
 #include "Cell.h"
 #include "BoundaryPatch.h"
 #include "ErrorHandler.h"
 
+// ******************************** class Mesh ********************************
 
 class Mesh
 {
 public:
+
+// ************************* Special Member Functions *************************
 
     /// Construct empty mesh
     Mesh() = default;
@@ -72,7 +79,7 @@ public:
     /// Destructor
     ~Mesh() noexcept = default;
 
-// Const accessor methods
+// ************************** Const Accessor Methods **************************
 
     /// Read-only view of node coordinates
     [[nodiscard]] std::span<const Vector> nodes() const noexcept
@@ -98,7 +105,7 @@ public:
         return patches_;
     }
 
-// Mutable accessor methods (during prepareMesh() only)
+// ************************* Mutable Accessor Methods *************************
 
     /// Mutable view of faces
     [[nodiscard]] std::span<Face> faces() noexcept
@@ -112,7 +119,7 @@ public:
         return cells_;
     }
 
-// Size accessor methods
+// *************************** Size Accessor Methods **************************
 
     /// Number of nodes in the mesh
     [[nodiscard]] size_t numNodes() const noexcept { return nodes_.size(); }
@@ -128,6 +135,8 @@ public:
 
     /// Face count at startup (used by CellData/FaceData)
     [[nodiscard]] static size_t faceCount() noexcept { return faceCount_; }
+
+// ****************************** Private Members *****************************
 
 private:
 

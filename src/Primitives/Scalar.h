@@ -9,12 +9,15 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <string_view>
 
+// ************************** Precision Configuration *************************
 
 /// Floating-point precision type (configured via CMakeLists.txt)
 #ifdef PROJECT_USE_DOUBLE_PRECISION
@@ -25,6 +28,8 @@
     constexpr std::string_view SCALAR_MODE = "float (FP32)";
 #endif
 
+
+// ***************************** Scalar Conversion ****************************
 
 /// Numeric types that may be converted to Scalar via S()
 template<typename T>
@@ -44,7 +49,8 @@ template<ScalarLiteral T>
 }
 
 
-/// Numerical tolerances
+// *************************** Numerical Tolerances ***************************
+
 constexpr Scalar smallValue = std::numeric_limits<Scalar>::epsilon();
 
 constexpr Scalar vSmallValue = std::numeric_limits<Scalar>::min();

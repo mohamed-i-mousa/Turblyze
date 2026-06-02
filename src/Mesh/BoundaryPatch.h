@@ -17,8 +17,11 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
 #include <string>
 
+// *************************** enum class PatchType ***************************
 
 enum class PatchType
 {
@@ -37,10 +40,13 @@ enum class PatchType
     undefined               ///< Undefined boundary type
 };
 
+// **************************** class BoundaryPatch ***************************
 
 class BoundaryPatch
 {
 public:
+
+// ************************* Special Member Functions *************************
 
     /// Constructor for boundary patch
     BoundaryPatch
@@ -55,7 +61,7 @@ public:
         lastFaceIdx_(endIdx)
     {}
 
-// Setter methods
+// ****************************** Setter Methods ******************************
 
     /// Set patch name
     void setPatchName(std::string name) noexcept
@@ -66,7 +72,7 @@ public:
     /// Set patch type
     void setType(PatchType patchType) noexcept { type_ = patchType; }
 
-// Accessor methods
+// ***************************** Accessor Methods *****************************
 
     /// Get number of faces in this boundary patch
     [[nodiscard]] size_t numBoundaryFaces() const noexcept
@@ -98,9 +104,9 @@ public:
         return lastFaceIdx_;
     }
 
-private:
+// ****************************** Private Members *****************************
 
-// Private members
+private:
 
     /// Human-readable patch name
     std::string patchName_;

@@ -17,12 +17,16 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <vector>
 #include <string>
 #include <map>
 #include <optional>
 #include <span>
 
+// Project headers
 #include "Scalar.h"
 #include "Vector.h"
 #include "Face.h"
@@ -31,12 +35,13 @@
 #include "CellData.h"
 #include "Field.h"
 
+// ************************* class BoundaryConditions *************************
 
 class BoundaryConditions
 {
 public:
 
-// Setter methods
+// ****************************** Setter Methods ******************************
 
     /// Add a boundary patch from mesh reader
     void addPatch(BoundaryPatch patch);
@@ -90,7 +95,7 @@ public:
         BCType wallType
     );
 
-// Accessor methods
+// ***************************** Accessor Methods *****************************
 
     /// Get boundary patch by name
     [[nodiscard]] const BoundaryPatch& patch(const std::string& name) const;
@@ -131,9 +136,9 @@ public:
     /// Print summary of all boundary conditions
     void printSummary() const;
 
-private:
+// ****************************** Private Members *****************************
 
-// Private members
+private:
 
     /// Nested map: patch name → field → boundary data
     std::map<std::string, std::map<Field, BoundaryData>>

@@ -3,11 +3,16 @@
  * @brief Implementation of case file parser
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "CaseReader.h"
 
+// Standard library headers
 #include <fstream>
 #include <iostream>
 
+// Project headers
 #include "ErrorHandler.h"
 
 // ************************* Special Member Functions *************************
@@ -44,7 +49,7 @@ std::vector<std::string> CaseReader::sectionNames() const
     return names;
 }
 
-// ***************************** Utility Methods ******************************
+// ****************************** Public Methods ******************************
 
 void CaseReader::print(int indent) const
 {
@@ -70,7 +75,7 @@ void CaseReader::print(int indent) const
     }
 }
 
-// ****************************** Private Methods ******************************
+// ****************************** Private Methods *****************************
 
 void CaseReader::parseFile(const std::string& filename)
 {

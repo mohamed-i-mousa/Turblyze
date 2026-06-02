@@ -10,10 +10,15 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <string>
 
+// Project headers
 #include "Scalar.h"
 
+// ******************************* namespace VTK ******************************
 
 namespace VTK
 {

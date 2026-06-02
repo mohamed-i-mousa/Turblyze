@@ -3,8 +3,12 @@
  * @brief Implementation of boundary condition data storage and retrieval
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "BoundaryData.h"
 
+// Project headers
 #include "ErrorHandler.h"
 
 // ****************************** Setter Methods ******************************

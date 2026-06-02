@@ -17,16 +17,23 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <cmath>
 #include <iosfwd>
 
+// Project headers
 #include "Scalar.h"
 #include "ErrorHandler.h"
 
+// ******************************* class Vector *******************************
 
 class Vector
 {
 public:
+
+/// ************************* Special Member Functions ************************
 
     /// Default constructor
     Vector() noexcept = default;
@@ -39,7 +46,7 @@ public:
         z_(zValue)
     {}
 
-// Setter methods
+// ****************************** Setter Methods ******************************
 
     /// Set X component
     void setX(Scalar xValue) noexcept { x_ = xValue; }
@@ -50,7 +57,7 @@ public:
     /// Set Z component
     void setZ(Scalar zValue) noexcept { z_ = zValue; }
 
-// Accessor methods
+// ***************************** Accessor Methods *****************************
 
     /// Get X component
     [[nodiscard]] Scalar x() const noexcept { return x_; }
@@ -61,7 +68,7 @@ public:
     /// Get Z component
     [[nodiscard]] Scalar z() const noexcept { return z_; }
 
-// Operator methods
+// ***************************** Operator Methods *****************************
 
     /// Vector addition operator
     Vector operator+(const Vector& other) const noexcept
@@ -149,6 +156,8 @@ public:
             && (std::abs(z_ - other.z_) <= vSmallValue);
     }
 
+// ****************************** Private Members *****************************
+
 private:
 
     /// x, y, z components of the vector
@@ -157,7 +166,7 @@ private:
     Scalar z_ = S(0.0);
 };
 
-// Non-member methods
+// *************************** Non-Member Functions ***************************
 
 /// Compute dot product of two vectors
 [[nodiscard]] inline Scalar dot(const Vector& p1, const Vector& p2) noexcept

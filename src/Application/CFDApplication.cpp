@@ -25,7 +25,7 @@
 #include "SolverSetup.h"
 #include "SIMPLE.h"
 
-// *************************** Internal helpers *******************************
+// ***************************** Internal Helpers *****************************
 
 namespace
 {
@@ -50,7 +50,7 @@ CFDApplication::CFDApplication(const std::string& caseFilePath)
 
 CFDApplication::~CFDApplication() noexcept = default;
 
-// *********************************** run ***********************************
+// ******************************** Solver Run ********************************
 
 void CFDApplication::run()
 {

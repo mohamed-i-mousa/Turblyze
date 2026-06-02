@@ -167,7 +167,7 @@ struct CaseConfiguration
     LinearSolverConfig linearSolvers;
 };
 
-// **************************** namespace CaseConfig *************************
+// *************************** namespace CaseConfig ***************************
 
 namespace CaseConfig
 {

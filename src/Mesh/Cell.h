@@ -161,7 +161,7 @@ private:
 
 };
 
-// *************************** Non-Member Methods *****************************
+// *************************** Non-Member Functions ***************************
 
 /// Stream output operator for Cell
 std::ostream& operator<<(std::ostream& os, const Cell& c);

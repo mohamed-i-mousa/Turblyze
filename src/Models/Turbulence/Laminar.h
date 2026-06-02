@@ -20,7 +20,7 @@
 
 class Mesh;
 
-// ****************************** class Laminar ******************************
+// ******************************* class Laminar ******************************
 
 class Laminar final : public TurbulenceModel
 {

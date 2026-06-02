@@ -3,12 +3,18 @@
  * @brief Implementation of scheme-independent gradient services
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "GradientScheme.h"
 
+// Standard library headers
 #include <algorithm>
 
+// External library headers
 #include <omp.h>
 
+// Project headers
 #include "ErrorHandler.h"
 
 // ************************* Special Member Functions *************************

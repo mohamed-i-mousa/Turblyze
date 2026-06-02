@@ -15,12 +15,17 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
 #include "CellData.h"
 
+// ***************************** class Constraint *****************************
 
 class Constraint
 {
 public:
+
+// ************************* Special Member Functions *************************
 
     /// Constructor
     Constraint
@@ -47,15 +52,17 @@ public:
     /// Destructor
     ~Constraint() noexcept = default;
 
+// ****************************** Public Methods ******************************
+
     /// Apply velocity field constraints
     [[nodiscard]] size_t applyVelocityConstraints() noexcept;
 
     /// Apply pressure field constraints
     [[nodiscard]] size_t applyPressureConstraints() noexcept;
 
-private:
+// ****************************** Private Members *****************************
 
-// Private members
+private:
 
     /// x-velocity component reference
     ScalarField& Ux_;

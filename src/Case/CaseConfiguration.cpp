@@ -5,7 +5,7 @@
 
 // ********************************** Headers *********************************
 
-// Implementation headers
+// Implementation header
 #include "CaseConfiguration.h"
 
 // Standard library headers
@@ -16,7 +16,7 @@
 #include "ErrorHandler.h"
 #include "kOmegaSST.h"
 
-// ***************************** Internal helpers *****************************
+// ***************************** Internal Helpers *****************************
 
 namespace
 {
@@ -205,7 +205,7 @@ void readConvectionSchemes
 
 } // namespace
 
-// **************************** namespace CaseConfig *************************
+// *************************** namespace CaseConfig ***************************
 
 namespace CaseConfig
 {

@@ -21,15 +21,21 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <vector>
 #include <optional>
 
+// External library headers
 #include <eigen3/Eigen/SparseCore>
 
+// Project headers
 #include "Mesh.h"
 #include "BoundaryConditions.h"
 #include "TransportEquation.h"
 
+// ******************************* class Matrix *******************************
 
 class Matrix
 {
@@ -38,6 +44,8 @@ public:
     // Eigen type reductions for readability
     using SparseMatrix = Eigen::SparseMatrix<Scalar, Eigen::RowMajor>;
     using Vec = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
+
+// ************************* Special Member Functions *************************
 
     /// Constructor for matrix assembly
     Matrix
@@ -57,10 +65,12 @@ public:
     /// Destructor
     ~Matrix() noexcept = default;
 
+// ****************************** Public Methods ******************************
+
     /// Build transport equation matrix
     void buildMatrix(const TransportEquation& equation);
 
-// Accessor methods
+// ***************************** Accessor Methods *****************************
 
     /// Get assembled sparse matrix A (const)
     [[nodiscard]] const SparseMatrix& matrixA() const noexcept
@@ -108,9 +118,9 @@ public:
         std::span<const Scalar> fractions = {}
     );
 
-private:
+// ****************************** Private Members *****************************
 
-// Private members
+private:
 
     /// Mesh data reference
     const Mesh& mesh_;
@@ -142,7 +152,9 @@ private:
     inline static const Scalar rootSmallValue_ = std::sqrt(smallValue);
 
 
-// Private methods
+// ****************************** Private Methods *****************************
+
+private:
 
     /// Clear matrix and vector for new assembly
     void clear();
@@ -172,6 +184,8 @@ private:
         const TransportEquation& equation
     ) const;
 };
+
+// *************************** Non-Member Functions ***************************
 
 /// Convert a size_t index to Eigen's signed index type
 [[nodiscard]] inline Eigen::Index eIdx(std::size_t value) noexcept

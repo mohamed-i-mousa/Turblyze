@@ -19,7 +19,7 @@
 namespace VTK
 {
 
-// **************************** Internal Helpers ******************************
+// ***************************** Internal Helpers *****************************
 
 namespace
 {
@@ -36,7 +36,6 @@ ScalarField computeMagnitude(const VectorField& field)
 
 } // namespace
 
-// ***************************** Public Functions *****************************
 
 ScalarField velocityMagnitude
 (

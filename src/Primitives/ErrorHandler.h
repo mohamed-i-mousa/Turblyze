@@ -22,12 +22,15 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
 #include <cstdlib>
 #include <iostream>
 #include <source_location>
 #include <string>
 #include <string_view>
 
+// ************************* Error Handling Functions *************************
 
 /// Print a fatal error message and abort the program
 [[noreturn]] inline void FatalError

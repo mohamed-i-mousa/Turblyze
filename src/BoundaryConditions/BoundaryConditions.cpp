@@ -3,12 +3,17 @@
  * @brief Implementation of boundary conditions management system
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "BoundaryConditions.h"
 
+// Standard library headers
 #include <iostream>
 #include <utility>
 #include <set>
 
+// Project headers
 #include "ErrorHandler.h"
 
 // ****************************** Setter Methods ******************************
@@ -89,7 +94,7 @@ void BoundaryConditions::setWallFunctionType
     setBC(patchName, field, std::move(bcData));
 }
 
-// ****************************** Accessor Methods ******************************
+// ***************************** Accessor Methods *****************************
 
 const BoundaryPatch& BoundaryConditions::patch(const std::string& name) const
 {

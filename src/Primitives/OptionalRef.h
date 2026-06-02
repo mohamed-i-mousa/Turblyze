@@ -9,10 +9,13 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
 #include <functional>
 #include <optional>
 #include <type_traits>
 
+// *********************************** Alias **********************************
 
 /// Non-owning optional reference (absent = std::nullopt)
 template<typename T>

@@ -35,16 +35,22 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <limits>
 #include <string>
 #include <string_view>
 
+// External library headers
 #include <eigen3/Eigen/SparseCore>
 #include <eigen3/Eigen/IterativeLinearSolvers>
 
+// Project headers
 #include "ErrorHandler.h"
 #include "Scalar.h"
 
+// ********************************** Aliases *********************************
 
 // Eigen type reductions for readability
 using SparseMatrix = Eigen::SparseMatrix<Scalar, Eigen::RowMajor>;
@@ -59,6 +65,7 @@ using EigenPCG =
     Eigen::ConjugateGradient
     <SparseMatrix, LowerUpper, JacobiPreconditioner>;
 
+// ************************** struct SolvePerformance *************************
 
 struct SolvePerformance
 {
@@ -75,10 +82,13 @@ struct SolvePerformance
     bool converged = false;
 };
 
+// **************************** class LinearSolver ****************************
 
 class LinearSolver
 {
 public:
+
+// ************************* Special Member Functions *************************
 
     /// Construct linear solver with convergence parameters
     LinearSolver
@@ -103,7 +113,7 @@ public:
     /// Virtual destructor for polymorphic deletion
     virtual ~LinearSolver() noexcept = default;
 
-// Setters
+// ****************************** Setter Methods ******************************
 
     /// Set relative residual tolerance
     void setTolerance(Scalar tol) noexcept
@@ -117,7 +127,7 @@ public:
         maxIterations_ = maxIter;
     }
 
-// Accessors
+// ***************************** Accessor Methods *****************************
 
     /// Get relative tolerance
     [[nodiscard]] Scalar tolerance() const noexcept
@@ -149,7 +159,7 @@ public:
         return lastPerformance_;
     }
 
-// Solver method
+// ******************************* Solver Method ******************************
 
     /// Solve sparse system using the derived algorithm
     virtual void solve
@@ -162,6 +172,8 @@ public:
     /// Algorithm label used in diagnostic output
     [[nodiscard]] virtual std::string_view name() const noexcept = 0;
 
+// ***************************** Protected Methods ****************************
+
 protected:
 
     /// Store diagnostics from the most recent solve call
@@ -169,6 +181,8 @@ protected:
     {
         lastPerformance_ = performance;
     }
+
+// ****************************** Private Members *****************************
 
 private:
 
@@ -188,6 +202,8 @@ private:
     };
 };
 
+
+// ************************** class EigenLinearSolver *************************
 
 template<typename EigenSolverT>
 class EigenLinearSolver : public LinearSolver
@@ -260,6 +276,7 @@ private:
     bool patternAnalyzed_ = false;
 };
 
+// ****************************** class BiCGSTAB ******************************
 
 class BiCGSTAB final : public EigenLinearSolver<EigenBiCGSTAB>
 {
@@ -276,6 +293,7 @@ public:
     }
 };
 
+// ********************************* class PCG ********************************
 
 class PCG final : public EigenLinearSolver<EigenPCG>
 {

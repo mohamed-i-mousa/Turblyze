@@ -22,7 +22,7 @@
 namespace BCLoader
 {
 
-// ************************* Helpers (internal linkage) ***********************
+// ***************************** Internal Helpers *****************************
 
 namespace
 {

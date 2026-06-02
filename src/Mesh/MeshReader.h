@@ -27,24 +27,32 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <string>
 #include <string_view>
 #include <vector>
 #include <iosfwd>
 
+// Project headers
 #include "Scalar.h"
 #include "Face.h"
 #include "Cell.h"
 #include "BoundaryPatch.h"
 
+// ***************************** class MeshReader *****************************
 
 class MeshReader
 {
 public:
+
+// ************************* Special Member Functions *************************
+
     /// Construct MeshReader and parse the given Fluent mesh file
     explicit MeshReader(const std::string& filePath);
 
-// Move accessors
+// ***************************** Accessor Methods *****************************
 
     /// Transfer ownership of nodes data
     [[nodiscard]] std::vector<Vector> moveNodes() noexcept
@@ -70,9 +78,16 @@ public:
         return std::move(boundaryPatches_);
     }
 
+// ****************************** Private Members *****************************
+
 private:
 
-// Mesh data
+    /// Mapping entry from Fluent type string to enum
+    struct BCMapping
+    {
+        std::string_view fluentType;
+        PatchType patchType;
+    };
 
     /// All mesh node coordinates
     std::vector<Vector> nodes_;
@@ -86,8 +101,7 @@ private:
     /// All boundary patches
     std::vector<BoundaryPatch> boundaryPatches_;
 
-// Section identifier constants
-
+    /// Fluent mesh-file section identifier tokens
     static constexpr std::string_view MSH_COMMENT    = "(0";
     static constexpr std::string_view MSH_DIMENSION  = "(2";
     static constexpr std::string_view MSH_NODES      = "(10";
@@ -95,7 +109,27 @@ private:
     static constexpr std::string_view MSH_FACES      = "(13";
     static constexpr std::string_view MSH_BOUNDARIES = "(45";
 
-// Private parsing methods
+    /// Lookup table for Fluent BC type string to enum mapping
+    static constexpr BCMapping bcMappings_[] =
+    {
+        {"velocity-inlet",   PatchType::velocityInlet},
+        {"pressure-inlet",   PatchType::pressureInlet},
+        {"pressure-outlet",  PatchType::pressureOutlet},
+        {"wall",             PatchType::wall},
+        {"symmetry",         PatchType::symmetry},
+        {"periodic",         PatchType::periodic},
+        {"periodic-shadow",  PatchType::periodic},
+        {"mass-flow-inlet",  PatchType::massFlowInlet},
+        {"outflow",          PatchType::outflow},
+        {"interface",        PatchType::interface},
+        {"interior",         PatchType::interior},
+        {"solid",            PatchType::solid},
+        {"fluid",            PatchType::fluid}
+    };
+
+// ****************************** Private Methods *****************************
+
+private:
 
     /// Parse the complete mesh file
     void parseFile(const std::string& filePath);
@@ -118,8 +152,6 @@ private:
     /// Parse the boundaries section
     void parseBoundariesSection(std::ifstream& ifs, const std::string& token);
 
-// Building topology & connectivity methods
-
     /// Build cell-face connectivity and neighbor relationships
     void buildTopology();
 
@@ -128,8 +160,6 @@ private:
 
     /// Print mesh loading summary to stdout
     void printSummary() const;
-
-// Static utility methods
 
     /// Convert hexadecimal string to size_t
     [[nodiscard]] static size_t hexToDec(std::string_view hexStr);
@@ -143,33 +173,6 @@ private:
         size_t fluentIdx,
         std::string_view context
     );
-
-// Fluent BC type mapping
-
-    /// Mapping entry from Fluent type string to enum
-    struct BCMapping
-    {
-        std::string_view fluentType;
-        PatchType patchType;
-    };
-
-    /// Lookup table for Fluent BC type string to enum mapping
-    static constexpr BCMapping bcMappings_[] =
-    {
-        {"velocity-inlet",   PatchType::velocityInlet},
-        {"pressure-inlet",   PatchType::pressureInlet},
-        {"pressure-outlet",  PatchType::pressureOutlet},
-        {"wall",             PatchType::wall},
-        {"symmetry",         PatchType::symmetry},
-        {"periodic",         PatchType::periodic},
-        {"periodic-shadow",  PatchType::periodic},
-        {"mass-flow-inlet",  PatchType::massFlowInlet},
-        {"outflow",          PatchType::outflow},
-        {"interface",        PatchType::interface},
-        {"interior",         PatchType::interior},
-        {"solid",            PatchType::solid},
-        {"fluid",            PatchType::fluid}
-    };
 
     /// Map Fluent boundary type string to enumeration
     [[nodiscard]] static PatchType mapFluentBCToEnum

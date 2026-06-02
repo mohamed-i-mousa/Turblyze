@@ -3,9 +3,15 @@
  * @brief Implementation of constraint handling for CFD fields
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "Constraint.h"
 
+// Standard library headers
 #include <cmath>
+
+// ************************* Special Member Functions *************************
 
 Constraint::Constraint
 (
@@ -30,6 +36,8 @@ Constraint::Constraint
     minPressure_(minPressure),
     maxPressure_(maxPressure)
 {}
+
+// ****************************** Public Methods ******************************
 
 size_t Constraint::applyVelocityConstraints() noexcept
 {

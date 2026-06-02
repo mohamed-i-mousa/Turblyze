@@ -80,7 +80,7 @@ kOmegaSST::kOmegaSST
 
 kOmegaSST::~kOmegaSST() noexcept = default;
 
-// ***************************** kOmegaSST Solve *****************************
+// ****************************** Solve kOmegaSST *****************************
 
 void kOmegaSST::solve
 (
@@ -158,7 +158,7 @@ void kOmegaSST::solve
     logFieldDiagnostics();
 }
 
-// *********************** Inlet Condition Calculators ***********************
+// ************************ Inlet Condition Calculators ***********************
 
 Scalar kOmegaSST::inletOmega
 (

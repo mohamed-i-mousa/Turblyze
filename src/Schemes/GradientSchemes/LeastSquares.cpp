@@ -108,7 +108,7 @@ Vector LeastSquares::cellGradient
     );
 }
 
-// ****************************** Private Methods ******************************
+// ****************************** Private Methods *****************************
 
 void LeastSquares::precomputeInverseATA()
 {

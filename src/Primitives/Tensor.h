@@ -16,14 +16,19 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <cmath>
 #include <cstddef>
 #include <iosfwd>
 
+// Project headers
 #include "Scalar.h"
 #include "Vector.h"
 #include "ErrorHandler.h"
 
+// ******************************* class Tensor *******************************
 
 class Tensor
 {
@@ -45,7 +50,7 @@ public:
         zx_(zx), zy_(zy), zz_(zz)
     {}
 
-// Setter methods
+// ****************************** Setter Methods ******************************
 
     /// Set component (0,0)
     void setXX(Scalar value) noexcept { xx_ = value; }
@@ -74,7 +79,7 @@ public:
     /// Set component (2,2)
     void setZZ(Scalar value) noexcept { zz_ = value; }
 
-// Accessor methods
+// ***************************** Accessor Methods *****************************
 
     /// Get component (0,0)
     [[nodiscard]] Scalar xx() const noexcept { return xx_; }
@@ -131,7 +136,7 @@ public:
         return Vector{};
     }
 
-// Operator methods
+// ***************************** Operator Methods *****************************
 
     /// Tensor addition operator
     Tensor operator+(const Tensor& other) const noexcept
@@ -211,7 +216,7 @@ public:
         return *this;
     }
 
-// Tensor algebra
+// ****************************** Tensor Algebra ******************************
 
     /// Transpose of this tensor
     [[nodiscard]] Tensor transpose() const noexcept
@@ -272,6 +277,8 @@ public:
           + zx_ * zx_ + zy_ * zy_ + zz_ * zz_;
     }
 
+// ****************************** Private Members *****************************
+
 private:
 
     /// Row-major components (first index = row, second = column)
@@ -280,7 +287,7 @@ private:
     Scalar zx_ = S(0.0); Scalar zy_ = S(0.0); Scalar zz_ = S(0.0);
 };
 
-// Non-member methods
+// *************************** Non-Member Functions ***************************
 
 /// Construct a tensor from three row vectors
 [[nodiscard]] inline Tensor tensorFromRows

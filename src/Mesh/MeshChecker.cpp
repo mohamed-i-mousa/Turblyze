@@ -35,7 +35,7 @@ constexpr Scalar maxNonOrthThreshold = S(70.0);
 constexpr Scalar maxSkewThreshold = S(4.0);
 constexpr Scalar maxAspectThreshold = S(100.0);
 
-// ***************************** Internal helpers *****************************
+// ***************************** Internal Helpers *****************************
 
 namespace
 {

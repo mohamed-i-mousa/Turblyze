@@ -19,8 +19,12 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <optional>
 
+// Project headers
 #include "CellData.h"
 #include "Field.h"
 #include "FaceData.h"
@@ -28,11 +32,12 @@
 #include "GradientScheme.h"
 #include "OptionalRef.h"
 
+// ************************* struct TransportEquation *************************
 
 struct TransportEquation
 {
 
-// Field
+// *********************************** Field **********************************
 
     /// Field identifier
     Field field;
@@ -40,7 +45,11 @@ struct TransportEquation
     /// Current cell-centered field values (mutable for zero-copy solve)
     ScalarField& phi;
 
-// Transient (placeholder for future)
+// ********************************* Transient ********************************
+
+// (placeholder for future)
+
+// ******************************** Convection ********************************
 
 // Convection: div(F * phi)
 
@@ -50,6 +59,8 @@ struct TransportEquation
     /// Convection discretization scheme (nullopt = no convection)
     OptionalRef<ConvectionSchemes> convScheme = std::nullopt;
 
+// ********************************* Diffusion ********************************
+
 // Diffusion: div(Gamma * grad(phi))
 
     /// Cell-centered diffusion coefficient
@@ -58,12 +69,12 @@ struct TransportEquation
     /// Pre-interpolated face diffusion coefficient
     OptionalRef<FaceFluxField> GammaFace = std::nullopt;
 
-// Source
+// ********************************** Source **********************************
 
     /// Explicit source term field
     const ScalarField& source;
 
-// Gradient reconstruction
+// ************************** Gradient Reconstruction *************************
 
     /// Pre-computed cell gradients of phi
     const VectorField& gradPhi;

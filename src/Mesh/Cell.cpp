@@ -72,7 +72,7 @@ void Cell::geometricProperties
     geometricPropertiesCalculated_ = true;
 }
 
-// *************************** Non-Member Methods *****************************
+// *************************** Non-Member Functions ***************************
 
 std::ostream& operator<<(std::ostream& os, const Cell& c)
 {

@@ -180,7 +180,7 @@ SolverModules::SolverModules() = default;
 
 SolverModules::~SolverModules() noexcept = default;
 
-// ******************************** Configure *********************************
+// *************************** namespace SolverSetup **************************
 
 void SolverSetup::configure
 (
@@ -287,7 +287,6 @@ void SolverSetup::configure
         );
 }
 
-// ********************************* logSetup *********************************
 
 void SolverSetup::logSetup
 (

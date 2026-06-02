@@ -18,6 +18,9 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <algorithm>
 #include <cstddef>
 #include <span>
@@ -25,11 +28,13 @@
 #include <concepts>
 #include <iostream>
 
+// Project headers
 #include "Scalar.h"
 #include "Vector.h"
 #include "Tensor.h"
 #include "Mesh.h"
 
+// ************************* concept CellFieldType ****************************
 
 template<typename T>
 concept CellFieldType =
@@ -37,11 +42,14 @@ concept CellFieldType =
  || std::same_as<T, Vector>
  || std::same_as<T, Tensor>;
 
+// ****************************** class CellData ******************************
 
 template<CellFieldType T>
 class CellData
 {
 public:
+
+// ************************* Special Member Functions *************************
 
     /// Construct zero-initialized field
     CellData()
@@ -55,7 +63,7 @@ public:
         internalField_(Mesh::cellCount(), initialValue)
     {}
 
-// Setter methods
+// ****************************** Setter Methods ******************************
 
     /// Set all field values to a given value
     void setAll(const T& value)
@@ -63,7 +71,7 @@ public:
         std::fill(internalField_.begin(), internalField_.end(), value);
     }
 
-// Accessor methods
+// ***************************** Accessor Methods *****************************
 
     /// Get number of cells in the field
     [[nodiscard]] size_t size() const noexcept
@@ -87,12 +95,26 @@ public:
     }
 
     /// Iterator access (range-based for loops)
-    [[nodiscard]] auto begin() noexcept { return internalField_.begin(); }
-    [[nodiscard]] auto end() noexcept { return internalField_.end(); }
-    [[nodiscard]] auto begin() const noexcept { return internalField_.begin(); }
-    [[nodiscard]] auto end() const noexcept { return internalField_.end(); }
+    [[nodiscard]] auto begin() noexcept
+    {
+        return internalField_.begin();
+    }
 
-// Operator methods
+    [[nodiscard]] auto end() noexcept
+    {
+        return internalField_.end();
+    }
+
+    [[nodiscard]] auto begin() const noexcept
+    {
+        return internalField_.begin();
+    }
+    [[nodiscard]] auto end() const noexcept
+    {
+        return internalField_.end();
+    }
+
+// ***************************** Operator Methods *****************************
 
     /// Unchecked subscript operator
     T& operator[](size_t cellIndex) noexcept
@@ -106,7 +128,7 @@ public:
         return internalField_[cellIndex];
     }
 
-// Helper methods
+// ****************************** Helper Methods ******************************
 
     /// Print field summary for debugging
     void printSummary(size_t itemsToShow) const
@@ -135,11 +157,15 @@ public:
         }
     }
 
+// ****************************** Private Members *****************************
+
 private:
 
     /// Cell-centered field values
     std::vector<T> internalField_;
 };
+
+// ********************************** Aliases *********************************
 
 /// Type alias for general scalar fields
 using ScalarField = CellData<Scalar>;

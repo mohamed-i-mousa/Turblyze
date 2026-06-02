@@ -5,10 +5,16 @@
 
 // ********************************** Headers *********************************
 
-// Implementation Header
+// Implementation header
 #include "VtkBoundaryWriter.h"
 
-// VTK includes
+// Standard library headers
+#include <iostream>
+#include <limits>
+#include <unordered_map>
+#include <vector>
+
+// External library headers
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
 #include <vtkDoubleArray.h>
@@ -19,12 +25,6 @@
 #include <vtkUnsignedCharArray.h>
 #include <vtkXMLPolyDataWriter.h>
 
-// Standard library includes
-#include <iostream>
-#include <limits>
-#include <unordered_map>
-#include <vector>
-
 // Project headers
 #include "BoundaryPatch.h"
 #include "ErrorHandler.h"
@@ -34,7 +34,7 @@
 namespace VTK
 {
 
-// ***************************** Internal helpers *****************************
+// ***************************** Internal Helpers *****************************
 
 namespace
 {

@@ -3,11 +3,16 @@
  * @brief Stream output for the Vector class
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "Vector.h"
 
+// Standard library headers
 #include <ostream>
 #include <iomanip>
 
+// *************************** Non-Member Functions ***************************
 
 std::ostream& operator<<(std::ostream& os, const Vector& p)
 {

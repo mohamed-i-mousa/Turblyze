@@ -13,8 +13,11 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
 #include <string_view>
 
+// ***************************** enum class Field *****************************
 
 enum class Field
 {
@@ -28,6 +31,7 @@ enum class Field
     nut
 };
 
+// *************************** Non-Member Functions ***************************
 
 /// Human-readable name of a field, for diagnostics and logging
 [[nodiscard]] std::string_view fieldToString(Field field) noexcept;

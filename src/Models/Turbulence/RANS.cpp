@@ -58,7 +58,7 @@ RANS::RANS
 
 RANS::~RANS() noexcept = default;
 
-// *********************** Inlet Condition Calculators ***********************
+// ************************ Inlet Condition Calculators ***********************
 
 Scalar RANS::inletK
 (

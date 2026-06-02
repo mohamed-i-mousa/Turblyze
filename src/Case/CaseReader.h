@@ -17,6 +17,9 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <string>
 #include <map>
 #include <vector>
@@ -26,10 +29,12 @@
 #include <cctype>
 #include <concepts>
 
+// Project headers
 #include "Scalar.h"
 #include "Vector.h"
 #include "ErrorHandler.h"
 
+// *************************** concept CaseInputType **************************
 
 template<typename T>
 concept CaseInputType =
@@ -39,10 +44,14 @@ concept CaseInputType =
  || std::same_as<T, bool>
  || std::same_as<T, int>;
 
+// ***************************** class CaseReader *****************************
+
 
 class CaseReader
 {
 public:
+
+// ************************* Special Member Functions *************************
 
     /// Construct reader from file
     explicit CaseReader(const std::string& filename);
@@ -50,7 +59,7 @@ public:
     /// Default constructor for sections
     CaseReader() noexcept = default;
 
-// Accessor methods
+// ****************************** Public Methods ******************************
 
     /// Look up a required value
     template<CaseInputType T>
@@ -93,9 +102,9 @@ public:
     /// Print case file contents for debugging
     void print(int indent = 0) const;
 
-private:
+// ****************************** Private Methods *****************************
 
-// Private methods
+private:
 
     /// Parse file contents
     void parseFile(const std::string& filename);
@@ -228,7 +237,9 @@ private:
         return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     }
 
-// Private members
+// ****************************** Private Members *****************************
+
+private:
 
     /// Storage for key-value pairs
     std::map<std::string, std::string> entries_;

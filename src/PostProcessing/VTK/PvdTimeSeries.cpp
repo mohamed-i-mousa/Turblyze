@@ -3,17 +3,20 @@
  * @brief Implementation of PVD collection file helpers
  *****************************************************************************/
 
-// Own header
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "PvdTimeSeries.h"
 
-// STL includes
+// Standard library headers
 #include <fstream>
 #include <iostream>
 #include <vector>
 
-// Header includes
+// Project headers
 #include "ErrorHandler.h"
 
+// ******************************* namespace VTK ******************************
 
 namespace VTK
 {

@@ -3,13 +3,19 @@
  * @brief Matrix assembly and linear system construction for equations
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "Matrix.h"
 
+// Standard library headers
 #include <iostream>
 #include <iterator>
 
+// External library headers
 #include <omp.h>
 
+// Project headers
 #include "ErrorHandler.h"
 #include "LinearInterpolation.h"
 
@@ -170,7 +176,7 @@ void Matrix::relax(Scalar alpha, const ScalarField& phiPrev)
     }
 }
 
-// ***************************** Private Methods *****************************
+// ****************************** Private Methods *****************************
 
 void Matrix::clear()
 {
@@ -210,7 +216,7 @@ Scalar Matrix::faceDiffusionCoefficient
     return equation.GammaFace->get()[face.idx()];
 }
 
-// ***************** Transport Equation Assembly Helpers ******************
+// ****************************** Private Methods *****************************
 
 void Matrix::assembleInternalFace
 (

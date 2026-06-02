@@ -28,7 +28,7 @@
 #include "CellData.h"
 #include "Field.h"
 
-// ********************************** class GradientScheme *********************************
+// *************************** class GradientScheme ***************************
 
 class GradientScheme
 {
@@ -100,10 +100,9 @@ protected:
     /// Reference to boundary conditions manager
     const BoundaryConditions& bcManager_;
 
+// ****************************** Private Methods *****************************
 
 private:
-
-// ****************************** Private Methods *****************************
 
     /// Distance-weighted linear interpolation of gradients
     Vector averageFaceGradient
@@ -123,6 +122,8 @@ private:
     ) const;
 
 // ****************************** Private Members *****************************
+
+private:
 
     /// Minimum fraction of ||dPf|| used as normal distance to a boundary face.
     /// Prevents gradient amplification beyond ~87 degrees of non-orthogonality.

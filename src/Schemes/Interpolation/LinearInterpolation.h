@@ -9,9 +9,13 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
 #include "Face.h"
 #include "CellData.h"
 #include "ErrorHandler.h"
+
+// ************************** Interpolation Functions *************************
 
 /// Distance weight for the neighbour cell: wN = dP / (dP + dN).
 [[nodiscard]] inline Scalar faceWeight(const Face& face)

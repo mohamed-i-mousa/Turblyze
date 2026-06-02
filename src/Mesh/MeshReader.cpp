@@ -3,16 +3,20 @@
  * @brief Implementation of the MeshReader class for Fluent mesh files
  *****************************************************************************/
 
+// ********************************** Headers *********************************
+
+// Implementation header
 #include "MeshReader.h"
 
+// Standard library headers
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <algorithm>
 #include <charconv>
 
+// Project headers
 #include "ErrorHandler.h"
-
 
 // ************************* Special Member Functions *************************
 
@@ -21,7 +25,7 @@ MeshReader::MeshReader(const std::string& filePath)
     parseFile(filePath);
 }
 
-// *************************** Main parsing method ****************************
+// ****************************** Private Methods *****************************
 
 void MeshReader::parseFile(const std::string& filePath)
 {
@@ -75,7 +79,6 @@ void MeshReader::parseFile(const std::string& filePath)
     printSummary();
 }
 
-// ************************* Section parsing methods **************************
 
 void MeshReader::parseCommentSection(std::ifstream& ifs) const
 {
@@ -529,8 +532,6 @@ void MeshReader::parseBoundariesSection
     }
 }
 
-// ************************* Post-processing methods **************************
-
 void MeshReader::buildTopology()
 {
     for (size_t cellIdx = 0; cellIdx < cells_.size(); ++cellIdx)
@@ -664,8 +665,6 @@ void MeshReader::printSummary() const
         << "  - Boundary patches: "
         << boundaryPatches_.size() << '\n';
 }
-
-// ************************* Static utility methods ***************************
 
 PatchType MeshReader::mapFluentBCToEnum(std::string_view fluentType)
 {

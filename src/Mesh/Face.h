@@ -291,7 +291,9 @@ private:
     /// Owning boundary patch (nullopt for internal or unlinked faces)
     OptionalRef<BoundaryPatch> patch_;
 
-// ***************************** Private Methods *****************************
+// ****************************** Private Methods *****************************
+
+private:
 
     /// Symmetric second-moment polynomial for triangle integration
     /// Evaluates a² + b² + c² + ab + ac + bc
@@ -308,7 +310,7 @@ private:
 
 };
 
-// *************************** Non-Member Methods *****************************
+// *************************** Non-Member Functions ***************************
 
 /// Stream output operator for Face
 std::ostream& operator<<(std::ostream& os, const Face& f);

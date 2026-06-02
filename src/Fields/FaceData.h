@@ -18,6 +18,9 @@
 
 #pragma once
 
+// ********************************** Headers *********************************
+
+// Standard library headers
 #include <algorithm>
 #include <cstddef>
 #include <span>
@@ -25,19 +28,24 @@
 #include <concepts>
 #include <iostream>
 
+// Project headers
 #include "Scalar.h"
 #include "Vector.h"
 #include "Mesh.h"
 
+// *************************** concept FaceFieldType **************************
 
 template<typename T>
 concept FaceFieldType = std::same_as<T, Scalar> || std::same_as<T, Vector>;
 
+// ****************************** class FaceData ******************************
 
 template<FaceFieldType T>
 class FaceData
 {
 public:
+
+// ************************* Special Member Functions *************************
 
     /// Construct zero-initialized field
     FaceData()
@@ -51,7 +59,7 @@ public:
         internalField_(Mesh::faceCount(), initialValue)
     {}
 
-// Setter methods
+// ****************************** Setter Methods ******************************
 
     /// Set all field values to a given value
     void setAll(const T& value)
@@ -59,7 +67,7 @@ public:
         std::fill(internalField_.begin(), internalField_.end(), value);
     }
 
-// Accessor methods
+// ***************************** Accessor Methods *****************************
 
     /// Get number of faces in the field
     [[nodiscard]] size_t size() const noexcept
@@ -77,12 +85,27 @@ public:
     }
 
     /// Iterator access (range-based for loops)
-    [[nodiscard]] auto begin() noexcept { return internalField_.begin(); }
-    [[nodiscard]] auto end() noexcept { return internalField_.end(); }
-    [[nodiscard]] auto begin() const noexcept { return internalField_.begin(); }
-    [[nodiscard]] auto end() const noexcept { return internalField_.end(); }
+    [[nodiscard]] auto begin() noexcept
+    {
+        return internalField_.begin();
+    }
 
-// Operator methods
+    [[nodiscard]] auto end() noexcept
+    {
+        return internalField_.end();
+    }
+
+    [[nodiscard]] auto begin() const noexcept
+    {
+        return internalField_.begin();
+    }
+
+    [[nodiscard]] auto end() const noexcept
+    {
+        return internalField_.end();
+    }
+
+// ***************************** Operator Methods *****************************
 
     /// Unchecked subscript operator
     T& operator[](size_t faceIndex) noexcept
@@ -96,7 +119,7 @@ public:
         return internalField_[faceIndex];
     }
 
-// Helper methods
+// ****************************** Helper Methods ******************************
 
     /// Print field summary for debugging
     void printSummary(size_t itemsToShow) const
@@ -125,11 +148,15 @@ public:
         }
     }
 
+// ****************************** Private Members *****************************
+
 private:
 
     /// Face-centered field values
     std::vector<T> internalField_;
 };
+
+// ********************************** Aliases *********************************
 
 /// Type alias for scalar face fields (e.g., mass flux)
 using FaceFluxField = FaceData<Scalar>;

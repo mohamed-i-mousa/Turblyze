@@ -74,7 +74,7 @@ public:
     /// Destructor
     ~kOmegaSST() noexcept override;
 
-// ***************************** Solve kOmegaSST *****************************
+// ****************************** Solve kOmegaSST *****************************
 
     /// Solve turbulence equations for current iteration
     void solve
@@ -112,7 +112,7 @@ public:
         return true;
     }
 
-// ***************************** Model Constants *****************************
+// ****************************** Model Constants *****************************
 
     /// Structure containing all model constants
     struct ModelConstants
@@ -156,7 +156,7 @@ public:
         .betaStar    = S(0.09)
     };
 
-// *********************** Inlet Condition Calculators ***********************
+// ************************ Inlet Condition Calculators ***********************
 
     /// Calculate inlet/initial turbulent kinetic energy
     [[nodiscard]] static Scalar inletK
@@ -211,7 +211,9 @@ private:
     /// Precomputed Cmu^0.25 (avoids repeated std::pow calls)
     const Scalar Cmu25_ = std::sqrt(std::sqrt(coeffs_.betaStar));
 
-// ***************************** Private Methods *****************************
+// ****************************** Private Methods *****************************
+
+private:
 
 // Utility helpers
 
