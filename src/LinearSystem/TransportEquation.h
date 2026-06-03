@@ -2,10 +2,14 @@
  * @file TransportEquation.h
  * @brief Data bundle describing a scalar transport equation
  *
- * @details This header defines OptionalRef and TransportEquation.
+ * @details This header defines ConvectionTerm and TransportEquation.
  * TransportEquation bundles all data describing a scalar transport equation
  * (field, convection, diffusion, source, gradients) needed by
  * Matrix::buildMatrix().
+ *
+ * @struct ConvectionTerm
+ * - Contains the face flux field and convection scheme for the convection
+ *   term.
  *
  * @struct TransportEquation
  * 
@@ -32,6 +36,18 @@
 #include "GradientScheme.h"
 #include "OptionalRef.h"
 
+// *************************** struct ConvectionTerm **************************
+
+struct ConvectionTerm
+{
+
+    /// Face volumetric flow rates
+    const FaceFluxField& flowRate;
+
+    /// Convection discretization scheme
+    const ConvectionSchemes& scheme;
+};
+
 // ************************* struct TransportEquation *************************
 
 struct TransportEquation
@@ -53,11 +69,8 @@ struct TransportEquation
 
 // Convection: div(F * phi)
 
-    /// Face volumetric flow rates (nullopt = no convection)
-    OptionalRef<FaceFluxField> flowRate = std::nullopt;
-
-    /// Convection discretization scheme (nullopt = no convection)
-    OptionalRef<ConvectionSchemes> convScheme = std::nullopt;
+    /// Complete convection term (nullopt = no convection)
+    std::optional<ConvectionTerm> convection = std::nullopt;
 
 // ********************************* Diffusion ********************************
 

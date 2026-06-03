@@ -257,8 +257,8 @@ void SIMPLE::solveMomentumEquations()
     {
         .field          = Field::Ux,
         .phi            = Ux_,
-        .flowRate       = std::cref(RhieChowFlowRatePrev_),
-        .convScheme     = std::cref(momentumConvectionScheme_),
+        .convection     =
+            ConvectionTerm{RhieChowFlowRatePrev_, momentumConvectionScheme_},
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace_),
         .source         = UxSource_,
@@ -271,8 +271,8 @@ void SIMPLE::solveMomentumEquations()
     {
         .field          = Field::Uy,
         .phi            = Uy_,
-        .flowRate       = std::cref(RhieChowFlowRatePrev_),
-        .convScheme     = std::cref(momentumConvectionScheme_),
+        .convection     =
+            ConvectionTerm{RhieChowFlowRatePrev_, momentumConvectionScheme_},
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace_),
         .source         = UySource_,
@@ -285,8 +285,8 @@ void SIMPLE::solveMomentumEquations()
     {
         .field          = Field::Uz,
         .phi            = Uz_,
-        .flowRate       = std::cref(RhieChowFlowRatePrev_),
-        .convScheme     = std::cref(momentumConvectionScheme_),
+        .convection     =
+            ConvectionTerm{RhieChowFlowRatePrev_, momentumConvectionScheme_},
         .Gamma          = std::nullopt,
         .GammaFace      = std::cref(nuEffFace_),
         .source         = UzSource_,
@@ -421,8 +421,7 @@ void SIMPLE::solvePressureCorrection()
     {
         .field      = Field::pCorr,
         .phi        = pCorr_,
-        .flowRate   = std::nullopt,
-        .convScheme = std::nullopt,
+        .convection = std::nullopt,
         .Gamma      = std::nullopt,
         .GammaFace  = std::cref(DUf_),
         .source     = massImbalance_,

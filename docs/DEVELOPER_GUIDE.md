@@ -308,12 +308,17 @@ Uses a unified `TransportEquation` struct to bundle all data for any transport e
 
 ### TransportEquation struct
 ```cpp
+struct ConvectionTerm
+{
+    const FaceFluxField& flowRate;       // Face flow rates
+    const ConvectionSchemes& scheme;     // Convection discretization
+};
+
 struct TransportEquation
 {
     Field field;                        // Ux, Uy, Uz, p, pCorr, k, omega, nut
     ScalarField& phi;                   // Current field values (mutable for zero-copy solve)
-    OptionalRef<FaceFluxField> flowRate = std::nullopt;    // Face flow rates (nullopt = no convection)
-    OptionalRef<ConvectionSchemes> convScheme = std::nullopt;
+    std::optional<ConvectionTerm> convection = std::nullopt;
     OptionalRef<ScalarField> Gamma = std::nullopt;         // Cell-based diffusion coefficient
     OptionalRef<FaceFluxField> GammaFace = std::nullopt;   // Face-based diffusion coefficient
     const ScalarField& source;          // Explicit source term
@@ -326,7 +331,7 @@ struct TransportEquation
 `buildMatrix(const TransportEquation& eq)`:
 - Single method handles all equation types:
   - **Momentum**: convection + diffusion via face-based `GammaFace` (`nuEffFace_`)
-  - **Pressure correction**: face-based diffusion via `GammaFace` (DUf), no convection (flowRate = nullopt)
+  - **Pressure correction**: face-based diffusion via `GammaFace` (DUf), no convection (`convection = nullopt`)
   - **Turbulence k/omega**: convection + diffusion
 - Internal faces: assembles diffusion and convection with non-orthogonal correction
 - Boundary faces: handles fixedValue, zeroGradient, noSlip, and wall function types
@@ -727,8 +732,7 @@ construction).
    {
        .field      = Field::myField,
        .phi        = phi,
-       .flowRate   = std::cref(flowRate),
-       .convScheme = std::cref(myConvectionScheme),
+       .convection = ConvectionTerm{flowRate, myConvectionScheme},
        .Gamma      = std::cref(Gamma),
        .GammaFace  = std::nullopt,
        .source     = source,

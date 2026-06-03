@@ -619,8 +619,8 @@ void kOmegaSST::solveOmegaEquation
     {
         .field      = Field::omega,
         .phi        = omega_,
-        .flowRate   = std::cref(flowRateFace),
-        .convScheme = std::cref(dissipationConvectionScheme_),
+        .convection =
+            ConvectionTerm{flowRateFace, dissipationConvectionScheme_},
         .Gamma      = std::cref(GammaOmega),
         .GammaFace  = std::nullopt,
         .source     = omegaSource,
@@ -748,8 +748,7 @@ void kOmegaSST::solveKEquation
     {
         .field      = Field::k,
         .phi        = k_,
-        .flowRate   = std::cref(flowRateFace),
-        .convScheme = std::cref(kConvectionScheme_),
+        .convection = ConvectionTerm{flowRateFace, kConvectionScheme_},
         .Gamma      = std::cref(GammaK),
         .GammaFace  = std::nullopt,
         .source     = kSource,
