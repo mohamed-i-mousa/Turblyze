@@ -17,7 +17,6 @@
 
 // Project headers
 #include "ErrorHandler.h"
-#include "LinearInterpolation.h"
 
 // ************************* Special Member Functions *************************
 
@@ -187,37 +186,6 @@ void Matrix::clear()
 }
 
 
-Scalar Matrix::faceDiffusionCoefficient
-(
-    const Face& face,
-    const TransportEquation& equation
-) const
-{
-    if (equation.Gamma)
-    {
-        const auto& gamma = equation.Gamma->get();
-
-        if (face.isBoundary())
-        {
-            return gamma[face.ownerCell()];
-        }
-
-        return interpolateToFace(face, gamma);
-    }
-
-    if (!equation.GammaFace.has_value())
-    {
-        FatalError
-        (
-            "faceDiffusionCoefficient: equation has no Gamma or GammaFace"
-        );
-    }
-
-    return equation.GammaFace->get()[face.idx()];
-}
-
-// ****************************** Private Methods *****************************
-
 void Matrix::assembleInternalFace
 (
     const Face& face,
@@ -237,7 +205,7 @@ void Matrix::assembleInternalFace
 
     // Orthogonal component (over-relaxed)
     const Vector Ef = (dot(Sf, Sf) / dot(Sf, ePN)) * ePN;
-    const Scalar Gammaf = faceDiffusionCoefficient(face, equation);
+    const Scalar Gammaf = equation.GammaFace[face.idx()];
     const Scalar aDiff = Gammaf * magnitude(Ef) / (dPNMag + vSmallValue);
 
     // Convection coefficients
@@ -317,7 +285,7 @@ void Matrix::assembleBoundaryFace
     const Vector ePf = normalized(face.dPf());
     const Scalar dPfMag = face.dPfMag();
     const Vector Ef = (dot(Sf, Sf) / dot(Sf, ePf)) * ePf;
-    const Scalar Gammaf = faceDiffusionCoefficient(face, equation);
+    const Scalar Gammaf = equation.GammaFace[face.idx()];
     const Scalar aDiff = Gammaf * magnitude(Ef) / (dPfMag + vSmallValue);
     const ConvectionTerm* convection =
         equation.convection ? &*equation.convection : nullptr;

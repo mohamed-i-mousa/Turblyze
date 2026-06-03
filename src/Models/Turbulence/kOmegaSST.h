@@ -196,6 +196,12 @@ private:
     /// Previous-iteration omega snapshot for residual computation
     ScalarField omegaPrev_;
 
+    /// Face diffusivity for the k equation
+    FaceFluxField gammaKFace_;
+
+    /// Face diffusivity for the omega equation
+    FaceFluxField gammaOmegaFace_;
+
 // Wall distance and wall-function state
 
     /// Dynamic omega wall-function values on faces

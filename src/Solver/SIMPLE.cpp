@@ -259,8 +259,7 @@ void SIMPLE::solveMomentumEquations()
         .phi            = Ux_,
         .convection     =
             ConvectionTerm{RhieChowFlowRatePrev_, momentumConvectionScheme_},
-        .Gamma          = std::nullopt,
-        .GammaFace      = std::cref(nuEffFace_),
+        .GammaFace      = nuEffFace_,
         .source         = UxSource_,
         .gradPhi        = gradUx_,
         .gradScheme     = gradientScheme_
@@ -273,8 +272,7 @@ void SIMPLE::solveMomentumEquations()
         .phi            = Uy_,
         .convection     =
             ConvectionTerm{RhieChowFlowRatePrev_, momentumConvectionScheme_},
-        .Gamma          = std::nullopt,
-        .GammaFace      = std::cref(nuEffFace_),
+        .GammaFace      = nuEffFace_,
         .source         = UySource_,
         .gradPhi        = gradUy_,
         .gradScheme     = gradientScheme_
@@ -287,8 +285,7 @@ void SIMPLE::solveMomentumEquations()
         .phi            = Uz_,
         .convection     =
             ConvectionTerm{RhieChowFlowRatePrev_, momentumConvectionScheme_},
-        .Gamma          = std::nullopt,
-        .GammaFace      = std::cref(nuEffFace_),
+        .GammaFace      = nuEffFace_,
         .source         = UzSource_,
         .gradPhi        = gradUz_,
         .gradScheme     = gradientScheme_
@@ -422,8 +419,7 @@ void SIMPLE::solvePressureCorrection()
         .field      = Field::pCorr,
         .phi        = pCorr_,
         .convection = std::nullopt,
-        .Gamma      = std::nullopt,
-        .GammaFace  = std::cref(DUf_),
+        .GammaFace  = DUf_,
         .source     = massImbalance_,
         .gradPhi    = gradPCorrPrecomputed_,
         .gradScheme = gradientScheme_

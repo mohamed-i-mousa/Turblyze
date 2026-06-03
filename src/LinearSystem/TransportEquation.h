@@ -34,7 +34,6 @@
 #include "FaceData.h"
 #include "ConvectionSchemes.h"
 #include "GradientScheme.h"
-#include "OptionalRef.h"
 
 // *************************** struct ConvectionTerm **************************
 
@@ -76,11 +75,8 @@ struct TransportEquation
 
 // Diffusion: div(Gamma * grad(phi))
 
-    /// Cell-centered diffusion coefficient
-    OptionalRef<ScalarField> Gamma = std::nullopt;
-
     /// Pre-interpolated face diffusion coefficient
-    OptionalRef<FaceFluxField> GammaFace = std::nullopt;
+    const FaceFluxField& GammaFace;
 
 // ********************************** Source **********************************
 

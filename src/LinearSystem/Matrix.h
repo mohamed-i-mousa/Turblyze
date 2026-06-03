@@ -184,12 +184,6 @@ private:
         Vec& localB
     ) const;
 
-    /// Resolve the diffusion coefficient at a face
-    [[nodiscard]] Scalar faceDiffusionCoefficient
-    (
-        const Face& face,
-        const TransportEquation& equation
-    ) const;
 };
 
 // *************************** Non-Member Functions ***************************

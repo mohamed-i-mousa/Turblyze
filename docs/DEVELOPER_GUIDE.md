@@ -304,7 +304,10 @@ from the neighbor RHS on internal faces
 
 ## Linear system assembly (`Matrix`)
 
-Uses a unified `TransportEquation` struct to bundle all data for any transport equation (momentum, pressure correction, turbulence). Gradients and mass fluxes are stored in `SIMPLE`, not in `Matrix`.
+Uses a unified `TransportEquation` struct to bundle all data for any transport
+equation (momentum, pressure correction, turbulence). Gradients, mass fluxes,
+and face diffusion coefficients are prepared by solver/model code, not in
+`Matrix`.
 
 ### TransportEquation struct
 ```cpp
@@ -319,8 +322,7 @@ struct TransportEquation
     Field field;                        // Ux, Uy, Uz, p, pCorr, k, omega, nut
     ScalarField& phi;                   // Current field values (mutable for zero-copy solve)
     std::optional<ConvectionTerm> convection = std::nullopt;
-    OptionalRef<ScalarField> Gamma = std::nullopt;         // Cell-based diffusion coefficient
-    OptionalRef<FaceFluxField> GammaFace = std::nullopt;   // Face-based diffusion coefficient
+    const FaceFluxField& GammaFace;      // Face-based diffusion coefficient
     const ScalarField& source;          // Explicit source term
     const VectorField& gradPhi;         // Pre-computed cell gradients
     const GradientScheme& gradScheme;
@@ -332,7 +334,7 @@ struct TransportEquation
 - Single method handles all equation types:
   - **Momentum**: convection + diffusion via face-based `GammaFace` (`nuEffFace_`)
   - **Pressure correction**: face-based diffusion via `GammaFace` (DUf), no convection (`convection = nullopt`)
-  - **Turbulence k/omega**: convection + diffusion
+  - **Turbulence k/omega**: convection + precomputed face diffusion
 - Internal faces: assembles diffusion and convection with non-orthogonal correction
 - Boundary faces: handles fixedValue, zeroGradient, noSlip, and wall function types
 - Deferred-correction for CDS/SOU added to RHS
@@ -723,7 +725,10 @@ construction).
 ### Add a new scalar transport equation
 1) Add a `Field` enumerator for the new field in `src/Fields/Field.h` (lowercase for scalar fields, matching `p`/`k`/`omega`) and a matching `case` in `fieldToString()` (`Field.cpp`).
 2) Create the field in your driver: `ScalarField phi(initialValue);` (cell count comes from `Mesh::cellCount()`; use `ScalarField phi;` for zero-init).
-3) Build an effective diffusion field `Gamma` and a source `phi_source` per cell.
+3) Build an effective face diffusion field `GammaFace` and a source
+   `phi_source` per cell. If starting from cell-centered coefficients, use
+   owner-cell values on boundary faces and `interpolateToFace()` on internal
+   faces.
 4) Pre-compute the limited cell-gradient field `gradPhi` via
    `GradientScheme::fieldGradient()`.
 5) Create a `TransportEquation` struct with all required fields:
@@ -733,8 +738,7 @@ construction).
        .field      = Field::myField,
        .phi        = phi,
        .convection = ConvectionTerm{flowRate, myConvectionScheme},
-       .Gamma      = std::cref(Gamma),
-       .GammaFace  = std::nullopt,
+       .GammaFace  = GammaFace,
        .source     = source,
        .gradPhi    = gradPhi,
        .gradScheme = gradScheme

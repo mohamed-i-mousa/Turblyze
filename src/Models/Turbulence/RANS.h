@@ -253,6 +253,13 @@ protected:
 
 // ****************************** Shared Methods ******************************
 
+    /// Map cell-centered diffusion coefficients to faces for assembly
+    void cellToFaceDiffusion
+    (
+        const ScalarField& cellGamma,
+        FaceFluxField& faceGamma
+    ) const;
+
     /// Update wall distance field using mesh-wave coordinate propagation
     void updateWallDistance();
 

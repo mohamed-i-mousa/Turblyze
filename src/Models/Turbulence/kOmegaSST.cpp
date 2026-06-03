@@ -613,6 +613,8 @@ void kOmegaSST::solveOmegaEquation
 {
     const Count numCells = mesh_.numCells();
     const ScalarField GammaOmega = computeGammaOmega(f1);
+    cellToFaceDiffusion(GammaOmega, gammaOmegaFace_);
+
     const ScalarField omegaSource{S(0.0)};
 
     TransportEquation equationOmega
@@ -621,8 +623,7 @@ void kOmegaSST::solveOmegaEquation
         .phi        = omega_,
         .convection =
             ConvectionTerm{flowRateFace, dissipationConvectionScheme_},
-        .Gamma      = std::cref(GammaOmega),
-        .GammaFace  = std::nullopt,
+        .GammaFace  = gammaOmegaFace_,
         .source     = omegaSource,
         .gradPhi    = gradOmega,
         .gradScheme = gradientScheme_
@@ -742,6 +743,8 @@ void kOmegaSST::solveKEquation
 {
     const Count numCells = mesh_.numCells();
     const ScalarField GammaK = computeGammaK(f1);
+    cellToFaceDiffusion(GammaK, gammaKFace_);
+
     const ScalarField kSource{S(0.0)};
 
     TransportEquation equationK
@@ -749,8 +752,7 @@ void kOmegaSST::solveKEquation
         .field      = Field::k,
         .phi        = k_,
         .convection = ConvectionTerm{flowRateFace, kConvectionScheme_},
-        .Gamma      = std::cref(GammaK),
-        .GammaFace  = std::nullopt,
+        .GammaFace  = gammaKFace_,
         .source     = kSource,
         .gradPhi    = gradK_,
         .gradScheme = gradientScheme_

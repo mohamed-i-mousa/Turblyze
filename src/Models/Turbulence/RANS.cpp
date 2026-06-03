@@ -23,6 +23,7 @@
 #include "BoundaryConditions.h"
 #include "Field.h"
 #include "Matrix.h"
+#include "LinearInterpolation.h"
 
 // ************************* Special Member Functions *************************
 
@@ -125,6 +126,31 @@ RANS::ResidualPair RANS::residualOutputs() const
 }
 
 // ****************************** Shared Methods ******************************
+
+void RANS::cellToFaceDiffusion
+(
+    const ScalarField& cellGamma,
+    FaceFluxField& faceGamma
+) const
+{
+    const Count numFaces = mesh_.numFaces();
+
+    #pragma omp parallel for schedule(static)
+    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
+    {
+        const Face& face = mesh_.faces()[faceIdx];
+
+        if (face.isBoundary())
+        {
+            faceGamma[faceIdx] = cellGamma[face.ownerCell()];
+        }
+        else
+        {
+            faceGamma[faceIdx] = interpolateToFace(face, cellGamma);
+        }
+    }
+}
+
 
 void RANS::updateWallDistance()
 {
