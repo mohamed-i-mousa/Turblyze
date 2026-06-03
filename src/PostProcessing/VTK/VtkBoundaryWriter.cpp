@@ -41,7 +41,7 @@ namespace
 
 struct BoundaryFace
 {
-    size_t faceIdx = 0;
+    Index faceIdx = 0;
     int patchIdx = 0;
     int patchZoneIdx = 0;
     int patchTypeIdx = 0;
@@ -49,11 +49,11 @@ struct BoundaryFace
 };
 
 
-int checkedInt(size_t value, const std::string& label)
+int checkedInt(Count value, MessageRef label)
 {
-    if (value > static_cast<size_t>(std::numeric_limits<int>::max()))
+    if (value > static_cast<Count>(std::numeric_limits<int>::max()))
     {
-        FatalError(label + " exceeds the range of vtkIntArray.");
+        FatalError(Message(label) + " exceeds the range of vtkIntArray.");
     }
 
     return static_cast<int>(value);
@@ -62,9 +62,9 @@ int checkedInt(size_t value, const std::string& label)
 
 vtkIdType localPointIdx
 (
-    std::unordered_map<size_t, vtkIdType>& nodeMap,
-    std::vector<size_t>& localToGlobalNodes,
-    const size_t globalNodeIdx
+    std::unordered_map<Index, vtkIdType>& nodeMap,
+    IndexList& localToGlobalNodes,
+    const Index globalNodeIdx
 )
 {
     const auto it = nodeMap.find(globalNodeIdx);
@@ -87,22 +87,21 @@ vtkIdType localPointIdx
 
 void writeBoundaryData
 (
-    const std::string& filename,
+    const FilePath& filename,
     const Mesh& mesh,
-    const std::map<std::string,
-    const FaceData<Scalar>*>& scalarFaceFields,
+    const FaceDataMap& scalarFaceFields,
     bool debug
 )
 {
-    const std::span<const Vector> allNodes = mesh.nodes();
-    const std::span<const Face> allFaces = mesh.faces();
-    const std::span<const BoundaryPatch> allPatches = mesh.patches();
+    const NodeListRef allNodes = mesh.nodes();
+    const FaceListRef allFaces = mesh.faces();
+    const PatchListRef allPatches = mesh.patches();
 
     std::vector<BoundaryFace> boundaryFaces;
-    std::unordered_map<size_t, vtkIdType> nodeMap;
-    std::vector<size_t> localToGlobalNodes;
+    std::unordered_map<Index, vtkIdType> nodeMap;
+    IndexList localToGlobalNodes;
 
-    for (size_t patchIdx = 0; patchIdx < allPatches.size(); ++patchIdx)
+    for (Index patchIdx = 0; patchIdx < allPatches.size(); ++patchIdx)
     {
         const BoundaryPatch& patch = allPatches[patchIdx];
         const int patchIdxInt = checkedInt(patchIdx, "patchIdx");
@@ -116,7 +115,7 @@ void writeBoundaryData
 
         for
         (
-            size_t faceIdx = patch.firstFaceIdx();
+            Index faceIdx = patch.firstFaceIdx();
             faceIdx <= patch.lastFaceIdx();
             ++faceIdx
         )
@@ -144,7 +143,7 @@ void writeBoundaryData
                 );
             }
 
-            for (size_t nodeIdx : face.nodeIndices())
+            for (Index nodeIdx : face.nodeIndices())
             {
                 localPointIdx(nodeMap, localToGlobalNodes, nodeIdx);
             }
@@ -200,9 +199,14 @@ void writeBoundaryData
         static_cast<vtkIdType>(localToGlobalNodes.size())
     );
 
-    for (size_t localIdx = 0; localIdx < localToGlobalNodes.size(); ++localIdx)
+    for
+    (
+        Index localIdx = 0;
+        localIdx < localToGlobalNodes.size();
+        ++localIdx
+    )
     {
-        const size_t globalIdx = localToGlobalNodes[localIdx];
+        const Index globalIdx = localToGlobalNodes[localIdx];
         const Vector& node = allNodes[globalIdx];
         points->SetPoint
         (
@@ -225,12 +229,12 @@ void writeBoundaryData
         const vtkIdType npts =
             static_cast<vtkIdType>(nodeIndices.size());
 
-        std::vector<vtkIdType> pts(static_cast<size_t>(npts));
+        std::vector<vtkIdType> pts(static_cast<Count>(npts));
 
         for (vtkIdType j = 0; j < npts; ++j)
         {
-            const size_t nodeIdx = nodeIndices[static_cast<size_t>(j)];
-            pts[static_cast<size_t>(j)] = nodeMap[nodeIdx];
+            const Index nodeIdx = nodeIndices[static_cast<Index>(j)];
+            pts[static_cast<Index>(j)] = nodeMap[nodeIdx];
         }
 
         cells->InsertNextCell(npts, pts.data());
@@ -265,7 +269,7 @@ void writeBoundaryData
     patchTypeIdxArray->SetNumberOfTuples(numBoundaryFaces);
     isWallArray->SetNumberOfTuples(numBoundaryFaces);
 
-    for (size_t i = 0; i < boundaryFaces.size(); ++i)
+    for (Index i = 0; i < boundaryFaces.size(); ++i)
     {
         const BoundaryFace& record = boundaryFaces[i];
         const vtkIdType tupleIdx = static_cast<vtkIdType>(i);
@@ -293,9 +297,9 @@ void writeBoundaryData
         dataArray->SetNumberOfComponents(1);
         dataArray->SetNumberOfTuples(numBoundaryFaces);
 
-        for (size_t i = 0; i < boundaryFaces.size(); ++i)
+        for (Index i = 0; i < boundaryFaces.size(); ++i)
         {
-            const size_t faceIdx = boundaryFaces[i].faceIdx;
+            const Index faceIdx = boundaryFaces[i].faceIdx;
             const double value = static_cast<double>((*faceField)[faceIdx]);
             dataArray->SetValue(static_cast<vtkIdType>(i), value);
         }

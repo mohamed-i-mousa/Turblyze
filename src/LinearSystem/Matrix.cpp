@@ -36,7 +36,7 @@ Matrix::Matrix
         else ++numInternalFaces_;
     }
 
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     matrixA_.resize
     (
@@ -46,9 +46,9 @@ Matrix::Matrix
     vectorB_.resize(eIdx(numCells));
 
     // Reserve reusable per-thread assembly buffers.
-    const size_t T = static_cast<size_t>(omp_get_max_threads());
-    const size_t estimatedTriplets = 4 * numInternalFaces_ + numBoundaryFaces_;
-    const size_t reservePerThread = (estimatedTriplets / T) + 1;
+    const Count T = static_cast<Count>(omp_get_max_threads());
+    const Count estimatedTriplets = 4 * numInternalFaces_ + numBoundaryFaces_;
+    const Count reservePerThread = (estimatedTriplets / T) + 1;
 
     tripletList_.reserve(estimatedTriplets);
 
@@ -67,12 +67,12 @@ void Matrix::buildMatrix(const TransportEquation& equation)
 {
     clear();
 
-    const size_t numCells = mesh_.numCells();
-    const size_t numFaces = mesh_.numFaces();
+    const Count numCells = mesh_.numCells();
+    const Count numFaces = mesh_.numFaces();
 
     // Cell-source contribution: race-free per-cell write directly to vectorB_
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         vectorB_(eIdx(cellIdx)) += equation.source[cellIdx];
     }
@@ -90,11 +90,11 @@ void Matrix::buildMatrix(const TransportEquation& equation)
     #pragma omp parallel
     {
         const int tid = omp_get_thread_num();
-        auto& triplets = perThreadTriplets_[static_cast<size_t>(tid)];
-        auto& localB = perThreadB_[static_cast<size_t>(tid)];
+        auto& triplets = perThreadTriplets_[static_cast<Index>(tid)];
+        auto& localB = perThreadB_[static_cast<Index>(tid)];
 
         #pragma omp for schedule(static)
-        for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
+        for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
         {
             const Face& face = mesh_.faces()[faceIdx];
 
@@ -110,7 +110,7 @@ void Matrix::buildMatrix(const TransportEquation& equation)
     }
 
     // Merge per-thread triplet lists into the member tripletList_
-    size_t totalTriplets = 0;
+    Count totalTriplets = 0;
     for (const auto& v : perThreadTriplets_) totalTriplets += v.size();
     tripletList_.reserve(totalTriplets);
     for (auto& v : perThreadTriplets_)
@@ -172,7 +172,7 @@ void Matrix::relax(Scalar alpha, const ScalarField& phiPrev)
         // Update RHS: b <- b + ((1-alpha)/alpha) * a_P * phiPrev
         vectorB_(cellIdx) +=
             factor * origDiag
-          * phiPrev[static_cast<size_t>(cellIdx)];
+          * phiPrev[static_cast<Index>(cellIdx)];
     }
 }
 
@@ -226,8 +226,8 @@ void Matrix::assembleInternalFace
     Vec& localB
 ) const
 {
-    const size_t ownerIdx = face.ownerCell();
-    const size_t neighborIdx = face.neighborCell().value();
+    const Index ownerIdx = face.ownerCell();
+    const Index neighborIdx = face.neighborCell().value();
     const Vector Sf = face.normal() * face.projectedArea();
     const Vector dPN =
         mesh_.cells()[neighborIdx].centroid()
@@ -247,7 +247,6 @@ void Matrix::assembleInternalFace
     if (equation.flowRate)
     {
         const Scalar flowRate = equation.flowRate->get()[face.idx()];
-
         const auto [aP, aN] = ConvectionSchemes::getFluxCoefficients(flowRate);
 
         aPConv = aP;
@@ -256,19 +255,14 @@ void Matrix::assembleInternalFace
 
     // Matrix coefficients for owner and neighbor cells
     triplets.emplace_back(ownerIdx, ownerIdx, aDiff + aPConv);
-
     triplets.emplace_back(ownerIdx, neighborIdx, -aDiff + aNConv);
-
     triplets.emplace_back(neighborIdx, neighborIdx, aDiff - aNConv);
-
     triplets.emplace_back(neighborIdx, ownerIdx, -aDiff - aPConv);
 
     // Non-orthogonal correction (explicit)
     const Vector Tf = Sf - Ef;
-
     const Vector& gradPhiP = equation.gradPhi[ownerIdx];
     const Vector& gradPhiN = equation.gradPhi[neighborIdx];
-
     const Vector gradPhif =
         equation.gradScheme.faceGradient
         (
@@ -278,7 +272,6 @@ void Matrix::assembleInternalFace
             gradPhiN,
             face.idx()
         );
-
     const Scalar nonOrthogonalFlux = Gammaf * dot(gradPhif, Tf);
 
     localB(eIdx(ownerIdx)) += nonOrthogonalFlux;
@@ -311,7 +304,7 @@ void Matrix::assembleBoundaryFace
     Vec& localB
 ) const
 {
-    const size_t ownerIdx = face.ownerCell();
+    const Index ownerIdx = face.ownerCell();
     const BoundaryData& bc =
         bcManager_.fieldBC(face.patch()->get().patchName(), equation.field);
     const Vector Sf = face.normal() * face.projectedArea();
@@ -388,7 +381,7 @@ void Matrix::assembleBoundaryFace
         Warning
         (
             "Undefined boundary condition type for field "
-          + std::string(fieldToString(equation.field)) + " on patch "
+          + Name(fieldToString(equation.field)) + " on patch "
           + face.patch()->get().patchName()
           + ". Applying zero gradient."
         );
@@ -404,16 +397,16 @@ void Matrix::assembleBoundaryFace
 
 void Matrix::setValues
 (
-    std::span<const size_t> cellIndices,
-    std::span<const Scalar> values,
-    std::span<const Scalar> fractions
+    IndexListRef cellIndices,
+    ScalarListRef values,
+    ScalarListRef fractions
 )
 {
     const bool hasFractions = !fractions.empty();
 
-    for (size_t i = 0; i < cellIndices.size(); ++i)
+    for (Index i = 0; i < cellIndices.size(); ++i)
     {
-        const size_t cellIdx = cellIndices[i];
+        const Index cellIdx = cellIndices[i];
         const Scalar f = hasFractions ? fractions[i] : S(1.0);
 
         if (f < rootSmallValue_)
@@ -434,7 +427,8 @@ void Matrix::setValues
 
             for
             (
-                size_t neighborIdx : mesh_.cells()[cellIdx].neighborCellIndices()
+                Index neighborIdx
+              :  mesh_.cells()[cellIdx].neighborCellIndices()
             )
             {
                 const Eigen::Index r = eIdx(neighborIdx);

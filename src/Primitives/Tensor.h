@@ -20,13 +20,13 @@
 
 // Standard library headers
 #include <cmath>
-#include <cstddef>
 #include <iosfwd>
 
 // Project headers
 #include "Scalar.h"
 #include "Vector.h"
 #include "ErrorHandler.h"
+#include "Integer.h"
 
 // ******************************* class Tensor *******************************
 
@@ -109,7 +109,7 @@ public:
     [[nodiscard]] Scalar zz() const noexcept { return zz_; }
 
     /// Get row i of the tensor
-    [[nodiscard]] Vector row(size_t i) const noexcept
+    [[nodiscard]] Vector row(Index i) const noexcept
     {
         switch (i)
         {
@@ -123,7 +123,7 @@ public:
     }
 
     /// Get column j of the tensor
-    [[nodiscard]] Vector col(size_t j) const noexcept
+    [[nodiscard]] Vector col(Index j) const noexcept
     {
         switch (j)
         {

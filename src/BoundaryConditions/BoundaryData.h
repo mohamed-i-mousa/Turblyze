@@ -20,11 +20,8 @@
 
 // ********************************** Headers *********************************
 
-// Standard library headers
-#include <string_view>
-
-// Project headers
 #include "Scalar.h"
+#include "StringTypes.h"
 
 // ***************************** enum class BCType ****************************
 
@@ -91,4 +88,4 @@ private:
 // *************************** Non-Member Functions ***************************
 
 /// Convert BCType to human-readable string
-[[nodiscard]] std::string_view bcTypeToString(BCType bctype) noexcept;
+[[nodiscard]] NameRef bcTypeToString(BCType bctype) noexcept;

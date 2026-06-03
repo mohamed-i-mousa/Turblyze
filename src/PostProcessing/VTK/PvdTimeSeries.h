@@ -12,11 +12,9 @@
 
 // ********************************** Headers *********************************
 
-// Standard library headers
-#include <string>
-
 // Project headers
 #include "Scalar.h"
+#include "StringTypes.h"
 
 // ******************************* namespace VTK ******************************
 
@@ -24,13 +22,13 @@ namespace VTK
 {
 
 /// Create PVD time series file header for transient runs
-void writePVDTimeSeriesHeader(const std::string& pvdFilename);
+void writePVDTimeSeriesHeader(const FilePath& pvdFile);
 
 /// Append a timestep to PVD time series file
 void appendPVDTimeStep
 (
-    const std::string& pvdFilename,
-    const std::string& vtuFilename,
+    const FilePath& pvdFile,
+    const FilePath& vtuFile,
     Scalar timeValue
 );
 

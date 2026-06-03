@@ -13,12 +13,11 @@
 
 // ********************************** Headers *********************************
 
-// Standard library headers
-#include <string>
-
 // Project headers
+#include "Integer.h"
 #include "Scalar.h"
 #include "Vector.h"
+#include "StringTypes.h"
 
 // *************************** Forward Declarations ***************************
 
@@ -29,19 +28,19 @@ class CaseReader;
 struct SchemeConfig
 {
     /// Gradient reconstruction scheme name (e.g. "leastSquares")
-    std::string gradientName;
+    Name gradientScheme;
 
     /// Default convection scheme name
-    std::string defaultName;
+    Name defaultScheme;
 
     /// Momentum convection scheme name; empty means use default
-    std::string momentumName;
+    Name momentumScheme;
 
     /// k equation convection scheme name; empty means use default
-    std::string kName;
+    Name kScheme;
 
     /// omega equation convection scheme name; empty means use default
-    std::string omegaName;
+    Name omegaScheme;
 };
 
 // ************************ struct LinearSolverSettings ***********************
@@ -49,16 +48,16 @@ struct SchemeConfig
 struct LinearSolverSettings
 {
     /// Linear solver runtime-selection name
-    std::string solver;
+    Name solver;
 
     /// Preconditioner name from the case file
-    std::string preconditioner;
+    Name preconditioner;
 
     /// Relative residual tolerance
     Scalar tolerance;
 
     /// Maximum linear-solver iterations
-    int maxIter;
+    Count maxIter;
 };
 
 // ************************* struct LinearSolverConfig ************************
@@ -83,13 +82,13 @@ struct LinearSolverConfig
 struct CaseConfiguration
 {
     /// Mesh file path
-    std::string meshFilePath;
+    FilePath meshFile;
 
     /// Whether mesh quality checks should run
     bool checkQuality;
 
     /// OpenMP/Eigen thread count
-    int numThreads;
+    Count numThreads;
 
     /// Fluid density
     Scalar rho;
@@ -110,7 +109,7 @@ struct CaseConfiguration
     Scalar initialOmega;
 
     /// Maximum SIMPLE iterations
-    int maxIterations;
+    Count maxIterations;
 
     /// SIMPLE convergence tolerance
     Scalar convergenceTolerance;
@@ -131,7 +130,7 @@ struct CaseConfiguration
     bool turbulenceEnabled;
 
     /// Turbulence model name
-    std::string turbulenceModel;
+    Name turbulenceModel;
 
     /// Turbulence intensity for calculated inlet/default values
     Scalar turbulenceIntensity;
@@ -155,7 +154,7 @@ struct CaseConfiguration
     Scalar maxPressure;
 
     /// VTK output filename
-    std::string vtkOutputFilename;
+    FilePath vtkOutputFilename;
 
     /// Enable verbose output
     bool debug;

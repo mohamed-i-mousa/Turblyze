@@ -11,19 +11,18 @@
 // Standard library headers
 #include <algorithm>
 #include <cmath>
-#include <string_view>
 #include <utility>
 #include <vector>
 
 // Project headers
-#include "Matrix.h"
-#include "Mesh.h"
-#include "Cell.h"
 #include "Face.h"
-#include "BoundaryConditions.h"
-#include "BoundaryData.h"
+#include "Cell.h"
 #include "BoundaryPatch.h"
+#include "Mesh.h"
+#include "BoundaryData.h"
+#include "BoundaryConditions.h"
 #include "Field.h"
+#include "Matrix.h"
 
 // ************************* Special Member Functions *************************
 
@@ -94,8 +93,7 @@ Scalar RANS::boundaryTurbulentViscosity
 }
 
 
-std::vector<std::pair<std::string_view, const ScalarField*>>
-RANS::cellDataOutputs() const
+RANS::CellDataPair RANS::cellDataOutputs() const
 {
     return
     {
@@ -107,8 +105,7 @@ RANS::cellDataOutputs() const
 }
 
 
-std::vector<std::pair<std::string_view, const FaceData<Scalar>*>>
-RANS::boundaryDataOutputs() const
+RANS::BoundaryDataPair RANS::boundaryDataOutputs() const
 {
     return
     {
@@ -118,8 +115,7 @@ RANS::boundaryDataOutputs() const
 }
 
 
-std::vector<std::pair<std::string_view, Scalar>>
-RANS::residualOutputs() const
+RANS::ResidualPair RANS::residualOutputs() const
 {
     return
     {
@@ -146,7 +142,7 @@ void RANS::updateWallDistance()
 
         if (patch.type() != PatchType::wall) continue;
 
-        const size_t cellIdx = face.ownerCell();
+        const Index cellIdx = face.ownerCell();
         const Vector cellCenter = mesh_.cells()[cellIdx].centroid();
         const Vector faceCenter = face.centroid();
         const Vector normal = face.normal();
@@ -161,10 +157,10 @@ void RANS::updateWallDistance()
     }
 
     // Iterative propagation
-    const size_t maxIterations = 100;
+    const Count maxIterations = 100;
     const Scalar tolerance = smallValue;
 
-    for (size_t iter = 0; iter < maxIterations; ++iter)
+    for (Index iter = 0; iter < maxIterations; ++iter)
     {
         Scalar maxChange = S(0.0);
 
@@ -172,8 +168,8 @@ void RANS::updateWallDistance()
         {
             if (face.isBoundary()) continue;
 
-            const size_t owner = face.ownerCell();
-            const size_t neighbor = face.neighborCell().value();
+            const Index owner = face.ownerCell();
+            const Index neighbor = face.neighborCell().value();
             const Vector ownerCenter = mesh_.cells()[owner].centroid();
             const Vector neighborCenter = mesh_.cells()[neighbor].centroid();
 
@@ -239,7 +235,7 @@ void RANS::initializeWallFunctionGeometry
     const BCType wallFunctionType
 )
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     wallFunctionFaceIndices_.clear();
     wallCellIndices_.clear();
@@ -247,10 +243,10 @@ void RANS::initializeWallFunctionGeometry
     wallFaceWeight_.setAll(S(0.0));
     y_.setAll(S(0.0));
 
-    std::vector<size_t> wallFaceCountPerCell(numCells, 0);
-    std::vector<Scalar> totalWallArea(numCells, S(0.0));
+    CountList wallFaceCountPerCell(numCells, 0);
+    ScalarList totalWallArea(numCells, S(0.0));
 
-    for (size_t faceIdx = 0; faceIdx < mesh_.numFaces(); ++faceIdx)
+    for (Index faceIdx = 0; faceIdx < mesh_.numFaces(); ++faceIdx)
     {
         const auto& face = mesh_.faces()[faceIdx];
         if (!face.isBoundary()) continue;
@@ -264,16 +260,16 @@ void RANS::initializeWallFunctionGeometry
 
         wallFunctionFaceIndices_.push_back(faceIdx);
 
-        const size_t cellIdx = face.ownerCell();
+        const Index cellIdx = face.ownerCell();
         totalWallArea[cellIdx] += face.projectedArea();
         ++wallFaceCountPerCell[cellIdx];
     }
 
     // Compute per-face weight = faceArea / totalWallArea
-    for (size_t faceIdx : wallFunctionFaceIndices_)
+    for (Index faceIdx : wallFunctionFaceIndices_)
     {
         const auto& face = mesh_.faces()[faceIdx];
-        const size_t cellIdx = face.ownerCell();
+        const Index cellIdx = face.ownerCell();
         const Scalar area = totalWallArea[cellIdx];
 
         if (area > S(0.0))
@@ -290,7 +286,7 @@ void RANS::initializeWallFunctionGeometry
     }
 
     // Build unique wall cell indices
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         if (wallFaceCountPerCell[cellIdx] > 0)
         {
@@ -299,11 +295,11 @@ void RANS::initializeWallFunctionGeometry
     }
 
     // Compute wallCellFraction = wallFunctionArea / totalPolyWallArea
-    std::vector<Scalar> totalPolyWallArea(numCells, S(0.0));
+    ScalarList totalPolyWallArea(numCells, S(0.0));
 
-    for (size_t cellIdx : wallCellIndices_)
+    for (Index cellIdx : wallCellIndices_)
     {
-        for (size_t faceIdx : mesh_.cells()[cellIdx].faceIndices())
+        for (Index faceIdx : mesh_.cells()[cellIdx].faceIndices())
         {
             const auto& face = mesh_.faces()[faceIdx];
             if (!face.isBoundary()) continue;
@@ -325,9 +321,9 @@ void RANS::initializeWallFunctionGeometry
     constexpr Scalar wallCellFractionTol = S(0.1);
 
     #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < wallCellIndices_.size(); ++i)
+    for (Index i = 0; i < wallCellIndices_.size(); ++i)
     {
-        const size_t cellIdx = wallCellIndices_[i];
+        const Index cellIdx = wallCellIndices_[i];
         Scalar rawFraction = S(1.0);
 
         if (totalPolyWallArea[cellIdx] > S(0.0))
@@ -353,10 +349,10 @@ void RANS::updateYPlus
     const Scalar cmu25
 )
 {
-    for (size_t faceIdx : wallFunctionFaceIndices_)
+    for (Index faceIdx : wallFunctionFaceIndices_)
     {
         const auto& face = mesh_.faces()[faceIdx];
-        const size_t cellIdx = face.ownerCell();
+        const Index cellIdx = face.ownerCell();
 
         yPlus_[face.idx()] =
             cmu25
@@ -376,10 +372,10 @@ void RANS::updateWallShearStress
     const Scalar cmu25
 )
 {
-    for (size_t faceIdx : wallFunctionFaceIndices_)
+    for (Index faceIdx : wallFunctionFaceIndices_)
     {
         const auto& face = mesh_.faces()[faceIdx];
-        const size_t cellIdx = face.ownerCell();
+        const Index cellIdx = face.ownerCell();
 
         // Project velocity onto wall plane (tangential component)
         const Vector Ucell(Ux[cellIdx], Uy[cellIdx], Uz[cellIdx]);
@@ -400,12 +396,12 @@ void RANS::updateWallShearStress
 
 ScalarField RANS::computeStrainRateMagnitude(const TensorField& gradU) const
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     ScalarField strainRateMag;
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         // S = sqrt(2 * S_ij * S_ij), S_ij = 0.5*(du_i/dx_j + du_j/dx_i)
         const Scalar symmMagSq = gradU[cellIdx].symm().magnitudeSquared();
@@ -421,19 +417,19 @@ ScalarField RANS::velocityDivergence
     const FaceFluxField& flowRateFace
 ) const
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     ScalarField divU;
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const auto& cell = mesh_.cells()[cellIdx];
         const auto& faceIndices = cell.faceIndices();
         const auto& faceSigns = cell.faceSigns();
 
         Scalar sum = S(0.0);
-        for (size_t j = 0; j < faceIndices.size(); ++j)
+        for (Index j = 0; j < faceIndices.size(); ++j)
         {
             sum += S(faceSigns[j]) * flowRateFace[faceIndices[j]];
         }
@@ -463,14 +459,14 @@ Scalar RANS::normalisedFieldResidual
     const ScalarField& previousField
 ) const
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     // Normalised change: ||x - x_prev|| / ||x_prev||
     Scalar diffSq = S(0.0);
     Scalar prevSq = S(0.0);
 
     #pragma omp parallel for schedule(static) reduction(+:diffSq, prevSq)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Scalar dField = field[cellIdx] - previousField[cellIdx];
         diffSq += dField * dField;

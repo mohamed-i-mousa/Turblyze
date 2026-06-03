@@ -165,7 +165,7 @@ BoundaryConditions() = default;
 void printSummary() const;
 
 /// Nested map: patch name → field → boundary data
-std::map<std::string, std::map<Field, BoundaryData>> patchBoundaryData_;
+std::map<Name, std::map<Field, BoundaryData>> patchBoundaryData_;
 ```
 
 Use multiple `///` lines only when a non-obvious invariant or formula genuinely cannot fit on one line:
@@ -198,7 +198,7 @@ Multi-parameter functions use Allman-style with each parameter on its own line:
 ```cpp
 void setFixedValue
 (
-    const std::string& patchName,
+    const Name& patchName,
     Field field,
     Scalar value
 );
@@ -289,6 +289,26 @@ std::cerr << "\n" << "Error: " << msg << "\n";
 - **Enumerators**: lowerCamelCase (e.g., `Field::Ux`, `BCType::fixedValue`,
   `PatchType::wall`). Avoid `ALL_CAPS` — it collides with preprocessor macros
   (C++ Core Guidelines Enum.5). Prefer `enum class` over plain `enum` (Enum.3).
+
+### Intent-revealing aliases
+
+Prefer the foundation aliases over bare standard-library types when the *role*
+of the value is meaningful — they signal intent to the reader (the compiler
+still sees the underlying type, so they are documentation, not type safety):
+
+- **`Integer.h`** — `Index` (addresses an element) and `Count` (a size or
+  quantity), both `std::size_t`; plus `IndexList`/`CountList` and the
+  `IndexListRef` (`std::span<const Index>`) view.
+- **`StringTypes.h`** — owned text `Name` / `Token` / `FilePath` / `Message`
+  (all `std::string`) and their borrowed `std::string_view` views with the
+  `*Ref` suffix (`NameRef`, `TokenRef`, `FilePathRef`, `MessageRef`).
+- **`MeshContainers.h`** — owning `NodeList`/`FaceList`/`CellList`/`PatchList`
+  and the borrowed `*Ref` span views (`FaceListRef`, `MutableFaceListRef`, …).
+
+The `*Ref` suffix marks a non-owning view in the name. Domain-narrow aliases
+(`FaceIndex`, `PatchName`) are intentionally **not** used — a single `Index` /
+`Name` keeps the vocabulary small. Local aliases (e.g. `Face::OptionalIndex`,
+`CaseReader::EntryMap`) live next to the class that needs them.
 
 ## Special Member Functions
 

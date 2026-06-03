@@ -29,11 +29,11 @@
 template<CellFieldType T>
 [[nodiscard]] T interpolateToFace
 (
-    const Face& face,
+    const Face& targetFace,
     const CellData<T>& field
 )
 {
-    if (face.isBoundary())
+    if (targetFace.isBoundary())
     {
         FatalError
         (
@@ -42,9 +42,9 @@ template<CellFieldType T>
         );
     }
 
-    const size_t P = face.ownerCell();
-    const size_t N = face.neighborCell().value();
-    const Scalar wN = faceWeight(face);
+    const Index P = targetFace.ownerCell();
+    const Index N = targetFace.neighborCell().value();
+    const Scalar wN = faceWeight(targetFace);
 
     return (S(1.0) - wN) * field[P] + wN * field[N];
 }

@@ -23,17 +23,17 @@ namespace VTK
 
 void writePVDTimeSeriesHeader
 (
-    const std::string& pvdFilename
+    const FilePath& pvdFile
 )
 {
-    std::ofstream pvdFile(pvdFilename);
+    std::ofstream pvdFileOutput(pvdFile);
 
-    if (!pvdFile.is_open())
+    if (!pvdFileOutput.is_open())
     {
-        FatalError("Failed to open PVD file: " + pvdFilename);
+        FatalError("Failed to open PVD file: " + pvdFile);
     }
 
-    pvdFile
+    pvdFileOutput
         << "<?xml version=\"1.0\"?>" << '\n'
         << "<VTKFile type=\"Collection\" version=\"0.1\" "
         << "byte_order=\"LittleEndian\">" << '\n'
@@ -41,48 +41,48 @@ void writePVDTimeSeriesHeader
         << "  </Collection>" << '\n'
         << "</VTKFile>" << '\n';
 
-    pvdFile.close();
+    pvdFileOutput.close();
 
     std::cout
         << "PVD time series header written: "
-        << pvdFilename << '\n';
+        << pvdFile << '\n';
 }
 
 
 void appendPVDTimeStep
 (
-    const std::string& pvdFilename,
-    const std::string& vtuFilename,
+    const FilePath& pvdFile,
+    const FilePath& vtuFile,
     Scalar timeValue
 )
 {
     // Read existing PVD file
-    std::ifstream pvdFileIn(pvdFilename);
-    if (!pvdFileIn.is_open())
+    std::ifstream pvdFileInput(pvdFile);
+    if (!pvdFileInput.is_open())
     {
         FatalError
         (
             "Failed to open PVD file for reading: "
-          + pvdFilename
+          + pvdFile
         );
     }
 
-    std::vector<std::string> lines;
-    std::string line;
-    while (std::getline(pvdFileIn, line))
+    std::vector<Message> lines;
+    Message line;
+    while (std::getline(pvdFileInput, line))
     {
         lines.push_back(line);
     }
-    pvdFileIn.close();
+    pvdFileInput.close();
 
     // Find the </Collection> line and insert before it
-    std::ofstream pvdFileOut(pvdFilename);
-    if (!pvdFileOut.is_open())
+    std::ofstream pvdFileOutput(pvdFile);
+    if (!pvdFileOutput.is_open())
     {
         FatalError
         (
             "Failed to open PVD file for writing: "
-          + pvdFilename
+          + pvdFile
         );
     }
 
@@ -90,31 +90,31 @@ void appendPVDTimeStep
 
     for (const auto& existingLine : lines)
     {
-        if (existingLine.find("</Collection>") != std::string::npos)
+        if (existingLine.find("</Collection>") != Message::npos)
         {
             // Insert the new timestep before closing collection
-            pvdFileOut
+            pvdFileOutput
                 << "    <DataSet timestep=\"" << timeValue
-                << "\" file=\"" << vtuFilename << "\"/>" << '\n';
+                << "\" file=\"" << vtuFile << "\"/>" << '\n';
             inserted = true;
         }
-        pvdFileOut << existingLine << '\n';
+        pvdFileOutput << existingLine << '\n';
     }
 
     if (!inserted)
     {
         FatalError
         (
-            "PVD file '" + pvdFilename
+            "PVD file '" + pvdFile
           + "' has no </Collection> marker; cannot append timestep."
         );
     }
 
-    pvdFileOut.close();
+    pvdFileOutput.close();
 
-    if (pvdFileOut.fail())
+    if (pvdFileOutput.fail())
     {
-        FatalError("Failed to write PVD file: " + pvdFilename);
+        FatalError("Failed to write PVD file: " + pvdFile);
     }
 
     std::cout

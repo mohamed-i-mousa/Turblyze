@@ -22,7 +22,6 @@
 
 // Standard library headers
 #include <algorithm>
-#include <cstddef>
 #include <span>
 #include <vector>
 #include <concepts>
@@ -33,6 +32,7 @@
 #include "Vector.h"
 #include "Tensor.h"
 #include "Mesh.h"
+#include "Integer.h"
 
 // ************************* concept CellFieldType ****************************
 
@@ -74,7 +74,7 @@ public:
 // ***************************** Accessor Methods *****************************
 
     /// Get number of cells in the field
-    [[nodiscard]] size_t size() const noexcept
+    [[nodiscard]] Count size() const noexcept
     {
         return internalField_.size();
     }
@@ -86,7 +86,10 @@ public:
     }
 
     /// Get pointer to field storage
-    [[nodiscard]] T* data() noexcept { return internalField_.data(); }
+    [[nodiscard]] T* data() noexcept
+    {
+        return internalField_.data();
+    }
 
     /// Get const pointer to field storage
     [[nodiscard]] const T* data() const noexcept
@@ -109,6 +112,7 @@ public:
     {
         return internalField_.begin();
     }
+
     [[nodiscard]] auto end() const noexcept
     {
         return internalField_.end();
@@ -117,13 +121,13 @@ public:
 // ***************************** Operator Methods *****************************
 
     /// Unchecked subscript operator
-    T& operator[](size_t cellIndex) noexcept
+    T& operator[](Index cellIndex) noexcept
     {
         return internalField_[cellIndex];
     }
 
     /// Unchecked const subscript operator
-    const T& operator[](size_t cellIndex) const noexcept
+    const T& operator[](Index cellIndex) const noexcept
     {
         return internalField_[cellIndex];
     }
@@ -131,16 +135,16 @@ public:
 // ****************************** Helper Methods ******************************
 
     /// Print field summary for debugging
-    void printSummary(size_t itemsToShow) const
+    void printSummary(Count itemsToShow) const
     {
         std::cout
             << "CellData (Size: " << internalField_.size() << ")\n";
 
-        const size_t count = std::min(internalField_.size(), itemsToShow);
+        const Count count = std::min(internalField_.size(), itemsToShow);
 
         for
         (
-            size_t cellIdx = 0;
+            Index cellIdx = 0;
             cellIdx < count;
             ++cellIdx
         )

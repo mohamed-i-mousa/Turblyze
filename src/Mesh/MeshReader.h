@@ -30,16 +30,17 @@
 // ********************************** Headers *********************************
 
 // Standard library headers
-#include <string>
-#include <string_view>
-#include <vector>
 #include <iosfwd>
+#include <utility>
 
 // Project headers
-#include "Scalar.h"
+#include "MeshContainers.h"
+#include "Vector.h"
 #include "Face.h"
 #include "Cell.h"
 #include "BoundaryPatch.h"
+#include "Integer.h"
+#include "StringTypes.h"
 
 // ***************************** class MeshReader *****************************
 
@@ -47,33 +48,35 @@ class MeshReader
 {
 public:
 
+    using TokenList = std::vector<Token>;
+
 // ************************* Special Member Functions *************************
 
     /// Construct MeshReader and parse the given Fluent mesh file
-    explicit MeshReader(const std::string& filePath);
+    explicit MeshReader(const FilePath& filePath);
 
 // ***************************** Accessor Methods *****************************
 
     /// Transfer ownership of nodes data
-    [[nodiscard]] std::vector<Vector> moveNodes() noexcept
+    [[nodiscard]] NodeList moveNodes() noexcept
     {
         return std::move(nodes_);
     }
 
     /// Transfer ownership of faces data
-    [[nodiscard]] std::vector<Face> moveFaces() noexcept
+    [[nodiscard]] FaceList moveFaces() noexcept
     {
         return std::move(faces_);
     }
 
     /// Transfer ownership of cells data
-    [[nodiscard]] std::vector<Cell> moveCells() noexcept
+    [[nodiscard]] CellList moveCells() noexcept
     {
         return std::move(cells_);
     }
 
     /// Transfer ownership of boundary patches data
-    [[nodiscard]] std::vector<BoundaryPatch> moveBoundaryPatches() noexcept
+    [[nodiscard]] PatchList moveBoundaryPatches() noexcept
     {
         return std::move(boundaryPatches_);
     }
@@ -85,29 +88,29 @@ private:
     /// Mapping entry from Fluent type string to enum
     struct BCMapping
     {
-        std::string_view fluentType;
+        TokenRef fluentType;
         PatchType patchType;
     };
 
     /// All mesh node coordinates
-    std::vector<Vector> nodes_;
+    NodeList nodes_;
 
     /// All mesh faces
-    std::vector<Face> faces_;
+    FaceList faces_;
 
     /// All mesh cells
-    std::vector<Cell> cells_;
+    CellList cells_;
 
     /// All boundary patches
-    std::vector<BoundaryPatch> boundaryPatches_;
+    PatchList boundaryPatches_;
 
     /// Fluent mesh-file section identifier tokens
-    static constexpr std::string_view MSH_COMMENT    = "(0";
-    static constexpr std::string_view MSH_DIMENSION  = "(2";
-    static constexpr std::string_view MSH_NODES      = "(10";
-    static constexpr std::string_view MSH_CELLS      = "(12";
-    static constexpr std::string_view MSH_FACES      = "(13";
-    static constexpr std::string_view MSH_BOUNDARIES = "(45";
+    static constexpr TokenRef MSH_COMMENT    = "(0";
+    static constexpr TokenRef MSH_DIMENSION  = "(2";
+    static constexpr TokenRef MSH_NODES      = "(10";
+    static constexpr TokenRef MSH_CELLS      = "(12";
+    static constexpr TokenRef MSH_FACES      = "(13";
+    static constexpr TokenRef MSH_BOUNDARIES = "(45";
 
     /// Lookup table for Fluent BC type string to enum mapping
     static constexpr BCMapping bcMappings_[] =
@@ -132,7 +135,7 @@ private:
 private:
 
     /// Parse the complete mesh file
-    void parseFile(const std::string& filePath);
+    void parseFile(const FilePath& filePath);
 
     /// Parse the comment section and skip its contents
     void parseCommentSection(std::ifstream& ifs) const;
@@ -141,16 +144,16 @@ private:
     void parseDimensionSection(std::ifstream& ifs) const;
 
     /// Parse the nodes section
-    void parseNodesSection(std::ifstream& ifs, const std::string& token);
+    void parseNodesSection(std::ifstream& ifs, TokenRef token);
 
     /// Parse the cells section
-    void parseCellsSection(std::ifstream& ifs, const std::string& token);
+    void parseCellsSection(std::ifstream& ifs, TokenRef token);
 
     /// Parse the faces section
-    void parseFacesSection(std::ifstream& ifs, const std::string& token);
+    void parseFacesSection(std::ifstream& ifs, TokenRef token);
 
     /// Parse the boundaries section
-    void parseBoundariesSection(std::ifstream& ifs, const std::string& token);
+    void parseBoundariesSection(std::ifstream& ifs, TokenRef token);
 
     /// Build cell-face connectivity and neighbor relationships
     void buildTopology();
@@ -161,22 +164,22 @@ private:
     /// Print mesh loading summary to stdout
     void printSummary() const;
 
-    /// Convert hexadecimal string to size_t
-    [[nodiscard]] static size_t hexToDec(std::string_view hexStr);
+    /// Convert hexadecimal string to Count
+    [[nodiscard]] static Count hexToDec(TokenRef hexStr);
 
-    /// Convert decimal string to size_t
-    [[nodiscard]] static size_t strToDec(std::string_view decStr);
+    /// Convert decimal string to Count
+    [[nodiscard]] static Count strToDec(TokenRef decStr);
 
     /// Safely convert 1-based Fluent index to 0-based index
-    [[nodiscard]] static size_t safeFluentIndexConvert
+    [[nodiscard]] static Index safeFluentIndexConvert
     (
-        size_t fluentIdx,
-        std::string_view context
+        Count fluentIdx,
+        MessageRef context
     );
 
     /// Map Fluent boundary type string to enumeration
     [[nodiscard]] static PatchType mapFluentBCToEnum
     (
-        std::string_view fluentType
+        TokenRef fluentType
     );
 };

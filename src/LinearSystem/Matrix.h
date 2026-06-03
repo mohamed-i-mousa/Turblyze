@@ -26,6 +26,7 @@
 // Standard library headers
 #include <vector>
 #include <optional>
+#include <span>
 
 // External library headers
 #include <eigen3/Eigen/SparseCore>
@@ -33,6 +34,7 @@
 // Project headers
 #include "Mesh.h"
 #include "BoundaryConditions.h"
+#include "Integer.h"
 #include "TransportEquation.h"
 
 // ******************************* class Matrix *******************************
@@ -44,6 +46,11 @@ public:
     // Eigen type reductions for readability
     using SparseMatrix = Eigen::SparseMatrix<Scalar, Eigen::RowMajor>;
     using Vec = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
+
+    // Assembly type reductions for readability
+    using TripletList = std::vector<Eigen::Triplet<Scalar>>;
+    using PerThreadTriplets = std::vector<TripletList>;
+    using ScalarListRef = std::span<const Scalar>;
 
 // ************************* Special Member Functions *************************
 
@@ -113,9 +120,9 @@ public:
      */
     void setValues
     (
-        std::span<const size_t> cellIndices,
-        std::span<const Scalar> values,
-        std::span<const Scalar> fractions = {}
+        IndexListRef cellIndices,
+        ScalarListRef values,
+        ScalarListRef fractions = {}
     );
 
 // ****************************** Private Members *****************************
@@ -133,17 +140,17 @@ private:
     Vec vectorB_;
 
     /// Triplet storage for efficient sparse matrix assembly
-    std::vector<Eigen::Triplet<Scalar>> tripletList_;
+    TripletList tripletList_;
 
     /// Per-thread triplet lists for parallel face-assembly
-    std::vector<std::vector<Eigen::Triplet<Scalar>>> perThreadTriplets_;
+    PerThreadTriplets perThreadTriplets_;
 
     /// Per-thread RHS contributions for parallel face-assembly scatter.
     std::vector<Vec> perThreadB_;
 
     /// Cached face counts for triplet list reservation
-    size_t numInternalFaces_ = 0;
-    size_t numBoundaryFaces_ = 0;
+    Count numInternalFaces_ = 0;
+    Count numBoundaryFaces_ = 0;
 
     /// Relaxation factor from last relax() call (0 = not relaxed)
     Scalar lastRelaxationFactor_ = S(0.0);
@@ -164,7 +171,7 @@ private:
     (
         const Face& face,
         const TransportEquation& equation,
-        std::vector<Eigen::Triplet<Scalar>>& triplets,
+        TripletList& triplets,
         Vec& localB
     ) const;
 
@@ -173,7 +180,7 @@ private:
     (
         const Face& face,
         const TransportEquation& equation,
-        std::vector<Eigen::Triplet<Scalar>>& triplets,
+        TripletList& triplets,
         Vec& localB
     ) const;
 
@@ -187,8 +194,8 @@ private:
 
 // *************************** Non-Member Functions ***************************
 
-/// Convert a size_t index to Eigen's signed index type
-[[nodiscard]] inline Eigen::Index eIdx(std::size_t value) noexcept
+/// Convert an unsigned storage index to Eigen's signed index type
+[[nodiscard]] inline Eigen::Index eIdx(Index value) noexcept
 {
     return static_cast<Eigen::Index>(value);
 }

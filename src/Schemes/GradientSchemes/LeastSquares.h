@@ -28,6 +28,8 @@ class LeastSquares final : public GradientScheme
 {
 public:
 
+    using InverseATACache = std::vector<std::array<Scalar, 6>>;
+
 // ************************* Special Member Functions *************************
 
     /// Construct least-squares scheme and pre-compute inverse ATA
@@ -55,7 +57,7 @@ public:
     (
         Field field,
         const ScalarField& phi,
-        size_t cellIdx
+        Index cellIdx
     ) const override;
 
 // ************************ Private Methods and Members ***********************
@@ -66,5 +68,5 @@ private:
     void precomputeInverseATA();
 
     /// Cached inverse of ATA per cell {xx, xy, xz, yy, yz, zz}
-    std::vector<std::array<Scalar, 6>> invATA_;
+    InverseATACache invATA_;
 };

@@ -13,7 +13,7 @@
 
 // *************************** Non-Member Functions ***************************
 
-std::string_view fieldToString(Field field) noexcept
+NameRef fieldToString(Field field) noexcept
 {
     using enum Field;
     switch (field)

@@ -38,10 +38,10 @@ void GradientScheme::limitGradient
     VectorField& gradPhi
 ) const
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
     
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Cell& cell = mesh_.cells()[cellIdx];
 
@@ -49,7 +49,7 @@ void GradientScheme::limitGradient
         Scalar phiMin = phi[cellIdx];
         Scalar phiMax = phi[cellIdx];
 
-        for (size_t neighborIdx : cell.neighborCellIndices())
+        for (Index neighborIdx : cell.neighborCellIndices())
         {
             phiMin = std::min(phiMin, phi[neighborIdx]);
             phiMax = std::max(phiMax, phi[neighborIdx]);
@@ -57,17 +57,17 @@ void GradientScheme::limitGradient
 
         // Include boundary face values so the limiter does not clip
         // physically correct near-boundary gradients (e.g. k near walls)
-        for (size_t faceIdx : cell.faceIndices())
+        for (Index faceIdx : cell.faceIndices())
         {
-            const Face& face = mesh_.faces()[faceIdx];
-            if (!face.isBoundary()) continue;
+            const Face& f = mesh_.faces()[faceIdx];
+            if (!f.isBoundary()) continue;
 
             const Scalar phiBound =
                 bcManager_.boundaryFaceValue
                 (
                     field,
                     phi,
-                    face
+                    f
                 );
             phiMin = std::min(phiMin, phiBound);
             phiMax = std::max(phiMax, phiBound);
@@ -76,10 +76,10 @@ void GradientScheme::limitGradient
         // Compute Barth-Jespersen limiter: min alpha over all faces
         Scalar alpha = S(1.0);
 
-        for (size_t faceIdx : cell.faceIndices())
+        for (Index faceIdx : cell.faceIndices())
         {
-            const Face& face = mesh_.faces()[faceIdx];
-            const Vector r = face.centroid() - cell.centroid();
+            const Face& f = mesh_.faces()[faceIdx];
+            const Vector r = f.centroid() - cell.centroid();
             const Scalar phiFace = phi[cellIdx] + dot(gradPhi[cellIdx], r);
             const Scalar delta = phiFace - phi[cellIdx];
 
@@ -107,10 +107,10 @@ void GradientScheme::fieldGradient
     VectorField& gradPhi
 ) const
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         gradPhi[cellIdx] = cellGradient(field, phi, cellIdx);
     }
@@ -125,13 +125,13 @@ Vector GradientScheme::faceGradient
     const ScalarField& phi,
     const Vector& gradPhiP,
     const Vector& gradPhiN,
-    size_t faceIndex
+    Index faceIndex
 ) const
 {
-    const Face& face = mesh_.faces()[faceIndex];
-    const size_t P = face.ownerCell();
+    const Face& f = mesh_.faces()[faceIndex];
+    const Index P = f.ownerCell();
 
-    if (face.isBoundary())
+    if (f.isBoundary())
     {
         return
             boundaryFaceGradient
@@ -139,16 +139,16 @@ Vector GradientScheme::faceGradient
                 field,
                 phi,
                 gradPhiP,
-                face
+                f
             );
     }
 
-    const size_t N = face.neighborCell().value();
+    const Index N = f.neighborCell().value();
     const Vector dPN =
         mesh_.cells()[N].centroid() - mesh_.cells()[P].centroid();
     const Scalar dPNMag = magnitude(dPN);
     const Vector ePN = dPN / (dPNMag + vSmallValue);
-    const Vector gradAvg = averageFaceGradient(face, gradPhiP, gradPhiN);
+    const Vector gradAvg = averageFaceGradient(f, gradPhiP, gradPhiN);
     const Scalar phiDiff = phi[N] - phi[P];
     const Scalar correction =
         (phiDiff / (dPNMag + vSmallValue))
@@ -161,12 +161,12 @@ Vector GradientScheme::faceGradient
 
 Vector GradientScheme::averageFaceGradient
 (
-    const Face& face,
+    const Face& internalFace,
     const Vector& gradPhiP,
     const Vector& gradPhiN
 ) const
 {
-    if (face.isBoundary())
+    if (internalFace.isBoundary())
     {
         FatalError
         (
@@ -175,8 +175,8 @@ Vector GradientScheme::averageFaceGradient
         );
     }
 
-    const Scalar dPf = face.dPfMag();
-    const Scalar dNf = face.dNfMag().value();
+    const Scalar dPf = internalFace.dPfMag();
+    const Scalar dNf = internalFace.dNfMag().value();
     const Scalar totalDist = dPf + dNf;
 
     const Scalar gP = dNf / (totalDist + vSmallValue);
@@ -191,18 +191,18 @@ Vector GradientScheme::boundaryFaceGradient
     Field field,
     const ScalarField& phi,
     const Vector& cellGradient,
-    const Face& face
+    const Face& boundaryFace
 ) const
 {
-    const BoundaryPatch& patch = face.patch()->get();
+    const BoundaryPatch& patch = boundaryFace.patch()->get();
 
     const BoundaryData& bc =
         bcManager_.fieldBC(patch.patchName(), field);
 
     const Vector tangentialGradient =
         cellGradient
-      - dot(cellGradient, face.normal())
-      * face.normal();
+      - dot(cellGradient, boundaryFace.normal())
+      * boundaryFace.normal();
 
     using enum BCType;
     switch (bc.type())
@@ -215,9 +215,9 @@ Vector GradientScheme::boundaryFaceGradient
               ? bc.fixedScalarValue()
               : S(0.0);
 
-            const Scalar cellValue = phi[face.ownerCell()];
-            const Scalar dn = dot(face.dPf(), face.normal());
-            const Scalar dPfMag = face.dPfMag();
+            const Scalar cellValue = phi[boundaryFace.ownerCell()];
+            const Scalar dn = dot(boundaryFace.dPf(), boundaryFace.normal());
+            const Scalar dPfMag = boundaryFace.dPfMag();
 
             // Stabilization: clamp dn to minNormalFraction_ * ||dPf||
             const Scalar dnStabilized =
@@ -227,7 +227,7 @@ Vector GradientScheme::boundaryFaceGradient
             const Scalar normalGradient =
                 (boundaryValue - cellValue) / dnStabilized;
 
-            return tangentialGradient + normalGradient * face.normal();
+            return tangentialGradient + normalGradient * boundaryFace.normal();
         }
 
         case kWallFunction:
@@ -245,7 +245,8 @@ Vector GradientScheme::boundaryFaceGradient
 
             // Project cell gradient onto tangential directions
             // and combine with specified normal gradient
-            return tangentialGradient + specifiedGradient * face.normal();
+            return
+                tangentialGradient + specifiedGradient * boundaryFace.normal();
         }
 
         default:

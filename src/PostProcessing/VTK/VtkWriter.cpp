@@ -23,8 +23,6 @@
 #include <algorithm>
 #include <iostream>
 #include <sstream>
-#include <span>
-#include <string>
 #include <vector>
 
 // Project headers
@@ -40,13 +38,13 @@ namespace
 
 Vector newellNormal
 (
-    std::span<const size_t> faceNodes,
-    std::span<const Vector> allNodes
+    IndexListRef faceNodes,
+    NodeListRef allNodes
 )
 {
     Vector normal;
 
-    for (size_t i = 0; i < faceNodes.size(); ++i)
+    for (Index i = 0; i < faceNodes.size(); ++i)
     {
         const Vector& current = allNodes[faceNodes[i]];
         const Vector& next = allNodes[faceNodes[(i + 1) % faceNodes.size()]];
@@ -66,7 +64,7 @@ Vector newellNormal
 void appendUniqueNodeId
 (
     std::vector<vtkIdType>& uniquePointIds,
-    size_t nodeIdx
+    Index nodeIdx
 )
 {
     const vtkIdType vtkNodeIdx = static_cast<vtkIdType>(nodeIdx);
@@ -88,7 +86,7 @@ void appendUniqueNodeId
 
 void appendValidationStateName
 (
-    std::string& result,
+    Message& result,
     const vtkCellValidator::State state,
     const vtkCellValidator::State bit,
     const char* const name
@@ -106,14 +104,14 @@ void appendValidationStateName
 }
 
 
-std::string cellValidationStateName(vtkCellValidator::State state)
+Message cellValidationStateName(vtkCellValidator::State state)
 {
     if (state == vtkCellValidator::Valid)
     {
         return "Valid";
     }
 
-    std::string result;
+    Message result;
 
     appendValidationStateName
     (
@@ -167,9 +165,9 @@ void validateCellsForDebug(vtkUnstructuredGrid* unstructuredGrid)
     vtkSmartPointer<vtkGenericCell> genericCell =
         vtkSmartPointer<vtkGenericCell>::New();
 
-    size_t invalidCellCount = 0;
-    std::vector<std::string> invalidSamples;
-    constexpr size_t maxSamples = 8;
+    Count invalidCellCount = 0;
+    std::vector<Message> invalidSamples;
+    constexpr Count maxSamples = 8;
 
     const vtkIdType numCells = unstructuredGrid->GetNumberOfCells();
 
@@ -214,7 +212,7 @@ void validateCellsForDebug(vtkUnstructuredGrid* unstructuredGrid)
     {
         message << " First samples: ";
 
-        for (size_t i = 0; i < invalidSamples.size(); ++i)
+        for (Index i = 0; i < invalidSamples.size(); ++i)
         {
             if (i > 0)
             {
@@ -233,18 +231,16 @@ void validateCellsForDebug(vtkUnstructuredGrid* unstructuredGrid)
 
 void writeVtkUnstructuredGrid
 (
-    const std::string& filename,
+    const FilePath& filename,
     const Mesh& mesh,
-    const std::map<std::string,
-    const ScalarField*>& scalarCellFields,
-    const std::map<std::string,
-    std::array<const ScalarField*, 3>>& vectorCellFields,
+    const ScalarFieldMap& scalarFields,
+    const VectorFieldMap& vectorFields,
     bool debug
 )
 {
-    const std::span<const Vector> allNodes = mesh.nodes();
-    const std::span<const Cell> allCells = mesh.cells();
-    const std::span<const Face> allFaces = mesh.faces();
+    const NodeListRef allNodes = mesh.nodes();
+    const CellListRef allCells = mesh.cells();
+    const FaceListRef allFaces = mesh.faces();
 
     // Create vtkUnstructuredGrid
     vtkSmartPointer<vtkUnstructuredGrid>
@@ -255,7 +251,7 @@ void writeVtkUnstructuredGrid
     points->SetDataTypeToDouble();
     points->SetNumberOfPoints(static_cast<vtkIdType>(allNodes.size()));
 
-    for (size_t nodeIdx = 0; nodeIdx < allNodes.size(); ++nodeIdx)
+    for (Index nodeIdx = 0; nodeIdx < allNodes.size(); ++nodeIdx)
     {
         const Vector& node = allNodes[nodeIdx];
         points->SetPoint
@@ -271,7 +267,7 @@ void writeVtkUnstructuredGrid
     unstructuredGrid->Allocate(static_cast<vtkIdType>(allCells.size()));
 
     // Add cells as polyhedra using the mesh's face-based topology directly.
-    for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
     {
         const Cell& cell = allCells[cellIdx];
         const auto faceIndices = cell.faceIndices();
@@ -281,7 +277,7 @@ void writeVtkUnstructuredGrid
         uniquePointIds.reserve(faceIndices.size() * 4);
         faceStream.reserve(faceIndices.size() * 5);
 
-        for (size_t faceIdx : faceIndices)
+        for (Index faceIdx : faceIndices)
         {
             const Face& face = allFaces[faceIdx];
             const auto nodeIndices = face.nodeIndices();
@@ -297,7 +293,7 @@ void writeVtkUnstructuredGrid
                 );
             }
 
-            for (size_t nodeIdx : nodeIndices)
+            for (Index nodeIdx : nodeIndices)
             {
                 appendUniqueNodeId(uniquePointIds, nodeIdx);
             }
@@ -305,7 +301,7 @@ void writeVtkUnstructuredGrid
             std::vector<vtkIdType> orientedFaceNodes;
             orientedFaceNodes.reserve(nodeIndices.size());
 
-            for (size_t nodeIdx : nodeIndices)
+            for (Index nodeIdx : nodeIndices)
             {
                 orientedFaceNodes.push_back(static_cast<vtkIdType>(nodeIdx));
             }
@@ -355,7 +351,7 @@ void writeVtkUnstructuredGrid
     }
 
     // Add scalar cell fields
-    for (const auto& [fieldName, scalarField] : scalarCellFields)
+    for (const auto& [fieldName, scalarField] : scalarFields)
     {
         if (!scalarField) continue;
 
@@ -377,7 +373,7 @@ void writeVtkUnstructuredGrid
         dataArray->SetNumberOfComponents(1);
         dataArray->SetNumberOfTuples(static_cast<vtkIdType>(allCells.size()));
 
-        for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
+        for (Index cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
         {
             const double value =
                 static_cast<double>((*scalarField)[cellIdx]);
@@ -388,7 +384,7 @@ void writeVtkUnstructuredGrid
     }
 
     // Add vector cell fields (supplied as three scalar component fields)
-    for (const auto& [fieldName, components] : vectorCellFields)
+    for (const auto& [fieldName, components] : vectorFields)
     {
         if (!components[0] || !components[1] || !components[2]) continue;
 
@@ -418,7 +414,7 @@ void writeVtkUnstructuredGrid
         dataArray->SetNumberOfComponents(3);
         dataArray->SetNumberOfTuples(static_cast<vtkIdType>(allCells.size()));
 
-        for (size_t cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
+        for (Index cellIdx = 0; cellIdx < allCells.size(); ++cellIdx)
         {
             const double vecData[3] =
             {
@@ -468,11 +464,11 @@ void writeVtkUnstructuredGrid
 
         std::cout
             << "  - Number of scalar fields: "
-            << scalarCellFields.size() << '\n';
+            << scalarFields.size() << '\n';
 
         std::cout
             << "  - Number of vector fields: "
-            << vectorCellFields.size() << '\n';
+            << vectorFields.size() << '\n';
     }
 }
 

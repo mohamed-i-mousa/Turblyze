@@ -60,7 +60,7 @@ LinearSolverSettings turbulenceSolverDefaults()
 LinearSolverSettings readSolverEntry
 (
     const CaseReader& solvers,
-    const std::string& key,
+    const Name& key,
     LinearSolverSettings defaults
 )
 {
@@ -69,9 +69,9 @@ LinearSolverSettings readSolverEntry
         const auto& entry = solvers.section(key);
 
         defaults.solver =
-            entry.lookupOrDefault<std::string>("solver", defaults.solver);
+            entry.lookupOrDefault<Name>("solver", defaults.solver);
         defaults.preconditioner =
-            entry.lookupOrDefault<std::string>
+            entry.lookupOrDefault<Name>
             (
                 "preconditioner",
                 defaults.preconditioner
@@ -79,14 +79,14 @@ LinearSolverSettings readSolverEntry
         defaults.tolerance =
             entry.lookupOrDefault<Scalar>("tolerance", defaults.tolerance);
         defaults.maxIter =
-            entry.lookupOrDefault<int>("maxIter", defaults.maxIter);
+            entry.lookupOrDefault<Count>("maxIter", defaults.maxIter);
     }
 
     if (defaults.tolerance <= S(0.0))
     {
         FatalError("linearSolvers." + key + ".tolerance must be positive.");
     }
-    if (defaults.maxIter <= 0)
+    if (defaults.maxIter == 0)
     {
         FatalError
         (
@@ -139,8 +139,8 @@ void readGradientScheme
 {
     const auto& schemesDict = reader.section("numericalSchemes");
 
-    config.schemes.gradientName =
-        schemesDict.lookupOrDefault<std::string>
+    config.schemes.gradientScheme =
+        schemesDict.lookupOrDefault<Name>
         (
             "gradient",
             "leastSquares"
@@ -167,38 +167,38 @@ void readConvectionSchemes
 
     const auto& convection = schemesDict.section("convection");
 
-    config.schemes.defaultName =
-        convection.lookupOrDefault<std::string>("default", "Upwind");
-    config.schemes.momentumName =
-        convection.lookupOrDefault<std::string>("U", "");
-    config.schemes.kName =
-        convection.lookupOrDefault<std::string>("k", "");
-    config.schemes.omegaName =
-        convection.lookupOrDefault<std::string>("omega", "");
+    config.schemes.defaultScheme =
+        convection.lookupOrDefault<Name>("default", "Upwind");
+    config.schemes.momentumScheme =
+        convection.lookupOrDefault<Name>("U", "");
+    config.schemes.kScheme =
+        convection.lookupOrDefault<Name>("k", "");
+    config.schemes.omegaScheme =
+        convection.lookupOrDefault<Name>("omega", "");
 
     if (config.debug)
     {
         std::cout
             << "Default convection scheme: "
-            << config.schemes.defaultName << '\n';
+            << config.schemes.defaultScheme << '\n';
 
-        if (!config.schemes.momentumName.empty())
+        if (!config.schemes.momentumScheme.empty())
         {
             std::cout
                 << "Momentum convection scheme: "
-                << config.schemes.momentumName << '\n';
+                << config.schemes.momentumScheme << '\n';
         }
-        if (!config.schemes.kName.empty())
+        if (!config.schemes.kScheme.empty())
         {
             std::cout
                 << "k convection scheme: "
-                << config.schemes.kName << '\n';
+                << config.schemes.kScheme << '\n';
         }
-        if (!config.schemes.omegaName.empty())
+        if (!config.schemes.omegaScheme.empty())
         {
             std::cout
                 << "omega convection scheme: "
-                << config.schemes.omegaName << '\n';
+                << config.schemes.omegaScheme << '\n';
         }
     }
 }
@@ -215,7 +215,7 @@ CaseConfiguration loadConfiguration(const CaseReader& reader)
     CaseConfiguration config;
 
     const auto& mesh = reader.section("mesh");
-    config.meshFilePath = mesh.lookup<std::string>("file");
+    config.meshFile = mesh.lookup<FilePath>("file");
     config.checkQuality = mesh.lookupOrDefault<bool>("checkQuality", true);
 
     config.numThreads = 1;
@@ -234,7 +234,7 @@ CaseConfiguration loadConfiguration(const CaseReader& reader)
         }
         else
         {
-            config.numThreads = n;
+            config.numThreads = static_cast<Count>(n);
         }
     }
 
@@ -263,8 +263,8 @@ CaseConfiguration loadConfiguration(const CaseReader& reader)
 
     const auto& simple = reader.section("SIMPLE");
 
-    config.maxIterations = simple.lookup<int>("numIterations");
-    if (config.maxIterations <= 0)
+    config.maxIterations = simple.lookup<Count>("numIterations");
+    if (config.maxIterations == 0)
     {
         FatalError("SIMPLE.numIterations must be a positive integer.");
     }
@@ -302,7 +302,7 @@ CaseConfiguration loadConfiguration(const CaseReader& reader)
 
     const auto& turbulence = reader.section("turbulence");
     config.turbulenceEnabled = turbulence.lookup<bool>("enabled");
-    config.turbulenceModel = turbulence.lookup<std::string>("model");
+    config.turbulenceModel = turbulence.lookup<Name>("model");
 
     if
     (
@@ -373,7 +373,7 @@ CaseConfiguration loadConfiguration(const CaseReader& reader)
         }
     }
 
-    config.vtkOutputFilename = outputDict.lookup<std::string>("filename");
+    config.vtkOutputFilename = outputDict.lookup<FilePath>("filename");
     if (config.vtkOutputFilename.empty())
     {
         FatalError("output.filename must not be empty.");

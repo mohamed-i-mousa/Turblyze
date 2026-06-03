@@ -10,6 +10,7 @@
 
 // Standard library headers
 #include <cmath>
+#include <iostream>
 
 // ************************* Special Member Functions *************************
 
@@ -23,7 +24,8 @@ Constraint::Constraint
     const bool pressureEnabled,
     const Scalar maxVelocityMagnitude,
     const Scalar minPressure,
-    const Scalar maxPressure
+    const Scalar maxPressure,
+    const bool debug
 ) noexcept
 :
     Ux_(Ux),
@@ -34,19 +36,20 @@ Constraint::Constraint
     enablePressureConstraints_(pressureEnabled),
     maxVelocityMagnitude_(maxVelocityMagnitude),
     minPressure_(minPressure),
-    maxPressure_(maxPressure)
+    maxPressure_(maxPressure),
+    debug_(debug)
 {}
 
 // ****************************** Public Methods ******************************
 
-size_t Constraint::applyVelocityConstraints() noexcept
+void Constraint::applyVelocityConstraints() noexcept
 {
-    if (!enableVelocityConstraints_) return 0;
+    if (!enableVelocityConstraints_) return;
 
-    size_t constraintApplied = 0;
+    Count constraintApplied = 0;
     const Scalar maxMagSq = maxVelocityMagnitude_ * maxVelocityMagnitude_;
 
-    for (size_t cellIdx = 0; cellIdx < Ux_.size(); ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < Ux_.size(); ++cellIdx)
     {
         const Scalar magSq =
             Ux_[cellIdx] * Ux_[cellIdx]
@@ -55,8 +58,7 @@ size_t Constraint::applyVelocityConstraints() noexcept
 
         if (magSq > maxMagSq)
         {
-            const Scalar scale =
-                maxVelocityMagnitude_ / std::sqrt(magSq);
+            const Scalar scale = maxVelocityMagnitude_ / std::sqrt(magSq);
 
             Ux_[cellIdx] *= scale;
             Uy_[cellIdx] *= scale;
@@ -66,20 +68,25 @@ size_t Constraint::applyVelocityConstraints() noexcept
         }
     }
 
-    return constraintApplied;
+    if (debug_ && constraintApplied > 0)
+    {
+        std::cout
+            << "  Applied velocity constraints to "
+            << constraintApplied << " cells" << '\n';
+    }
 }
 
-size_t Constraint::applyPressureConstraints() noexcept
+void Constraint::applyPressureConstraints() noexcept
 {
-    if (!enablePressureConstraints_) return 0;
+    if (!enablePressureConstraints_) return;
 
-    size_t constraintApplied = 0;
+    Count constraintApplied = 0;
 
-    for (size_t cellIdx = 0; cellIdx < p_.size(); ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < p_.size(); ++cellIdx)
     {
         const Scalar clamped =
             std::clamp(p_[cellIdx], minPressure_, maxPressure_);
-            
+
         if (clamped != p_[cellIdx])
         {
             p_[cellIdx] = clamped;
@@ -87,5 +94,10 @@ size_t Constraint::applyPressureConstraints() noexcept
         }
     }
 
-    return constraintApplied;
+    if (debug_ && constraintApplied > 0)
+    {
+        std::cout
+            << "  Applied pressure constraints to "
+            << constraintApplied << " cells" << '\n';
+    }
 }

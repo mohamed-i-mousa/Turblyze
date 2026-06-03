@@ -27,7 +27,7 @@ Mesh create(const CaseConfiguration& config)
         << '\n' << "--- 1. Reading and Preparing Mesh ---" << '\n';
 
     // Read mesh data from file
-    MeshReader meshReader(config.meshFilePath);
+    MeshReader meshReader(config.meshFile);
 
     // Construct Mesh
     Mesh mesh
@@ -49,7 +49,7 @@ Mesh create(const CaseConfiguration& config)
     const auto nodes = mesh.nodes();
 
     #pragma omp parallel for schedule(static)
-    for (size_t faceIdx = 0; faceIdx < faces.size(); ++faceIdx)
+    for (Index faceIdx = 0; faceIdx < faces.size(); ++faceIdx)
     {
         faceIntegrals[faceIdx] =
             faces[faceIdx].geometricProperties(nodes);
@@ -64,7 +64,7 @@ Mesh create(const CaseConfiguration& config)
     auto cells = mesh.cells();
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < cells.size(); ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < cells.size(); ++cellIdx)
     {
         cells[cellIdx].geometricProperties(faces, faceIntegrals);
     }
@@ -75,7 +75,7 @@ Mesh create(const CaseConfiguration& config)
     }
 
     #pragma omp parallel for schedule(static)
-    for (size_t faceIdx = 0; faceIdx < faces.size(); ++faceIdx)
+    for (Index faceIdx = 0; faceIdx < faces.size(); ++faceIdx)
     {
         faces[faceIdx].distances(cells);
     }

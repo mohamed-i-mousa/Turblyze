@@ -14,16 +14,17 @@
 
 // Standard library headers
 #include <memory>
-#include <string_view>
 #include <utility>
 #include <vector>
 
 // Project headers
-#include "TurbulenceModel.h"
 #include "Scalar.h"
+#include "Integer.h"
+#include "StringTypes.h"
+#include "Vector.h"
 #include "CellData.h"
 #include "FaceData.h"
-#include "Vector.h"
+#include "TurbulenceModel.h"
 
 // *************************** Forward Declarations ***************************
 
@@ -119,8 +120,7 @@ public:
     [[nodiscard]] virtual const ScalarField& dissipation() const noexcept = 0;
 
     /// Name of the dissipation field for output labelling ("omega"/"epsilon")
-    [[nodiscard]] virtual std::string_view
-    dissipationName() const noexcept = 0;
+    [[nodiscard]] virtual NameRef dissipationName() const noexcept = 0;
 
     /// Get normalised k change from the most recent solve
     [[nodiscard]] Scalar lastKResidual() const noexcept
@@ -141,17 +141,13 @@ public:
     }
 
     /// Cell-centered scalar fields exported by RANS models (name, field)
-    [[nodiscard]] std::vector<std::pair<std::string_view, const ScalarField*>>
-    cellDataOutputs() const override;
+    [[nodiscard]] CellDataPair cellDataOutputs() const override;
 
     /// Boundary scalar fields exported by RANS models (name, field)
-    [[nodiscard]]
-    std::vector<std::pair<std::string_view, const FaceData<Scalar>*>>
-    boundaryDataOutputs() const override;
+    [[nodiscard]] BoundaryDataPair boundaryDataOutputs() const override;
 
     /// Residuals contributed by RANS models to convergence checks (name, value)
-    [[nodiscard]] std::vector<std::pair<std::string_view, Scalar>>
-    residualOutputs() const override;
+    [[nodiscard]] ResidualPair residualOutputs() const override;
 
 // ****************************** Shared Members ******************************
 
@@ -244,10 +240,10 @@ protected:
     FaceData<Scalar> wallFaceWeight_;
 
     /// Indices into mesh_.faces for faces with model wall-function BCs
-    std::vector<size_t> wallFunctionFaceIndices_;
+    IndexList wallFunctionFaceIndices_;
 
     /// Unique cell indices adjacent to wall-function faces
-    std::vector<size_t> wallCellIndices_;
+    IndexList wallCellIndices_;
 
     /// Wall-to-total boundary area fraction per wall cell
     std::vector<Scalar> wallCellFraction_;

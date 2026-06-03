@@ -19,7 +19,10 @@
 
 // ********************************** Headers *********************************
 
-#include <string>
+#include <utility>
+
+#include "Integer.h"
+#include "StringTypes.h"
 
 // *************************** enum class PatchType ***************************
 
@@ -51,9 +54,9 @@ public:
     /// Constructor for boundary patch
     BoundaryPatch
     (
-        size_t idx,
-        size_t startIdx,
-        size_t endIdx
+        Index idx,
+        Index startIdx,
+        Index endIdx
     ) noexcept
     :
         zoneIdx_(idx),
@@ -64,9 +67,9 @@ public:
 // ****************************** Setter Methods ******************************
 
     /// Set patch name
-    void setPatchName(std::string name) noexcept
+    void setPatchName(Name patchName) noexcept
     {
-        patchName_ = std::move(name);
+        patchName_ = std::move(patchName);
     }
 
     /// Set patch type
@@ -75,13 +78,13 @@ public:
 // ***************************** Accessor Methods *****************************
 
     /// Get number of faces in this boundary patch
-    [[nodiscard]] size_t numBoundaryFaces() const noexcept
+    [[nodiscard]] Count numBoundaryFaces() const noexcept
     {
         return lastFaceIdx_ - firstFaceIdx_ + 1;
     }
 
     /// Get patch name
-    [[nodiscard]] const std::string& patchName() const noexcept
+    [[nodiscard]] const Name& patchName() const noexcept
     {
         return patchName_;
     }
@@ -90,16 +93,16 @@ public:
     [[nodiscard]] PatchType type() const noexcept { return type_; }
 
     /// Get zone identifier
-    [[nodiscard]] size_t zoneIdx() const noexcept { return zoneIdx_; }
+    [[nodiscard]] Index zoneIdx() const noexcept { return zoneIdx_; }
 
     /// Get first face index
-    [[nodiscard]] size_t firstFaceIdx() const noexcept
+    [[nodiscard]] Index firstFaceIdx() const noexcept
     {
         return firstFaceIdx_;
     }
 
     /// Get last face index
-    [[nodiscard]] size_t lastFaceIdx() const noexcept
+    [[nodiscard]] Index lastFaceIdx() const noexcept
     {
         return lastFaceIdx_;
     }
@@ -109,17 +112,17 @@ public:
 private:
 
     /// Human-readable patch name
-    std::string patchName_;
+    Name patchName_;
 
     /// Mapped boundary condition type
     PatchType type_ = PatchType::undefined;
 
     /// Zone identifier from mesh file
-    size_t zoneIdx_;
+    Index zoneIdx_;
 
     /// Index of first face in this patch
-    size_t firstFaceIdx_;
+    Index firstFaceIdx_;
 
     /// Index of last face in this patch
-    size_t lastFaceIdx_;
+    Index lastFaceIdx_;
 };

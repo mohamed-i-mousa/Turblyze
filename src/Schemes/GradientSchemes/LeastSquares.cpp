@@ -8,9 +8,6 @@
 // Implementation header
 #include "LeastSquares.h"
 
-// Standard library headers
-#include <string>
-
 // External library headers
 #include <omp.h>
 #include <eigen3/Eigen/Core>
@@ -39,7 +36,7 @@ Vector LeastSquares::cellGradient
 (
     Field field,
     const ScalarField& phi,
-    size_t cellIndex
+    Index cellIndex
 ) const
 {
     const Cell& cell = mesh_.cells()[cellIndex];
@@ -49,7 +46,7 @@ Vector LeastSquares::cellGradient
     Scalar b2 = S(0.0);
 
     // Part 1: Internal neighbor cells contribution to ATb
-    for (size_t neighborIdx : cell.neighborCellIndices())
+    for (Index neighborIdx : cell.neighborCellIndices())
     {
         if (neighborIdx >= mesh_.numCells())
         {
@@ -71,7 +68,7 @@ Vector LeastSquares::cellGradient
     }
 
     // Part 2: Boundary faces contribution to ATb
-    for (size_t faceIdx : cell.faceIndices())
+    for (Index faceIdx : cell.faceIndices())
     {
         const Face& face = mesh_.faces()[faceIdx];
 
@@ -112,22 +109,28 @@ Vector LeastSquares::cellGradient
 
 void LeastSquares::precomputeInverseATA()
 {
-    const size_t numCells = mesh_.numCells();
+    // Aliases for Eigen types
+    using Matrix3 = Eigen::Matrix<Scalar, 3, 3>;
+    using Vector3 = Eigen::Matrix<Scalar, 3, 1>;
+    using CholeskySolver = Eigen::LLT<Matrix3>;
+    using LUSolver = Eigen::FullPivLU<Matrix3>;
+
+    const Count numCells = mesh_.numCells();
     invATA_.resize(numCells);
 
-    size_t degenerateCells = 0;
+    Count degenerateCells = 0;
 
     #pragma omp parallel for schedule(static) reduction(+:degenerateCells)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
-        Eigen::Matrix<Scalar,3,3> ATA;
-        Eigen::Matrix<Scalar,3,1> rVector;
+        Matrix3 ATA;
+        Vector3 rVector;
         const Cell& cell = mesh_.cells()[cellIdx];
 
         ATA.setZero();
 
         // Neighbor cells contribution (purely geometric)
-        for (size_t neighborIdx : cell.neighborCellIndices())
+        for (Index neighborIdx : cell.neighborCellIndices())
         {
             const Vector r =
                 mesh_.cells()[neighborIdx].centroid()
@@ -141,7 +144,7 @@ void LeastSquares::precomputeInverseATA()
         }
 
         // Boundary faces contribution (purely geometric)
-        for (size_t faceIdx : cell.faceIndices())
+        for (Index faceIdx : cell.faceIndices())
         {
             const Face& face = mesh_.faces()[faceIdx];
 
@@ -156,19 +159,19 @@ void LeastSquares::precomputeInverseATA()
         }
 
         // Invert ATA and store symmetric result
-        Eigen::Matrix<Scalar,3,3> inv;
+        Matrix3 inv;
         bool inverted = false;
 
-        Eigen::LLT<Eigen::Matrix<Scalar,3,3>> llt(ATA);
+        CholeskySolver llt(ATA);
 
         if (llt.info() == Eigen::Success)
         {
-            inv = llt.solve(Eigen::Matrix<Scalar,3,3>::Identity());
+            inv = llt.solve(Matrix3::Identity());
             inverted = true;
         }
         else
         {
-            Eigen::FullPivLU<Eigen::Matrix<Scalar,3,3>>lu(ATA);
+            LUSolver lu(ATA);
 
             if (lu.isInvertible())
             {

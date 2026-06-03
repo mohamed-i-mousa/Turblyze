@@ -20,7 +20,7 @@
 
 void Cell::geometricProperties
 (
-    std::span<const Face> allFaces,
+    FaceListRef allFaces,
     std::span<const FaceIntegrals> allFaceIntegrals
 )
 {
@@ -29,9 +29,9 @@ void Cell::geometricProperties
     centroid_ = Vector{};
     Vector centroidSum;
 
-    for (size_t faceIdx = 0; faceIdx < faceIndices_.size(); ++faceIdx)
+    for (Index faceIdx = 0; faceIdx < faceIndices_.size(); ++faceIdx)
     {
-        const size_t faceIndex = faceIndices_[faceIdx];
+        const Index faceIndex = faceIndices_[faceIdx];
         const Face& face = allFaces[faceIndex];
 
         if(!face.geometricPropertiesCalculated())
@@ -79,7 +79,7 @@ std::ostream& operator<<(std::ostream& os, const Cell& c)
     os  << "Cell(ID: " << c.idx() << ", Faces: [";
 
     const auto faces = c.faceIndices();
-    for (size_t faceIdx = 0; faceIdx < faces.size(); ++faceIdx)
+    for (Index faceIdx = 0; faceIdx < faces.size(); ++faceIdx)
     {
         os  << faces[faceIdx]
             << (faceIdx == faces.size() - 1 ? "" : ", ");
@@ -88,7 +88,7 @@ std::ostream& operator<<(std::ostream& os, const Cell& c)
     os  << "], Neighbors: [";
 
     const auto neighbors = c.neighborCellIndices();
-    for (size_t neighborIdx = 0; neighborIdx < neighbors.size(); ++neighborIdx)
+    for (Index neighborIdx = 0; neighborIdx < neighbors.size(); ++neighborIdx)
     {
         os  << neighbors[neighborIdx]
             << (neighborIdx == neighbors.size() - 1 ? "" : ", ");

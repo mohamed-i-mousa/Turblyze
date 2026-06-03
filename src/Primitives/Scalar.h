@@ -11,23 +11,26 @@
 
 // ********************************** Headers *********************************
 
+// Standard library headers
 #include <concepts>
-#include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <string_view>
+#include <vector>
+
+// Project headers
+#include "Integer.h"
+#include "StringTypes.h"
 
 // ************************** Precision Configuration *************************
 
 /// Floating-point precision type (configured via CMakeLists.txt)
 #ifdef PROJECT_USE_DOUBLE_PRECISION
     using Scalar = double;
-    constexpr std::string_view SCALAR_MODE = "double (FP64)";
+    constexpr MessageRef SCALAR_MODE = "double (FP64)";
 #else
     using Scalar = float;
-    constexpr std::string_view SCALAR_MODE = "float (FP32)";
+    constexpr MessageRef SCALAR_MODE = "float (FP32)";
 #endif
-
 
 // ***************************** Scalar Conversion ****************************
 
@@ -39,7 +42,7 @@ concept ScalarLiteral =
  || std::same_as<T, long>
  || std::same_as<T, long long>
  || std::same_as<T, std::int8_t>
- || std::same_as<T, std::size_t>;
+ || std::same_as<T, Count>;
 
 /// Type-safe scalar literal conversion function
 template<ScalarLiteral T>
@@ -48,7 +51,6 @@ template<ScalarLiteral T>
     return static_cast<Scalar>(value);
 }
 
-
 // *************************** Numerical Tolerances ***************************
 
 constexpr Scalar smallValue = std::numeric_limits<Scalar>::epsilon();
@@ -56,3 +58,7 @@ constexpr Scalar smallValue = std::numeric_limits<Scalar>::epsilon();
 constexpr Scalar vSmallValue = std::numeric_limits<Scalar>::min();
 
 constexpr Scalar largeValue = S(1.0) / smallValue;
+
+// ********************************* Aliases **********************************
+
+using ScalarList = std::vector<Scalar>;

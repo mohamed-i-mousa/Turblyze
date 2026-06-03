@@ -27,7 +27,6 @@
 /// Standard library headers
 #include <vector>
 #include <limits>
-#include <string_view>
 
 /// Project headers
 #include "RANS.h"
@@ -101,7 +100,7 @@ public:
     }
 
     /// Dissipation field name for output labelling
-    [[nodiscard]] std::string_view dissipationName() const noexcept override
+    [[nodiscard]] NameRef dissipationName() const noexcept override
     {
         return "omega";
     }
@@ -206,7 +205,7 @@ private:
     };
 
     /// Area-weighted wall-function omega per wall cell
-    std::vector<Scalar> wallCellOmega_;
+    ScalarList wallCellOmega_;
 
     /// Precomputed Cmu^0.25 (avoids repeated std::pow calls)
     const Scalar Cmu25_ = std::sqrt(std::sqrt(coeffs_.betaStar));

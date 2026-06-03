@@ -13,8 +13,6 @@
 #include <array>
 #include <iostream>
 #include <map>
-#include <string>
-#include <string_view>
 
 // Project headers
 #include "CaseConfiguration.h"
@@ -30,6 +28,10 @@
 
 namespace PostProcess
 {
+
+    using ScalarFieldMap = std::map<Name, const ScalarField*>;
+    using VectorFieldMap = std::map<Name, std::array<const ScalarField*, 3>>;
+    using BoundaryScalarFieldMap = std::map<Name, const FaceData<Scalar>*>;
 
 void reportStatistics
 (
@@ -67,7 +69,7 @@ void reportStatistics
     Scalar maximumPressure = pressure[0];
     Scalar minimumPressure = pressure[0];
 
-    for (size_t cellIdx = 0; cellIdx < Ux.size(); ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < Ux.size(); ++cellIdx)
     {
         const Scalar vmag = velocityMag[cellIdx];
         maximumVelocity = std::max(maximumVelocity, vmag);
@@ -110,7 +112,7 @@ void exportResults
 
     const ScalarField velocityMag = VTK::velocityMagnitude(Ux, Uy, Uz);
 
-    std::map<std::string, const ScalarField*> scalarFieldsToVtk;
+    ScalarFieldMap scalarFieldsToVtk;
 
     scalarFieldsToVtk["pressure"] = &pressure;
     scalarFieldsToVtk["velocityMagnitude"] = &velocityMag;
@@ -119,26 +121,25 @@ void exportResults
     {
         if (output.second != nullptr)
         {
-            scalarFieldsToVtk[std::string{output.first}] = output.second;
+            scalarFieldsToVtk[Name{output.first}] = output.second;
         }
     }
 
-    std::map<std::string, std::array<const ScalarField*, 3>>
-    vectorFieldsToVtk;
+    VectorFieldMap vectorFieldsToVtk;
 
     vectorFieldsToVtk["velocity"] = {&Ux, &Uy, &Uz};
 
-    std::string vtuFilename = config.vtkOutputFilename;
-    static constexpr std::string_view extension = ".vtu";
+    FilePath vtuFilename = config.vtkOutputFilename;
+    static constexpr FilePathRef extension = ".vtu";
     if (!vtuFilename.ends_with(extension))
     {
         vtuFilename += extension;
     }
 
-    std::string vtpFilename = vtuFilename;
-    const size_t dotPos = vtpFilename.rfind(".vtu");
+    FilePath vtpFilename = vtuFilename;
+    const Index dotPos = vtpFilename.rfind(".vtu");
 
-    if (dotPos != std::string::npos)
+    if (dotPos != FilePath::npos)
     {
         vtpFilename.replace(dotPos, 4, "_boundary.vtp");
     }
@@ -162,14 +163,13 @@ void exportResults
         config.debug
     );
 
-    std::map<std::string, const FaceData<Scalar>*>
-    boundaryScalarFields;
+    BoundaryScalarFieldMap boundaryScalarFields;
 
     for (const auto& output : turbulence.boundaryDataOutputs())
     {
         if (output.second != nullptr)
         {
-            boundaryScalarFields[std::string{output.first}] =
+            boundaryScalarFields[Name{output.first}] =
                 output.second;
         }
     }

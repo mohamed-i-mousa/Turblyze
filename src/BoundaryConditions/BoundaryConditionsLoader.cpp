@@ -10,7 +10,6 @@
 
 // Standard library headers
 #include <iostream>
-#include <string_view>
 
 // Project headers
 #include "CaseReader.h"
@@ -29,18 +28,18 @@ namespace
 
 [[noreturn]] void unknownBCType
 (
-    std::string_view bcType,
-    std::string_view fieldName,
-    std::string_view patchName,
-    std::string_view validList
+    NameRef bcType,
+    NameRef fieldName,
+    NameRef patchName,
+    MessageRef validList
 )
 {
     FatalError
     (
-        "Unknown boundary condition type '" + std::string(bcType)
-      + "' for field '" + std::string(fieldName)
-      + "' on patch '" + std::string(patchName)
-      + "'. Valid types: " + std::string(validList)
+        "Unknown boundary condition type '" + Name(bcType)
+      + "' for field '" + Name(fieldName)
+      + "' on patch '" + Name(patchName)
+      + "'. Valid types: " + Message(validList)
     );
 }
 
@@ -64,7 +63,7 @@ void validateWallFunctionSetup
             continue;
         }
 
-        const std::string& patchName = patch.patchName();
+        const Name& patchName = patch.patchName();
 
         const bool kIsWF =
             bcManager.fieldBC(patchName, Field::k).type()
@@ -140,7 +139,7 @@ void load
         for (const auto& patchName : velocityBCs.sectionNames())
         {
             const auto& patchBC = velocityBCs.section(patchName);
-            const std::string bcType = patchBC.lookup<std::string>("type");
+            const Name bcType = patchBC.lookup<Name>("type");
 
             if (bcType == "fixedValue")
             {
@@ -181,7 +180,7 @@ void load
         for (const auto& patchName : pressureBCs.sectionNames())
         {
             const auto& patchBC = pressureBCs.section(patchName);
-            const std::string bcType = patchBC.lookup<std::string>("type");
+            const Name bcType = patchBC.lookup<Name>("type");
 
             if (bcType == "fixedValue")
             {
@@ -206,7 +205,7 @@ void load
         for (const auto& patchName : pressureBCs.sectionNames())
         {
             const auto& patchBC = pressureBCs.section(patchName);
-            const std::string bcType = patchBC.lookup<std::string>("type");
+            const Name bcType = patchBC.lookup<Name>("type");
 
             if (bcType == "fixedValue")
             {
@@ -236,12 +235,12 @@ void load
         for (const auto& patchName : kBCs.sectionNames())
         {
             const auto& patchBC = kBCs.section(patchName);
-            const std::string bcType = patchBC.lookup<std::string>("type");
+            const Name bcType = patchBC.lookup<Name>("type");
 
             if (bcType == "fixedValue")
             {
-                const std::string valStr =
-                    patchBC.lookup<std::string>("value");
+                const Token valStr =
+                    patchBC.lookup<Token>("value");
 
                 Scalar value = S(0.0);
 
@@ -296,12 +295,12 @@ void load
         for (const auto& patchName : omegaBCs.sectionNames())
         {
             const auto& patchBC = omegaBCs.section(patchName);
-            const std::string bcType = patchBC.lookup<std::string>("type");
+            const Name bcType = patchBC.lookup<Name>("type");
 
             if (bcType == "fixedValue")
             {
-                const std::string valStr =
-                    patchBC.lookup<std::string>("value");
+                const Token valStr =
+                    patchBC.lookup<Token>("value");
 
                 Scalar value = S(0.0);
 
@@ -367,7 +366,7 @@ void load
         for (const auto& patchName : nutBCs.sectionNames())
         {
             const auto& patchBC = nutBCs.section(patchName);
-            const std::string bcType = patchBC.lookup<std::string>("type");
+            const Name bcType = patchBC.lookup<Name>("type");
 
             if (bcType == "fixedValue")
             {

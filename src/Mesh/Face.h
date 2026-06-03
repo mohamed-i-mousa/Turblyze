@@ -24,16 +24,16 @@
 // ********************************** Headers *********************************
 
 // Standard library headers
-#include <vector>
-#include <string>
 #include <optional>
-#include <span>
+#include <utility>
 
 // Project headers
 #include "Scalar.h"
 #include "Vector.h"
 #include "OptionalRef.h"
 #include "BoundaryPatch.h"
+#include "MeshContainers.h"
+#include "Integer.h"
 
 // *************************** Forward Declarations ***************************
 
@@ -55,6 +55,10 @@ class Face
 {
 public:
 
+    using OptionalIndex = std::optional<Index>;
+    using OptionalScalar = std::optional<Scalar>;
+    using OptionalVector = std::optional<Vector>;
+
 // ************************* Special Member Functions *************************
 
     /// Default constructor
@@ -63,10 +67,10 @@ public:
     /// Constructor for internal faces
     Face
     (
-        size_t faceIdx,
-        std::vector<size_t> nodes,
-        size_t owner,
-        size_t neighbor
+        Index faceIdx,
+        IndexList nodes,
+        Index owner,
+        Index neighbor
     )
     :
         idx_(faceIdx),
@@ -78,9 +82,9 @@ public:
     /// Constructor for boundary faces
     Face
     (
-        size_t faceIdx,
-        std::vector<size_t> nodes,
-        size_t owner
+        Index faceIdx,
+        IndexList nodes,
+        Index owner
     )
     :
         idx_(faceIdx),
@@ -92,19 +96,19 @@ public:
 // ****************************** Setter Methods ******************************
 
     /// Set face identifier
-    void setIdx(size_t faceIdx) noexcept
+    void setIdx(Index faceIdx) noexcept
     {
         idx_ = faceIdx;
     }
 
     /// Set owner cell index
-    void setOwnerCell(size_t owner) noexcept
+    void setOwnerCell(Index owner) noexcept
     {
         ownerCell_ = owner;
     }
 
     /// Set neighbor cell index
-    void setNeighborCell(size_t neighbor) noexcept
+    void setNeighborCell(Index neighbor) noexcept
     {
         neighborCell_ = neighbor;
     }
@@ -116,7 +120,7 @@ public:
     }
 
     /// Add node index to face connectivity
-    void addNodeIndex(size_t nodeIdx)
+    void addNodeIndex(Index nodeIdx)
     {
         nodeIndices_.push_back(nodeIdx);
     }
@@ -136,25 +140,25 @@ public:
 // ***************************** Accessor Methods *****************************
 
     /// Get face identifier
-    [[nodiscard]] size_t idx() const noexcept
+    [[nodiscard]] Index idx() const noexcept
     {
         return idx_;
     }
 
     /// Get node connectivity
-    [[nodiscard]] std::span<const size_t> nodeIndices() const noexcept
+    [[nodiscard]] IndexListRef nodeIndices() const noexcept
     {
         return nodeIndices_;
     }
 
     /// Get owner cell index
-    [[nodiscard]] size_t ownerCell() const noexcept
+    [[nodiscard]] Index ownerCell() const noexcept
     {
         return ownerCell_;
     }
 
     /// Get neighbor cell index
-    [[nodiscard]] const std::optional<size_t>& neighborCell() const noexcept
+    [[nodiscard]] const OptionalIndex& neighborCell() const noexcept
     {
         return neighborCell_;
     }
@@ -190,7 +194,7 @@ public:
     }
 
     /// Get neighbor cell distance vector
-    [[nodiscard]] const std::optional<Vector>& dNf() const noexcept
+    [[nodiscard]] const OptionalVector& dNf() const noexcept
     {
         return dNf_;
     }
@@ -202,7 +206,7 @@ public:
     }
 
     /// Get neighbor cell distance magnitude
-    [[nodiscard]] const std::optional<Scalar>& dNfMag() const noexcept
+    [[nodiscard]] const OptionalScalar& dNfMag() const noexcept
     {
         return dNfMag_;
     }
@@ -230,7 +234,7 @@ public:
     /// Calculate Face centroid, normal, area, and second moment integral
     [[nodiscard]] FaceIntegrals geometricProperties
     (
-        std::span<const Vector> allNodes
+        NodeListRef allNodes
     );
 
     /// Check if distance properties calculated
@@ -240,23 +244,23 @@ public:
     }
 
     /// Calculate distance properties of the face
-    void distances(std::span<const Cell> allCells);
+    void distances(CellListRef allCells);
 
 // ****************************** Private Members *****************************
 
 private:
 
     /// Unique face identifier
-    size_t idx_ = 0;
+    Index idx_ = 0;
 
     /// Indices of nodes that define this face
-    std::vector<size_t> nodeIndices_;
+    IndexList nodeIndices_;
 
     /// Index of the owner cell
-    size_t ownerCell_ = 0;
+    Index ownerCell_ = 0;
 
     /// Index of neighbor cell (nullopt for boundary faces)
-    std::optional<size_t> neighborCell_;
+    OptionalIndex neighborCell_;
 
     /// Face geometric centroid
     Vector centroid_;
@@ -274,13 +278,13 @@ private:
     Vector dPf_;
 
     /// Distance vector from neighbor cell center to face center
-    std::optional<Vector> dNf_;
+    OptionalVector dNf_;
 
     /// Magnitude of d_Pf
     Scalar dPfMag_ = S(0.0);
 
     /// Magnitude of d_Nf
-    std::optional<Scalar> dNfMag_;
+    OptionalScalar dNfMag_;
 
     /// Flag indicating if geometric properties calculated
     bool geometricPropertiesCalculated_ = false;

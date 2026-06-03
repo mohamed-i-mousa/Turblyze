@@ -38,7 +38,8 @@ public:
         const bool pressureEnabled,
         const Scalar maxVelocityMagnitude,
         const Scalar minPressure,
-        const Scalar maxPressure
+        const Scalar maxPressure,
+        const bool debug
     ) noexcept;
 
     /// Copy constructor and assignment - Not copyable (reference member)
@@ -55,10 +56,10 @@ public:
 // ****************************** Public Methods ******************************
 
     /// Apply velocity field constraints
-    [[nodiscard]] size_t applyVelocityConstraints() noexcept;
+    void applyVelocityConstraints() noexcept;
 
     /// Apply pressure field constraints
-    [[nodiscard]] size_t applyPressureConstraints() noexcept;
+    void applyPressureConstraints() noexcept;
 
 // ****************************** Private Members *****************************
 
@@ -90,4 +91,7 @@ private:
 
     /// Maximum allowed pressure
     Scalar maxPressure_;
+
+    /// Report when constraints clip cells
+    bool debug_;
 };

@@ -21,7 +21,6 @@
 // ********************************** Headers *********************************
 
 /// Standard library headers
-#include <string_view>
 #include <vector>
 
 /// Project headers
@@ -35,6 +34,7 @@
 #include "Matrix.h"
 #include "LinearSolvers.h"
 #include "Constraint.h"
+#include "StringTypes.h"
 
 // *************************** Forward Declarations ***************************
 
@@ -45,6 +45,8 @@ class TurbulenceModel;
 class SIMPLE
 {
 public:
+
+    using NameRefList = std::vector<NameRef>;
 
 // ************************* Special Member Functions *************************
 
@@ -64,7 +66,7 @@ public:
         const Scalar initialPressure,
         const Scalar alphaU,
         const Scalar alphaP,
-        const int maxIterations,
+        const Count maxIterations,
         const Scalar convergenceTolerance,
         const bool velocityConstraintEnabled,
         const bool pressureConstraintEnabled,
@@ -144,7 +146,7 @@ private:
     Scalar alphaP_;
 
     /// Maximum number of iterations
-    int maxIterations_;
+    Count maxIterations_;
 
     /// Convergence tolerance
     Scalar tolerance_;
@@ -241,14 +243,14 @@ private:
     Scalar lastPressureCorrectionRMS_ = S(1e9);
 
     /// Track turbulence field changes between iterations
-    std::vector<std::string_view> turbulenceResidualNames_;
-    std::vector<Scalar> lastTurbulenceResiduals_;
+    NameRefList turbulenceResidualNames_;
+    ScalarList lastTurbulenceResiduals_;
 
     /// First-iteration reference values for scaled residuals
     Scalar massImbalance0_ = S(0.0);
     Scalar velocityResidual0_ = S(0.0);
     Scalar pressureResidual0_ = S(0.0);
-    std::vector<Scalar> turbulenceResidual0_;
+    ScalarList turbulenceResidual0_;
 
 // ****************************** Private methods *****************************
 

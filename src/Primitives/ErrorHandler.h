@@ -27,23 +27,27 @@
 #include <cstdlib>
 #include <iostream>
 #include <source_location>
-#include <string>
-#include <string_view>
+
+#include "StringTypes.h"
+
+// *********************************** Alias **********************************
+
+using Location = std::source_location;
 
 // ************************* Error Handling Functions *************************
 
 /// Print a fatal error message and abort the program
 [[noreturn]] inline void FatalError
 (
-    std::string_view message,
-    std::source_location location = std::source_location::current()
+    const MessageRef errorMessage,
+    const Location errorLocation = Location::current()
 ) noexcept
 {
     std::cerr
         << '\n' << '\n' << "FATAL ERROR"
-        << '\n' << "    " << location.file_name() << ':' << location.line()
-        << '\n' << "    " << message
-        << std::endl;
+        << '\n' << "    " << errorLocation.file_name() << ':'
+        << errorLocation.line()
+        << '\n' << "    " << errorMessage << std::endl;
 
     std::abort();
 }
@@ -52,11 +56,11 @@
 /// Print a warning message and continue execution
 inline void Warning
 (
-    std::string_view message,
-    std::source_location location = std::source_location::current()
+    const MessageRef warningMessage,
+    const Location warningLocation = Location::current()
 ) noexcept
 {
     std::cerr
-        << '\n' << "[WARNING] (" << location.file_name() << ':'
-        << location.line() << ") " << message << std::endl;
+        << '\n' << "[WARNING] (" << warningLocation.file_name() << ':'
+        << warningLocation.line() << ") " << warningMessage << std::endl;
 }

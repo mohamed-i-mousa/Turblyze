@@ -13,12 +13,12 @@
 // ********************************** Headers *********************************
 
 // Standard library headers
-#include <string_view>
 #include <utility>
 #include <vector>
 
 // Project headers
 #include "Scalar.h"
+#include "StringTypes.h"
 #include "Vector.h"
 #include "Face.h"
 #include "CellData.h"
@@ -33,6 +33,13 @@ class BoundaryConditions;
 class TurbulenceModel
 {
 public:
+
+    using CellDataPair =
+        std::vector<std::pair<NameRef, const ScalarField*>>;
+    using BoundaryDataPair =
+        std::vector<std::pair<NameRef, const FaceData<Scalar>*>>;
+    using ResidualPair =
+        std::vector<std::pair<NameRef, Scalar>>;
 
 // ************************* Special Member Functions *************************
 
@@ -88,24 +95,19 @@ public:
     }
 
     /// Cell-centered scalar fields exported by this model (name, field)
-    [[nodiscard]] virtual
-    std::vector<std::pair<std::string_view, const ScalarField*>>
-    cellDataOutputs() const
+    [[nodiscard]] virtual CellDataPair cellDataOutputs() const
     {
         return {};
     }
 
     /// Boundary scalar fields exported by this model (name, field)
-    [[nodiscard]] virtual
-    std::vector<std::pair<std::string_view, const FaceData<Scalar>*>>
-    boundaryDataOutputs() const
+    [[nodiscard]] virtual BoundaryDataPair boundaryDataOutputs() const
     {
         return {};
     }
 
     /// Residuals contributed by this model to convergence checks (name, value)
-    [[nodiscard]] virtual std::vector<std::pair<std::string_view, Scalar>>
-    residualOutputs() const
+    [[nodiscard]] virtual ResidualPair residualOutputs() const
     {
         return {};
     }

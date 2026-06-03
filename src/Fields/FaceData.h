@@ -22,7 +22,6 @@
 
 // Standard library headers
 #include <algorithm>
-#include <cstddef>
 #include <span>
 #include <vector>
 #include <concepts>
@@ -32,6 +31,7 @@
 #include "Scalar.h"
 #include "Vector.h"
 #include "Mesh.h"
+#include "Integer.h"
 
 // *************************** concept FaceFieldType **************************
 
@@ -70,13 +70,16 @@ public:
 // ***************************** Accessor Methods *****************************
 
     /// Get number of faces in the field
-    [[nodiscard]] size_t size() const noexcept
+    [[nodiscard]] Count size() const noexcept
     {
         return internalField_.size();
     }
 
     /// Get pointer to field storage
-    [[nodiscard]] T* data() noexcept { return internalField_.data(); }
+    [[nodiscard]] T* data() noexcept
+    {
+        return internalField_.data();
+    }
 
     /// Get const pointer to field storage
     [[nodiscard]] const T* data() const noexcept
@@ -108,13 +111,13 @@ public:
 // ***************************** Operator Methods *****************************
 
     /// Unchecked subscript operator
-    T& operator[](size_t faceIndex) noexcept
+    T& operator[](Index faceIndex) noexcept
     {
         return internalField_[faceIndex];
     }
 
     /// Unchecked const subscript operator
-    const T& operator[](size_t faceIndex) const noexcept
+    const T& operator[](Index faceIndex) const noexcept
     {
         return internalField_[faceIndex];
     }
@@ -122,16 +125,16 @@ public:
 // ****************************** Helper Methods ******************************
 
     /// Print field summary for debugging
-    void printSummary(size_t itemsToShow) const
+    void printSummary(Count itemsToShow) const
     {
         std::cout
             << "FaceData (Size: " << internalField_.size() << ")\n";
 
-        const size_t count = std::min(internalField_.size(), itemsToShow);
+        const Count count = std::min(internalField_.size(), itemsToShow);
 
         for
         (
-            size_t faceIdx = 0;
+            Index faceIdx = 0;
             faceIdx < count;
             ++faceIdx
         )

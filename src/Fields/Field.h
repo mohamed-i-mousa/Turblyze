@@ -15,7 +15,7 @@
 
 // ********************************** Headers *********************************
 
-#include <string_view>
+#include "StringTypes.h"
 
 // ***************************** enum class Field *****************************
 
@@ -34,4 +34,4 @@ enum class Field
 // *************************** Non-Member Functions ***************************
 
 /// Human-readable name of a field, for diagnostics and logging
-[[nodiscard]] std::string_view fieldToString(Field field) noexcept;
+[[nodiscard]] NameRef fieldToString(Field field) noexcept;

@@ -15,7 +15,7 @@
 
 // ***************************** namespace Logger *****************************
 
-void Logger::sectionHeader(std::string_view title)
+void Logger::sectionHeader(MessageRef title)
 {
     StreamStateGuard guard(std::cout);
     std::cout
@@ -28,7 +28,7 @@ void Logger::sectionHeader(std::string_view title)
 }
 
 
-void Logger::iterationHeader(int n)
+void Logger::iterationHeader(Count n)
 {
     sectionHeader("Iteration " + std::to_string(n));
 }
@@ -65,8 +65,8 @@ void Logger::residualTableHeader()
 
 void Logger::residualRow
 (
-    std::string_view equation,
-    std::string_view solver,
+    NameRef equation,
+    NameRef solver,
     int iterations,
     Scalar linearSolverResidual
 )
@@ -84,7 +84,7 @@ void Logger::residualRow
 }
 
 
-void Logger::subsection(std::string_view title)
+void Logger::subsection(MessageRef title)
 {
     StreamStateGuard guard(std::cout);
     std::cout << '\n' << "  " << title << '\n';
@@ -93,7 +93,7 @@ void Logger::subsection(std::string_view title)
 
 void Logger::scalarStat
 (
-    std::string_view name,
+    NameRef name,
     Scalar minVal,
     Scalar maxVal,
     Scalar meanVal
@@ -111,7 +111,7 @@ void Logger::scalarStat
 }
 
 
-void Logger::scaledResidual(std::string_view name, Scalar value)
+void Logger::scaledResidual(NameRef name, Scalar value)
 {
     StreamStateGuard guard(std::cout);
 
@@ -188,10 +188,10 @@ void Logger::linearSolverConfigHeader()
 
 void Logger::linearSolverConfigRow
 (
-    std::string_view equation,
-    std::string_view solver,
+    NameRef equation,
+    NameRef solver,
     Scalar tolerance,
-    int maxIters
+    Count maxIters
 )
 {
     StreamStateGuard guard(std::cout);
@@ -204,7 +204,7 @@ void Logger::linearSolverConfigRow
 }
 
 
-void Logger::keyValue(std::string_view label, Scalar value)
+void Logger::keyValue(MessageRef label, Scalar value)
 {
     StreamStateGuard guard(std::cout);
 
@@ -214,7 +214,7 @@ void Logger::keyValue(std::string_view label, Scalar value)
 }
 
 
-void Logger::keyValue(std::string_view label, int value)
+void Logger::keyValue(MessageRef label, int value)
 {
     StreamStateGuard guard(std::cout);
 
@@ -224,7 +224,17 @@ void Logger::keyValue(std::string_view label, int value)
 }
 
 
-void Logger::keyValue(std::string_view label, std::string_view value)
+void Logger::keyValue(MessageRef label, Count value)
+{
+    StreamStateGuard guard(std::cout);
+
+    std::cout
+        << "    " << std::left  << std::setw(24) << label
+        << "  " << std::right << std::setw(12) << value << '\n';
+}
+
+
+void Logger::keyValue(MessageRef label, MessageRef value)
 {
     StreamStateGuard guard(std::cout);
 

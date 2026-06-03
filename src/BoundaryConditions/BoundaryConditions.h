@@ -20,26 +20,28 @@
 // ********************************** Headers *********************************
 
 // Standard library headers
-#include <vector>
-#include <string>
 #include <map>
 #include <optional>
-#include <span>
 
 // Project headers
 #include "Scalar.h"
-#include "Vector.h"
+#include "MeshContainers.h"
 #include "Face.h"
 #include "BoundaryPatch.h"
 #include "BoundaryData.h"
 #include "CellData.h"
 #include "Field.h"
+#include "Integer.h"
+#include "StringTypes.h"
 
 // ************************* class BoundaryConditions *************************
 
 class BoundaryConditions
 {
 public:
+
+    using PatchBoundaryDataMap =
+        std::map<Name, std::map<Field, BoundaryData>>;
 
 // ****************************** Setter Methods ******************************
 
@@ -49,7 +51,7 @@ public:
     /// Set generic boundary condition
     void setBC
     (
-        const std::string& patchName,
+        const Name& patchName,
         Field field,
         BoundaryData bcData
     )
@@ -60,7 +62,7 @@ public:
     /// Set fixed scalar value boundary condition
     void setFixedValue
     (
-        const std::string& patchName,
+        const Name& patchName,
         Field field,
         Scalar value
     );
@@ -68,7 +70,7 @@ public:
     /// Set fixed scalar gradient boundary condition
     void setFixedGradient
     (
-        const std::string& patchName,
+        const Name& patchName,
         Field field,
         Scalar gradient
     );
@@ -76,21 +78,21 @@ public:
     /// Set zero gradient boundary condition
     void setZeroGradient
     (
-        const std::string& patchName,
+        const Name& patchName,
         Field field
     );
 
     /// Set no-slip boundary condition
     void setNoSlip
     (
-        const std::string& patchName,
+        const Name& patchName,
         Field field
     );
 
     /// Set wall function boundary condition type
     void setWallFunctionType
     (
-        const std::string& patchName,
+        const Name& patchName,
         Field field,
         BCType wallType
     );
@@ -98,16 +100,16 @@ public:
 // ***************************** Accessor Methods *****************************
 
     /// Get boundary patch by name
-    [[nodiscard]] const BoundaryPatch& patch(const std::string& name) const;
+    [[nodiscard]] const BoundaryPatch& patch(const Name& patchName) const;
 
     /// Get all boundary patches
-    [[nodiscard]] const std::vector<BoundaryPatch>& patches() const noexcept
+    [[nodiscard]] const PatchList& patches() const noexcept
     {
         return patches_;
     }
 
     /// Get number of patches
-    [[nodiscard]] size_t numPatches() const noexcept
+    [[nodiscard]] Count numPatches() const noexcept
     {
         return patches_.size();
     }
@@ -115,7 +117,7 @@ public:
     /// Get boundary condition for a field on a patch
     [[nodiscard]] const BoundaryData& fieldBC
     (
-        const std::string& patchName,
+        const Name& patchName,
         Field field
     ) const;
 
@@ -124,11 +126,11 @@ public:
     (
         Field field,
         const ScalarField& phi,
-        const Face& face
+        const Face& boundaryFace
     ) const;
 
     /// Link boundary faces to their owning patches
-    void linkFaces(std::span<Face> faces);
+    void linkFaces(MutableFaceListRef faces);
 
     /// Validate boundary condition patch names against mesh patch names
     void validatePatchNames() const;
@@ -141,11 +143,10 @@ public:
 private:
 
     /// Nested map: patch name → field → boundary data
-    std::map<std::string, std::map<Field, BoundaryData>>
-    patchBoundaryData_;
+    PatchBoundaryDataMap patchBoundaryData_;
 
-    /// Vector of all boundary patches
-    std::vector<BoundaryPatch> patches_;
+    /// All boundary patches
+    PatchList patches_;
 
     /// True after linkFaces() — prevents addPatch() after linking
     bool linked_ = false;

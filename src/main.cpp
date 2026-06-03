@@ -13,12 +13,12 @@
 
 // Standard library headers
 #include <iostream>
-#include <string>
 #include <iomanip>
 #include <chrono>
 
 // Project headers
 #include "Scalar.h"
+#include "StringTypes.h"
 #include "CFDApplication.h"
 
 // *********************************** main ***********************************
@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
     std::cout 
         << std::fixed << std::setprecision(6);
 
-    std::string caseFile = "../defaultCase";
+    FilePath caseFile = "../defaultCase";
 
     if (argc > 1)
     {

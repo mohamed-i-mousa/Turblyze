@@ -33,6 +33,8 @@
 #include "Scalar.h"
 #include "Vector.h"
 #include "ErrorHandler.h"
+#include "Integer.h"
+#include "StringTypes.h"
 
 // *************************** concept CaseInputType **************************
 
@@ -40,21 +42,25 @@ template<typename T>
 concept CaseInputType =
     std::same_as<T, Scalar>
  || std::same_as<T, Vector>
- || std::same_as<T, std::string>
- || std::same_as<T, bool>
- || std::same_as<T, int>;
+ || std::same_as<T, Count>
+ || std::same_as<T, Token>
+ || std::same_as<T, int>
+ || std::same_as<T, bool>;
 
 // ***************************** class CaseReader *****************************
-
 
 class CaseReader
 {
 public:
 
+    using NameList = std::vector<Name>;
+    using EntryMap = std::map<Name, Token>;
+    using SectionMap = std::map<Name, CaseReader>;
+
 // ************************* Special Member Functions *************************
 
     /// Construct reader from file
-    explicit CaseReader(const std::string& filename);
+    explicit CaseReader(const FilePath& filename);
 
     /// Default constructor for sections
     CaseReader() noexcept = default;
@@ -63,7 +69,7 @@ public:
 
     /// Look up a required value
     template<CaseInputType T>
-    T lookup(const std::string& keyword) const
+    T lookup(const Name& keyword) const
     {
         const auto it = entries_.find(keyword);
         if (it == entries_.end())
@@ -76,7 +82,7 @@ public:
 
     /// Look up an optional value with default
     template<CaseInputType T>
-    T lookupOrDefault(const std::string& keyword, const T& defaultValue) const
+    T lookupOrDefault(const Name& keyword, const T& defaultValue) const
     {
         const auto it = entries_.find(keyword);
         if (it == entries_.end())
@@ -88,26 +94,26 @@ public:
     }
 
     /// Access a section
-    const CaseReader& section(const std::string& name) const;
+    const CaseReader& section(const Name& sectionName) const;
 
     /// Check if section exists
-    bool hasSection(const std::string& name) const noexcept
+    bool hasSection(const Name& sectionName) const noexcept
     {
-        return sections_.contains(name);
+        return sections_.contains(sectionName);
     }
 
     /// Get all section names
-    std::vector<std::string> sectionNames() const;
+    NameList sectionNames() const;
 
     /// Print case file contents for debugging
-    void print(int indent = 0) const;
+    void print(Count indent = 0) const;
 
 // ****************************** Private Methods *****************************
 
 private:
 
     /// Parse file contents
-    void parseFile(const std::string& filename);
+    void parseFile(const FilePath& filename);
 
     /// Parse a section from stream
     void parseSection
@@ -121,14 +127,14 @@ private:
     void skipCommentsAndWhitespace(std::istream& is);
 
     /// Read next token from stream
-    std::string readToken(std::istream& is);
+    Token readToken(std::istream& is);
 
     /// Parse a value as a string representation
-    std::string parseValue(std::istream& is, const std::string& firstToken);
+    Token parseValue(std::istream& is, const Token& firstToken);
 
     /// Convert string to specified type
     template<CaseInputType T>
-    T convertTo(const std::string& value) const
+    T convertTo(const Token& value) const
     {
         if constexpr (std::same_as<T, Scalar>)
         {
@@ -164,9 +170,26 @@ private:
 
             return result;
         }
+        else if constexpr (std::same_as<T, Count>)
+        {
+            Count result = 0;
+            const auto [ptr, ec] = std::from_chars
+            (
+                value.data(),
+                value.data() + value.size(),
+                result
+            );
+
+            if (ec != std::errc() || ptr != value.data() + value.size())
+            {
+                FatalError("Cannot convert '" + value + "' to Count");
+            }
+
+            return result;
+        }
         else if constexpr (std::same_as<T, bool>)
         {
-            std::string lower = value;
+            Token lower = value;
             std::ranges::transform(lower, lower.begin(), toLowerSafe);
 
             if
@@ -193,14 +216,14 @@ private:
 
             FatalError("Cannot convert '" + value + "' to bool");
         }
-        else if constexpr (std::same_as<T, std::string>)
+        else if constexpr (std::same_as<T, Token>)
         {
             return value;
         }
         else if constexpr (std::same_as<T, Vector>)
         {
             // Expecting format: (x y z)
-            std::string trimmed = value;
+            Token trimmed = value;
 
             // Remove parentheses
             std::erase(trimmed, '(');
@@ -217,7 +240,7 @@ private:
             }
 
             // Reject trailing components: a Vector has exactly three
-            std::string extra;
+            Token extra;
             if (iss >> extra)
             {
                 FatalError
@@ -242,12 +265,14 @@ private:
 private:
 
     /// Storage for key-value pairs
-    std::map<std::string, std::string> entries_;
+    EntryMap entries_;
 
     /// Storage for sections
-    std::map<std::string, CaseReader> sections_;
+    SectionMap sections_;
 
     /// Current file being parsed (for error messages)
-    std::string currentFile_;
-    int currentLine_ = 1;
+    FilePath currentFile_;
+
+    /// Current line number being parsed (for error messages)
+    Count currentLine_ = 1;
 };

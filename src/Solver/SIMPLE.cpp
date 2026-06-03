@@ -40,7 +40,7 @@ SIMPLE::SIMPLE
     const Scalar initialPressure,
     const Scalar alphaU,
     const Scalar alphaP,
-    const int maxIterations,
+    const Count maxIterations,
     const Scalar convergenceTolerance,
     const bool velocityConstraintEnabled,
     const bool pressureConstraintEnabled,
@@ -74,7 +74,8 @@ SIMPLE::SIMPLE
         pressureConstraintEnabled,
         maxVelocityMagnitude,
         minPressure,
-        maxPressure
+        maxPressure,
+        debug
     }
 {
     Ux_.setAll(initialVelocity.x());
@@ -86,10 +87,10 @@ SIMPLE::SIMPLE
     p_.setAll(initialPressure);
 
     // Initialize RhieChowFlowRate_ with linear interpolation
-    const size_t numFaces = mesh_.numFaces();
+    const Count numFaces = mesh_.numFaces();
 
     #pragma omp parallel for schedule(static)
-    for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
+    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = mesh_.faces()[faceIdx];
         Vector Uf;
@@ -132,7 +133,7 @@ void SIMPLE::solve()
     lastTurbulenceResiduals_.clear();
     turbulenceResidual0_.clear();
 
-    int iteration = 0;
+    Count iteration = 0;
     bool converged = false;
 
     while (!converged && iteration < maxIterations_)
@@ -199,8 +200,8 @@ void SIMPLE::solve()
 
 void SIMPLE::solveMomentumEquations()
 {
-    const size_t numCells = mesh_.numCells();
-    const size_t numFaces = mesh_.numFaces();
+    const Count numCells = mesh_.numCells();
+    const Count numFaces = mesh_.numFaces();
 
     // Reset diagonals accumulator
     DU_.setAll(S(0.0));
@@ -210,7 +211,7 @@ void SIMPLE::solveMomentumEquations()
     // nut is zero for the laminar model, so nuEff reduces to nu.
     const ScalarField& nut = turbulence_.turbulentViscosity();
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         nuEff_[cellIdx] = nu_ + nut[cellIdx];
 
@@ -223,7 +224,7 @@ void SIMPLE::solveMomentumEquations()
 
     // Build face-based effective viscosity
     #pragma omp parallel for schedule(static)
-    for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
+    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = mesh_.faces()[faceIdx];
 
@@ -296,7 +297,7 @@ void SIMPLE::solveMomentumEquations()
 
     // Calculate DUf_ field using complete DU_
     #pragma omp parallel for schedule(static)
-    for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
+    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = mesh_.faces()[faceIdx];
 
@@ -327,18 +328,21 @@ void SIMPLE::solveMomentumEquations()
 
 void SIMPLE::updateRhieChowFlowRate()
 {
-    const size_t numFaces = mesh_.numFaces();
+    const Count numFaces = mesh_.numFaces();
 
     #pragma omp parallel for schedule(static)
-    for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
+    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = mesh_.faces()[faceIdx];
 
         if (face.isBoundary())
         {
-            UxAvgf_[faceIdx] = bcManager_.boundaryFaceValue(Field::Ux, Ux_, face);
-            UyAvgf_[faceIdx] = bcManager_.boundaryFaceValue(Field::Uy, Uy_, face);
-            UzAvgf_[faceIdx] = bcManager_.boundaryFaceValue(Field::Uz, Uz_, face);
+            UxAvgf_[faceIdx] =
+                bcManager_.boundaryFaceValue(Field::Ux, Ux_, face);
+            UyAvgf_[faceIdx] =
+                bcManager_.boundaryFaceValue(Field::Uy, Uy_, face);
+            UzAvgf_[faceIdx] =
+                bcManager_.boundaryFaceValue(Field::Uz, Uz_, face);
 
             const Vector Uf
             (
@@ -353,8 +357,8 @@ void SIMPLE::updateRhieChowFlowRate()
             continue;
         }
 
-        const size_t P = face.ownerCell();
-        const size_t N = face.neighborCell().value();
+        const Index P = face.ownerCell();
+        const Index N = face.neighborCell().value();
 
         // Linear-interpolated velocity at face
         const Vector UfLinear
@@ -393,19 +397,19 @@ void SIMPLE::updateRhieChowFlowRate()
 
 void SIMPLE::solvePressureCorrection()
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     gradientScheme_.fieldGradient(Field::pCorr, pCorr_, gradPCorrPrecomputed_);
 
     // Compute mass imbalance source term
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         Scalar net = S(0.0);
         const auto& faceIndices = mesh_.cells()[cellIdx].faceIndices();
         const auto& signs = mesh_.cells()[cellIdx].faceSigns();
 
-        for (size_t j = 0; j < faceIndices.size(); ++j)
+        for (Index j = 0; j < faceIndices.size(); ++j)
         {
             net += signs[j] * RhieChowFlowRate_[faceIndices[j]];
         }
@@ -435,8 +439,7 @@ void SIMPLE::solvePressureCorrection()
     // Map pCorr field storage as Eigen vector (zero-copy)
     pCorr_.setAll(S(0.0));
 
-    Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
-    pCorrSolution(pCorr_.data(), eIdx(numCells));
+    EigenVectorMap pCorrSolution(pCorr_.data(), eIdx(numCells));
     pressureSolver_.solve(pCorrSolution, matrixA, vectorB);
 
     if (debug_)
@@ -454,7 +457,7 @@ void SIMPLE::solvePressureCorrection()
     }
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         gradPCorr_[cellIdx] =
             gradientScheme_.cellGradient(Field::pCorr, pCorr_, cellIdx);
@@ -464,31 +467,23 @@ void SIMPLE::solvePressureCorrection()
 
 void SIMPLE::correctVelocity()
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         Ux_[cellIdx] -= DU_[cellIdx] * gradPCorr_[cellIdx].x();
         Uy_[cellIdx] -= DU_[cellIdx] * gradPCorr_[cellIdx].y();
         Uz_[cellIdx] -= DU_[cellIdx] * gradPCorr_[cellIdx].z();
     }
 
-    const auto velocityConstraints =
-        constraintSystem_.applyVelocityConstraints();
-
-    if (debug_ && velocityConstraints > 0)
-    {
-        std::cout
-            << "  Applied velocity constraints to " << velocityConstraints
-            << " cells" << '\n';
-    }
+    constraintSystem_.applyVelocityConstraints();
 
     // Update face velocities
-    const size_t numFaces = mesh_.numFaces();
+    const Count numFaces = mesh_.numFaces();
 
     #pragma omp parallel for schedule(static)
-    for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
+    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = mesh_.faces()[faceIdx];
 
@@ -511,10 +506,10 @@ void SIMPLE::correctVelocity()
 void SIMPLE::correctFlowRate()
 {
     // Update mass flux on faces
-    const size_t numFaces = mesh_.numFaces();
+    const Count numFaces = mesh_.numFaces();
 
     #pragma omp parallel for schedule(static)
-    for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
+    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = mesh_.faces()[faceIdx];
 
@@ -542,8 +537,8 @@ void SIMPLE::correctFlowRate()
             continue;
         }
 
-        const size_t ownerIdx = face.ownerCell();
-        const size_t neighborIdx = face.neighborCell().value();
+        const Index ownerIdx = face.ownerCell();
+        const Index neighborIdx = face.neighborCell().value();
 
         const Vector gradPCorrf =
             gradientScheme_.faceGradient
@@ -568,10 +563,10 @@ void SIMPLE::correctPressure()
 {
     Scalar sumSq = S(0.0);
 
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static) reduction(+:sumSq)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         sumSq += pCorr_[cellIdx] * pCorr_[cellIdx];
     }
@@ -580,21 +575,13 @@ void SIMPLE::correctPressure()
 
     // Apply pressure correction
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         p_[cellIdx] += alphaP_ * pCorr_[cellIdx];
     }
 
     // Apply pressure bounds constraints
-    const auto pressureConstraints =
-        constraintSystem_.applyPressureConstraints();
-
-    if (debug_ && pressureConstraints > 0)
-    {
-        std::cout
-            << "  Applied pressure constraints to " << pressureConstraints
-            << " cells" << '\n';
-    }
+    constraintSystem_.applyPressureConstraints();
 
     // Reset pressure correction for next iteration
     pCorr_.setAll(S(0.0));
@@ -665,7 +652,7 @@ bool SIMPLE::checkConvergence()
 
     if (turbulence_.isTurbulent())
     {
-        const size_t residualCount =
+        const Count residualCount =
             std::min
             (
                 lastTurbulenceResiduals_.size(),
@@ -674,7 +661,7 @@ bool SIMPLE::checkConvergence()
 
         scaledTurbulenceResiduals.reserve(residualCount);
 
-        for (size_t i = 0; i < residualCount; ++i)
+        for (Index i = 0; i < residualCount; ++i)
         {
             const Scalar scaled =
                 lastTurbulenceResiduals_[i]
@@ -729,10 +716,10 @@ bool SIMPLE::checkConvergence()
 
 void SIMPLE::updateVelocityGradients()
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         gradUx_[cellIdx] =
             gradientScheme_.cellGradient(Field::Ux, Ux_, cellIdx);
@@ -747,7 +734,7 @@ void SIMPLE::updateVelocityGradients()
     gradientScheme_.limitGradient(Field::Uz, Uz_, gradUz_);
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         gradU_[cellIdx] =
             tensorFromRows
@@ -762,10 +749,10 @@ void SIMPLE::updateVelocityGradients()
 
 void SIMPLE::addTransposeGradientSource()
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         Scalar sumX = S(0.0);
         Scalar sumY = S(0.0);
@@ -775,14 +762,13 @@ void SIMPLE::addTransposeGradientSource()
         const auto faceIndices = cell.faceIndices();
         const auto faceSigns = cell.faceSigns();
 
-        for (size_t j = 0; j < faceIndices.size(); ++j)
+        for (Index j = 0; j < faceIndices.size(); ++j)
         {
-            const size_t faceIdx = faceIndices[j];
+            const Index faceIdx = faceIndices[j];
             const Scalar sign = S(faceSigns[j]);
             const Face& face = mesh_.faces()[faceIdx];
 
-            const Vector Sf =
-                face.normal() * face.projectedArea() * sign;
+            const Vector Sf = face.normal() * face.projectedArea() * sign;
             const Scalar nuEfff = nuEffFace_[faceIdx];
 
             Tensor gradUf;
@@ -820,13 +806,13 @@ void SIMPLE::solveMomentumComponent
 
     matrixConstruct_.relax(alphaU_, componentPrev);
 
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     // DU_ is identical for all 3 momentum components — compute only once
     if (DUComputed_ == false)
     {
         #pragma omp parallel for schedule(static)
-        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+        for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
             DU_[cellIdx] =
                 mesh_.cells()[cellIdx].volume()
@@ -837,8 +823,7 @@ void SIMPLE::solveMomentumComponent
 
     // Map phi directly as Eigen vector: the zero-copy solve writes the
     // result straight into the bound velocity component field
-    Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
-    solutionMap(eq.phi.data(), eIdx(numCells));
+    EigenVectorMap solutionMap(eq.phi.data(), eIdx(numCells));
 
     momentumSolver_.solve(solutionMap, matrixA, vectorB);
 
@@ -863,17 +848,22 @@ Scalar SIMPLE::massImbalance() const noexcept
     // Dimensionless normalized continuity residual per cell, averaged
     Scalar totalNormImbalance = S(0.0);
 
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static) reduction(+:totalNormImbalance)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         Scalar net = S(0.0);
         Scalar sumAbs = S(0.0);
 
-        for (size_t j = 0; j < mesh_.cells()[cellIdx].faceIndices().size(); ++j)
+        for
+        (
+            Index j = 0;
+            j < mesh_.cells()[cellIdx].faceIndices().size();
+            ++j
+        )
         {
-            const size_t faceIdx = mesh_.cells()[cellIdx].faceIndices()[j];
+            const Index faceIdx = mesh_.cells()[cellIdx].faceIndices()[j];
             const int sign = mesh_.cells()[cellIdx].faceSigns()[j];
             const Scalar mf = RhieChowFlowRate_[faceIdx];
             net += S(sign) * mf;
@@ -884,7 +874,7 @@ Scalar SIMPLE::massImbalance() const noexcept
         totalNormImbalance += std::abs(net) / denom;
     }
 
-    return totalNormImbalance / S(std::max<size_t>(1, numCells));
+    return totalNormImbalance / S(std::max<Count>(1, numCells));
 }
 
 
@@ -894,10 +884,10 @@ Scalar SIMPLE::velocityResidual() const noexcept
     Scalar num = S(0.0);
     Scalar den = S(0.0);
 
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static) reduction(+:num, den)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Scalar dx = Ux_[cellIdx] - UxPrev_[cellIdx];
         const Scalar dy = Uy_[cellIdx] - UyPrev_[cellIdx];
@@ -921,10 +911,10 @@ Scalar SIMPLE::pressureResidual() const noexcept
     // Normalize p' RMS by RMS(p)
     Scalar sumP2 = S(0.0);
 
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static) reduction(+:sumP2)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         sumP2 += p_[cellIdx] * p_[cellIdx];
     }

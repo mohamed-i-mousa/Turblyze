@@ -14,13 +14,13 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
-#include <span>
 #include <string>
-#include <string_view>
 #include <vector>
 
 /// Project headers
 #include "ErrorHandler.h"
+#include "Integer.h"
+#include "StringTypes.h"
 
 // *************************** namespace MeshChecker **************************
 
@@ -43,12 +43,12 @@ namespace
 // Print up to 10 IDs from a list, with truncation indicator
 void printIndicesList
 (
-    std::span<const size_t> indices,
-    std::string_view entityName
+    IndexListRef indices,
+    MessageRef entityName
 )
 {
-    constexpr size_t maxDisplay = 10;
-    const size_t count = std::min(indices.size(), maxDisplay);
+    constexpr Count maxDisplay = 10;
+    const Count count = std::min(indices.size(), maxDisplay);
 
     if (indices.size() <= maxDisplay)
     {
@@ -62,7 +62,7 @@ void printIndicesList
             << entityName << " IDs: ";
     }
 
-    for (size_t i = 0; i < count; ++i)
+    for (Index i = 0; i < count; ++i)
     {
         if (i > 0)
         {
@@ -94,9 +94,7 @@ Scalar faceOrthogonality
 {
     const Vector dPN = neighborCellCentroid - ownerCellCentroid;
     const Scalar dPNMag = magnitude(dPN);
-
-    const Scalar cosAngle =
-        dot(dPN, faceNormal) / (dPNMag + vSmallValue);
+    const Scalar cosAngle = dot(dPN, faceNormal) / (dPNMag + vSmallValue);
 
     return std::clamp(cosAngle, S(-1.0), S(1.0));
 }
@@ -128,9 +126,9 @@ Scalar faceSkewness
     Scalar faceCharacteristicLength = S(0.2) * magnitude(dPN) + vSmallValue;
 
     // Refine by finding max vertex extent in skewness direction
-    const std::span<const size_t> nodeIndices = face.nodeIndices();
+    const IndexListRef nodeIndices = face.nodeIndices();
 
-    for (size_t nodeIdx : nodeIndices)
+    for (Index nodeIdx : nodeIndices)
     {
         const Vector vertexToCentroid =
             mesh.nodes()[nodeIdx] - face.centroid();
@@ -171,9 +169,9 @@ Scalar boundaryFaceSkewness
     Scalar faceCharacteristicLength = S(0.4) * magnitude(dPN) + vSmallValue;
 
     // Refine by finding max vertex extent in skewness direction
-    const std::span<const size_t> nodeIndices = face.nodeIndices();
+    const IndexListRef nodeIndices = face.nodeIndices();
 
-    for (size_t nodeIdx : nodeIndices)
+    for (Index nodeIdx : nodeIndices)
     {
         const Vector vertexToCentroid =
             mesh.nodes()[nodeIdx] - face.centroid();
@@ -200,7 +198,7 @@ Scalar cellAspectRatio
 
     const auto faceIndices = cell.faceIndices();
 
-    for (size_t faceIdx : faceIndices)
+    for (Index faceIdx : faceIndices)
     {
         const Face& face = mesh.faces()[faceIdx];
         const Vector areaVec = face.normal() * face.projectedArea();
@@ -300,7 +298,7 @@ bool validateConnectivity(const Mesh& mesh)
             valid = false;
         }
 
-        for (size_t nodeIdx : face.nodeIndices())
+        for (Index nodeIdx : face.nodeIndices())
         {
             if (nodeIdx >= mesh.numNodes())
             {
@@ -317,7 +315,7 @@ bool validateConnectivity(const Mesh& mesh)
 
     for (const auto& cell : mesh.cells())
     {
-        for (size_t faceIdx : cell.faceIndices())
+        for (Index faceIdx : cell.faceIndices())
         {
             if (faceIdx >= mesh.numFaces())
             {
@@ -358,23 +356,23 @@ void check(const Mesh& mesh)
     const Scalar firstArea = mesh.faces()[0].projectedArea();
     Scalar minFaceArea = firstArea;
     Scalar maxFaceArea = firstArea;
-    size_t minFaceIdx = mesh.faces()[0].idx();
-    size_t maxFaceIdx = mesh.faces()[0].idx();
+    Index minFaceIdx = mesh.faces()[0].idx();
+    Index maxFaceIdx = mesh.faces()[0].idx();
 
     // Collect faces with small area
-    std::vector<size_t> smallAreaFaces;
+    IndexList smallAreaFaces;
 
     // Non-orthogonality statistics
     Scalar maxNonOrthogonality = S(0.0);
     Scalar totalCosAngle = S(0.0);
-    size_t nonOrthCount = 0;
-    size_t maxNonOrthFaceIdx = 0;
-    std::vector<size_t> severeNonOrthFaces;
+    Count nonOrthCount = 0;
+    Index maxNonOrthFaceIdx = 0;
+    IndexList severeNonOrthFaces;
 
     // Skewness statistics
     Scalar maxSkewness = S(0.0);
-    size_t maxSkewFaceIdx = 0;
-    std::vector<size_t> highSkewFaces;
+    Index maxSkewFaceIdx = 0;
+    IndexList highSkewFaces;
 
     // Radian to degree conversion
     constexpr Scalar radToDeg = S(180.0) / std::numbers::pi_v<Scalar>;
@@ -382,7 +380,7 @@ void check(const Mesh& mesh)
     for (const auto& face : mesh.faces())
     {
         const Scalar area = face.projectedArea();
-        const size_t faceIdx = face.idx();
+        const Index faceIdx = face.idx();
 
         // Area statistics
         if (area < minFaceArea)
@@ -489,15 +487,15 @@ void check(const Mesh& mesh)
     // Cell volume and aspect ratio statistics
     Scalar minCellVolume = mesh.cells()[0].volume();
     Scalar maxCellVolume = mesh.cells()[0].volume();
-    size_t minCellIdx = mesh.cells()[0].idx();
-    size_t maxCellIdx = mesh.cells()[0].idx();
+    Index minCellIdx = mesh.cells()[0].idx();
+    Index maxCellIdx = mesh.cells()[0].idx();
 
     Scalar maxAspectRatio = S(0.0);
-    size_t maxAspectCellIdx = 0;
-    std::vector<size_t> highAspectCells;
+    Index maxAspectCellIdx = 0;
+    IndexList highAspectCells;
 
-    std::vector<size_t> smallVolumeCells;
-    std::vector<size_t> invertedCells;
+    IndexList smallVolumeCells;
+    IndexList invertedCells;
 
     for (const auto& cell : mesh.cells())
     {

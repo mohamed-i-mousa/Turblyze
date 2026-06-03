@@ -3,14 +3,14 @@
  * @brief Owning mesh data and lightweight view provider
  *
  * @details This header defines the Mesh class, which owns all mesh data
- * (nodes, faces, cells, boundary patches) and provides span-based views
+ * (nodes, faces, cells, and boundary patches) and provides list-ref views
  * to consumers. It also manages cell and face counts used by field
  * containers at construction time.
  *
  * @class Mesh
- * - Owns nodes, faces, cells, and boundary patches via std::vector members
- * - Const span accessors for read-only consumers (const Mesh&)
- * - Mutable span accessors for the mesh preparation phase
+ * - Owns nodes, faces, cells, and boundary patches via mesh list members
+ * - Const list-ref accessors for read-only consumers (const Mesh&)
+ * - Mutable list-ref accessors for the mesh preparation phase
  * - Static retrieval of cell and face counts
  *****************************************************************************/
 
@@ -19,16 +19,16 @@
 // ********************************** Headers *********************************
 
 // Standard library headers
-#include <span>
-#include <cstddef>
-#include <vector>
+#include <utility>
 
 // Project headers
+#include "MeshContainers.h"
 #include "Vector.h"
 #include "Face.h"
 #include "Cell.h"
 #include "BoundaryPatch.h"
 #include "ErrorHandler.h"
+#include "Integer.h"
 
 // ******************************** class Mesh ********************************
 
@@ -44,10 +44,10 @@ public:
     /// Construct mesh by taking ownership of data vectors
     Mesh
     (
-        std::vector<Vector> nodes,
-        std::vector<Face> faces,
-        std::vector<Cell> cells,
-        std::vector<BoundaryPatch> patches
+        NodeList nodes,
+        FaceList faces,
+        CellList cells,
+        PatchList patches
     )
     :
         nodes_(std::move(nodes)),
@@ -82,25 +82,25 @@ public:
 // ************************** Const Accessor Methods **************************
 
     /// Read-only view of node coordinates
-    [[nodiscard]] std::span<const Vector> nodes() const noexcept
+    [[nodiscard]] NodeListRef nodes() const noexcept
     {
         return nodes_;
     }
 
     /// Read-only view of faces
-    [[nodiscard]] std::span<const Face> faces() const noexcept
+    [[nodiscard]] FaceListRef faces() const noexcept
     {
         return faces_;
     }
 
     /// Read-only view of cells
-    [[nodiscard]] std::span<const Cell> cells() const noexcept
+    [[nodiscard]] CellListRef cells() const noexcept
     {
         return cells_;
     }
 
     /// Read-only view of boundary patches
-    [[nodiscard]] std::span<const BoundaryPatch> patches() const noexcept
+    [[nodiscard]] PatchListRef patches() const noexcept
     {
         return patches_;
     }
@@ -108,13 +108,13 @@ public:
 // ************************* Mutable Accessor Methods *************************
 
     /// Mutable view of faces
-    [[nodiscard]] std::span<Face> faces() noexcept
+    [[nodiscard]] MutableFaceListRef faces() noexcept
     {
         return faces_;
     }
 
     /// Mutable view of cells
-    [[nodiscard]] std::span<Cell> cells() noexcept
+    [[nodiscard]] MutableCellListRef cells() noexcept
     {
         return cells_;
     }
@@ -122,39 +122,39 @@ public:
 // *************************** Size Accessor Methods **************************
 
     /// Number of nodes in the mesh
-    [[nodiscard]] size_t numNodes() const noexcept { return nodes_.size(); }
+    [[nodiscard]] Count numNodes() const noexcept { return nodes_.size(); }
 
     /// Number of faces in the mesh
-    [[nodiscard]] size_t numFaces() const noexcept { return faces_.size(); }
+    [[nodiscard]] Count numFaces() const noexcept { return faces_.size(); }
 
     /// Number of cells in the mesh
-    [[nodiscard]] size_t numCells() const noexcept { return cells_.size(); }
+    [[nodiscard]] Count numCells() const noexcept { return cells_.size(); }
 
     /// Cell count at startup (used by CellData/FaceData)
-    [[nodiscard]] static size_t cellCount() noexcept { return cellCount_; }
+    [[nodiscard]] static Count cellCount() noexcept { return cellCount_; }
 
     /// Face count at startup (used by CellData/FaceData)
-    [[nodiscard]] static size_t faceCount() noexcept { return faceCount_; }
+    [[nodiscard]] static Count faceCount() noexcept { return faceCount_; }
 
 // ****************************** Private Members *****************************
 
 private:
 
     /// Mesh node coordinates
-    std::vector<Vector> nodes_;
+    NodeList nodes_;
 
     /// Mesh face topology
-    std::vector<Face> faces_;
+    FaceList faces_;
 
     /// Mesh cell topology
-    std::vector<Cell> cells_;
+    CellList cells_;
 
     /// Boundary patch descriptors
-    std::vector<BoundaryPatch> patches_;
+    PatchList patches_;
 
     /// Cell count for field container initialization
-    static inline size_t cellCount_ = 0;
+    static inline Count cellCount_ = 0;
 
     /// Face count for field container initialization
-    static inline size_t faceCount_ = 0;
+    static inline Count faceCount_ = 0;
 };

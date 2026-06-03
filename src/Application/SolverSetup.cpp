@@ -11,7 +11,6 @@
 // Standard library headers
 #include <iomanip>
 #include <sstream>
-#include <string_view>
 
 // Project headers
 #include "BoundaryConditions.h"
@@ -26,6 +25,7 @@
 #include "Mesh.h"
 #include "SIMPLE.h"
 #include "SecondOrderUpwindScheme.h"
+#include "StringTypes.h"
 #include "TurbulenceModel.h"
 #include "UpwindScheme.h"
 #include "Laminar.h"
@@ -38,41 +38,41 @@ namespace
 
 std::unique_ptr<GradientScheme> makeGradientScheme
 (
-    std::string_view name,
+    NameRef schemeName,
     const Mesh& mesh,
     const BoundaryConditions& bc
 )
 {
-    if (name == "leastSquares")
+    if (schemeName == "leastSquares")
     {
         return std::make_unique<LeastSquares>(mesh, bc);
     }
 
-    FatalError("Unknown gradient scheme: " + std::string(name));
+    FatalError("Unknown gradient scheme: " + Name(schemeName));
 }
 
 
 std::unique_ptr<ConvectionSchemes> makeConvectionScheme
 (
-    std::string_view name
+    NameRef schemeName
 )
 {
-    if (name == "Upwind")
+    if (schemeName == "Upwind")
     {
         return std::make_unique<UpwindScheme>();
     }
 
-    if (name == "CentralDifference")
+    if (schemeName == "CentralDifference")
     {
         return std::make_unique<CentralDifferenceScheme>();
     }
 
-    if (name == "SecondOrderUpwind")
+    if (schemeName == "SecondOrderUpwind")
     {
         return std::make_unique<SecondOrderUpwindScheme>();
     }
 
-    FatalError("Unknown convection scheme: " + std::string(name));
+    FatalError("Unknown convection scheme: " + Name(schemeName));
 }
 
 
@@ -83,25 +83,25 @@ void makeConvectionSchemes
 )
 {
     modules.defaultConvectionScheme =
-        makeConvectionScheme(config.defaultName);
+        makeConvectionScheme(config.defaultScheme);
     modules.momentumConvectionScheme.reset();
     modules.kConvectionScheme.reset();
     modules.omegaConvectionScheme.reset();
 
-    if (!config.momentumName.empty())
+    if (!config.momentumScheme.empty())
     {
         modules.momentumConvectionScheme =
-            makeConvectionScheme(config.momentumName);
+            makeConvectionScheme(config.momentumScheme);
     }
-    if (!config.kName.empty())
+    if (!config.kScheme.empty())
     {
         modules.kConvectionScheme =
-            makeConvectionScheme(config.kName);
+            makeConvectionScheme(config.kScheme);
     }
-    if (!config.omegaName.empty())
+    if (!config.omegaScheme.empty())
     {
         modules.omegaConvectionScheme =
-            makeConvectionScheme(config.omegaName);
+            makeConvectionScheme(config.omegaScheme);
     }
 }
 
@@ -131,7 +131,7 @@ std::unique_ptr<LinearSolver> makeLinearSolver
     const LinearSolverSettings& config
 )
 {
-    if (std::string_view{config.solver} == BiCGSTAB::typeName)
+    if (NameRef{config.solver} == BiCGSTAB::typeName)
     {
         return std::make_unique<BiCGSTAB>
         (
@@ -140,7 +140,7 @@ std::unique_ptr<LinearSolver> makeLinearSolver
         );
     }
 
-    if (std::string_view{config.solver} == PCG::typeName)
+    if (NameRef{config.solver} == PCG::typeName)
     {
         return std::make_unique<PCG>
         (
@@ -159,14 +159,14 @@ std::unique_ptr<LinearSolver> makeLinearSolver
 
 void logLinearSolver
 (
-    std::string_view field,
+    NameRef fieldName,
     const LinearSolverSettings& config
 )
 {
     Logger::linearSolverConfigRow
     (
-        field,
-        std::string_view{config.solver},
+        fieldName,
+        NameRef{config.solver},
         config.tolerance,
         config.maxIter
     );
@@ -193,7 +193,7 @@ void SolverSetup::configure
     modules.gradScheme =
         makeGradientScheme
         (
-            config.schemes.gradientName,
+            config.schemes.gradientScheme,
             mesh,
             boundaryConditions
         );
@@ -356,18 +356,18 @@ void SolverSetup::logSetup
     if (config.turbulenceEnabled)
     {
         Logger::subsection("Turbulence initialization");
-        Logger::keyValue("Model", std::string_view{config.turbulenceModel});
+        Logger::keyValue("Model", NameRef{config.turbulenceModel});
         Logger::keyValue
         (
             "Wall distance",
-            std::string
+            Message
             {
                 modules.turbulenceModel->wallDistanceConverged()
               ? "meshWave converged"
               : "meshWave hit iteration cap (results may be degraded)"
             }
         );
-        Logger::keyValue("Fields initialized", std::string{"k, omega, nut"});
+        Logger::keyValue("Fields initialized", Message{"k, omega, nut"});
     }
 
     Logger::iterationFooter();

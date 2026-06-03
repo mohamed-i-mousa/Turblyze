@@ -39,8 +39,6 @@
 
 // Standard library headers
 #include <limits>
-#include <string>
-#include <string_view>
 
 // External library headers
 #include <eigen3/Eigen/SparseCore>
@@ -49,6 +47,7 @@
 // Project headers
 #include "ErrorHandler.h"
 #include "Scalar.h"
+#include "StringTypes.h"
 
 // ********************************** Aliases *********************************
 
@@ -56,6 +55,7 @@
 using SparseMatrix = Eigen::SparseMatrix<Scalar, Eigen::RowMajor>;
 using Vec = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
 using VecRef = Eigen::Ref<Vec>;
+using EigenVectorMap = Eigen::Map<Vec>;
 using JacobiPreconditioner = Eigen::DiagonalPreconditioner<Scalar>;
 static constexpr int LowerUpper = Eigen::Lower | Eigen::Upper;
 
@@ -70,7 +70,7 @@ using EigenPCG =
 struct SolvePerformance
 {
     /// Solver name (view into LinearSolver::name() — program-lifetime storage)
-    std::string_view solverName = {};
+    NameRef solverName = {};
 
     /// Iterations performed by the solve call
     int iterations = 0;
@@ -94,7 +94,7 @@ public:
     LinearSolver
     (
         Scalar tolerance = S(1e-6),
-        int maxIterations = 1000
+        Count maxIterations = 1000
     )
     :
         tolerance_(tolerance),
@@ -122,7 +122,7 @@ public:
     }
 
     /// Set maximum solver iterations
-    void setMaxIterations(int maxIter) noexcept
+    void setMaxIterations(Count maxIter) noexcept
     {
         maxIterations_ = maxIter;
     }
@@ -136,12 +136,12 @@ public:
     }
 
     /// Get maximum iterations
-    [[nodiscard]] int maxIterations() const noexcept
+    [[nodiscard]] Count maxIterations() const noexcept
     {
         return maxIterations_;
     }
 
-    /// Iterations performed by the last solve call
+    /// Iterations performed by the last solve call (-1 = no solve yet)
     [[nodiscard]] int lastIterations() const noexcept
     {
         return lastPerformance_.iterations;
@@ -170,7 +170,7 @@ public:
     ) = 0;
 
     /// Algorithm label used in diagnostic output
-    [[nodiscard]] virtual std::string_view name() const noexcept = 0;
+    [[nodiscard]] virtual NameRef name() const noexcept = 0;
 
 // ***************************** Protected Methods ****************************
 
@@ -190,7 +190,7 @@ private:
     Scalar tolerance_;
 
     /// Maximum solver iterations before failure
-    int maxIterations_;
+    Count maxIterations_;
 
     /// Diagnostics from the most recent solve call
     SolvePerformance lastPerformance_
@@ -225,7 +225,7 @@ public:
             FatalError("LinearSolver: x and B size mismatch");
         }
 
-        solver_.setMaxIterations(maxIterations());
+        solver_.setMaxIterations(static_cast<int>(maxIterations()));
         solver_.setTolerance(tolerance());
 
         if (!patternAnalyzed_)
@@ -238,7 +238,7 @@ public:
 
         if (solver_.info() != Eigen::Success)
         {
-            Warning(std::string(name()) + ": factorization failed");
+            Warning(Name(name()) + ": factorization failed");
 
             const SolvePerformance performance
             {
@@ -285,9 +285,9 @@ public:
     using EigenLinearSolver<EigenBiCGSTAB>::EigenLinearSolver;
 
     /// Runtime selection name
-    static constexpr std::string_view typeName = "BiCGSTAB";
+    static constexpr NameRef typeName = "BiCGSTAB";
 
-    [[nodiscard]] std::string_view name() const noexcept override
+    [[nodiscard]] NameRef name() const noexcept override
     {
         return typeName;
     }
@@ -302,9 +302,9 @@ public:
     using EigenLinearSolver<EigenPCG>::EigenLinearSolver;
 
     /// Runtime selection name
-    static constexpr std::string_view typeName = "PCG";
+    static constexpr NameRef typeName = "PCG";
 
-    [[nodiscard]] std::string_view name() const noexcept override
+    [[nodiscard]] NameRef name() const noexcept override
     {
         return typeName;
     }

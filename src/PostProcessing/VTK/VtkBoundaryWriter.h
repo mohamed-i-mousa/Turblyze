@@ -13,25 +13,27 @@
 
 // Standard library includes
 #include <map>
-#include <string>
 
 // Project headers
 #include "Scalar.h"
 #include "Mesh.h"
 #include "FaceData.h"
+#include "StringTypes.h"
 
 // ******************************* namespace VTK ******************************
 
 namespace VTK
 {
 
+/// Alias for face data maps
+using FaceDataMap = std::map<Name, const FaceData<Scalar>*>;
+
 /// Write boundary face data to VTK PolyData (.vtp) file
 void writeBoundaryData
 (
-    const std::string& filename,
+    const FilePath& filename,
     const Mesh& mesh,
-    const std::map<std::string,
-    const FaceData<Scalar>*>& scalarFaceFields = {},
+    const FaceDataMap& scalarFaceFields = {},
     bool debug = false
 );
 

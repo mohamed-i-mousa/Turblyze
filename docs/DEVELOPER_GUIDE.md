@@ -366,18 +366,18 @@ and `vectorB_`. The chosen strategy is thread-local buffers + serial merge:
 ```cpp
 // T tracks the OpenMP runtime thread count
 // (set in Runtime::initParallelism via omp_set_num_threads)
-const size_t T = static_cast<size_t>(omp_get_max_threads());
+const Count T = static_cast<Count>(omp_get_max_threads());
 std::vector<std::vector<Eigen::Triplet<Scalar>>> perThreadTriplets_(T);
 std::vector<Matrix::Vec> perThreadB_(T, Matrix::Vec::Zero(eIdx(numCells)));
 
 #pragma omp parallel
 {
     const int tid = omp_get_thread_num();
-    auto& triplets = perThreadTriplets_[static_cast<size_t>(tid)];
-    auto& localB = perThreadB_[static_cast<size_t>(tid)];
+    auto& triplets = perThreadTriplets_[static_cast<Index>(tid)];
+    auto& localB = perThreadB_[static_cast<Index>(tid)];
 
     #pragma omp for schedule(static)
-    for (size_t faceIdx = 0; faceIdx < numFaces; ++faceIdx)
+    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
     {
         const Face& face = mesh_.faces()[faceIdx];
         if (face.isBoundary())
@@ -680,7 +680,7 @@ virtual ~LinearSolver() noexcept = default;
 
 ### Pattern 4 — Rule of zero
 
-Classes with only value or standard-library members (e.g. `std::vector`, `std::string`,
+Classes with only value or standard-library members (e.g. `std::vector`, `Name`,
 `Scalar`) that are fully copyable and movable by the compiler.
 Declare nothing; the compiler generates correct defaults.
 
@@ -749,7 +749,7 @@ construction).
    `class MyScheme final : public GradientScheme`. Forward `(mesh, bc)` to the
    `protected` base constructor; delete copy/move; give it an
    `override` destructor.
-2) Override `[[nodiscard]] Vector cellGradient(Field, const ScalarField&, size_t) const override;`.
+2) Override `[[nodiscard]] Vector cellGradient(Field, const ScalarField&, Index) const override;`.
    The base's `faceGradient`/`limitGradient`/`fieldGradient` are reused as-is —
    `fieldGradient` dispatches to your `cellGradient` virtually.
 3) Add the `.cpp` to `CMakeLists.txt`.

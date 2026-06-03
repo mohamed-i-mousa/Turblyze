@@ -34,7 +34,7 @@ void BoundaryConditions::addPatch(BoundaryPatch patch)
 
 void BoundaryConditions::setFixedValue
 (
-    const std::string& patchName,
+    const Name& patchName,
     Field field,
     Scalar value
 )
@@ -47,7 +47,7 @@ void BoundaryConditions::setFixedValue
 
 void BoundaryConditions::setFixedGradient
 (
-    const std::string& patchName,
+    const Name& patchName,
     Field field,
     Scalar gradient
 )
@@ -60,7 +60,7 @@ void BoundaryConditions::setFixedGradient
 
 void BoundaryConditions::setZeroGradient
 (
-    const std::string& patchName,
+    const Name& patchName,
     Field field
 )
 {
@@ -72,7 +72,7 @@ void BoundaryConditions::setZeroGradient
 
 void BoundaryConditions::setNoSlip
 (
-    const std::string& patchName,
+    const Name& patchName,
     Field field
 )
 {
@@ -84,7 +84,7 @@ void BoundaryConditions::setNoSlip
 
 void BoundaryConditions::setWallFunctionType
 (
-    const std::string& patchName,
+    const Name& patchName,
     Field field,
     BCType wallType
 )
@@ -96,23 +96,23 @@ void BoundaryConditions::setWallFunctionType
 
 // ***************************** Accessor Methods *****************************
 
-const BoundaryPatch& BoundaryConditions::patch(const std::string& name) const
+const BoundaryPatch& BoundaryConditions::patch(const Name& patchName) const
 {
     for (const auto& patch : patches_)
     {
-        if (patch.patchName() == name)
+        if (patch.patchName() == patchName)
         {
             return patch;
         }
     }
 
-    FatalError("Patch " + name + " not found");
+    FatalError("Patch " + patchName + " not found");
 }
 
 
 const BoundaryData& BoundaryConditions::fieldBC
 (
-    const std::string& patchName,
+    const Name& patchName,
     Field field
 ) const
 {
@@ -133,7 +133,7 @@ const BoundaryData& BoundaryConditions::fieldBC
     FatalError
     (
         "Boundary condition not found for patch " + patchName
-        + " and field " + std::string(fieldToString(field))
+        + " and field " + Name(fieldToString(field))
     );
 }
 
@@ -142,20 +142,20 @@ Scalar BoundaryConditions::boundaryFaceValue
 (
     Field field,
     const ScalarField& phi,
-    const Face& face
+    const Face& boundaryFace
 ) const
 {
-    if (!face.patch().has_value())
+    if (!boundaryFace.patch().has_value())
     {
         FatalError
         (
-            "Face " + std::to_string(face.idx())
+            "Face " + std::to_string(boundaryFace.idx())
             + " has no linked patch. "
               "Ensure linkFaces() is called before solving."
         );
     }
 
-    const BoundaryPatch& patch = face.patch()->get();
+    const BoundaryPatch& patch = boundaryFace.patch()->get();
     const BoundaryData& bc = fieldBC(patch.patchName(), field);
 
     using enum BCType;
@@ -178,16 +178,16 @@ Scalar BoundaryConditions::boundaryFaceValue
         case zeroGradient:
         {
             // Zero gradient: φf = φP
-            return phi[face.ownerCell()];
+            return phi[boundaryFace.ownerCell()];
         }
 
         case fixedGradient:
         {
             // Fixed gradient: φf = φP + grad * distance
-            const Scalar dn = dot(face.dPf(), face.normal());
+            const Scalar dn = dot(boundaryFace.dPf(), boundaryFace.normal());
             
             return
-                phi[face.ownerCell()]
+                phi[boundaryFace.ownerCell()]
               + bc.fixedScalarGradient() * dn;
         }
 
@@ -197,7 +197,7 @@ Scalar BoundaryConditions::boundaryFaceValue
             FatalError
             (
                 "Corrupted BCType value for face "
-              + std::to_string(face.idx())
+              + std::to_string(boundaryFace.idx())
               + " in patch " + patch.patchName()
             );
         }
@@ -206,7 +206,7 @@ Scalar BoundaryConditions::boundaryFaceValue
 }
 
 
-void BoundaryConditions::linkFaces(std::span<Face> faces)
+void BoundaryConditions::linkFaces(MutableFaceListRef faces)
 {
     for (const auto& patch : patches_)
     {
@@ -235,7 +235,7 @@ void BoundaryConditions::linkFaces(std::span<Face> faces)
 
         for
         (
-            size_t faceIdx = patch.firstFaceIdx();
+            Index faceIdx = patch.firstFaceIdx();
             faceIdx <= patch.lastFaceIdx();
             ++faceIdx
         )
@@ -251,7 +251,7 @@ void BoundaryConditions::linkFaces(std::span<Face> faces)
 void BoundaryConditions::validatePatchNames() const
 {
     // std::set guarantees uniqueness
-    std::set<std::string> validNames;
+    std::set<Name> validNames;
 
     for (const auto& patch : patches_)
     {
@@ -262,7 +262,7 @@ void BoundaryConditions::validatePatchNames() const
     {
         if (!validNames.contains(entry.first))
         {
-            std::string validList;
+            Message validList;
             for (const auto& name : validNames)
             {
                 if (!validList.empty())

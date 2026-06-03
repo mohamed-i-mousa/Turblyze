@@ -22,17 +22,22 @@
 #include <cstdint>
 #include <vector>
 #include <span>
+#include <utility>
 
 // Project headers
 #include "Scalar.h"
 #include "Vector.h"
 #include "Face.h"
+#include "Integer.h"
 
 // ******************************** class Cell ********************************
 
 class Cell
 {
 public:
+
+    using FaceSignList = std::vector<int8_t>;
+    using FaceSignListRef = std::span<const int8_t>;
 
 // ************************* Special Member Functions *************************
 
@@ -48,10 +53,10 @@ public:
      */
     Cell
     (
-        size_t cellIdx,
-        std::vector<size_t> faces,
-        std::vector<size_t> neighbors,
-        std::vector<int8_t> signs
+        Index cellIdx,
+        IndexList faces,
+        IndexList neighbors,
+        FaceSignList signs
     )
     : 
         idx_(cellIdx),
@@ -63,20 +68,20 @@ public:
 // ****************************** Setter Methods ******************************
 
     /// Set cell identifier
-    void setIdx(size_t cellIdx) noexcept
+    void setIdx(Index cellIdx) noexcept
     {
         idx_ = cellIdx;
     }
 
     /// Add a bounding face with its normal direction sign
-    void addFace(size_t faceIdx, int8_t sign)
+    void addFace(Index faceIdx, int8_t sign)
     {
         faceIndices_.push_back(faceIdx);
         faceSigns_.push_back(sign);
     }
 
     /// Set all neighbor cell indices
-    void setNeighborCellIndices(std::span<const size_t> neighbors)
+    void setNeighborCellIndices(IndexListRef neighbors)
     {
         neighborCellIndices_.assign(neighbors.begin(), neighbors.end());
     }
@@ -84,25 +89,25 @@ public:
 // ***************************** Accessor Methods *****************************
 
     /// Get cell identifier
-    [[nodiscard]] size_t idx() const noexcept
+    [[nodiscard]] Index idx() const noexcept
     {
         return idx_;
     }
 
     /// Get bounding face indices
-    [[nodiscard]] std::span<const size_t> faceIndices() const noexcept
+    [[nodiscard]] IndexListRef faceIndices() const noexcept
     {
         return faceIndices_;
     }
 
     /// Get neighboring cell indices
-    [[nodiscard]] std::span<const size_t> neighborCellIndices() const noexcept
+    [[nodiscard]] IndexListRef neighborCellIndices() const noexcept
     {
         return neighborCellIndices_;
     }
 
     /// Get face normal direction signs
-    [[nodiscard]] std::span<const int8_t> faceSigns() const noexcept
+    [[nodiscard]] FaceSignListRef faceSigns() const noexcept
     {
         return faceSigns_;
     }
@@ -130,7 +135,7 @@ public:
     /// Calculate cell volume and centroid
     void geometricProperties
     (
-        std::span<const Face> allFaces,
+        FaceListRef allFaces,
         std::span<const FaceIntegrals> allFaceIntegrals
     );
 
@@ -139,16 +144,16 @@ public:
 private:
 
     /// Unique cell identifier
-    size_t idx_ = 0;
+    Index idx_ = 0;
 
     /// Indices of faces that bound this cell
-    std::vector<size_t> faceIndices_;
+    IndexList faceIndices_;
 
     /// Indices of neighboring cells
-    std::vector<size_t> neighborCellIndices_;
+    IndexList neighborCellIndices_;
 
     /// Face normal direction signs (+1 outward, -1 inward)
-    std::vector<int8_t> faceSigns_;
+    FaceSignList faceSigns_;
 
     /// Cell geometric center
     Vector centroid_;

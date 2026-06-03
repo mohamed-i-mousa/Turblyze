@@ -22,11 +22,12 @@
 #include <ios>
 #include <ostream>
 #include <span>
-#include <string_view>
 #include <utility>
 
 // Project headers
 #include "Scalar.h"
+#include "StringTypes.h"
+#include "Integer.h"
 
 // ************************** class StreamStateGuard **************************
 
@@ -72,13 +73,13 @@ private:
 
 namespace Logger
 {
-    using Residuals = std::pair<std::string_view, Scalar>;
+    using Residuals = std::pair<NameRef, Scalar>;
 
     /// Print a generic 80-char framed banner with the given title
-    void sectionHeader(std::string_view title);
+    void sectionHeader(MessageRef title);
 
     /// Print the per-iteration banner
-    void iterationHeader(int n);
+    void iterationHeader(Count n);
 
     /// Print the closing rule that terminates a framed block
     void iterationFooter();
@@ -89,20 +90,23 @@ namespace Logger
     /// Print one row of the linear solver configuration table
     void linearSolverConfigRow
     (
-        std::string_view equation,
-        std::string_view solver,
+        NameRef equation,
+        NameRef solver,
         Scalar tolerance,
-        int maxIters
+        Count maxIters
     );
 
     /// Print one indented label-value row with a Scalar value
-    void keyValue(std::string_view label, Scalar value);
+    void keyValue(MessageRef label, Scalar value);
 
     /// Print one indented label-value row with an int value
-    void keyValue(std::string_view label, int value);
+    void keyValue(MessageRef label, int value);
+
+    /// Print one indented label-value row with a Count value
+    void keyValue(MessageRef label, Count value);
 
     /// Print one indented label-value row with a string value
-    void keyValue(std::string_view label, std::string_view value);
+    void keyValue(MessageRef label, MessageRef value);
 
     /// Print the column header row for the table
     void residualTableHeader();
@@ -110,26 +114,26 @@ namespace Logger
     /// Print one row of the per-iteration residual table
     void residualRow
     (
-        std::string_view equation,
-        std::string_view solver,
+        NameRef equation,
+        NameRef solver,
         int iterations,
         Scalar linearSolverResidual
     );
 
     /// Print a sub-section title line with two-space indentation
-    void subsection(std::string_view title);
+    void subsection(MessageRef title);
 
     /// Print one min/max/mean statistics line for a scalar field
     void scalarStat
     (
-        std::string_view name,
+        NameRef name,
         Scalar minVal,
         Scalar maxVal,
         Scalar meanVal
     );
 
     /// Print one labelled scaled-residual line
-    void scaledResidual(std::string_view name, Scalar value);
+    void scaledResidual(NameRef name, Scalar value);
 
     /// Print the non-debug one-line per-iteration residual summary
     void residualSummary(Scalar mass, Scalar velocity, Scalar pressure);

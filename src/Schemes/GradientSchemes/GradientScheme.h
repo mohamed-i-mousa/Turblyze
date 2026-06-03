@@ -9,8 +9,6 @@
  * (e.g. LeastSquares) can override it.
  *
  * @class GradientScheme
- *
- * The GradientScheme base class provides:
  * - Cell-centered gradient computation (pure virtual, scheme-specific)
  * - Face-centered gradient interpolation with orthogonal correction
  * - Cell-based gradient limiting (Barth-Jespersen)
@@ -54,7 +52,7 @@ public:
     (
         Field field,
         const ScalarField& phi,
-        size_t cellIdx
+        Index cellIdx
     ) const = 0;
 
     /// Interpolate gradient at a single face
@@ -64,7 +62,7 @@ public:
         const ScalarField& phi,
         const Vector& gradPhiP,
         const Vector& gradPhiN,
-        size_t faceIndex
+        Index faceIndex
     ) const;
 
     /// Apply cell-based gradient limiter
@@ -107,7 +105,7 @@ private:
     /// Distance-weighted linear interpolation of gradients
     Vector averageFaceGradient
     (
-        const Face& face,
+        const Face& internalFace,
         const Vector& gradPhiP,
         const Vector& gradPhiN
     ) const;
@@ -125,7 +123,7 @@ private:
 
 private:
 
-    /// Minimum fraction of ||dPf|| used as normal distance to a boundary face.
-    /// Prevents gradient amplification beyond ~87 degrees of non-orthogonality.
+    /// Minimum fraction of ||dPf|| used as normal distance to a boundary face
+    /// Prevents gradient amplification beyond ~87 degrees of non-orthogonality
     static constexpr Scalar minNormalFraction_ = S(0.05);
 };

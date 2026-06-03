@@ -43,9 +43,9 @@ void initParallelism(int numThreads)
 
 // ************************* Special Member Functions *************************
 
-CFDApplication::CFDApplication(const std::string& caseFilePath)
+CFDApplication::CFDApplication(const FilePath& caseFile)
 :
-    caseFilePath_(caseFilePath)
+    caseFile_(caseFile)
 {}
 
 CFDApplication::~CFDApplication() noexcept = default;
@@ -58,11 +58,11 @@ void CFDApplication::run()
         << '\n' << "--- 0. Loading Case ---" << '\n';
 
     // Read the case file and load configuration
-    CaseReader caseReader(caseFilePath_);
+    CaseReader caseReader(caseFile_);
     const CaseConfiguration config = CaseConfig::loadConfiguration(caseReader);
 
     // Initialize parallelism
-    initParallelism(config.numThreads);
+    initParallelism(static_cast<int>(config.numThreads));
 
     // Create mesh
     Mesh mesh = MeshCreator::create(config);

@@ -27,7 +27,7 @@ namespace
 ScalarField computeMagnitude(const VectorField& field)
 {
     ScalarField result;
-    for (size_t idx = 0; idx < field.size(); ++idx)
+    for (Index idx = 0; idx < field.size(); ++idx)
     {
         result[idx] = magnitude(field[idx]);
     }
@@ -45,7 +45,7 @@ ScalarField velocityMagnitude
 )
 {
     ScalarField result;
-    for (size_t idx = 0; idx < Ux.size(); ++idx)
+    for (Index idx = 0; idx < Ux.size(); ++idx)
     {
         result[idx] = std::sqrt
         (
@@ -71,7 +71,7 @@ ScalarField QCriterion
 {
     ScalarField qCriterion;
 
-    for (size_t i = 0; i < gradUx.size(); ++i)
+    for (Index i = 0; i < gradUx.size(); ++i)
     {
         // Q = 0.5 * (||Omega||^2 - ||S||^2)
         const Tensor gradU = tensorFromRows(gradUx[i], gradUy[i], gradUz[i]);
@@ -94,7 +94,7 @@ ScalarField strainRateMagnitude
 {
     ScalarField strainRateMag;
 
-    for (size_t idx = 0; idx < gradUx.size(); ++idx)
+    for (Index idx = 0; idx < gradUx.size(); ++idx)
     {
         // Strain rate magnitude = sqrt(2 * S_ij * S_ij)
         const Tensor gradU = tensorFromRows

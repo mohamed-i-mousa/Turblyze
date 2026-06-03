@@ -18,27 +18,29 @@
 // Standard library headers
 #include <array>
 #include <map>
-#include <string>
 
 // Project headers
 #include "Scalar.h"
 #include "Mesh.h"
 #include "CellData.h"
+#include "StringTypes.h"
 
 // ******************************* namespace VTK ******************************
 
 namespace VTK
 {
 
+/// Alias for cell data maps
+using ScalarFieldMap = std::map<Name, const ScalarField*>;
+using VectorFieldMap = std::map<Name, std::array<const ScalarField*, 3>>;
+
 /// Write simulation results to VTK UnstructuredGrid (.vtu) file
 void writeVtkUnstructuredGrid
 (
-    const std::string& filename,
+    const FilePath& filename,
     const Mesh& mesh,
-    const std::map<std::string,
-    const ScalarField*>& scalarCellFields = {},
-    const std::map<std::string,
-    std::array<const ScalarField*, 3>>& vectorCellFields = {},
+    const ScalarFieldMap& scalarFields = {},
+    const VectorFieldMap& vectorFields = {},
     bool debug = false
 );
 

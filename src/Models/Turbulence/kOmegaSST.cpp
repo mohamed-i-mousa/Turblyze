@@ -181,10 +181,10 @@ void kOmegaSST::initializeTurbulentViscosity()
 {
     // Simple k-omega estimate: nut = k / omega
     // Used before strain rate & F23 are available for the SST limiter.
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         nut_[cellIdx] =
             std::max(k_[cellIdx] / (omega_[cellIdx] + vSmallValue), S(0.0));
@@ -196,7 +196,7 @@ void kOmegaSST::updateNutWall()
 {
     nutWall_.setAll(S(0.0));
 
-    for (size_t faceIdx : wallFunctionFaceIndices_)
+    for (Index faceIdx : wallFunctionFaceIndices_)
     {
         const auto& face = mesh_.faces()[faceIdx];
 
@@ -220,10 +220,10 @@ void kOmegaSST::updateNutWall()
 
 void kOmegaSST::updateOmegaWallValues()
 {
-    for (size_t faceIdx : wallFunctionFaceIndices_)
+    for (Index faceIdx : wallFunctionFaceIndices_)
     {
         const auto& face = mesh_.faces()[faceIdx];
-        const size_t cellIdx = face.ownerCell();
+        const Index cellIdx = face.ownerCell();
 
         if (yPlus_[face.idx()] < yPlusLam_)
         {
@@ -244,12 +244,12 @@ void kOmegaSST::updateOmegaWallValues()
 
 void kOmegaSST::applyOmegaWallCellValues()
 {
-    std::vector<Scalar> omegaAccum(mesh_.numCells(), S(0.0));
+    ScalarList omegaAccum(mesh_.numCells(), S(0.0));
 
-    for (size_t faceIdx : wallFunctionFaceIndices_)
+    for (Index faceIdx : wallFunctionFaceIndices_)
     {
         const auto& face = mesh_.faces()[faceIdx];
-        const size_t cellIdx = face.ownerCell();
+        const Index cellIdx = face.ownerCell();
         const Scalar faceWeight = wallFaceWeight_[face.idx()];
 
         if (faceWeight <= S(0.0)) continue;
@@ -260,9 +260,9 @@ void kOmegaSST::applyOmegaWallCellValues()
         }
     }
 
-    for (size_t i = 0; i < wallCellIndices_.size(); ++i)
+    for (Index i = 0; i < wallCellIndices_.size(); ++i)
     {
-        const size_t cellIdx = wallCellIndices_[i];
+        const Index cellIdx = wallCellIndices_[i];
         wallCellOmega_[i] = std::max(omegaAccum[cellIdx], smallValue);
 
         const Scalar f = wallCellFraction_[i];
@@ -283,10 +283,10 @@ void kOmegaSST::overrideWallCellProduction
     wallProductionAccum.setAll(S(0.0));
     std::vector<char> hasWallOverride(mesh_.numCells(), 0);
 
-    for (size_t faceIdx : wallFunctionFaceIndices_)
+    for (Index faceIdx : wallFunctionFaceIndices_)
     {
         const auto& face = mesh_.faces()[faceIdx];
-        const size_t cellIdx = face.ownerCell();
+        const Index cellIdx = face.ownerCell();
 
         if (wallFaceWeight_[face.idx()] <= S(0.0))
         {
@@ -321,9 +321,9 @@ void kOmegaSST::overrideWallCellProduction
         }
     }
 
-    for (size_t i = 0; i < wallCellIndices_.size(); ++i)
+    for (Index i = 0; i < wallCellIndices_.size(); ++i)
     {
-        const size_t cellIdx = wallCellIndices_[i];
+        const Index cellIdx = wallCellIndices_[i];
         if (!hasWallOverride[cellIdx]) continue;
 
         // Blend wall production with interior production using
@@ -340,11 +340,11 @@ ScalarField kOmegaSST::kProduction
     const ScalarField& strainRateMag
 ) const
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
     ScalarField Pk;
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Scalar S2 =
             strainRateMag[cellIdx] * strainRateMag[cellIdx];
@@ -362,11 +362,11 @@ ScalarField kOmegaSST::crossDiffusion
     const VectorField& gradOmega
 ) const
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
     ScalarField CDkOmega;
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         CDkOmega[cellIdx] =
             S(2.0) * coeffs_.sigmaOmega2
@@ -383,12 +383,12 @@ ScalarField kOmegaSST::blendingF1
     const ScalarField& CDkOmega
 ) const
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
     constexpr Scalar CDkOmegaMin = S(1e-10);
     ScalarField f1;
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Scalar y = std::max(wallDistance_[cellIdx], vSmallValue);
         const Scalar sqrtK = std::sqrt(k_[cellIdx]);
@@ -423,11 +423,11 @@ ScalarField kOmegaSST::blendingF1
 
 ScalarField kOmegaSST::blendingF2() const
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
     ScalarField f2;
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Scalar y = std::max(wallDistance_[cellIdx], vSmallValue);
         const Scalar sqrtK = std::sqrt(k_[cellIdx]);
@@ -454,11 +454,11 @@ ScalarField kOmegaSST::blendingF2() const
 
 ScalarField kOmegaSST::blendingF3() const
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
     ScalarField f3;
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Scalar y = std::max(wallDistance_[cellIdx], vSmallValue);
 
@@ -484,13 +484,13 @@ ScalarField kOmegaSST::blendingF23
     const ScalarField& f3
 ) const
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
     ScalarField f23;
 
     if (useF3_)
     {
         #pragma omp parallel for schedule(static)
-        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+        for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
             f23[cellIdx] = f2[cellIdx] * f3[cellIdx];
         }
@@ -498,7 +498,7 @@ ScalarField kOmegaSST::blendingF23
     else
     {
         #pragma omp parallel for schedule(static)
-        for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+        for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
         {
             f23[cellIdx] = f2[cellIdx];
         }
@@ -514,11 +514,11 @@ ScalarField kOmegaSST::omegaProduction
     const ScalarField& strainRateMag
 ) const
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
     ScalarField POmega;
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Scalar S2 =
             strainRateMag[cellIdx] * strainRateMag[cellIdx];
@@ -534,11 +534,11 @@ ScalarField kOmegaSST::omegaProduction
 
 ScalarField kOmegaSST::computeGammaK(const ScalarField& f1) const
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
     ScalarField GammaK;
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Scalar sigmaK =
             blend(f1[cellIdx], coeffs_.sigmaK1, coeffs_.sigmaK2);
@@ -552,11 +552,11 @@ ScalarField kOmegaSST::computeGammaK(const ScalarField& f1) const
 
 ScalarField kOmegaSST::computeGammaOmega(const ScalarField& f1) const
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
     ScalarField GammaOmega;
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Scalar sigmaOmega =
             blend(f1[cellIdx], coeffs_.sigmaOmega1, coeffs_.sigmaOmega2);
@@ -577,10 +577,10 @@ void kOmegaSST::limitProduction
     ScalarField& POmega
 ) const
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         // Limit k production:
         const Scalar kLimit =
@@ -611,7 +611,7 @@ void kOmegaSST::solveOmegaEquation
     const VectorField& gradOmega
 )
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
     const ScalarField GammaOmega = computeGammaOmega(f1);
     const ScalarField omegaSource{S(0.0)};
 
@@ -635,7 +635,7 @@ void kOmegaSST::solveOmegaEquation
 
     // Add source terms
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Scalar cellVolume = mesh_.cells()[cellIdx].volume();
 
@@ -696,8 +696,7 @@ void kOmegaSST::solveOmegaEquation
         wallCellFraction_
     );
 
-    Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
-    omegaSolution(omega_.data(), eIdx(numCells));
+    EigenVectorMap omegaSolution(omega_.data(), eIdx(numCells));
 
     dissipationSolver_.solve(omegaSolution, matrixA, vectorB);
 
@@ -719,10 +718,10 @@ void kOmegaSST::solveOmegaEquation
 
 void kOmegaSST::boundOmega()
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Scalar omegaLowerBound =
             k_[cellIdx] / (maxViscosityRatio_ * nu_ + vSmallValue);
@@ -741,7 +740,7 @@ void kOmegaSST::solveKEquation
     const ScalarField& Pk
 )
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
     const ScalarField GammaK = computeGammaK(f1);
     const ScalarField kSource{S(0.0)};
 
@@ -765,7 +764,7 @@ void kOmegaSST::solveKEquation
 
     // Add k source terms
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         const Scalar cellVolume = mesh_.cells()[cellIdx].volume();
 
@@ -789,8 +788,7 @@ void kOmegaSST::solveKEquation
     // Apply implicit under-relaxation (Patankar's method)
     matrixConstruct_->relax(alphaK_, k_);
 
-    Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>
-    kSolution(k_.data(), eIdx(numCells));
+    EigenVectorMap kSolution(k_.data(), eIdx(numCells));
 
     kSolver_.solve(kSolution, matrixA, vectorB);
 
@@ -811,10 +809,10 @@ void kOmegaSST::solveKEquation
 
 void kOmegaSST::boundK()
 {
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         k_[cellIdx] = std::max(k_[cellIdx], smallValue);
     }
@@ -829,11 +827,11 @@ ScalarField kOmegaSST::computeTurbulentViscosity
 {
     // SST turbulent viscosity:
     // nut = a1*k / max(a1*omega, b1*F23*sqrt(S2))
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
     ScalarField nut;
 
     #pragma omp parallel for schedule(static)
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         nut[cellIdx] =
             (coeffs_.a1 * k_[cellIdx])
@@ -852,7 +850,7 @@ void kOmegaSST::logFieldDiagnostics() const
 {
     if (!debug_) return;
 
-    const size_t numCells = mesh_.numCells();
+    const Count numCells = mesh_.numCells();
     if (numCells == 0) return;
 
     Scalar kMin = k_[0];
@@ -867,7 +865,7 @@ void kOmegaSST::logFieldDiagnostics() const
     Scalar nutMax = nut_[0];
     Scalar nutSum = S(0.0);
 
-    for (size_t cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         kMin = std::min(kMin, k_[cellIdx]);
         kMax = std::max(kMax, k_[cellIdx]);

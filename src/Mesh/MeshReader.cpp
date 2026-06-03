@@ -14,22 +14,23 @@
 #include <sstream>
 #include <algorithm>
 #include <charconv>
+#include <vector>
 
 // Project headers
 #include "ErrorHandler.h"
 
 // ************************* Special Member Functions *************************
 
-MeshReader::MeshReader(const std::string& filePath)
+MeshReader::MeshReader(const FilePath& filePath)
 {
     parseFile(filePath);
 }
 
 // ****************************** Private Methods *****************************
 
-void MeshReader::parseFile(const std::string& filePath)
+void MeshReader::parseFile(const FilePath& filePath)
 {
-    std::string token;
+    Token token;
 
     std::ifstream ifs(filePath);
     if (!ifs.is_open())
@@ -107,7 +108,7 @@ void MeshReader::parseCommentSection(std::ifstream& ifs) const
 
 void MeshReader::parseDimensionSection(std::ifstream& ifs) const
 {
-    std::string dimension;
+    Token dimension;
     if (!(ifs >> dimension) || dimension.empty() || dimension.back() != ')')
     {
         FatalError("Malformed dimension section in mesh file.");
@@ -126,31 +127,31 @@ void MeshReader::parseDimensionSection(std::ifstream& ifs) const
 void MeshReader::parseNodesSection
 (
     std::ifstream& ifs,
-    const std::string& token
+    TokenRef token
 )
 {
     // Header with "(0"
     if (token == "(0")
     {
-        std::string firstIdxStr, lastIdxStr, zeroStrOrType;
+        Token firstIdxStr, lastIdxStr, zeroStrOrType;
         ifs >> firstIdxStr;
         ifs >> lastIdxStr;
         ifs >> zeroStrOrType;
 
-        const size_t lastIdx = hexToDec(lastIdxStr);
+        const Count lastIdx = hexToDec(lastIdxStr);
 
         nodes_.resize(lastIdx);
     }
     // Data block with "(zoneIdx"
     else
     {
-        std::string zoneIdxStr;
-        std::string startIdxStr;
-        std::string endIdxStr;
-        std::string typeStr;
-        std::string dimensionStr;
+        Token zoneIdxStr;
+        Token startIdxStr;
+        Token endIdxStr;
+        Token typeStr;
+        Token dimensionStr;
 
-        std::string zoneToken = token;
+        Token zoneToken = Token{token};
 
         if (!zoneToken.starts_with('('))
         {
@@ -204,13 +205,13 @@ void MeshReader::parseNodesSection
         dimensionStr.pop_back();
         dimensionStr.pop_back();
 
-        const size_t startIdx = hexToDec(startIdxStr);
-        const size_t endIdx = hexToDec(endIdxStr);
-        const size_t dimension = hexToDec(dimensionStr);
+        const Count startIdx = hexToDec(startIdxStr);
+        const Count endIdx = hexToDec(endIdxStr);
+        const Count dimension = hexToDec(dimensionStr);
 
-        for (size_t idx = startIdx; idx <= endIdx; ++idx)
+        for (Count idx = startIdx; idx <= endIdx; ++idx)
         {
-            const size_t globalIdx = idx - 1;
+            const Index globalIdx = idx - 1;
 
             if (globalIdx >= nodes_.size())
             {
@@ -255,20 +256,20 @@ void MeshReader::parseNodesSection
 void MeshReader::parseCellsSection
 (
     std::ifstream& ifs,
-    const std::string& token
+    TokenRef token
 )
 {
     // Only header with "(0" is expected for cells section, no data block
     if (token == "(0")
     {
-        std::string firstIdxStr;
-        std::string lastIdxStr;
-        std::string zeroStrOrType;
+        Token firstIdxStr;
+        Token lastIdxStr;
+        Token zeroStrOrType;
         ifs >> firstIdxStr;
         ifs >> lastIdxStr;
         ifs >> zeroStrOrType;
 
-        const size_t lastIdx = hexToDec(lastIdxStr);
+        const Count lastIdx = hexToDec(lastIdxStr);
 
         cells_.resize(lastIdx);
     }
@@ -278,33 +279,33 @@ void MeshReader::parseCellsSection
 void MeshReader::parseFacesSection
 (
     std::ifstream& ifs,
-    const std::string& token
+    TokenRef token
 )
 {
     // The faces section header
     if (token == "(0")
     {
-        std::string firstIdxStr;
-        std::string lastIdxStr;
-        std::string zeroStrOrType;
+        Token firstIdxStr;
+        Token lastIdxStr;
+        Token zeroStrOrType;
         ifs >> firstIdxStr;
         ifs >> lastIdxStr;
         ifs >> zeroStrOrType;
 
-        const size_t lastIdx = hexToDec(lastIdxStr);
+        const Count lastIdx = hexToDec(lastIdxStr);
 
         faces_.resize(lastIdx);
     }
     // Data block with "(zoneIdx" for each face zone
     else
     {
-        std::string zoneIdxStr;
-        std::string startIdxStr;
-        std::string endIdxStr;
-        std::string typeStr;
-        std::string elementTypeStr;
+        Token zoneIdxStr;
+        Token startIdxStr;
+        Token endIdxStr;
+        Token typeStr;
+        Token elementTypeStr;
 
-        std::string zoneToken = token;
+        Token zoneToken = Token{token};
 
         // Remove leading '('
         if (!zoneToken.starts_with('('))
@@ -342,9 +343,9 @@ void MeshReader::parseFacesSection
         // Check mixed element section (node count included)
         const bool hasMixedElements = (elementTypeStr == "0");
 
-        const size_t zoneIdx = hexToDec(zoneIdxStr);
-        const size_t startIdx = hexToDec(startIdxStr);
-        const size_t endIdx = hexToDec(endIdxStr);
+        const Index zoneIdx = hexToDec(zoneIdxStr);
+        const Count startIdx = hexToDec(startIdxStr);
+        const Count endIdx = hexToDec(endIdxStr);
 
         // If not internal face zone, create a boundary patch for this zone
         if (typeStr != "2")
@@ -363,14 +364,14 @@ void MeshReader::parseFacesSection
             );
         }
 
-        std::string line;
+        Token line;
         std::getline(ifs, line);
-        std::string itemHex;
-        std::vector<std::string> hexItems;
+        Token itemHex;
+        TokenList hexItems;
 
         for
         (
-            size_t faceIdx = startIdx;
+            Count faceIdx = startIdx;
             faceIdx <= endIdx;
             ++faceIdx
         )
@@ -386,8 +387,10 @@ void MeshReader::parseFacesSection
                 );
             }
 
-            Face& currentFace = faces_[(faceIdx - 1)];
-            currentFace.setIdx(faceIdx - 1);
+            const Index internalFaceIdx = faceIdx - 1;
+
+            Face& currentFace = faces_[internalFaceIdx];
+            currentFace.setIdx(internalFaceIdx);
             currentFace.clearNodeIndices();
 
             if (!std::getline(ifs, line))
@@ -422,7 +425,7 @@ void MeshReader::parseFacesSection
             // node indices are everything before them.
             // If mixed elements, the first item is the
             // node count and must be skipped.
-            const size_t nodeStart = hasMixedElements ? 1 : 0;
+            const Index nodeStart = hasMixedElements ? 1 : 0;
 
             if (hexItems.size() < 2)
             {
@@ -433,11 +436,11 @@ void MeshReader::parseFacesSection
                 );
             }
 
-            const size_t nodeEnd = hexItems.size() - 2;
-            const std::string_view ownerHex = hexItems[hexItems.size() - 2];
-            const std::string_view neighborHex = hexItems[hexItems.size() - 1];
+            const Index nodeEnd = hexItems.size() - 2;
+            const TokenRef ownerHex = hexItems[hexItems.size() - 2];
+            const TokenRef neighborHex = hexItems[hexItems.size() - 1];
 
-            for (size_t j = nodeStart; j < nodeEnd; ++j)
+            for (Index j = nodeStart; j < nodeEnd; ++j)
             {
                 currentFace.addNodeIndex
                 (
@@ -481,10 +484,10 @@ void MeshReader::parseFacesSection
 void MeshReader::parseBoundariesSection
 (
     std::ifstream& ifs,
-    const std::string& token
+    TokenRef token
 )
 {
-    std::string zoneToken = token;
+    Token zoneToken = Token{token};
 
     // Remove leading '('
     if (!zoneToken.starts_with('('))
@@ -498,50 +501,50 @@ void MeshReader::parseBoundariesSection
 
     zoneToken.erase(0, 1);
 
-    const size_t zoneIdx = strToDec(zoneToken);
+    const Index zoneIdx = strToDec(zoneToken);
 
-    std::string typeString;
-    ifs >> typeString;
+    Token bcType;
+    ifs >> bcType;
 
-    std::string nameString;
-    ifs >> nameString;
+    Name patchName;
+    ifs >> patchName;
     
     // Remove trailing parentheses
-    if (!nameString.ends_with(")())"))
+    if (!patchName.ends_with(")())"))
     {
         FatalError
         (
             "Malformed boundaries-section header: expected name token ending "
-            "with ')())' but found '" + nameString + "'."
+            "with ')())' but found '" + patchName + "'."
         );
     }
 
-    nameString.pop_back();
-    nameString.pop_back();
-    nameString.pop_back();
-    nameString.pop_back();
+    patchName.pop_back();
+    patchName.pop_back();
+    patchName.pop_back();
+    patchName.pop_back();
 
-    for (size_t i = 0; i < boundaryPatches_.size(); ++i)
+    for (Index i = 0; i < boundaryPatches_.size(); ++i)
     {
         if (zoneIdx == boundaryPatches_[i].zoneIdx())
         {
-            boundaryPatches_[i].setPatchName(nameString);
+            boundaryPatches_[i].setPatchName(patchName);
 
-            boundaryPatches_[i].setType(mapFluentBCToEnum(typeString));
+            boundaryPatches_[i].setType(mapFluentBCToEnum(bcType));
         }
     }
 }
 
 void MeshReader::buildTopology()
 {
-    for (size_t cellIdx = 0; cellIdx < cells_.size(); ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < cells_.size(); ++cellIdx)
     {
         cells_[cellIdx].setIdx(cellIdx);
     }
 
-    std::vector<std::vector<size_t>> tempCellNeighbors(cells_.size());
+    std::vector<IndexList> tempCellNeighbors(cells_.size());
 
-    for (size_t faceIdx = 0; faceIdx < faces_.size(); ++faceIdx)
+    for (Index faceIdx = 0; faceIdx < faces_.size(); ++faceIdx)
     {
         const Face& currentFace = faces_[faceIdx];
 
@@ -572,7 +575,7 @@ void MeshReader::buildTopology()
          && currentFace.neighborCell().value() < cells_.size()
         )
         {
-            const size_t neighborIdx = currentFace.neighborCell().value();
+            const Index neighborIdx = currentFace.neighborCell().value();
             
             cells_[neighborIdx].addFace(faceIdx, -1);
 
@@ -587,7 +590,7 @@ void MeshReader::buildTopology()
     }
 
     // After processing all faces, set the neighbor cell indices for each cell
-    for (size_t cellIdx = 0; cellIdx < cells_.size(); ++cellIdx)
+    for (Index cellIdx = 0; cellIdx < cells_.size(); ++cellIdx)
     {
         cells_[cellIdx].setNeighborCellIndices(tempCellNeighbors[cellIdx]);
     }
@@ -596,7 +599,7 @@ void MeshReader::buildTopology()
 
 void MeshReader::validateMesh() const
 {
-    for (size_t faceIdx = 0; faceIdx < faces_.size(); ++faceIdx)
+    for (Index faceIdx = 0; faceIdx < faces_.size(); ++faceIdx)
     {
         const Face& face = faces_[faceIdx];
 
@@ -666,7 +669,7 @@ void MeshReader::printSummary() const
         << boundaryPatches_.size() << '\n';
 }
 
-PatchType MeshReader::mapFluentBCToEnum(std::string_view fluentType)
+PatchType MeshReader::mapFluentBCToEnum(TokenRef fluentType)
 {
     for (const auto& [name, type] : bcMappings_)
     {
@@ -676,16 +679,16 @@ PatchType MeshReader::mapFluentBCToEnum(std::string_view fluentType)
     Warning
     (
         "Unknown Fluent boundary type encountered: "
-      + std::string(fluentType)
+      + Token(fluentType)
     );
 
     return PatchType::undefined;
 }
 
 
-size_t MeshReader::hexToDec(std::string_view hexStr)
+Count MeshReader::hexToDec(TokenRef hexStr)
 {
-    size_t decVal = 0;
+    Count decVal = 0;
 
     const auto result =
         std::from_chars
@@ -705,7 +708,7 @@ size_t MeshReader::hexToDec(std::string_view hexStr)
         FatalError
         (
             "Failed to convert hex string '"
-          + std::string(hexStr) + "' to decimal."
+          + Token(hexStr) + "' to decimal."
         );
     }
 
@@ -713,9 +716,9 @@ size_t MeshReader::hexToDec(std::string_view hexStr)
 }
 
 
-size_t MeshReader::strToDec(std::string_view decStr)
+Count MeshReader::strToDec(TokenRef decStr)
 {
-    size_t decVal = 0;
+    Count decVal = 0;
     
     const auto result =
         std::from_chars
@@ -734,8 +737,8 @@ size_t MeshReader::strToDec(std::string_view decStr)
         FatalError
         (
             "Failed to convert decimal string '"
-          + std::string(decStr)
-          + "' to size_t. Invalid format or "
+          + Token(decStr)
+          + "' to Count. Invalid format or "
             "contains non-numeric characters."
         );
     }
@@ -744,10 +747,10 @@ size_t MeshReader::strToDec(std::string_view decStr)
 }
 
 
-size_t MeshReader::safeFluentIndexConvert
+Index MeshReader::safeFluentIndexConvert
 (
-    size_t fluentIdx,
-    std::string_view context
+    Count fluentIdx,
+    MessageRef context
 )
 {
     if (fluentIdx == 0)
@@ -755,7 +758,7 @@ size_t MeshReader::safeFluentIndexConvert
         FatalError
         (
             "Invalid Fluent index 0 in "
-          + std::string(context)
+          + Message(context)
           + ". Fluent uses 1-based indexing."
         );
     }

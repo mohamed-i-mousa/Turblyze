@@ -21,13 +21,13 @@
 
 FaceIntegrals Face::geometricProperties
 (
-    std::span<const Vector> allNodes
+    NodeListRef allNodes
 )
 {
     geometricPropertiesCalculated_ = false;
-    const size_t numNodes = nodeIndices_.size();
+    const Count numNodes = nodeIndices_.size();
 
-    for (size_t nodeIdx : nodeIndices_)
+    for (Index nodeIdx : nodeIndices_)
     {
         if (nodeIdx >= allNodes.size())
         {
@@ -91,7 +91,7 @@ FaceIntegrals Face::geometricProperties
     {
         Vector faceCenter;
 
-        for (size_t nodeIdx : nodeIndices_)
+        for (Index nodeIdx : nodeIndices_)
         {
             faceCenter += allNodes[nodeIdx];
         }
@@ -102,7 +102,7 @@ FaceIntegrals Face::geometricProperties
         Vector normalSum{};
         Scalar weightedAreaSum = S(0.0);
 
-        for (size_t nodeIdx = 0; nodeIdx < numNodes; ++nodeIdx)
+        for (Index nodeIdx = 0; nodeIdx < numNodes; ++nodeIdx)
         {
             const Vector& pCurr = allNodes[nodeIndices_[nodeIdx]];
             const Vector& pNext =
@@ -158,7 +158,7 @@ FaceIntegrals Face::geometricProperties
 }
 
 
-void Face::distances(std::span<const Cell> allCells)
+void Face::distances(CellListRef allCells)
 {
     dPf_ = centroid_ - allCells[ownerCell_].centroid();
     dPfMag_ = magnitude(dPf_);
@@ -166,7 +166,7 @@ void Face::distances(std::span<const Cell> allCells)
     // Calculate dNf only for internal faces
     if (!isBoundary())
     {
-        const size_t N = neighborCell_.value();
+        const Index N = neighborCell_.value();
         const Vector dNfVec = centroid_ - allCells[N].centroid();
         dNf_ = dNfVec;
         dNfMag_ = magnitude(dNfVec);
@@ -181,7 +181,7 @@ std::ostream& operator<<(std::ostream& os, const Face& f)
     os  << "Face(ID: " << f.idx() << ", Nodes: [";
 
     const auto nodes = f.nodeIndices();
-    for (size_t nodeIdx = 0; nodeIdx < nodes.size(); ++nodeIdx)
+    for (Index nodeIdx = 0; nodeIdx < nodes.size(); ++nodeIdx)
     {
         os  << nodes[nodeIdx]
             << (nodeIdx == nodes.size() - 1 ? "" : ", ");

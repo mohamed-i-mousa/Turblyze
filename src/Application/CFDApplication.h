@@ -11,7 +11,7 @@
 
 // ********************************** Headers *********************************
 
-#include <string>
+#include "StringTypes.h"
 
 // *************************** class CFDApplication ***************************
 
@@ -22,7 +22,7 @@ public:
 // ************************* Special Member Functions *************************
 
     /// Constructor for CFDApplication
-    explicit CFDApplication(const std::string& caseFilePath);
+    explicit CFDApplication(const FilePath& caseFile);
 
     /// Copy constructor and assignment - Not copyable
     CFDApplication(const CFDApplication&) = delete;
@@ -45,5 +45,5 @@ public:
 private:
 
     /// Path to case file
-    std::string caseFilePath_;
+    FilePath caseFile_;
 };

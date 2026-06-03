@@ -17,7 +17,7 @@
 
 // ************************* Special Member Functions *************************
 
-CaseReader::CaseReader(const std::string& filename)
+CaseReader::CaseReader(const FilePath& filename)
 :
     currentFile_{filename}
 {
@@ -26,34 +26,34 @@ CaseReader::CaseReader(const std::string& filename)
 
 // ***************************** Accessor Methods *****************************
 
-const CaseReader& CaseReader::section(const std::string& name) const
+const CaseReader& CaseReader::section(const Name& sectionName) const
 {
-    const auto it = sections_.find(name);
+    const auto it = sections_.find(sectionName);
     if (it == sections_.end())
     {
-        FatalError("Section '" + name + "' not found");
+        FatalError("Section '" + sectionName + "' not found");
     }
 
     return it->second;
 }
 
 
-std::vector<std::string> CaseReader::sectionNames() const
+CaseReader::NameList CaseReader::sectionNames() const
 {
-    std::vector<std::string> names;
-    names.reserve(sections_.size());
+    NameList sectionList;
+    sectionList.reserve(sections_.size());
     for (const auto& section : sections_)
     {
-        names.push_back(section.first);
+        sectionList.push_back(section.first);
     }
-    return names;
+    return sectionList;
 }
 
 // ****************************** Public Methods ******************************
 
-void CaseReader::print(int indent) const
+void CaseReader::print(Count indent) const
 {
-    const std::string indentStr(static_cast<size_t>(indent) * 4, ' ');
+    const Message indentStr(indent * 4, ' ');
 
     // Print entries
     for (const auto& [key, value] : entries_)
@@ -63,10 +63,10 @@ void CaseReader::print(int indent) const
     }
 
     // Print sections
-    for (const auto& [name, section] : sections_)
+    for (const auto& [sectionName, section] : sections_)
     {
         std::cout
-            << indentStr << name << " {" << '\n';
+            << indentStr << sectionName << " {" << '\n';
 
         section.print(indent + 1);
 
@@ -77,7 +77,7 @@ void CaseReader::print(int indent) const
 
 // ****************************** Private Methods *****************************
 
-void CaseReader::parseFile(const std::string& filename)
+void CaseReader::parseFile(const FilePath& filename)
 {
     std::ifstream file(filename);
     if (!file.is_open())
@@ -97,22 +97,22 @@ void CaseReader::parseSection
     char terminator
 )
 {
-    std::string token;
+    Token t;
 
-    while ((token = readToken(is)) != "")
+    while ((t = readToken(is)) != "")
     {
         if
         (
             terminator != '\0'
-         && token.length() == 1
-         && token[0] == terminator
+         && t.length() == 1
+         && t[0] == terminator
         )
         {
             return;
         }
 
         // Check for closing brace
-        if (token == "}")
+        if (t == "}")
         {
             if (terminator == '\0')
             {
@@ -126,19 +126,19 @@ void CaseReader::parseSection
         }
 
         // Read next token to determine if it's a section or key-value pair
-        const std::string next = readToken(is);
+        const Token next = readToken(is);
 
         if (next == "{")
         {
             // It's a section
-            auto& section = sec.sections_[token];
+            auto& section = sec.sections_[t];
             parseSection(is, section, '}');
         }
         else
         {
             // It's a key-value pair
-            std::string value = parseValue(is, next);
-            sec.entries_[token] = std::move(value);
+            Token value = parseValue(is, next);
+            sec.entries_[t] = std::move(value);
         }
     }
 
@@ -148,7 +148,7 @@ void CaseReader::parseSection
         FatalError
         (
             "Unexpected end of file, expected '"
-          + std::string(1, terminator) + "'"
+          + Message(1, terminator) + "'"
         );
     }
 }
@@ -176,7 +176,7 @@ void CaseReader::skipCommentsAndWhitespace(std::istream& is)
             {
                 // Single-line comment
                 is.get(); // consume second '/'
-                std::string line;
+                Token line;
                 std::getline(is, line);
                 currentLine_++;
                 continue;
@@ -209,11 +209,11 @@ void CaseReader::skipCommentsAndWhitespace(std::istream& is)
 }
 
 
-std::string CaseReader::readToken(std::istream& is)
+Token CaseReader::readToken(std::istream& is)
 {
     skipCommentsAndWhitespace(is);
 
-    std::string token;
+    Token t;
     char c;
 
     // Check for special single-character tokens
@@ -228,7 +228,7 @@ std::string CaseReader::readToken(std::istream& is)
     )
     {
         is.get(c);
-        return std::string(1, c);
+        return Token(1, c);
     }
 
     // Read regular token
@@ -254,20 +254,20 @@ std::string CaseReader::readToken(std::istream& is)
             }
             break;
         }
-        token += c;
+        t += c;
     }
 
-    return token;
+    return t;
 }
 
 
-std::string CaseReader::parseValue
+Token CaseReader::parseValue
 (
     std::istream& is,
-    const std::string& firstToken
+    const Token& firstToken
 )
 {
-    std::string value = firstToken;
+    Token value = firstToken;
 
     // Check if it's a vector/list (starts with '(')
     if (firstToken == "(")

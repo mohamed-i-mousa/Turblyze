@@ -21,7 +21,7 @@ Scalar CentralDifferenceScheme::correction
 {
     const Scalar phiFaceCentral = interpolateToFace(face, phi);
 
-    const size_t upwindCell =
+    const Index upwindCell =
         (flowRate >= S(0.0)) ? face.ownerCell() : face.neighborCell().value();
 
     const Scalar phiFaceUDS = phi[upwindCell];
