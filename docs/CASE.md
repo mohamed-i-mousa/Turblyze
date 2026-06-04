@@ -362,8 +362,9 @@ output
   console output including mesh geometry details, boundary
   condition summaries, solver configuration, per-equation
   solver convergence, turbulence field diagnostics, and VTK
-  export statistics. VTK cell validation is also run in debug mode; validation
-  issues are reported as warnings and do not block writing the files. When
+  export statistics. VTK cell validation is also run in debug mode; structural
+  validation issues are reported as warnings and pure non-convexity is reported
+  as mesh-quality information. Validation does not block writing the files. When
   `false`, only essential output is shown (phase headers, iteration residuals,
   convergence status, flow statistics, and error/warning messages).
 

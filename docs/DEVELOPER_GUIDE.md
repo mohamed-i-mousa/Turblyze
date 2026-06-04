@@ -571,9 +571,10 @@ Class `kOmegaSST`:
 - Used by `PostProcess::exportResults()` to export pressure,
   `velocityMagnitude`, vector field `velocity`, and, when turbulence is enabled:
   `k`, `omega`, `nut`, and `wallDistance`.
-- In debug output mode, runs `vtkCellValidator` and reports invalid cell
-  counts plus sample IDs/states as warnings; validation does not block file
-  writing.
+- In debug output mode, runs `vtkCellValidator` with VTK's default tolerance.
+  Structural invalid states are reported as warnings with sample IDs/states;
+  cells flagged only as `Nonconvex` are reported separately as mesh-quality
+  information. Validation does not block file writing.
 - Polyhedron output preserves Turblyze's face topology for mixed and
   polyhedral meshes, but it can produce larger files and may make some
   downstream VTK/ParaView filters slower.

@@ -321,12 +321,12 @@ void writeBoundaryData
         FatalError("Failed to write VTK PolyData boundary file: " + filename);
     }
 
-    std::cout
-        << "VTK PolyData boundary file written: "
-        << filename << '\n';
-
     if (debug)
     {
+        std::cout
+            << "VTK PolyData boundary file written: "
+            << filename << '\n';
+
         std::cout
             << "  - Boundary faces: "
             << boundaryFaces.size() << '\n';

@@ -22,6 +22,7 @@
 // Standard library headers
 #include <algorithm>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <vector>
 
@@ -160,12 +161,33 @@ Message cellValidationStateName(vtkCellValidator::State state)
 }
 
 
+bool hasState
+(
+    const vtkCellValidator::State state,
+    const vtkCellValidator::State bit
+)
+{
+    return (state & bit) == bit;
+}
+
+
 void validateCellsForDebug(vtkUnstructuredGrid* unstructuredGrid)
 {
     vtkSmartPointer<vtkGenericCell> genericCell =
         vtkSmartPointer<vtkGenericCell>::New();
 
+    // vtkCellValidator discounts the shared vertices of adjacent edges and
+    // faces by comparing parametric coordinates (in [0, 1]) against this
+    // tolerance. FLT_EPSILON is the value vtkCellValidator itself defaults
+    // to; machine epsilon (smallValue in double precision) is roughly 5e8
+    // times tighter, so ordinary round-off in vtkLine::Intersection reads
+    // shared vertices as genuine crossings and spuriously flags warped cells
+    // as IntersectingEdges / FacesAreOrientedIncorrectly.
+    const double tolerance =
+        static_cast<double>(std::numeric_limits<float>::epsilon());
+
     Count invalidCellCount = 0;
+    Count nonConvexCellCount = 0;
     std::vector<Message> invalidSamples;
     constexpr Count maxSamples = 8;
 
@@ -176,14 +198,28 @@ void validateCellsForDebug(vtkUnstructuredGrid* unstructuredGrid)
         unstructuredGrid->GetCell(cellIdx, genericCell);
 
         const vtkCellValidator::State state =
-            vtkCellValidator::Check
-            (
-                genericCell.GetPointer(),
-                static_cast<double>(smallValue)
-            );
+            vtkCellValidator::Check(genericCell.GetPointer(), tolerance);
 
         if (state == vtkCellValidator::Valid)
         {
+            continue;
+        }
+
+        // Nonconvex is a mesh-quality property, not a defect in how this
+        // writer built the cell: a non-convex polyhedron is a valid VTK
+        // cell that renders correctly. Only genuine structural problems
+        // count as invalid output, so a cell flagged solely as Nonconvex is
+        // reported separately and does not trigger the warning.
+        const bool structurallyInvalid =
+            hasState(state, vtkCellValidator::WrongNumberOfPoints)
+         || hasState(state, vtkCellValidator::IntersectingEdges)
+         || hasState(state, vtkCellValidator::IntersectingFaces)
+         || hasState(state, vtkCellValidator::NoncontiguousEdges)
+         || hasState(state, vtkCellValidator::FacesAreOrientedIncorrectly);
+
+        if (!structurallyInvalid)
+        {
+            ++nonConvexCellCount;
             continue;
         }
 
@@ -198,6 +234,13 @@ void validateCellsForDebug(vtkUnstructuredGrid* unstructuredGrid)
         }
     }
 
+    if (nonConvexCellCount > 0)
+    {
+        std::cout
+            << "VTK cell validation: " << nonConvexCellCount
+            << " non-convex cell(s) (mesh quality; valid for output).\n";
+    }
+
     if (invalidCellCount == 0)
     {
         return;
@@ -206,7 +249,7 @@ void validateCellsForDebug(vtkUnstructuredGrid* unstructuredGrid)
     std::ostringstream message;
     message
         << "VTK cell validation reported " << invalidCellCount
-        << " invalid cell(s). Output will still be written.";
+        << " structurally invalid cell(s). Output will still be written.";
 
     if (!invalidSamples.empty())
     {
@@ -447,12 +490,12 @@ void writeVtkUnstructuredGrid
         FatalError("Failed to write VTK UnstructuredGrid file: " + filename);
     }
 
-    std::cout
-        << "VTK UnstructuredGrid file written: "
-        << filename << '\n';
-
     if (debug)
     {
+        std::cout
+            << "VTK UnstructuredGrid file written: "
+            << filename << '\n';
+
         std::cout
             << "  - Number of points: " << allNodes.size() << '\n';
 
