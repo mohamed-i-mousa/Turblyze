@@ -20,6 +20,7 @@
 #include "BoundaryConditions.h"
 #include "CaseConfiguration.h"
 #include "CaseReader.h"
+#include "Logger.h"
 #include "MeshCreator.h"
 #include "PostProcess.h"
 #include "SolverSetup.h"
@@ -54,8 +55,8 @@ CFDApplication::~CFDApplication() noexcept = default;
 
 void CFDApplication::run()
 {
-    std::cout
-        << '\n' << "--- 0. Loading Case ---" << '\n';
+    std::cout << '\n';
+    Logger::sectionHeader("Loading Case");
 
     // Read the case file and load configuration
     CaseReader caseReader(caseFile_);
@@ -76,15 +77,11 @@ void CFDApplication::run()
     SolverSetup::configure(modules, mesh, bcManager, config);
     SolverSetup::logSetup(modules, config);
 
-    std::cout
-        << '\n' << "--- 4. Solving Steady-State Flow with SIMPLE ---"
-        << '\n';
-
-    // Run the solver
+    // Run the solver (SIMPLE::solve prints its own framed banner)
     modules.solver->solve();
 
     // Post-process results
-    PostProcess::reportStatistics(*modules.solver, config);
+    PostProcess::reportStatistics(*modules.solver);
     PostProcess::exportResults
     (
         *modules.solver,

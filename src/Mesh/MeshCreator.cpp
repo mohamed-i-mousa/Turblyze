@@ -13,6 +13,7 @@
 #include <vector>
 
 // Project headers
+#include "Logger.h"
 #include "MeshChecker.h"
 #include "MeshReader.h"
 
@@ -23,8 +24,8 @@ namespace MeshCreator
 
 Mesh create(const CaseConfiguration& config)
 {
-    std::cout
-        << '\n' << "--- 1. Reading and Preparing Mesh ---" << '\n';
+    std::cout << '\n';
+    Logger::sectionHeader("Reading and Preparing Mesh");
 
     // Read mesh data from file
     MeshReader meshReader(config.meshFile);

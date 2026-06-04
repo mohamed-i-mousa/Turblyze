@@ -18,11 +18,7 @@ namespace PostProcess
 {
 
 /// Extract solution fields and print flow statistics
-void reportStatistics
-(
-    const SIMPLE& solver,
-    const CaseConfiguration& config
-);
+void reportStatistics(const SIMPLE& solver);
 
 /// Write VTK volume and wall-boundary results
 void exportResults

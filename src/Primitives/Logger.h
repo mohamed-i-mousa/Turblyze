@@ -99,6 +99,9 @@ namespace Logger
     /// Print one indented label-value row with a Scalar value
     void keyValue(MessageRef label, Scalar value);
 
+    /// Print one indented label-value row with a fixed-point value and unit
+    void keyValue(MessageRef label, Scalar value, MessageRef unit);
+
     /// Print one indented label-value row with an int value
     void keyValue(MessageRef label, int value);
 

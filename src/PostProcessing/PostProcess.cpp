@@ -18,6 +18,7 @@
 #include "CaseConfiguration.h"
 #include "DerivedFields.h"
 #include "ErrorHandler.h"
+#include "Logger.h"
 #include "Mesh.h"
 #include "SIMPLE.h"
 #include "VTK/VtkBoundaryWriter.h"
@@ -33,28 +34,15 @@ namespace PostProcess
     using VectorFieldMap = std::map<Name, std::array<const ScalarField*, 3>>;
     using BoundaryScalarFieldMap = std::map<Name, const FaceData<Scalar>*>;
 
-void reportStatistics
-(
-    const SIMPLE& solver,
-    const CaseConfiguration& config
-)
+void reportStatistics(const SIMPLE& solver)
 {
-    std::cout
-         << '\n' << "--- 5. Extracting Solution Fields ---" << '\n';
+    std::cout << '\n';
+    Logger::sectionHeader("Post-Processing Results");
 
     const ScalarField& Ux = solver.Ux();
     const ScalarField& Uy = solver.Uy();
     const ScalarField& Uz = solver.Uz();
     const ScalarField& pressure = solver.pressure();
-
-    if (config.debug)
-    {
-        std::cout
-            << "Solution extracted." << '\n';
-    }
-
-    std::cout
-         << '\n' << "--- 6. Post-Processing Results ---" << '\n';
 
     const ScalarField velocityMag = VTK::velocityMagnitude(Ux, Uy, Uz);
 
@@ -80,17 +68,12 @@ void reportStatistics
     }
     averageVelocity /= S(Ux.size());
 
-    std::cout
-        << "Flow Statistics:" << '\n';
-    std::cout
-        << "  Max velocity magnitude: " << maximumVelocity
-        << " m/s" << '\n';
-    std::cout
-        << "  Average velocity magnitude: "
-        << averageVelocity << " m/s" << '\n';
-    std::cout
-        << "  Pressure range: [" << minimumPressure
-        << ", " << maximumPressure << "] Pa" << '\n';
+    Logger::subsection("Flow statistics");
+    Logger::keyValue("Max velocity", maximumVelocity, "m/s");
+    Logger::keyValue("Average velocity", averageVelocity, "m/s");
+    Logger::keyValue("Pressure min", minimumPressure, "Pa");
+    Logger::keyValue("Pressure max", maximumPressure, "Pa");
+    Logger::iterationFooter();
 }
 
 
@@ -102,8 +85,8 @@ void exportResults
     const CaseConfiguration& config
 )
 {
-    std::cout
-         << '\n' << "--- 7. Exporting Results to VTK ---" << '\n';
+    std::cout << '\n';
+    Logger::sectionHeader("Exporting Results");
 
     const ScalarField& Ux = solver.Ux();
     const ScalarField& Uy = solver.Uy();
@@ -182,12 +165,9 @@ void exportResults
         config.debug
     );
 
-    std::cout
-        << '\n' << "=== CFD Results Exported Successfully ===" << '\n';
-    std::cout
-        << "File: " << vtuFilename << '\n';
-    std::cout
-        << "Boundary: " << vtpFilename << '\n';
+    Logger::keyValue("Volume field", vtuFilename);
+    Logger::keyValue("Boundary field", vtpFilename);
+    Logger::iterationFooter();
 }
 
 } // namespace PostProcess

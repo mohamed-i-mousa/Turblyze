@@ -20,6 +20,7 @@
 #include "Scalar.h"
 #include "StringTypes.h"
 #include "CFDApplication.h"
+#include "Logger.h"
 
 // *********************************** main ***********************************
 
@@ -72,12 +73,15 @@ int main(int argc, char* argv[])
     const auto duration =
         std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime);
 
-    std::cout
-        << '\n' << "--- Simulation Complete ---" << '\n';
-
-    std::cout
-        << "Total execution time: " << duration.count() << " seconds" << '\n'
-        << '\n';
+    std::cout << '\n';
+    Logger::sectionHeader("Simulation Complete");
+    Logger::keyValue
+    (
+        "Total execution time",
+        std::to_string(duration.count()) + " seconds"
+    );
+    Logger::iterationFooter();
+    std::cout << '\n';
 
     return 0;
 }

@@ -14,6 +14,7 @@
 // Project headers
 #include "CaseReader.h"
 #include "ErrorHandler.h"
+#include "Logger.h"
 #include "kOmegaSST.h"
 
 // **************************** namespace BCLoader ****************************
@@ -107,8 +108,8 @@ void load
     BoundaryConditions& bcManager
 )
 {
-    std::cout
-        << '\n' << "--- 2. Setting Boundary Conditions ---" << '\n';
+    std::cout << '\n';
+    Logger::sectionHeader("Setting Boundary Conditions");
 
     for (const auto& patch : mesh.patches())
     {

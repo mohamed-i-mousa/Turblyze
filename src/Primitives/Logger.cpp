@@ -214,6 +214,17 @@ void Logger::keyValue(MessageRef label, Scalar value)
 }
 
 
+void Logger::keyValue(MessageRef label, Scalar value, MessageRef unit)
+{
+    StreamStateGuard guard(std::cout);
+
+    std::cout
+        << "    " << std::left << std::setw(24) << label
+        << "  " << std::fixed << std::setprecision(6) << value
+        << ' ' << unit << '\n';
+}
+
+
 void Logger::keyValue(MessageRef label, int value)
 {
     StreamStateGuard guard(std::cout);
