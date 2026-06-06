@@ -126,6 +126,18 @@ namespace Logger
     /// Print a sub-section title line with two-space indentation
     void subsection(MessageRef title);
 
+    /// Print the header for a pressure/friction/total breakdown table
+    void breakdownHeader(MessageRef cornerLabel);
+
+    /// Print one labelled pressure/friction/total breakdown row
+    void breakdownRow
+    (
+        MessageRef label,
+        Scalar pressure,
+        Scalar friction,
+        Scalar total
+    );
+
     /// Print one min/max/mean statistics line for a scalar field
     void scalarStat
     (

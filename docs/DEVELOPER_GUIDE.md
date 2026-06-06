@@ -53,6 +53,7 @@ following the OpenFOAM convention.
 - **`src/PostProcessing/`**: derived fields and output orchestration
   - `DerivedFields.h/.cpp` (velocity/vorticity magnitude, Q-criterion, strain rate)
   - `PostProcess.h/.cpp` (after-solve statistics and VTK export orchestration)
+  - `Forces.h/.cpp` (wall-patch aerodynamic force/coefficient reporting)
   - `VTK/VtkWriter.h/.cpp` (`.vtu` polyhedron unstructured grid writer)
   - `VTK/VtkBoundaryWriter.h/.cpp` (`.vtp` boundary patch writer)
   - `VTK/PvdTimeSeries.h/.cpp` (PVD transient collection file helpers)
@@ -520,15 +521,19 @@ named VTK output fields, and named convergence residuals. It does not own mesh
 or field storage.
 
 `Laminar` (`Laminar.h`) is the null-object model for non-turbulent runs:
-it owns only a zero `nut` field, implements a no-op `solve()`, returns no
-residual or VTK output fields, and reports `isTurbulent() == false`.
+it owns a zero `nut` field, returns no residual or VTK output fields, and
+reports `isTurbulent() == false`. Its `solve()` hook is a no-op. Force
+reporting uses `TurbulenceModel::wallShearStress(Ux, Uy, Uz)`, which lets
+Laminar compute kinematic wall shear stress on demand from the owner-cell
+tangential velocity and laminar viscosity while RANS models return their
+wall-function shear field for the current model state and velocity fields
+through the same interface.
 
 `RANS` (`RANS.{h,cpp}`) is the shared two-equation eddy-viscosity layer. It
 owns `nu`, `nut`, `k`, k/dissipation residual bookkeeping, wall distance,
-wall-function geometry/diagnostics (`nutWall`, `yPlus`, `wallShearStress`),
-and common helpers such as `velocityDivergence()`, strain-rate magnitude
-computation,
-and the turbulent-kinetic-energy inlet estimate.
+wall-function geometry/diagnostics (`nutWall`, `yPlus`), and common helpers
+such as `velocityDivergence()`, strain-rate magnitude computation, on-demand
+wall-shear evaluation, and the turbulent-kinetic-energy inlet estimate.
 
 Class `kOmegaSST`:
 - Is fully initialized by its constructor from inlined parameters (laminar
@@ -552,8 +557,14 @@ Class `kOmegaSST`:
   `ν_t = a1 k / max(a1 ω, F23 ||S||)`, and applies wall corrections. These
   per-iteration fields are local scratch returned from helper methods, not
   persistent members.
-- Provides model output through the base hooks: `k`, `ω`, `nut`,
-  `wallDistance`, `yPlus`, and `wallShearStress`.
+- Provides model output through the base enumeration hooks
+  (`cellDataOutputs`/`boundaryDataOutputs`): `k`, `ω`, `nut`, `wallDistance`,
+  and `yPlus`. Wall shear stress is exposed separately, through the dedicated
+  `wallShearStress(Ux, Uy, Uz)` query rather than these enumeration hooks.
+- Implements the `TurbulenceModel::wallShearStress(Ux, Uy, Uz)` interface by
+  returning the RANS wall-function shear field for the current model state and
+  velocity fields. The returned value is kinematic `tau/rho` on boundary
+  faces.
 
 
 ## Post-processing and VTK export
@@ -587,8 +598,22 @@ Class `kOmegaSST`:
 - Adds integer cell arrays `patchID`, `patchZoneID`, `patchTypeID`, and
   `isWall`. `patchID` is the zero-based ordinal in `mesh.patches()` order;
   `patchZoneID` is the Fluent zone ID.
-- Adds `yPlus` and `wallShearStress` only when turbulence is enabled, indexed
-  by global `face.idx()`.
+- Adds `wallShearStress` for all runs, indexed by global `face.idx()`. Adds
+  `yPlus` only when turbulence is enabled.
+
+`Forces::reportForces()`:
+- Runs after the SIMPLE solve and VTK export when the optional `forces` case
+  section is enabled.
+- Integrates one configured wall patch by reading converged `SIMPLE` velocity
+  and pressure fields, mesh face geometry, boundary pressure values, and
+  `TurbulenceModel::wallShearStress(Ux, Uy, Uz)`.
+- Treats pressure as kinematic pressure, multiplies by `rho`, and uses the
+  projected face area vector (`normal * projectedArea`) for pressure loads.
+- Treats model wall shear as kinematic `tau/rho`, multiplies by `rho`, and
+  uses `contactArea` for friction loads.
+- Projects pressure, friction, and total forces onto the configured unit drag
+  and lift directions, then computes coefficients with
+  `0.5 * rho * |referenceVelocity|^2 * referenceArea`.
 
 
 ## Linear solvers
@@ -956,6 +981,7 @@ linearSolvers { U { solver type; preconditioner type; tolerance scalar; maxIter 
 turbulence { model string; enabled bool; turbulenceIntensity scalar; hydraulicDiameter scalar; }
 output { filename string; debug bool; }
 constraints { velocity { enabled bool; maxVelocity scalar; } pressure { enabled bool; ... } }
+forces { enabled bool; patch name; dragDirection vector; liftDirection vector; referenceVelocity vector; referenceArea scalar; }
 ```
 
 ### Adding New Case Parameters
@@ -1020,4 +1046,6 @@ flowchart TD
   T --> P[checkConvergence]
   P -->|loop| I
   P --> Q[PostProcess::reportStatistics/exportResults]
+  Q --> R{forces enabled?}
+  R -->|yes| S[Forces::reportForces]
 ```

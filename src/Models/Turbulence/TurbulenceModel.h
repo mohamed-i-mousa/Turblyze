@@ -88,6 +88,14 @@ public:
         return turbulentViscosity()[face.ownerCell()];
     }
 
+    /// Get kinematic wall shear stress for current state and velocity fields
+    [[nodiscard]] virtual FaceData<Scalar> wallShearStress
+    (
+        const ScalarField& Ux,
+        const ScalarField& Uy,
+        const ScalarField& Uz
+    ) const = 0;
+
     /// Whether wall-distance initialization converged
     [[nodiscard]] virtual bool wallDistanceConverged() const noexcept
     {

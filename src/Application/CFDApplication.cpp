@@ -20,6 +20,7 @@
 #include "BoundaryConditions.h"
 #include "CaseConfiguration.h"
 #include "CaseReader.h"
+#include "Forces.h"
 #include "Logger.h"
 #include "MeshCreator.h"
 #include "PostProcess.h"
@@ -89,4 +90,17 @@ void CFDApplication::run()
         mesh,
         config
     );
+
+    // Integrate aerodynamic forces on the configured wall patch
+    if (config.forcesEnabled)
+    {
+        Forces::reportForces
+        (
+            *modules.solver,
+            *modules.turbulenceModel,
+            mesh,
+            bcManager,
+            config
+        );
+    }
 }

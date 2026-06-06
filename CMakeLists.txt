@@ -67,6 +67,7 @@ add_executable(${PROJECT_NAME}
     src/PostProcessing/VTK/PvdTimeSeries.cpp
     src/PostProcessing/PostProcess.cpp
     src/PostProcessing/DerivedFields.cpp
+    src/PostProcessing/Forces.cpp
     src/Case/CaseReader.cpp
     src/Case/CaseConfiguration.cpp
     src/Application/SolverSetup.cpp

@@ -74,7 +74,7 @@ kOmegaSST::kOmegaSST
 
     // initialize nut = k/omega
     initializeTurbulentViscosity();
-    updateYPlus(k_, Cmu25_);
+    updateYPlus();
     updateNutWall();
 }
 
@@ -96,7 +96,7 @@ void kOmegaSST::solve
     omegaPrev_ = omega_;
 
     // Update y+ on wall faces
-    updateYPlus(k_, Cmu25_);
+    updateYPlus();
 
     // Compute geometric quantities
     const ScalarField strainRateMag = computeStrainRateMagnitude(gradU);
@@ -147,9 +147,6 @@ void kOmegaSST::solve
 
     // Update wall-function nut on wall faces
     updateNutWall();
-
-    // Update kinematic wall shear stress for diagnostics
-    updateWallShearStress(Ux, Uy, Uz, k_, Cmu25_);
 
     // Compute normalised k/omega change against the pre-solve snapshots
     updateResiduals(omega_, omegaPrev_);

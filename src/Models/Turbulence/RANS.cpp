@@ -110,8 +110,7 @@ RANS::BoundaryDataPair RANS::boundaryDataOutputs() const
 {
     return
     {
-        {"yPlus", &yPlus_},
-        {"wallShearStress", &wallShearStress_}
+        {"yPlus", &yPlus_}
     };
 }
 
@@ -369,11 +368,7 @@ void RANS::initializeWallFunctionGeometry
 }
 
 
-void RANS::updateYPlus
-(
-    const ScalarField& turbulentKineticEnergy,
-    const Scalar cmu25
-)
+void RANS::updateYPlus()
 {
     for (Index faceIdx : wallFunctionFaceIndices_)
     {
@@ -381,23 +376,20 @@ void RANS::updateYPlus
         const Index cellIdx = face.ownerCell();
 
         yPlus_[face.idx()] =
-            cmu25
-          * std::sqrt(turbulentKineticEnergy[cellIdx])
-          * y_[face.idx()]
-          / nu_;
+            cmu25() * std::sqrt(k_[cellIdx]) * y_[face.idx()] / nu_;
     }
 }
 
 
-void RANS::updateWallShearStress
+FaceData<Scalar> RANS::wallShearStress
 (
     const ScalarField& Ux,
     const ScalarField& Uy,
-    const ScalarField& Uz,
-    const ScalarField& turbulentKineticEnergy,
-    const Scalar cmu25
-)
+    const ScalarField& Uz
+) const
 {
+    FaceData<Scalar> shearStress(S(0.0));
+
     for (Index faceIdx : wallFunctionFaceIndices_)
     {
         const auto& face = mesh_.faces()[faceIdx];
@@ -413,10 +405,12 @@ void RANS::updateWallShearStress
         const Scalar tau =
             yPlus_[face.idx()] < yPlusLam_
           ? nu_ * tangentVelocityMag / y_[face.idx()]
-          : cmu25 * cmu25 * turbulentKineticEnergy[cellIdx];
+          : cmu25() * cmu25() * k_[cellIdx];
 
-        wallShearStress_[face.idx()] = std::min(tau, S(1000.0));
+        shearStress[face.idx()] = std::min(tau, S(1000.0));
     }
+
+    return shearStress;
 }
 
 

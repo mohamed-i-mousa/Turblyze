@@ -222,6 +222,12 @@ private:
 
 // Utility helpers
 
+    /// SST wall-function Cμ^0.25, taken as β*^0.25
+    [[nodiscard]] Scalar cmu25() const noexcept override
+    {
+        return Cmu25_;
+    }
+
     /// Blend two constants using SST blending function
     static Scalar blend(Scalar f, Scalar cInner, Scalar cOuter) noexcept
     {

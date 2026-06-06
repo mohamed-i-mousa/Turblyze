@@ -153,6 +153,24 @@ struct CaseConfiguration
     /// Maximum allowed pressure
     Scalar maxPressure;
 
+    /// Enable aerodynamic force calculation on a wall patch
+    bool forcesEnabled;
+
+    /// Wall patch to integrate aerodynamic loads over
+    Name forcesPatch;
+
+    /// Unit drag direction (typically the freestream direction)
+    Vector dragDirection;
+
+    /// Unit lift direction
+    Vector liftDirection;
+
+    /// Reference velocity vector for force coefficients
+    Vector referenceVelocity;
+
+    /// Reference (frontal) area for force coefficients
+    Scalar referenceArea;
+
     /// VTK output filename
     FilePath vtkOutputFilename;
 

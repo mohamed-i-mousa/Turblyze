@@ -110,6 +110,14 @@ public:
         const BoundaryConditions& bcManager
     ) const override;
 
+    /// Wall shear stress (tau/rho) from the wall-function state and velocity
+    [[nodiscard]] FaceData<Scalar> wallShearStress
+    (
+        const ScalarField& Ux,
+        const ScalarField& Uy,
+        const ScalarField& Uz
+    ) const override;
+
     /// Get turbulent kinetic energy field
     [[nodiscard]] const ScalarField& k() const noexcept
     {
@@ -224,9 +232,6 @@ protected:
     /// meshWave wall-distance loop convergence flag
     bool wallDistanceConverged_ = false;
 
-    /// Kinematic wall shear stress magnitude (tau/rho) [m^2/s^2]
-    FaceData<Scalar> wallShearStress_;
-
     /// Owner-cell to wall-face perpendicular distance
     FaceData<Scalar> y_;
 
@@ -274,22 +279,11 @@ protected:
         BCType wallFunctionType
     );
 
-    /// Update y+ field on wall-function faces
-    void updateYPlus
-    (
-        const ScalarField& turbulentKineticEnergy,
-        Scalar cmu25
-    );
+    /// Model-specific Cμ^0.25 used by the wall functions
+    [[nodiscard]] virtual Scalar cmu25() const noexcept = 0;
 
-    /// Update wall shear stress using parallel velocity only
-    void updateWallShearStress
-    (
-        const ScalarField& Ux,
-        const ScalarField& Uy,
-        const ScalarField& Uz,
-        const ScalarField& turbulentKineticEnergy,
-        Scalar cmu25
-    );
+    /// Update y+ field on wall-function faces
+    void updateYPlus();
 
     /// Compute strain-rate magnitude: ||S|| = sqrt(2 S_ij S_ij)
     [[nodiscard]] ScalarField computeStrainRateMagnitude

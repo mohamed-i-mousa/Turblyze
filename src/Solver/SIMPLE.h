@@ -272,7 +272,7 @@ private:
     /// Update pressure with under-relaxation and reset pCorr
     void correctPressure();
 
-    /// Advance k-omega SST turbulence equations (if enabled)
+    /// Solve the turbulence transport equations for one iteration
     void solveTurbulence();
 
     /// Check convergence against scaled residual tolerance

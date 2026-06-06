@@ -157,6 +157,10 @@ void exportResults
         }
     }
 
+    const FaceData<Scalar> wallShearStress =
+        turbulence.wallShearStress(Ux, Uy, Uz);
+    boundaryScalarFields["wallShearStress"] = &wallShearStress;
+
     VTK::writeBoundaryData
     (
         vtpFilename,

@@ -334,7 +334,34 @@ constraints
 }
 ```
 
-### 10. output
+### 10. forces (Optional)
+Aerodynamic force and coefficient reporting on one wall patch.
+
+```cpp
+forces
+{
+    enabled             true;           // Enable force integration
+    patch               sphere;         // Wall patch to integrate
+    dragDirection       (0 0 -1);       // Direction for Cd projection
+    liftDirection       (0 1 0);        // Direction for Cl projection
+    referenceVelocity   (0 0 -20.0);    // Reference velocity [m/s]
+    referenceArea       0.00785375;     // Reference area [m^2]
+}
+```
+
+**Notes**:
+- When `enabled` is `false`, the remaining entries are ignored.
+- `patch`, `dragDirection`, `liftDirection`, `referenceVelocity`, and
+  `referenceArea` are required when `enabled` is `true`.
+- `dragDirection` and `liftDirection` are normalized by the parser before use.
+- Force coefficients use `0.5 * rho * |referenceVelocity|^2 *
+  referenceArea`.
+- Pressure loads are integrated with the face projected area vector. Friction
+  loads use the model-provided wall shear stress and face contact area.
+- Output is written next to the configured VTK volume file as
+  `<name>_forces.txt`.
+
+### 11. output
 Output configuration.
 
 ```cpp
@@ -351,8 +378,9 @@ output
   patches.
 - All computed volume fields are written to the `.vtu` file. Boundary patch
   metadata (`patchID`, `patchZoneID`, `patchTypeID`, `isWall`) is written to
-  `_boundary.vtp`; turbulence wall diagnostics (`yPlus`,
-  `wallShearStress`) are added there only when turbulence is enabled.
+  `_boundary.vtp`; `wallShearStress` is written for all runs, while
+  turbulence-only wall diagnostics such as `yPlus` are added only when
+  turbulence is enabled.
 - Volume cells are encoded as `VTK_POLYHEDRON` to preserve the mesh's
   face-based topology. This can produce larger files and may make some
   downstream ParaView filters slower than native tetra/hex/wedge/pyramid
@@ -368,7 +396,7 @@ output
   `false`, only essential output is shown (phase headers, iteration residuals,
   convergence status, flow statistics, and error/warning messages).
 
-### 11. parallelism (Optional)
+### 12. parallelism (Optional)
 Shared-memory parallelism settings.
 
 ```cpp

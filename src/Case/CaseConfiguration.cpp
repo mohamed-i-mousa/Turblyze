@@ -373,6 +373,8 @@ CaseConfiguration loadConfiguration(const CaseReader& reader)
         }
     }
 
+    readLinearSolvers(reader, config);
+
     config.vtkOutputFilename = outputDict.lookup<FilePath>("filename");
     if (config.vtkOutputFilename.empty())
     {
@@ -442,7 +444,63 @@ CaseConfiguration loadConfiguration(const CaseReader& reader)
         }
     }
 
-    readLinearSolvers(reader, config);
+    config.forcesEnabled = false;
+    config.forcesPatch = "";
+    config.dragDirection = Vector(S(0.0), S(0.0), S(0.0));
+    config.liftDirection = Vector(S(0.0), S(0.0), S(0.0));
+    config.referenceVelocity = Vector(S(0.0), S(0.0), S(0.0));
+    config.referenceArea = S(0.0);
+
+    if (reader.hasSection("forces"))
+    {
+        const auto& forcesDict = reader.section("forces");
+
+        config.forcesEnabled = forcesDict.lookup<bool>("enabled");
+
+        if (config.forcesEnabled)
+        {
+            config.forcesPatch = forcesDict.lookup<Name>("patch");
+            config.dragDirection = forcesDict.lookup<Vector>("dragDirection");
+            config.liftDirection = forcesDict.lookup<Vector>("liftDirection");
+            config.referenceVelocity =
+                forcesDict.lookup<Vector>("referenceVelocity");
+            config.referenceArea = forcesDict.lookup<Scalar>("referenceArea");
+
+            if (config.forcesPatch.empty())
+            {
+                FatalError("forces.patch must not be empty.");
+            }
+
+            if (config.referenceArea <= vSmallValue)
+            {
+                FatalError("forces.referenceArea must be positive.");
+            }
+
+            const Scalar dragMagnitude = magnitude(config.dragDirection);
+            const Scalar liftMagnitude = magnitude(config.liftDirection);
+            const Scalar referenceSpeed = magnitude(config.referenceVelocity);
+
+            if (dragMagnitude <= vSmallValue)
+            {
+                FatalError("forces.dragDirection must be a non-zero vector.");
+            }
+            if (liftMagnitude <= vSmallValue)
+            {
+                FatalError("forces.liftDirection must be a non-zero vector.");
+            }
+            if (referenceSpeed <= vSmallValue)
+            {
+                FatalError
+                (
+                    "forces.referenceVelocity must be a non-zero vector."
+                );
+            }
+
+            // Store unit directions so the force module projects cleanly
+            config.dragDirection = normalized(config.dragDirection);
+            config.liftDirection = normalized(config.liftDirection);
+        }
+    }
 
     return config;
 }

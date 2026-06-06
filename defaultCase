@@ -337,6 +337,19 @@ constraints
 }
 
 // ============================================================================
+// Aerodynamic Forces
+// ============================================================================
+forces
+{
+    enabled             true;          // Enable aerodynamic force calculation
+    patch               sphere;        // Wall patch to integrate loads over
+    dragDirection       (0 0 -1);      // Drag direction (freestream)
+    liftDirection       (0 1 0);       // Lift direction
+    referenceVelocity   (0 0 -20.0);   // Reference velocity [m/s]
+    referenceArea       0.00785375;    // Reference (frontal) area [m^2]
+}
+
+// ============================================================================
 // Output Configuration
 // ============================================================================
 output

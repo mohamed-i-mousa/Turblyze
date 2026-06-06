@@ -23,6 +23,8 @@ A 3D incompressible CFD solver implementing the SIMPLE algorithm with k-omega SS
 
 - **VTK Export**: Comprehensive output including all flow variables and turbulence quantities
 
+- **Aerodynamic Force Reporting**: Optional post-solve integration of pressure and skin-friction loads over a named wall patch, decomposed into drag/lift along user-supplied directions, with non-dimensional `Cd`/`Cl` coefficients; printed to the console and written to a `<name>_forces.txt` file
+
 - **Precision Control**: Configurable single (float) or double precision arithmetic
 
 - **Documentation**: Full Doxygen-style code documentation
@@ -152,8 +154,8 @@ The default `defaultCase` file contains:
     and, when turbulence is enabled, `k`, `omega`, `nut`, `wallDistance`
   - Boundary `.vtp` (e.g. `sphere_boundary.vtp`): all boundary patches with
     integer `patchID`, `patchZoneID`, `patchTypeID`, and `isWall` metadata.
-    When turbulence is enabled, it also includes `yPlus` and
-    `wallShearStress`
+    `wallShearStress` is included for all runs; `yPlus` is added only when
+    turbulence is enabled
 - **Cell Encoding**: volume cells are written as `VTK_POLYHEDRON` to preserve
   Turblyze's face topology. This is more robust for mixed/polyhedral meshes,
   but files can be larger and some ParaView filters may run slower than with
@@ -164,7 +166,7 @@ The default `defaultCase` file contains:
 2. Apply the file and click the "eye" icon to make it visible
 3. Color by desired field (e.g., `pressure`, `velocityMagnitude`)
 4. Open the corresponding `_boundary.vtp` file to inspect boundary patches
-   or wall quantities (`yPlus`, `wallShearStress` when available)
+   or wall quantities (`wallShearStress` always, `yPlus` when turbulent)
 5. Note: volume fields are cell-centered data; boundary metadata and wall
    diagnostics are boundary-face data
 

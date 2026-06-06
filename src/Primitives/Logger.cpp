@@ -91,6 +91,49 @@ void Logger::subsection(MessageRef title)
 }
 
 
+void Logger::breakdownHeader(MessageRef cornerLabel)
+{
+    StreamStateGuard guard(std::cout);
+
+    std::cout
+        << '\n' << "  "
+        << std::left  << std::setw(14) << cornerLabel
+        << std::right
+        << std::setw(16) << "Pressure"
+        << std::setw(16) << "Friction"
+        << std::setw(16) << "Total" << '\n';
+
+    std::cout
+        << "  "
+        << std::left  << std::setw(14) << "----------"
+        << std::right
+        << std::setw(16) << "--------"
+        << std::setw(16) << "--------"
+        << std::setw(16) << "-----" << '\n';
+}
+
+
+void Logger::breakdownRow
+(
+    MessageRef label,
+    Scalar pressure,
+    Scalar friction,
+    Scalar total
+)
+{
+    StreamStateGuard guard(std::cout);
+
+    std::cout
+        << "  "
+        << std::left  << std::setw(14) << label
+        << std::scientific << std::setprecision(6)
+        << std::right
+        << std::setw(16) << pressure
+        << std::setw(16) << friction
+        << std::setw(16) << total << '\n';
+}
+
+
 void Logger::scalarStat
 (
     NameRef name,
