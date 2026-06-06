@@ -57,6 +57,10 @@ void reportStatistics(const SIMPLE& solver)
     Scalar maximumPressure = pressure[0];
     Scalar minimumPressure = pressure[0];
 
+    #pragma omp parallel for schedule(static) \
+        reduction(max:maximumVelocity, maximumPressure) \
+        reduction(min:minimumPressure) \
+        reduction(+:averageVelocity)
     for (Index cellIdx = 0; cellIdx < Ux.size(); ++cellIdx)
     {
         const Scalar vmag = velocityMag[cellIdx];

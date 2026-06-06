@@ -370,8 +370,10 @@ void RANS::initializeWallFunctionGeometry
 
 void RANS::updateYPlus()
 {
-    for (Index faceIdx : wallFunctionFaceIndices_)
+    #pragma omp parallel for schedule(static)
+    for (Index i = 0; i < wallFunctionFaceIndices_.size(); ++i)
     {
+        const Index faceIdx = wallFunctionFaceIndices_[i];
         const auto& face = mesh_.faces()[faceIdx];
         const Index cellIdx = face.ownerCell();
 
@@ -390,8 +392,10 @@ FaceData<Scalar> RANS::wallShearStress
 {
     FaceData<Scalar> shearStress(S(0.0));
 
-    for (Index faceIdx : wallFunctionFaceIndices_)
+    #pragma omp parallel for schedule(static)
+    for (Index i = 0; i < wallFunctionFaceIndices_.size(); ++i)
     {
+        const Index faceIdx = wallFunctionFaceIndices_[i];
         const auto& face = mesh_.faces()[faceIdx];
         const Index cellIdx = face.ownerCell();
 

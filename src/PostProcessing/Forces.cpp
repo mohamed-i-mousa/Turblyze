@@ -79,9 +79,18 @@ void reportForces
     const FaceListRef faces = mesh.faces();
 
     // Integrated dynamic force vectors [N] over the patch
-    Vector pressureForce;
-    Vector frictionForce;
+    // Accumulate the integrated force vectors by component so the patch face
+    // loop folds through scalar OpenMP reductions.
+    Scalar pressureForceX = S(0.0);
+    Scalar pressureForceY = S(0.0);
+    Scalar pressureForceZ = S(0.0);
+    Scalar frictionForceX = S(0.0);
+    Scalar frictionForceY = S(0.0);
+    Scalar frictionForceZ = S(0.0);
 
+    #pragma omp parallel for schedule(static) \
+        reduction(+:pressureForceX, pressureForceY, pressureForceZ) \
+        reduction(+:frictionForceX, frictionForceY, frictionForceZ)
     for
     (
         Index faceIdx = patch.firstFaceIdx();
@@ -96,8 +105,11 @@ void reportForces
         // Pressure force from the kineamtic pressure
         const Scalar pressureFace =
             bcManager.boundaryFaceValue(Field::p, pressure, face);
-        pressureForce +=
+        const Vector pressureContribution =
             (config.rho * pressureFace * face.projectedArea()) * normal;
+        pressureForceX += pressureContribution.x();
+        pressureForceY += pressureContribution.y();
+        pressureForceZ += pressureContribution.z();
 
         // Skin-friction force
         const Vector cellVelocity(Ux[cellIdx], Uy[cellIdx], Uz[cellIdx]);
@@ -109,12 +121,19 @@ void reportForces
         if (tangentMagnitude > vSmallValue)
         {
             const Vector shearDirection = tangentVelocity / tangentMagnitude;
-            const Scalar shearStress = config.rho * wallShearStress[face.idx()];
+            const Scalar shearStress =
+                config.rho * wallShearStress[face.idx()];
 
-            frictionForce +=
+            const Vector frictionContribution =
                 (shearStress * face.contactArea()) * shearDirection;
+            frictionForceX += frictionContribution.x();
+            frictionForceY += frictionContribution.y();
+            frictionForceZ += frictionContribution.z();
         }
     }
+
+    const Vector pressureForce(pressureForceX, pressureForceY, pressureForceZ);
+    const Vector frictionForce(frictionForceX, frictionForceY, frictionForceZ);
 
     // Decompose onto the drag and lift directions
     const Vector& dragDir = config.dragDirection;

@@ -193,8 +193,10 @@ void kOmegaSST::updateNutWall()
 {
     nutWall_.setAll(S(0.0));
 
-    for (Index faceIdx : wallFunctionFaceIndices_)
+    #pragma omp parallel for schedule(static)
+    for (Index i = 0; i < wallFunctionFaceIndices_.size(); ++i)
     {
+        const Index faceIdx = wallFunctionFaceIndices_[i];
         const auto& face = mesh_.faces()[faceIdx];
 
         if (yPlus_[face.idx()] > yPlusLam_)
@@ -217,8 +219,10 @@ void kOmegaSST::updateNutWall()
 
 void kOmegaSST::updateOmegaWallValues()
 {
-    for (Index faceIdx : wallFunctionFaceIndices_)
+    #pragma omp parallel for schedule(static)
+    for (Index i = 0; i < wallFunctionFaceIndices_.size(); ++i)
     {
+        const Index faceIdx = wallFunctionFaceIndices_[i];
         const auto& face = mesh_.faces()[faceIdx];
         const Index cellIdx = face.ownerCell();
 
@@ -863,6 +867,10 @@ void kOmegaSST::logFieldDiagnostics() const
     Scalar nutMax = nut_[0];
     Scalar nutSum = S(0.0);
 
+    #pragma omp parallel for schedule(static) \
+        reduction(+:kSum, omegaSum, nutSum) \
+        reduction(min:kMin, omegaMin, nutMin) \
+        reduction(max:kMax, omegaMax, nutMax)
     for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
     {
         kMin = std::min(kMin, k_[cellIdx]);

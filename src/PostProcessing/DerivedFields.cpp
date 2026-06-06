@@ -27,9 +27,10 @@ namespace
 ScalarField computeMagnitude(const VectorField& field)
 {
     ScalarField result;
-    for (Index idx = 0; idx < field.size(); ++idx)
+    #pragma omp parallel for schedule(static)
+    for (Index cellIdx = 0; cellIdx < field.size(); ++cellIdx)
     {
-        result[idx] = magnitude(field[idx]);
+        result[cellIdx] = magnitude(field[cellIdx]);
     }
     return result;
 }
@@ -45,13 +46,14 @@ ScalarField velocityMagnitude
 )
 {
     ScalarField result;
-    for (Index idx = 0; idx < Ux.size(); ++idx)
+    #pragma omp parallel for schedule(static)
+    for (Index cellIdx = 0; cellIdx < Ux.size(); ++cellIdx)
     {
-        result[idx] = std::sqrt
+        result[cellIdx] = std::sqrt
         (
-            Ux[idx] * Ux[idx]
-          + Uy[idx] * Uy[idx]
-          + Uz[idx] * Uz[idx]
+            Ux[cellIdx] * Ux[cellIdx]
+          + Uy[cellIdx] * Uy[cellIdx]
+          + Uz[cellIdx] * Uz[cellIdx]
         );
     }
     return result;
@@ -71,15 +73,17 @@ ScalarField QCriterion
 {
     ScalarField qCriterion;
 
-    for (Index i = 0; i < gradUx.size(); ++i)
+    #pragma omp parallel for schedule(static)
+    for (Index cellIdx = 0; cellIdx < gradUx.size(); ++cellIdx)
     {
         // Q = 0.5 * (||Omega||^2 - ||S||^2)
-        const Tensor gradU = tensorFromRows(gradUx[i], gradUy[i], gradUz[i]);
+        const Tensor gradU =
+            tensorFromRows(gradUx[cellIdx], gradUy[cellIdx], gradUz[cellIdx]);
 
         const Scalar sMagSq = gradU.symm().magnitudeSquared();
         const Scalar oMagSq = gradU.skew().magnitudeSquared();
 
-        qCriterion[i] = S(0.5) * (oMagSq - sMagSq);
+        qCriterion[cellIdx] = S(0.5) * (oMagSq - sMagSq);
     }
 
     return qCriterion;
@@ -94,18 +98,19 @@ ScalarField strainRateMagnitude
 {
     ScalarField strainRateMag;
 
-    for (Index idx = 0; idx < gradUx.size(); ++idx)
+    #pragma omp parallel for schedule(static)
+    for (Index cellIdx = 0; cellIdx < gradUx.size(); ++cellIdx)
     {
         // Strain rate magnitude = sqrt(2 * S_ij * S_ij)
         const Tensor gradU = tensorFromRows
         (
-            gradUx[idx],
-            gradUy[idx],
-            gradUz[idx]
+            gradUx[cellIdx],
+            gradUy[cellIdx],
+            gradUz[cellIdx]
         );
 
         const Scalar symmMagSq = gradU.symm().magnitudeSquared();
-        strainRateMag[idx] = std::sqrt(S(2.0) * symmMagSq);
+        strainRateMag[cellIdx] = std::sqrt(S(2.0) * symmMagSq);
     }
 
     return strainRateMag;

@@ -49,6 +49,7 @@ void Constraint::applyVelocityConstraints() noexcept
     Count constraintApplied = 0;
     const Scalar maxMagSq = maxVelocityMagnitude_ * maxVelocityMagnitude_;
 
+    #pragma omp parallel for schedule(static) reduction(+:constraintApplied)
     for (Index cellIdx = 0; cellIdx < Ux_.size(); ++cellIdx)
     {
         const Scalar magSq =
@@ -82,6 +83,7 @@ void Constraint::applyPressureConstraints() noexcept
 
     Count constraintApplied = 0;
 
+    #pragma omp parallel for schedule(static) reduction(+:constraintApplied)
     for (Index cellIdx = 0; cellIdx < p_.size(); ++cellIdx)
     {
         const Scalar clamped =
