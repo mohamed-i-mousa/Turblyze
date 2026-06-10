@@ -245,7 +245,7 @@ numericalSchemes
     convection
     {
         default     Upwind;
-        U           Upwind;
+        U           SecondOrderUpwind;
         k           Upwind;
         omega       Upwind;
     }
@@ -354,7 +354,7 @@ forces
 // ============================================================================
 output
 {
-    filename        ../outputFiles.nosync/sphere.vtu;
+    filename        ../outputFiles/sphere.vtu;
     debug           false;      // Enable verbose console output
 }
 
