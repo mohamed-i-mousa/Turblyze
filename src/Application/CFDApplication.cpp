@@ -47,7 +47,7 @@ void initParallelism(int numThreads)
 
 CFDApplication::CFDApplication(const FilePath& caseFile)
 :
-    caseFile_(caseFile)
+    caseFile_{caseFile}
 {}
 
 CFDApplication::~CFDApplication() noexcept = default;

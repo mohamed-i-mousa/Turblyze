@@ -34,12 +34,12 @@ public:
         ScalarField& Uy,
         ScalarField& Uz,
         ScalarField& pressureField,
-        const bool velocityEnabled,
-        const bool pressureEnabled,
-        const Scalar maxVelocityMagnitude,
-        const Scalar minPressure,
-        const Scalar maxPressure,
-        const bool debug
+        bool velocityEnabled,
+        bool pressureEnabled,
+        Scalar maxVelocityMagnitude,
+        Scalar minPressure,
+        Scalar maxPressure,
+        bool debug
     ) noexcept;
 
     /// Copy constructor and assignment - Not copyable (reference member)

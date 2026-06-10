@@ -12,8 +12,8 @@
  *
  * The CellData template provides:
  * - Type-safe storage for cell-centered field variables
- * - Face-specific initialization and assignment operations
- * - Debugging output for face field analysis
+ * - Cell-specific initialization and assignment operations
+ * - Debugging output for cell field analysis
  *****************************************************************************/
 
 #pragma once

@@ -20,24 +20,24 @@ Constraint::Constraint
     ScalarField& Uy,
     ScalarField& Uz,
     ScalarField& pressureField,
-    const bool velocityEnabled,
-    const bool pressureEnabled,
-    const Scalar maxVelocityMagnitude,
-    const Scalar minPressure,
-    const Scalar maxPressure,
-    const bool debug
+    bool velocityEnabled,
+    bool pressureEnabled,
+    Scalar maxVelocityMagnitude,
+    Scalar minPressure,
+    Scalar maxPressure,
+    bool debug
 ) noexcept
 :
-    Ux_(Ux),
-    Uy_(Uy),
-    Uz_(Uz),
-    p_(pressureField),
-    enableVelocityConstraints_(velocityEnabled),
-    enablePressureConstraints_(pressureEnabled),
-    maxVelocityMagnitude_(maxVelocityMagnitude),
-    minPressure_(minPressure),
-    maxPressure_(maxPressure),
-    debug_(debug)
+    Ux_{Ux},
+    Uy_{Uy},
+    Uz_{Uz},
+    p_{pressureField},
+    enableVelocityConstraints_{velocityEnabled},
+    enablePressureConstraints_{pressureEnabled},
+    maxVelocityMagnitude_{maxVelocityMagnitude},
+    minPressure_{minPressure},
+    maxPressure_{maxPressure},
+    debug_{debug}
 {}
 
 // ****************************** Public Methods ******************************

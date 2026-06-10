@@ -8,7 +8,7 @@
 // Implementation header 
 #include "MeshChecker.h"
 
-/// Standard library headers
+// Standard library headers
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-/// Project headers
+// Project headers
 #include "ErrorHandler.h"
 #include "Integer.h"
 #include "StringTypes.h"

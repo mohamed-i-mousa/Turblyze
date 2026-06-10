@@ -25,8 +25,8 @@ GradientScheme::GradientScheme
     const BoundaryConditions& bc
 )
 :
-    mesh_(mesh),
-    bcManager_(bc)
+    mesh_{mesh},
+    bcManager_{bc}
 {}
 
 // ****************************** Public Methods ******************************

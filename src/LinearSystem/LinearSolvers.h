@@ -97,8 +97,8 @@ public:
         Count maxIterations = 1000
     )
     :
-        tolerance_(tolerance),
-        maxIterations_(maxIterations)
+        tolerance_{tolerance},
+        maxIterations_{maxIterations}
     {}
 
 
@@ -252,7 +252,19 @@ public:
             return;
         }
 
+        const Vec xPrev = x;
+
         x = solver_.solveWithGuess(B, x);
+
+        if (!x.allFinite())
+        {
+            Warning
+            (
+                Name(name())
+              + ": non-finite solution — rolling back to previous iterate"
+            );
+            x = xPrev;
+        }
 
         const bool converged = solver_.info() == Eigen::Success;
 

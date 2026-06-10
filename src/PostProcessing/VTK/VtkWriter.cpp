@@ -88,9 +88,9 @@ void appendUniqueNodeId
 void appendValidationStateName
 (
     Message& result,
-    const vtkCellValidator::State state,
-    const vtkCellValidator::State bit,
-    const char* const name
+    vtkCellValidator::State state,
+    vtkCellValidator::State bit,
+    const char* name
 )
 {
     if ((state & bit) == bit)
@@ -163,8 +163,8 @@ Message cellValidationStateName(vtkCellValidator::State state)
 
 bool hasState
 (
-    const vtkCellValidator::State state,
-    const vtkCellValidator::State bit
+    vtkCellValidator::State state,
+    vtkCellValidator::State bit
 )
 {
     return (state & bit) == bit;

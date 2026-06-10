@@ -24,11 +24,12 @@
 
 // ********************************** Headers *********************************
 
-/// Standard library headers
+// Standard library headers
+#include <cmath>
 #include <vector>
 #include <limits>
 
-/// Project headers
+// Project headers
 #include "RANS.h"
 #include "Scalar.h"
 #include "Vector.h"
@@ -54,12 +55,12 @@ public:
         LinearSolver& kSolver,
         const ConvectionSchemes& omegaScheme,
         LinearSolver& omegaSolver,
-        const Scalar nu,
-        const Scalar initialK,
-        const Scalar initialOmega,
-        const Scalar alphaK,
-        const Scalar alphaOmega,
-        const bool debug
+        Scalar nu,
+        Scalar initialK,
+        Scalar initialOmega,
+        Scalar alphaK,
+        Scalar alphaOmega,
+        bool debug
     );
 
     /// Copy constructor and assignment - Not copyable (non-copyable base)
@@ -229,7 +230,12 @@ private:
     }
 
     /// Blend two constants using SST blending function
-    static Scalar blend(Scalar f, Scalar cInner, Scalar cOuter) noexcept
+    [[nodiscard]] static Scalar blend
+    (
+        Scalar f,
+        Scalar cInner,
+        Scalar cOuter
+    ) noexcept
     {
         return f * (cInner - cOuter) + cOuter;
     }

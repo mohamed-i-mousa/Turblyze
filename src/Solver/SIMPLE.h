@@ -20,10 +20,10 @@
 
 // ********************************** Headers *********************************
 
-/// Standard library headers
+// Standard library headers
 #include <vector>
 
-/// Project headers
+// Project headers
 #include "Mesh.h"
 #include "Vector.h"
 #include "BoundaryConditions.h"
@@ -92,7 +92,7 @@ public:
     /// Main solve loop for SIMPLE algorithm
     void solve();
 
-// ***************************** Accessor methods *****************************
+// ***************************** Accessor Methods *****************************
 
     /// Get velocity field
     [[nodiscard]] const ScalarField& Ux() const noexcept { return Ux_; }
@@ -102,7 +102,7 @@ public:
     /// Get pressure field
     [[nodiscard]] const ScalarField& pressure() const noexcept { return p_; }
 
-// ****************************** Private members *****************************
+// ****************************** Private Members *****************************
 
 private:
 
@@ -252,7 +252,7 @@ private:
     Scalar pressureResidual0_ = S(0.0);
     ScalarList turbulenceResidual0_;
 
-// ****************************** Private methods *****************************
+// ****************************** Private Methods *****************************
 
     /// Solve momentum equations for each velocity component
     void solveMomentumEquations();
@@ -292,11 +292,11 @@ private:
     );
 
     /// Compute mass imbalance across domain
-    Scalar massImbalance() const noexcept;
+    [[nodiscard]] Scalar massImbalance() const noexcept;
 
     /// Compute velocity residual
-    Scalar velocityResidual() const noexcept;
+    [[nodiscard]] Scalar velocityResidual() const noexcept;
 
     /// Compute pressure residual
-    Scalar pressureResidual() const noexcept;
+    [[nodiscard]] Scalar pressureResidual() const noexcept;
 };

@@ -102,7 +102,7 @@ void reportForces
         const Index cellIdx = face.ownerCell();
         const Vector& normal = face.normal();
 
-        // Pressure force from the kineamtic pressure
+        // Pressure force from the kinematic pressure
         const Scalar pressureFace =
             bcManager.boundaryFaceValue(Field::p, pressure, face);
         const Vector pressureContribution =

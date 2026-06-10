@@ -64,7 +64,7 @@ vtkIdType localPointIdx
 (
     std::unordered_map<Index, vtkIdType>& nodeMap,
     IndexList& localToGlobalNodes,
-    const Index globalNodeIdx
+    Index globalNodeIdx
 )
 {
     const auto it = nodeMap.find(globalNodeIdx);

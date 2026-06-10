@@ -251,7 +251,7 @@ protected:
     IndexList wallCellIndices_;
 
     /// Wall-to-total boundary area fraction per wall cell
-    std::vector<Scalar> wallCellFraction_;
+    ScalarList wallCellFraction_;
 
     /// y+ crossover between viscous sublayer and log region
     Scalar yPlusLam_ = S(11.225);

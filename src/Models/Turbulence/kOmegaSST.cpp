@@ -5,17 +5,17 @@
 
 // ********************************** Headers *********************************
 
-/// Implementation header
+// Implementation header
 #include "kOmegaSST.h"
 
-/// Standard library headers
+// Standard library headers
 #include <cmath>
 #include <algorithm>
 
-/// External library headers
+// External library headers
 #include <omp.h>
 
-/// Project headers
+// Project headers
 #include "Logger.h"
 #include "Matrix.h"
 #include "BoundaryConditions.h"
@@ -34,12 +34,12 @@ kOmegaSST::kOmegaSST
     LinearSolver& kSolver,
     const ConvectionSchemes& omegaScheme,
     LinearSolver& omegaSolver,
-    const Scalar nu,
-    const Scalar initialK,
-    const Scalar initialOmega,
-    const Scalar alphaK,
-    const Scalar alphaOmega,
-    const bool debug
+    Scalar nu,
+    Scalar initialK,
+    Scalar initialOmega,
+    Scalar alphaK,
+    Scalar alphaOmega,
+    bool debug
 )
 :
     RANS

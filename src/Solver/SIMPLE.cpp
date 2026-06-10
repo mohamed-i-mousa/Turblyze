@@ -5,18 +5,18 @@
 
 // ********************************** Headers *********************************
 
-/// Implementation header
+// Implementation header
 #include "SIMPLE.h"
 
-/// Standard library headers
+// Standard library headers
 #include <cmath>
 #include <iostream>
 #include <algorithm>
 
-/// External library headers
+// External library headers
 #include <omp.h>
 
-/// Project headers
+// Project headers
 #include "Scalar.h"
 #include "Logger.h"
 #include "LinearInterpolation.h"
@@ -484,9 +484,12 @@ void SIMPLE::correctVelocity()
 
         if (face.isBoundary())
         {
-            UxAvgf_[faceIdx] = bcManager_.boundaryFaceValue(Field::Ux, Ux_, face);
-            UyAvgf_[faceIdx] = bcManager_.boundaryFaceValue(Field::Uy, Uy_, face);
-            UzAvgf_[faceIdx] = bcManager_.boundaryFaceValue(Field::Uz, Uz_, face);
+            UxAvgf_[faceIdx] =
+                bcManager_.boundaryFaceValue(Field::Ux, Ux_, face);
+            UyAvgf_[faceIdx] =
+                bcManager_.boundaryFaceValue(Field::Uy, Uy_, face);
+            UzAvgf_[faceIdx] =
+                bcManager_.boundaryFaceValue(Field::Uz, Uz_, face);
         }
         else
         {

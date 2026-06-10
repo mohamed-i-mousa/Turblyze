@@ -36,10 +36,10 @@ RANS::RANS
     LinearSolver& kSolver,
     const ConvectionSchemes& dissipationScheme,
     LinearSolver& dissipationSolver,
-    const Scalar nu,
-    const Scalar alphaK,
-    const Scalar alphaDissipation,
-    const bool debug
+    Scalar nu,
+    Scalar alphaK,
+    Scalar alphaDissipation,
+    bool debug
 )
 :
     mesh_{mesh},
@@ -63,7 +63,7 @@ RANS::~RANS() noexcept = default;
 Scalar RANS::inletK
 (
     const Vector& velocity,
-    const Scalar turbulenceIntensity
+    Scalar turbulenceIntensity
 ) noexcept
 {
     const Scalar uPrime = turbulenceIntensity * magnitude(velocity);
@@ -238,7 +238,7 @@ void RANS::updateWallDistance()
 }
 
 
-void RANS::updateYPlusLam(const Scalar kappa, const Scalar E)
+void RANS::updateYPlusLam(Scalar kappa, Scalar E)
 {
     Scalar yPlusLam = S(11.0);
 
@@ -256,8 +256,8 @@ void RANS::updateYPlusLam(const Scalar kappa, const Scalar E)
 void RANS::initializeWallFunctionGeometry
 (
     const BoundaryConditions& bcManager,
-    const Field wallFunctionField,
-    const BCType wallFunctionType
+    Field wallFunctionField,
+    BCType wallFunctionType
 )
 {
     const Count numCells = mesh_.numCells();

@@ -26,8 +26,8 @@ Matrix::Matrix
     const BoundaryConditions& boundaryConds
 ) noexcept
 :
-    mesh_(mesh),
-    bcManager_(boundaryConds)
+    mesh_{mesh},
+    bcManager_{boundaryConds}
 {
     for (const auto& face : mesh_.faces())
     {
@@ -320,7 +320,7 @@ void Matrix::assembleBoundaryFace
     }
     else if (bc.type() == fixedGradient)
     {
-        const Scalar gradient = bc.fixedScalarGradient(); 
+        const Scalar gradient = bc.fixedScalarGradient();
         const Scalar dn = dot(face.dPf(), face.normal());
 
         localB(eIdx(ownerIdx)) +=
@@ -437,7 +437,7 @@ void Matrix::setValues
                 eIdx(cellIdx),
                 eIdx(cellIdx)
             ) += coeff;
-            
+
             vectorB_(eIdx(cellIdx)) += coeff * values[i];
         }
     }
