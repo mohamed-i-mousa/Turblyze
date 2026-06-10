@@ -60,20 +60,21 @@ public:
         LinearSolver& momentumSolver,
         LinearSolver& pressureSolver,
         TurbulenceModel& turbulence,
-        const Scalar rho,
-        const Scalar mu,
+        Scalar rho,
+        Scalar mu,
         const Vector& initialVelocity,
-        const Scalar initialPressure,
-        const Scalar alphaU,
-        const Scalar alphaP,
-        const Count maxIterations,
-        const Scalar convergenceTolerance,
-        const bool velocityConstraintEnabled,
-        const bool pressureConstraintEnabled,
-        const Scalar maxVelocityMagnitude,
-        const Scalar minPressure,
-        const Scalar maxPressure,
-        const bool debug
+        Scalar initialPressure,
+        Scalar alphaU,
+        Scalar alphaP,
+        Count maxIterations,
+        Scalar convergenceTolerance,
+        Count nNonOrthogonalCorrectors,
+        bool velocityConstraintEnabled,
+        bool pressureConstraintEnabled,
+        Scalar maxVelocityMagnitude,
+        Scalar minPressure,
+        Scalar maxPressure,
+        bool debug
     );
 
     /// Copy constructor and assignment - Not copyable (const T& members)
@@ -151,6 +152,9 @@ private:
     /// Convergence tolerance
     Scalar tolerance_;
 
+    /// Non-orthogonal corrector sub-iterations for the p' equation
+    Count nNonOrthogonalCorrectors_;
+
     /// Enable verbose console output
     bool debug_;
 
@@ -215,9 +219,6 @@ private:
     VectorField gradUx_;
     VectorField gradUy_;
     VectorField gradUz_;
-
-    /// Pressure-correction gradient
-    VectorField gradPCorrPrecomputed_;
 
 // Momentum assembly fields
 

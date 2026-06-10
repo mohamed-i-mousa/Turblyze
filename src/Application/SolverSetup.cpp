@@ -278,6 +278,7 @@ void SolverSetup::configure
             config.alphaP,
             config.maxIterations,
             config.convergenceTolerance,
+            config.nNonOrthogonalCorrectors,
             config.velocityConstraintEnabled,
             config.pressureConstraintEnabled,
             config.maxVelocityMagnitude,
@@ -321,6 +322,11 @@ void SolverSetup::logSetup
     Logger::subsection("SIMPLE controls");
     Logger::keyValue("Max iterations", config.maxIterations);
     Logger::keyValue("Convergence tolerance", config.convergenceTolerance);
+    Logger::keyValue
+    (
+        "Non-orth correctors",
+        config.nNonOrthogonalCorrectors
+    );
     Logger::keyValue("Velocity relaxation", config.alphaU);
     Logger::keyValue("Pressure relaxation", config.alphaP);
     if (config.turbulenceEnabled)

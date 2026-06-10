@@ -209,6 +209,29 @@ Single-parameter or short-signature functions can stay on one line:
 void addPatch(BoundaryPatch patch);
 ```
 
+## Const Correctness
+
+`const` by default (Core Guidelines Con.1–Con.4): local variables, write-once data members, and non-mutating member functions — including private and protected helpers.
+
+**By-value function parameters are never `const`.** Con.1's Exceptions section settles this: "Function parameters passed by value are rarely mutated, but also rarely declared `const`" and marks `void g(const int i)` as pedantic.
+Top-level const on a by-value parameter is invisible to callers (it is not part of the signature) and only adds noise:
+```cpp
+// Correct
+void updateYPlusLam(Scalar kappa, Scalar E);
+void append(const char* name);        // points-to-const stays; top-level goes
+
+// Wrong (pedantic)
+void updateYPlusLam(const Scalar kappa, const Scalar E);
+void append(const char* const name);
+```
+Reference and pointer parameters keep low-level const whenever the callee
+does not mutate the referent: `const ScalarField& phi`, `const char* name`.
+
+A local returned by value that is cheaper to move than copy
+(`ScalarField`/`VectorField`/`std::vector`/`std::string`) stays non-const so
+`return` moves instead of copies. Trivially-copyable locals (`Vector`,
+`Tensor`, `Scalar`, `size_t`) take const even when returned by value.
+
 ## Brace Style
 Opening brace on a new line (Allman style) for classes, functions, and control flow:
 ```cpp

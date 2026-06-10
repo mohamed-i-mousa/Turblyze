@@ -276,6 +276,9 @@ CaseConfiguration loadConfiguration(const CaseReader& reader)
         FatalError("SIMPLE.convergenceTolerance must be positive.");
     }
 
+    config.nNonOrthogonalCorrectors =
+        simple.lookupOrDefault<Count>("nNonOrthogonalCorrectors", 0);
+
     const auto& relaxFactors = simple.section("relaxationFactors");
     config.alphaU = relaxFactors.lookup<Scalar>("U");
     config.alphaP = relaxFactors.lookup<Scalar>("p");

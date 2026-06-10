@@ -34,20 +34,21 @@ SIMPLE::SIMPLE
     LinearSolver& momentumSolver,
     LinearSolver& pressureSolver,
     TurbulenceModel& turbulence,
-    const Scalar rho,
-    const Scalar mu,
+    Scalar rho,
+    Scalar mu,
     const Vector& initialVelocity,
-    const Scalar initialPressure,
-    const Scalar alphaU,
-    const Scalar alphaP,
-    const Count maxIterations,
-    const Scalar convergenceTolerance,
-    const bool velocityConstraintEnabled,
-    const bool pressureConstraintEnabled,
-    const Scalar maxVelocityMagnitude,
-    const Scalar minPressure,
-    const Scalar maxPressure,
-    const bool debug
+    Scalar initialPressure,
+    Scalar alphaU,
+    Scalar alphaP,
+    Count maxIterations,
+    Scalar convergenceTolerance,
+    Count nNonOrthogonalCorrectors,
+    bool velocityConstraintEnabled,
+    bool pressureConstraintEnabled,
+    Scalar maxVelocityMagnitude,
+    Scalar minPressure,
+    Scalar maxPressure,
+    bool debug
 )
 :
     mesh_{mesh},
@@ -63,6 +64,7 @@ SIMPLE::SIMPLE
     alphaP_{alphaP},
     maxIterations_{maxIterations},
     tolerance_{convergenceTolerance},
+    nNonOrthogonalCorrectors_{nNonOrthogonalCorrectors},
     debug_{debug},
     constraintSystem_
     {
@@ -396,8 +398,6 @@ void SIMPLE::solvePressureCorrection()
 {
     const Count numCells = mesh_.numCells();
 
-    gradientScheme_.fieldGradient(Field::pCorr, pCorr_, gradPCorrPrecomputed_);
-
     // Compute mass imbalance source term
     #pragma omp parallel for schedule(static)
     for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
@@ -414,6 +414,10 @@ void SIMPLE::solvePressureCorrection()
         massImbalance_[cellIdx] = -net;
     }
 
+    // p' restarts from zero every outer iteration
+    pCorr_.setAll(S(0.0));
+    gradPCorr_.setAll(Vector{S(0.0), S(0.0), S(0.0)});
+
     TransportEquation equationPCorr
     {
         .field      = Field::pCorr,
@@ -421,41 +425,50 @@ void SIMPLE::solvePressureCorrection()
         .convection = std::nullopt,
         .GammaFace  = DUf_,
         .source     = massImbalance_,
-        .gradPhi    = gradPCorrPrecomputed_,
+        .gradPhi    = gradPCorr_,
         .gradScheme = gradientScheme_
     };
 
-    matrixConstruct_.buildMatrix(equationPCorr);
-
-    // Get references to the assembled matrix
-    auto& matrixA = matrixConstruct_.matrixA();
-    auto& vectorB = matrixConstruct_.vectorB();
-
     // Map pCorr field storage as Eigen vector (zero-copy)
-    pCorr_.setAll(S(0.0));
-
     EigenVectorMap pCorrSolution(pCorr_.data(), eIdx(numCells));
-    pressureSolver_.solve(pCorrSolution, matrixA, vectorB);
 
-    if (debug_)
+    for
+    (
+        Count corrector = 0;
+        corrector <= nNonOrthogonalCorrectors_;
+        ++corrector
+    )
     {
-        const SolvePerformance& pressurePerformance =
-            pressureSolver_.lastPerformance();
+        matrixConstruct_.buildMatrix(equationPCorr);
 
-        Logger::residualRow
+        pressureSolver_.solve
         (
-            "p'",
-            pressurePerformance.solverName,
-            pressurePerformance.iterations,
-            pressurePerformance.finalResidual
+            pCorrSolution,
+            matrixConstruct_.matrixA(),
+            matrixConstruct_.vectorB()
         );
-    }
 
-    #pragma omp parallel for schedule(static)
-    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
-    {
-        gradPCorr_[cellIdx] =
-            gradientScheme_.cellGradient(Field::pCorr, pCorr_, cellIdx);
+        if (debug_)
+        {
+            const SolvePerformance& pressurePerformance =
+                pressureSolver_.lastPerformance();
+
+            Logger::residualRow
+            (
+                "p'",
+                pressurePerformance.solverName,
+                pressurePerformance.iterations,
+                pressurePerformance.finalResidual
+            );
+        }
+
+        // grad(p') feeds the next corrector's non-orthogonal term
+        #pragma omp parallel for schedule(static)
+        for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
+        {
+            gradPCorr_[cellIdx] =
+                gradientScheme_.cellGradient(Field::pCorr, pCorr_, cellIdx);
+        }
     }
 }
 
@@ -580,9 +593,6 @@ void SIMPLE::correctPressure()
 
     // Apply pressure bounds constraints
     constraintSystem_.applyPressureConstraints();
-
-    // Reset pressure correction for next iteration
-    pCorr_.setAll(S(0.0));
 }
 
 

@@ -3,10 +3,11 @@
  * @brief Typed runtime configuration parsed from a case file
  *
  * @details CaseConfiguration stores non-boundary-condition case input in
- * simple POD-style structs. Members are left bare: CaseConfig::loadConfiguration
- * is the single source of truth for every default and assigns each field on
- * every path. Boundary conditions remain patch/field maps and are streamed
- * directly from CaseReader into BoundaryConditions.
+ * simple structs. Members are left bare:
+ * CaseConfig::loadConfiguration is the single source of truth for every
+ * default and assigns each field on every path. Boundary conditions remain
+ * patch/field maps and are streamed directly from CaseReader into
+ * BoundaryConditions.
  *****************************************************************************/
 
 #pragma once
@@ -113,6 +114,9 @@ struct CaseConfiguration
 
     /// SIMPLE convergence tolerance
     Scalar convergenceTolerance;
+
+    /// Non-orthogonal corrector sub-iterations for the p' equation
+    Count nNonOrthogonalCorrectors;
 
     /// Velocity relaxation factor
     Scalar alphaU;

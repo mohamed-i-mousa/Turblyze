@@ -2,11 +2,10 @@
  * @file Matrix.h
  * @brief Matrix assembly for finite volume discretization
  *
- * @details This header defines: TransportEquation struct and the Matrix class.
- * TransportEquation bundles all data describing a scalar transport equation
- * (field, convection, diffusion, source, gradients). The Matrix class
- * handles assembly of sparse linear systems (Ax=b) for any transport
- * equation type — momentum, pressure correction, and turbulence.
+ * @details This header defines the Matrix class, which handles assembly of
+ * sparse linear systems (Ax=b) for any transport equation type — momentum,
+ * pressure correction, and turbulence, described by a TransportEquation
+ * bundle (see TransportEquation.h).
  *
  * @class Matrix
  *
@@ -106,18 +105,10 @@ public:
     /// Apply Patankar implicit under-relaxation
     void relax(Scalar alpha, const ScalarField& phiPrev);
 
-    /**
-     * @brief Fix matrix rows to impose known cell values
-     *
-     * @details
-     * Replaces the equation for each constrained cell with
-     * diag * phi[i] = diag * value[i], and transfers the
-     * known-value coupling to unconstrained neighbors' RHS.
-     * Call after relax() but before solve().
-     *
-     * @param cellIndices Indices of cells to constrain
-     * @param values Prescribed values for those cells
-     */
+    /// Fix matrix rows to impose known cell values
+    /// Replaces each constrained cell's equation with
+    /// diag * phi[i] = diag * value[i] and moves the known-value coupling
+    /// to unconstrained neighbors' RHS; call after relax(), before solve()
     void setValues
     (
         IndexListRef cellIndices,

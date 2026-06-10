@@ -256,8 +256,9 @@ numericalSchemes
 // ============================================================================
 SIMPLE
 {
-    numIterations           500;        // Maximum iterations
-    convergenceTolerance    1e-3;       // Convergence criterion (scaled residuals)
+    numIterations               500;        // Maximum iterations
+    convergenceTolerance        1e-3;       // Convergence criterion
+    nNonOrthogonalCorrectors    0;          // p' corrector re-solves
 
     relaxationFactors
     {

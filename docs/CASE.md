@@ -223,6 +223,7 @@ SIMPLE
 {
     numIterations            100;       // Maximum iterations
     convergenceTolerance    1e-6;       // Convergence criterion
+    nNonOrthogonalCorrectors  1;        // p' corrector re-solves (default 0)
 
     relaxationFactors
     {
@@ -233,6 +234,8 @@ SIMPLE
     }
 }
 ```
+
+**Non-orthogonal correctors** (`nNonOrthogonalCorrectors`, optional, default `0`): number of pressure-correction re-solves per SIMPLE iteration, matching simpleFoam's non-orthogonal pressure corrector loop. Because p' restarts from zero every iteration, its first solve carries no non-orthogonal correction; each corrector recomputes grad(p') and re-solves with the explicit correction term. Use `0` for orthogonal (hexahedral) meshes and `1`–`2` for tetrahedral or polyhedral meshes. Each corrector adds one pressure solve per iteration.
 
 ### 7. linearSolvers
 Linear solver settings for each field.

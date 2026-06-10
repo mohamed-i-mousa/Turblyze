@@ -473,10 +473,10 @@ Entry point: `SIMPLE::solve()` performs the outer iteration until convergence or
 1) Store previous-iteration fields (U, face velocities, flow rates), compute gradP.
 2) `solveMomentumEquations()`: computes velocity gradients once into the `gradU_` member, then solves the `Ux_`/`Uy_`/`Uz_` component fields the solver owns directly — each via `solveMomentumEquation()` with `buildMatrix()` + Patankar relaxation.
 3) `updateRhieChowFlowRate()`: compute Rhie-Chow face mass fluxes.
-4) `solvePressureCorrection()`: pre-compute mass imbalance source, build and solve p' equation using `buildMatrix()` with face-based diffusion (DUf), no convection.
+4) `solvePressureCorrection()`: pre-compute mass imbalance source, reset p' and grad(p') to zero, then build and solve the p' equation using `buildMatrix()` with face-based diffusion (DUf), no convection. `SIMPLE.nNonOrthogonalCorrectors` extra loop passes re-assemble with the explicit non-orthogonal correction from the latest grad(p') and re-solve (simpleFoam's non-orthogonal pressure corrector loop — the first solve always carries a zero correction because p' restarts from zero).
 5) `correctVelocity()`: update U using `U = U* - D ∇p'`.
 6) `correctFlowRate()`: update face mass fluxes.
-7) `correctPressure()`: apply `p = p + α_p p'`; reset p'.
+7) `correctPressure()`: apply `p = p + α_p p'` (p' is reset at the next iteration's corrector-loop entry).
 8) `solveTurbulence()`: advance k–ω SST using current fields and pre-computed `gradU_` (if enabled).
 9) `checkConvergence()`: monitor mass imbalance (normalized per-cell average), velocity residual (normalized L2), and pressure correction residual (normalized RMS).
 
