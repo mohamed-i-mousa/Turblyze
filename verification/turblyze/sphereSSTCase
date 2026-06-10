@@ -1,0 +1,363 @@
+// ============================================================================
+// Parallelism
+// ============================================================================
+parallelism
+{
+    numThreads      4;      // OpenMP thread count (must be > 0)
+}
+
+// ============================================================================
+// Mesh Configuration
+// ============================================================================
+mesh
+{
+    file            ../verification/turblyze/meshes/sphere.msh;
+    checkQuality    true;
+}
+
+// ============================================================================
+// Physical Properties
+// ============================================================================
+physicalProperties
+{
+    rho             1.225;          // Density [kg/m^3]
+    mu              1.7894e-5;      // Dynamic viscosity [Pa.s]
+}
+
+// ============================================================================
+// Initial Conditions
+// ============================================================================
+initialConditions
+{
+    U               (0 0 -20.0);     // Initial velocity [m/s]
+    p               0;               // Initial pressure [Pa]
+}
+
+// ============================================================================
+// Boundary Conditions
+// ============================================================================
+boundaryConditions
+{
+    U
+    {
+        inlet
+        {
+            type        fixedValue;
+            value       (0 0 -20.0);
+        }
+
+        outlet
+        {
+            type        zeroGradient;
+        }
+
+        sphere           
+        { 
+            type        noSlip; 
+        }
+
+        wall1           
+        { 
+            type        noSlip; 
+        }
+
+        wall2           
+        { 
+            type        noSlip; 
+        }
+        
+        wall3           
+        { 
+            type        noSlip; 
+        }
+        
+        wall4           
+        { 
+            type        noSlip; 
+        }
+    }
+
+    p   // kinematic Pressure [m2/s2]
+    {
+        inlet
+        {
+            type        zeroGradient;
+        }
+
+        outlet
+        {
+            type        fixedValue;
+            value       0;
+        }
+
+        sphere           
+        { 
+            type        zeroGradient; 
+        }
+
+        wall1           
+        { 
+            type        zeroGradient; 
+        }
+       
+        wall2           
+        { 
+            type        zeroGradient; 
+        }
+        
+        wall3           
+        { 
+            type        zeroGradient; 
+        }
+      
+        wall4           
+        { 
+            type        zeroGradient; 
+        }
+    }
+
+    k   // Turbulent kinetic energy [m^2/s^2]
+    {
+        inlet
+        {
+            type        fixedValue;
+            value       calculated;
+        }
+
+        outlet
+        {
+            type        zeroGradient;
+        }
+
+        sphere           
+        { 
+            type        kWallFunction; 
+        }
+
+        wall1           
+        { 
+            type        kWallFunction; 
+        }
+        
+        wall2           
+        { 
+            type        kWallFunction; 
+        }
+        
+        wall3           
+        { 
+            type        kWallFunction; 
+        }
+        
+        wall4          
+        { 
+            type        kWallFunction; 
+        }
+    }
+
+    omega   // Specific dissipation rate [1/s]
+    {
+        inlet
+        {
+            type        fixedValue;
+            value       calculated;
+        }
+
+        outlet
+        {
+            type        zeroGradient;
+        }
+
+        sphere           
+        { 
+            type        omegaWallFunction; 
+        }
+
+        wall1           
+        { 
+            type        omegaWallFunction; 
+        }
+        
+        wall2           
+        { 
+            type        omegaWallFunction; 
+        }
+        
+        wall3           
+        { 
+            type        omegaWallFunction; 
+        }
+        
+        wall4           
+        { 
+            type        omegaWallFunction; 
+        }
+    }
+
+    nut // Turbulent kinematic viscosity [m^2/s]
+    {
+        inlet
+        {
+            type        zeroGradient;
+        }
+
+        outlet
+        {
+            type        zeroGradient;
+        }
+
+        sphere           
+        { 
+            type        nutWallFunction; 
+        }
+
+        wall1           
+        { 
+            type        nutWallFunction; 
+        }
+        
+        wall2           
+        { 
+            type        nutWallFunction; 
+        }
+        
+        wall3           
+        { 
+            type        nutWallFunction; 
+        }
+        
+        wall4           
+        { 
+            type        nutWallFunction; 
+        }
+    }
+}
+
+// ============================================================================
+// Numerical Schemes
+// ============================================================================
+numericalSchemes
+{
+    // Options: leastSquares
+    gradient        leastSquares;
+
+    // Options: Upwind, CentralDifference, SecondOrderUpwind
+    convection
+    {
+        default     Upwind;
+        U           SecondOrderUpwind;
+        k           Upwind;
+        omega       Upwind;
+    }
+}
+
+// ============================================================================
+// SIMPLE Algorithm Settings
+// ============================================================================
+SIMPLE
+{
+    numIterations           2000;
+    convergenceTolerance    1e-3;
+
+    relaxationFactors
+    {
+        U                   0.5;        // Velocity under-relaxation
+        p                   0.3;        // Pressure under-relaxation
+        k                   0.3;        // TKE under-relaxation
+        omega               0.3;        // Omega under-relaxation
+    }
+}
+
+// ============================================================================
+// Linear Solvers
+// ============================================================================
+linearSolvers
+{
+    U   // Momentum equations
+    {
+        solver          BiCGSTAB;       // Bi-Conjugate Gradient Stabilized
+        preconditioner  Jacobi;         // Diagonal — parallel-friendly
+        tolerance       1e-6;           // Eigen |r|/|b| tolerance
+        maxIter         100;            // Maximum iterations
+    }
+
+    p   // Pressure correction equation
+    {
+        solver          PCG;            // Preconditioned Conjugate Gradient
+        preconditioner  Jacobi;         // Diagonal — parallel-friendly
+        tolerance       1e-6;
+        maxIter         100;
+    }
+
+    k   // Turbulent kinetic energy
+    {
+        solver          BiCGSTAB;
+        preconditioner  Jacobi;
+        tolerance       1e-8;
+        maxIter         100;
+    }
+
+    omega   // Specific dissipation rate
+    {
+        solver          BiCGSTAB;
+        preconditioner  Jacobi;
+        tolerance       1e-15;
+        maxIter         100;
+    }
+}
+
+// ============================================================================
+// Turbulence Modeling
+// ============================================================================
+turbulence
+{
+    model               kOmegaSST;      // Options: none, kOmegaSST
+    enabled             true;           // Enable/disable turbulence
+    turbulenceIntensity 0.05;           // Turbulence intensity (5%)
+    hydraulicDiameter   0.01;           // Hydraulic diameter [m]
+}
+
+// ============================================================================
+// Solution Constraints (Optional)
+// ============================================================================
+constraints
+{
+    velocity
+    {
+        enabled         false;      // Enable velocity limiting
+        maxVelocity     50;         // Maximum velocity magnitude [m/s]
+    }
+
+    pressure
+    {
+        enabled         false;      // Enable pressure limiting
+        minPressure     -0.05;      // Minimum pressure [Pa]
+        maxPressure     0.05;       // Maximum pressure [Pa]
+    }
+}
+
+// ============================================================================
+// Aerodynamic Forces
+// ============================================================================
+forces
+{
+    enabled             true;          // Enable aerodynamic force calculation
+    patch               sphere;        // Wall patch to integrate loads over
+    dragDirection       (0 0 -1);      // Drag direction (freestream)
+    liftDirection       (0 1 0);       // Lift direction
+    referenceVelocity   (0 0 -20.0);   // Reference velocity [m/s]
+    referenceArea       0.0078539816;  // Frontal area pi*D^2/4
+}
+
+// ============================================================================
+// Output Configuration
+// ============================================================================
+output
+{
+    filename        ../verification/results/sphere.vtu;
+    debug           false;      // Enable verbose console output
+}
+
+// ============================================================================
+// End of Case Setup
+// ============================================================================

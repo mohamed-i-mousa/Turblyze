@@ -1,0 +1,91 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2506                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solver          incompressibleFluid;
+
+startFrom       startTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         2000;
+
+deltaT          1;
+
+writeControl    timeStep;
+
+writeInterval   100;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  6;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable true;
+
+functions
+{
+    forceCoeffs1
+    {
+        type            forceCoeffs;
+        libs            ("libforces.so");
+
+        writeControl    timeStep;
+        writeInterval   1;
+
+        patches         (sphere);
+
+        rho             rhoInf;
+        rhoInf          1.225;
+
+        magUInf         20;
+        lRef            0.1;
+        Aref            0.00785398;
+
+        CofR            (0 0 0);
+
+        dragDir         (0 0 -1);
+        liftDir         (1 0 0);
+        pitchAxis       (0 1 0);
+    }
+
+    forces1
+    {
+        type            forces;
+        libs            ("libforces.so");
+
+        writeControl    timeStep;
+        writeInterval   1;
+
+        patches         (sphere);
+
+        rho             rhoInf;
+        rhoInf          1.225;
+
+        CofR            (0 0 0);
+        pitchAxis       (0 1 0);
+    }
+}
+
+// ************************************************************************* //

@@ -1,0 +1,2 @@
+case,cells,Cd_2000,Cl_2000,Cm_2000,drag_force_N_2000,lift_force_N_2000,Cd_mean_last1000,Cd_std_last1000,Cl_mean_last1000,Cl_std_last1000
+sphere,281792,0.507357,-0.141892,8.161215e-05,0.976270,-0.273032,0.507146,0.000161,-0.141725,0.000394

@@ -1,0 +1,14 @@
+Aerodynamic forces
+Patch          : sphere
+Drag direction : (0.000000, 0.000000, -1.000000)
+Lift direction : (0.000000, 1.000000, 0.000000)
+Reference U    : (0.000000, 0.000000, -20.000000)
+
+Force               Pressure        Friction           Total
+Drag [N]        8.987614e-01    1.201460e-02    9.107760e-01
+Lift [N]       -6.398147e-02   -7.001970e-04   -6.468167e-02
+
+Force coefficients (dimensionless), referenceArea = 7.853982e-03
+Coeff               Pressure        Friction           Total
+Cd              4.670770e-01    6.243865e-03    4.733208e-01
+Cl             -3.325051e-02   -3.638851e-04   -3.361439e-02
