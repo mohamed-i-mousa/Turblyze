@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <p align="center">
-  <img src="docs/logo.png" alt="Turblyze logo" width="180">
+  <img src="docs/logo.png" alt="Turblyze logo" width="400">
 </p>
 
 <h1 align="center">Turblyze</h1>
