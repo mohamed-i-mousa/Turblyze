@@ -1,13 +1,24 @@
-# Turblyze - 3D Incompressible CFD Solver
+<!--
+SPDX-FileCopyrightText: 2025-2026 Mohamed Mousa
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<p align="center">
+  <img src="docs/logo.png" alt="Turblyze logo" width="180">
+</p>
+
+<h1 align="center">Turblyze</h1>
+
+<p align="center">3D Incompressible CFD Solver</p>
 
 A 3D incompressible CFD solver implementing the SIMPLE algorithm with k-omega SST turbulence modeling. The solver reads Fluent `.msh` meshes, solves steady-state incompressible flow, and exports results to VTK format for visualization in ParaView.
 
 ## Features
 
 ### Core Capabilities
-- **3D Incompressible Flow**: Solves momentum equations (Ux, Uy, Uz) with the pressure correction via the SIMPLE algorithm
+- **3D Incompressible Flow**: Solves momentum equations with the pressure correction via the SIMPLE algorithm
 
-- **Collocated Grid**: Uses the Rhie-Chow Face-velocity  interpolation to prevent pressure checkerboarding
+- **Collocated Grid**: Uses Rhie-Chow face-velocity interpolation to prevent pressure checkerboarding
 
 - **Multiple Convection Schemes**: Upwind (UDS), Second-Order Upwind (SOU), and Central-Difference (CDS) convection schemes with deferred-correction approach to improve stability
 
@@ -33,13 +44,16 @@ A 3D incompressible CFD solver implementing the SIMPLE algorithm with k-omega SS
 ## Prerequisites
 
 ### System Requirements
-- **C++20** compatible compiler (GCC 11+, Clang 15+, MSVC 2022+)
+- **C++20** compatible compiler (GCC 11+, or Clang/AppleClang 15+). The warning and optimization flags target GCC, Clang, and AppleClang
 - **CMake** 3.20 or later
-- **Linux/Unix** environment
+- **Linux** or **macOS** environment
 
 ### Dependencies
 - **Eigen 3**: Linear algebra library (header-only)
-- **VTK 9**: Visualization toolkit
+- **VTK 9**: Visualization toolkit (`CommonCore`, `CommonDataModel`,
+  `FiltersGeneral`, `IOXML`)
+- **OpenMP**: Shared-memory parallelism (bundled with GCC/Clang on Linux;
+  Homebrew `libomp` on macOS)
 
 #### Installation on Ubuntu/Debian:
 ```bash
@@ -51,8 +65,7 @@ sudo apt install build-essential cmake libeigen3-dev libvtk9-dev
 brew install cmake eigen vtk libomp
 ```
 
-> **Note (OpenMP setup)**: The `CMakeLists.txt` is tailored to two configurations
-> out of the box:
+> **Note (OpenMP setup)**: The `CMakeLists.txt` is tailored to two configurations:
 > - **Linux with GCC/Clang** — OpenMP ships with the compiler; nothing to do.
 > - **Apple Silicon macOS with AppleClang + Homebrew `libomp`** — the build
 >   wires in `-Xpreprocessor -fopenmp` and the libomp path
@@ -62,51 +75,31 @@ brew install cmake eigen vtk libomp
 > LLVM/Clang, Intel oneAPI, MSVC, cross-compiler, custom libomp install, …),
 > remove or adapt the `if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")` block
 > in `CMakeLists.txt` so that the stock `find_package(OpenMP REQUIRED)` can
-> discover your compiler's native OpenMP runtime. On Intel Macs the only
-> change needed is updating `LIBOMP_PREFIX` to `/usr/local/opt/libomp`.
+> discover your compiler's native OpenMP runtime.
 
-#### VTK Configuration Issues:
-If CMake cannot locate VTK automatically:
-```bash
-cmake -S . -B build.nosync -DVTK_DIR=/usr/lib/cmake/vtk-9.1
-```
+
 
 ## Building the Solver
 
-### Standard Build Process
 ```bash
-cmake -S . -B build.nosync -DCMAKE_BUILD_TYPE=Release
-cmake --build build.nosync
+cmake -S . -B build.nosync
+cmake --build build.nosync -j
 ```
 
-### Build Types
-```bash
-# Release build
-cmake -S . -B build.nosync -DCMAKE_BUILD_TYPE=Release
-cmake --build build.nosync
-
-# Debug build
-cmake -S . -B build.nosync -DCMAKE_BUILD_TYPE=Debug
-cmake --build build.nosync
-```
+This produces the `Turblyze` executable in `build.nosync/`. The `-j` flag
+builds in parallel across all available cores. The build type defaults to
+`Release`; pass `-DCMAKE_BUILD_TYPE=Debug` at configure time for a debug
+build.
 
 ### Build Options
+
+Pass these at configure time, e.g.
+`cmake -S . -B build.nosync -DTURBLYZE_USE_DOUBLE_PRECISION=OFF`:
+
 | Option                          | Default | Effect                                              |
 |---------------------------------|---------|-----------------------------------------------------|
-| `TURBLYZE_USE_DOUBLE_PRECISION` | `ON`    | Defines `PROJECT_USE_DOUBLE_PRECISION` (double `Scalar`); turn `OFF` for single precision. |
+| `TURBLYZE_USE_DOUBLE_PRECISION` | `ON`    | Double-precision `Scalar`; turn `OFF` for single precision. The solver prints the active mode at runtime via `SCALAR_MODE`. |
 | `TURBLYZE_NATIVE_ARCH`          | `ON`    | Adds `-march=native` in Release. Turn `OFF` for portable / cluster-deployable binaries. |
-
-```bash
-# Single-precision Release build
-cmake -S . -B build.nosync -DCMAKE_BUILD_TYPE=Release \
-    -DTURBLYZE_USE_DOUBLE_PRECISION=OFF
-
-# Portable (no -march=native) Release build
-cmake -S . -B build.nosync -DCMAKE_BUILD_TYPE=Release \
-    -DTURBLYZE_NATIVE_ARCH=OFF
-```
-
-The executable `Turblyze` will be generated in the `build.nosync/` directory.
 
 ## Running Simulations
 
@@ -114,8 +107,8 @@ The executable `Turblyze` will be generated in the `build.nosync/` directory.
 Run from the `build.nosync/` directory to ensure correct path resolution:
 ```bash
 cd build.nosync
-./Turblyze                     # Uses default defaultCase file
-./Turblyze customCase          # Uses custom case file
+./Turblyze                     # Uses the default `defaultCase` file
+./Turblyze customCase          # Uses a custom case file
 ```
 
 ### Case File System
@@ -128,10 +121,10 @@ The default `defaultCase` file contains:
   - Inlet: Fixed velocity (0, 0, -20.0) m/s, zero gradient pressure
   - Outlet: Zero gradient velocity, fixed pressure (0 Pa)
   - Walls (`sphere`, `wall1`–`wall4`): No-slip velocity, zero gradient pressure; `kWallFunction`, `omegaWallFunction`, `nutWallFunction` for turbulence
-- **Discretization**: Upwind convection scheme for momentum and turbulence equations. Least-squares for gradients computation
+- **Discretization**: Second-Order Upwind convection scheme for momentum and Upwind convection scheme for turbulence equations. Least-squares for gradients computation
 - **SIMPLE Parameters**: αU = 0.7, αp = 0.3, αk = 0.5, αω = 0.5, tolerance = 1e-3 (scaled residuals), max iterations = 500
 - **Turbulence**: Enabled by default with k-omega SST model
-- **Output**: `../outputFiles.nosync/sphere.vtu`
+- **Output**: `../outputFiles/sphere.vtu` (plus `sphere_boundary.vtp`, and `sphere_forces.txt` when forces are enabled)
 
 ### Flow Physics
 - **Fluid Properties**: Air (ρ = 1.225 kg/m³, μ = 1.7894e-5 Pa·s)
@@ -152,10 +145,8 @@ The default `defaultCase` file contains:
 - **Fields Exported**:
   - Main `.vtu`: `pressure`, `velocityMagnitude`, vector `velocity`,
     and, when turbulence is enabled, `k`, `omega`, `nut`, `wallDistance`
-  - Boundary `.vtp` (e.g. `sphere_boundary.vtp`): all boundary patches with
-    integer `patchID`, `patchZoneID`, `patchTypeID`, and `isWall` metadata.
-    `wallShearStress` is included for all runs; `yPlus` is added only when
-    turbulence is enabled
+  - Boundary `.vtp` (e.g. `sphere_boundary.vtp`): all boundary patches  with integer `patchID`, `patchZoneID`, `patchTypeID`, and `isWall` metadata.
+    `wallShearStress` is included for all runs; `yPlus` is added only when turbulence is enabled
 - **Cell Encoding**: volume cells are written as `VTK_POLYHEDRON` to preserve
   Turblyze's face topology. This is more robust for mixed/polyhedral meshes,
   but files can be larger and some ParaView filters may run slower than with
@@ -191,14 +182,15 @@ physicalProperties
 
 SIMPLE
 {
-    numIterations           300;
-    convergenceTolerance    1e-3;       // Scaled residuals
+    numIterations               500;
+    convergenceTolerance        1e-3;   // Scaled residuals
+    nNonOrthogonalCorrectors    0;      // Extra p' corrector re-solves
     relaxationFactors
     {
-        U                   0.7;
-        p                   0.3;
-        k                   0.5;
-        omega               0.5;
+        U                       0.7;
+        p                       0.3;
+        k                       0.5;
+        omega                   0.5;
     }
 }
 
@@ -224,22 +216,6 @@ numericalSchemes
    ```bash
    ./Turblyze myCase
    ```
-
-
-### Precision Control
-Switch between single and double precision:
-
-**Double Precision (default)**:
-```bash
-cmake -S . -B build.nosync -DTURBLYZE_USE_DOUBLE_PRECISION=ON
-```
-
-**Single Precision**:
-```bash
-cmake -S . -B build.nosync -DTURBLYZE_USE_DOUBLE_PRECISION=OFF
-```
-
-The solver prints precision mode at runtime via `SCALAR_MODE`.
 
 ## Project Structure
 
@@ -284,14 +260,15 @@ brew install doxygen graphviz
 sudo apt install doxygen graphviz
 ```
 
-## Numerical Method Validation
+## Verification and Validation
 
-There is no committed automated test suite. Changes are validated by a
-successful build and a representative case run. For numerics or solver-behavior
-changes, output is compared against the reference OpenFOAM case under
-`verification/`. See `docs/DEVELOPER_GUIDE.md` (§ "Testing and Debugging") for
-the validation workflow and the component-level checks (boundary conditions,
-convection coefficients, gradient conditioning).
+Two committed V&V studies back the solver's numerics, each with its own
+`README.md` (results) and `runGuide.md` (reproduction steps):
+
+- **`verification/`**: code-to-code comparison against OpenFOAM
+  (`simpleFoam`) on the same sphere case: same mesh, boundary conditions,
+  k-omega SST constants, and force-coefficient definition.
+- **`validation/`**: comparison against experiment: a sphere drag curve traced against the Morrison (2013) correlation, combining a laminar low-Re sweep with subcritical k-omega SST benchmark points.
 
 ## Development and Extension
 
@@ -302,14 +279,20 @@ For developers wanting to extend the solver, see `docs/DEVELOPER_GUIDE.md` for:
 - Creating custom discretization schemes
 - Debugging techniques
 
-## Citation and References
+## Roadmap
 
-This solver implements standard CFD methodologies:
-- **SIMPLE Algorithm**: Patankar, S.V. (1980). Numerical Heat Transfer and Fluid Flow
-- **Rhie-Chow Method**: Rhie, C.M. & Chow, W.L. (1983). AIAA Journal, 21(12), 1525-1532
-- **k-omega SST Model**: Menter, F.R. (1994). AIAA Journal, 32(8), 1598-1605
+Directions under consideration for future development, aspirational, not commitments. This list will evolve over time.
+
+- [ ] Transient (unsteady) solver: PISO / PIMPLE pressure-velocity coupling
+- [ ] Fully-coupled implicit solver
+- [ ] Additional turbulence models
+- [ ] Additional mesh formats (e.g. OpenFOAM polyMesh, CGNS)
+- [ ] Distributed-memory parallelism (MPI) beyond the current shared-memory OpenMP
 
 ## License and Support
 
-No license has been specified for this project yet. For questions or bug
-reports, contact the author or open an issue on the project's issue tracker.
+Turblyze is released under the **Apache License 2.0** — see the [`LICENSE`](LICENSE)
+file for the full text. Every source file carries an SPDX
+`Apache-2.0` identifier.
+
+For questions or bug reports, open an issue on the project's issue tracker.
