@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2025-2026 Mohamed Mousa
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Verification: Turblyze vs OpenFOAM
 
 This folder verifies Turblyze's k-omega SST implementation against OpenFOAM on the same sphere case: same mesh, boundary conditions, model constants, reference velocity, and force-coefficient definition.

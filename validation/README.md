@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2025-2026 Mohamed Mousa
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Validation — Sphere Drag Curve
 
 This folder validates Turblyze against the Morrison (2013) smooth-sphere drag

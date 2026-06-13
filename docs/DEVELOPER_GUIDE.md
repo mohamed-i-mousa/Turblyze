@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2025-2026 Mohamed Mousa
+SPDX-License-Identifier: Apache-2.0
+-->
+
 ## Developer Guide
 
 This document explains the internal architecture and implementation details of the CFD solver. It is intended for contributors and users who want to understand, extend, or debug the code.
@@ -821,8 +826,9 @@ three evaluation/assembly call sites listed above.
 
 There is no committed CTest/unit-test target. For code changes, validate with
 a successful build and a representative case run. For numerics or solver
-behavior changes, compare output against the OpenFOAM material under
-`verification/`.
+behavior changes, compare against the committed V&V studies: the OpenFOAM
+code-to-code comparison under `verification/` and the Morrison drag-curve
+study under `validation/` (each has a `runGuide.md` with reproduction steps).
 
 #### Boundary Conditions Checks
 Use `BoundaryConditions::printSummary()` in debug mode and focused temporary

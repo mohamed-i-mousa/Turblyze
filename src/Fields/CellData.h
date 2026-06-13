@@ -1,4 +1,11 @@
 /******************************************************************************
+
+                                     Turblyze
+                           3D incompressible CFD solver
+                       Copyright (C) 2025-2026 Mohamed Mousa
+                        SPDX-License-Identifier: Apache-2.0
+
+ ------------------------------------------------------------------------------
  * @file CellData.h
  * @brief Template container for cell-centered field data storage
  *
@@ -8,12 +15,6 @@
  * cell-centered gradients
  *
  * @class CellData<T>
- * @tparam T Type of field value stored at each cell (e.g., Scalar, Vector)
- *
- * The CellData template provides:
- * - Type-safe storage for cell-centered field variables
- * - Cell-specific initialization and assignment operations
- * - Debugging output for cell field analysis
  *****************************************************************************/
 
 #pragma once

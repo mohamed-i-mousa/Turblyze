@@ -1,4 +1,11 @@
 /******************************************************************************
+
+                                     Turblyze
+                           3D incompressible CFD solver
+                       Copyright (C) 2025-2026 Mohamed Mousa
+                        SPDX-License-Identifier: Apache-2.0
+
+ ------------------------------------------------------------------------------
  * @file Matrix.cpp
  * @brief Matrix assembly and linear system construction for equations
  *****************************************************************************/

@@ -1,4 +1,11 @@
 /******************************************************************************
+
+                                     Turblyze
+                           3D incompressible CFD solver
+                       Copyright (C) 2025-2026 Mohamed Mousa
+                        SPDX-License-Identifier: Apache-2.0
+
+ ------------------------------------------------------------------------------
  * @file Field.h
  * @brief Solver field identifier
  *
@@ -6,10 +13,7 @@
  * (velocity components, pressure, turbulence quantities) in boundary-condition
  * storage, BC lookups, and gradient reconstruction. It replaces error-prone
  * field-name string keys with a compiler-checked type.
- * 
- * @enum Field
- * - Enumeration of solver fields (Ux, Uy, Uz, p, pCorr, k, omega, nut)
- * ***************************************************************************/
+ *****************************************************************************/
 
 #pragma once
 

@@ -1,18 +1,13 @@
 /******************************************************************************
+
+                                     Turblyze
+                           3D incompressible CFD solver
+                       Copyright (C) 2025-2026 Mohamed Mousa
+                        SPDX-License-Identifier: Apache-2.0
+
+ ------------------------------------------------------------------------------
  * @file ErrorHandler.h
  * @brief Fatal error and warning functions for program diagnostics
- *
- * Provides two functions for error reporting:
- *
- * - FatalError("message")  — prints file, line, and message to stderr,
- *                            then calls std::abort() (enables core dumps)
- * - Warning("message")     — prints file, line, and message to stderr,
- *                            then continues execution
- *
- * The CFD solver is batch executable, not a server. There is no caller to
- * catch and retry, so unrecoverable errors terminate immediately rather
- * than throwing exceptions. std::abort() preserves the entire memory snapshot
- * for post-crash debugging.
  *
  * @note FatalError is declared `[[noreturn]] noexcept` and calls
  * std::abort() unconditionally. It can therefore be invoked from any

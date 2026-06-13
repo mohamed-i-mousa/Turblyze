@@ -1,13 +1,17 @@
 /******************************************************************************
+
+                                     Turblyze
+                           3D incompressible CFD solver
+                       Copyright (C) 2025-2026 Mohamed Mousa
+                        SPDX-License-Identifier: Apache-2.0
+
+ ------------------------------------------------------------------------------
  * @file BoundaryPatch.h
  * @brief Boundary patch representation and mesh connectivity management
  *
  * @details This header defines the BoundaryPatch class, which represents a
  * set of faces on the domain boundary. A patch is identified by a name
  * (e.g., "inlet", "wall") and a geometric zone ID from the mesh file.
- *
- * @enum PatchType
- * - Enumeration of boundary condition types
  *
  * @class BoundaryPatch
  * - Identification of boundary zones (name, ID, type)

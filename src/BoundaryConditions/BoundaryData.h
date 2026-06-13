@@ -1,13 +1,17 @@
 /******************************************************************************
+
+                                     Turblyze
+                           3D incompressible CFD solver
+                       Copyright (C) 2025-2026 Mohamed Mousa
+                        SPDX-License-Identifier: Apache-2.0
+
+ ------------------------------------------------------------------------------
  * @file BoundaryData.h
  * @brief Boundary condition data storage and type management
  *
  * @details This header defines the BoundaryData class, which acts as a data
  * transfer object holding the specific parameters for boundary conditions
  * (e.g., "velocity on inlet patch").
- *
- * @enum BCType
- * - Enumeration of boundary condition types
  *
  * @class BoundaryData
  * - Type-safe storage for BC parameters (scalar values, gradients)

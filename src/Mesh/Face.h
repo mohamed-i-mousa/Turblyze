@@ -1,4 +1,11 @@
 /******************************************************************************
+
+                                     Turblyze
+                           3D incompressible CFD solver
+                       Copyright (C) 2025-2026 Mohamed Mousa
+                        SPDX-License-Identifier: Apache-2.0
+
+ ------------------------------------------------------------------------------
  * @file Face.h
  * @brief Represents a face in the computational mesh
  *
@@ -7,10 +14,6 @@
  * A face represents a surface defined by a sequence of nodes (vertices)
  * and serves as the boundary between two control volumes (cells) or between a
  * cell and the domain boundary.
- *
- * @struct FaceIntegrals
- * - Stores second moment integrals and volume contribution from a face
- *   used in cell geometric property calculations.
  *
  * @class Face
  * - Connectivity (nodes, owner cell, neighbor cell)

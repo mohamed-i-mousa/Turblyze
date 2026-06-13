@@ -1,4 +1,11 @@
 /******************************************************************************
+
+                                     Turblyze
+                           3D incompressible CFD solver
+                       Copyright (C) 2025-2026 Mohamed Mousa
+                        SPDX-License-Identifier: Apache-2.0
+
+ ------------------------------------------------------------------------------
  * @file FaceData.h
  * @brief Template container for face-centered field data storage
  *
@@ -8,12 +15,6 @@
  * gradients
  *
  * @class FaceData<T>
- * @tparam T Type of field value stored at each face (e.g., Scalar, Vector)
- *
- * The FaceData template provides:
- * - Type-safe storage for face-centered field variables
- * - Face-specific initialization and assignment operations
- * - Debugging output for face field analysis
  *****************************************************************************/
 
 #pragma once

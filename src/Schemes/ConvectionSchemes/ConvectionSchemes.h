@@ -1,4 +1,11 @@
 /******************************************************************************
+
+                                     Turblyze
+                           3D incompressible CFD solver
+                       Copyright (C) 2025-2026 Mohamed Mousa
+                        SPDX-License-Identifier: Apache-2.0
+
+ ------------------------------------------------------------------------------
  * @file ConvectionSchemes.h
  * @brief Abstract base class for convection discretization schemes
  *
@@ -6,12 +13,6 @@
  * discretizing convective fluxes in transport equations. All schemes use
  * stable first-order upwind coefficients in the implicit matrix. Higher-order
  * schemes add an explicit deferred correction term through correction().
- *
- * @struct FluxCoefficients holds the implicit upwind contributions used by
- * all schemes for matrix assembly:
- * - owner    = max(F, 0): active when flow is from owner to neighbor (F >= 0)
- * - neighbor = min(F, 0): active when flow is from neighbor to owner (F < 0)
- *
  *****************************************************************************/
 
 #pragma once

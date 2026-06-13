@@ -1,4 +1,11 @@
 /******************************************************************************
+
+                                     Turblyze
+                           3D incompressible CFD solver
+                       Copyright (C) 2025-2026 Mohamed Mousa
+                        SPDX-License-Identifier: Apache-2.0
+
+ ------------------------------------------------------------------------------
  * @file VtkWriter.h
  * @brief VTK UnstructuredGrid (.vtu) writer for 3D volume cell data
  *
@@ -6,9 +13,6 @@
  * with cell-centered scalar and vector fields in the VTK UnstructuredGrid
  * format, suitable for ParaView volume rendering, slicing, clipping, and
  * isosurface extraction.
- *
- * @see ParaView: https://www.paraview.org/
- * @see VTK Documentation: https://vtk.org/documentation/
  *****************************************************************************/
 
 #pragma once

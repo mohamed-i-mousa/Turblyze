@@ -1,4 +1,11 @@
 /******************************************************************************
+
+                                     Turblyze
+                           3D incompressible CFD solver
+                       Copyright (C) 2025-2026 Mohamed Mousa
+                        SPDX-License-Identifier: Apache-2.0
+
+ ------------------------------------------------------------------------------
  * @file BoundaryConditions.h
  * @brief Manages boundary conditions for the CFD solver
  *
@@ -8,11 +15,6 @@
  * special conditions like no-slip.
  *
  * @class BoundaryConditions
- *
- * @example: usage hierarchy:
- * - Patch "inlet": U → fixed value, p → zero gradient
- * - Patch "outlet": U → zero gradient, p → fixed value
- * - Patch "wall": U → no-slip, p → zero gradient
  *****************************************************************************/
 
 #pragma once

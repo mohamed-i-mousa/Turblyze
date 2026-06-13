@@ -1,4 +1,11 @@
 /******************************************************************************
+
+                                     Turblyze
+                           3D incompressible CFD solver
+                       Copyright (C) 2025-2026 Mohamed Mousa
+                        SPDX-License-Identifier: Apache-2.0
+
+ ------------------------------------------------------------------------------
  * @file LinearSolvers.h
  * @brief Iterative solver hierarchy for sparse linear systems
  *
@@ -11,9 +18,6 @@
  * The shared solve path lives in EigenLinearSolver<T>::solve() and is
  * defined inline, so this header pulls Eigen's iterative-solver template
  * into every translation unit that includes it.
- *
- * @struct SolvePerformance
- * - Convergence diagnostics cached by LinearSolver after solve()
  *
  * @class LinearSolver
  * - Abstract base with virtual solve()

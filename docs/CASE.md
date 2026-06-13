@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2025-2026 Mohamed Mousa
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Case File Reference Guide
 
 This document provides a comprehensive reference for configuring the Turblyze solver using case files.

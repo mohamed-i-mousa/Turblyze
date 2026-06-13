@@ -1,12 +1,13 @@
 /******************************************************************************
+
+                                     Turblyze
+                           3D incompressible CFD solver
+                       Copyright (C) 2025-2026 Mohamed Mousa
+                        SPDX-License-Identifier: Apache-2.0
+
+ ------------------------------------------------------------------------------
  * @file main.cpp
  * @brief Main entry point for the 3D incompressible CFD solver
- *
- * This file contains the main function that launches the CFD simulation
- * via the CFDApplication driver class. It handles command-line argument
- * parsing, and timing
- *
- * @author Mohamed Mousa
  *****************************************************************************/
 
 // ********************************** Headers *********************************

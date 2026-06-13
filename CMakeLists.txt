@@ -1,3 +1,8 @@
+# -----------------------------------------------------------------------------
+# SPDX-FileCopyrightText: 2025-2026 Mohamed Mousa
+# SPDX-License-Identifier: Apache-2.0
+# -----------------------------------------------------------------------------
+
 cmake_minimum_required(VERSION 3.20)
 project(Turblyze VERSION "1.0.0" LANGUAGES CXX)
 

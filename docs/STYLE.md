@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2025-2026 Mohamed Mousa
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # C++ Code Style Guide
 
 Style conventions for Turblyze (C++20). These rules apply to all `.h`
@@ -10,6 +15,8 @@ and `.cpp` files under `src/`.
 /******************************************************************************
  * @file BoundaryPatch.h
  * @brief Boundary patch representation and mesh connectivity management
+ * @version 1.0.0
+ * @copyright (C) 2025-2026 Mohamed Mousa. SPDX-License-Identifier: Apache-2.0
  *
  * This header defines the BoundaryPatch class, which represents a set of
  * faces on the domain boundary. A patch is identified by a name
@@ -30,8 +37,16 @@ and `.cpp` files under `src/`.
 /******************************************************************************
  * @file FileName.cpp
  * @brief Brief description of file purpose
+ * @version 1.0.0
+ * @copyright (C) 2025-2026 Mohamed Mousa. SPDX-License-Identifier: Apache-2.0
  *****************************************************************************/
 ```
+
+Every file carries two provenance lines directly under `@brief`: `@version`
+(the project version from `CMakeLists.txt`) and `@copyright`, which folds the
+machine-readable `SPDX-License-Identifier` tag into the human copyright notice
+on one line. These two tags plus `@file`, `@brief`, `@class`, `@details`,
+`@param`, `@return`, and `@note` are the complete set used in this codebase.
 
 ## Section Separators
 

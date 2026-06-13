@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2025-2026 Mohamed Mousa
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Reproducing The Sphere Drag Validation
 
 Commands assume the Turblyze executable is in `build.nosync/`.
