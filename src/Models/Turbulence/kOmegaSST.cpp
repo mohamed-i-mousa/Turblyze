@@ -648,7 +648,7 @@ void kOmegaSST::solveOmegaEquation
     {
         const Scalar cellVolume = mesh_.cells()[cellIdx].volume();
 
-        // Production term: Pk * gamma / nut
+        // Production term: add the limited omega production POmega to RHS
         vectorB(eIdx(cellIdx)) += POmega[cellIdx] * cellVolume;
 
         // Destruction term: -β·ω² (implicit: β·ω on diagonal)
