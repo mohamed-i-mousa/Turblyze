@@ -54,10 +54,6 @@ struct TransportEquation
     /// Current cell-centered field values (mutable for zero-copy solve)
     ScalarField& phi;
 
-// ********************************* Transient ********************************
-
-// (placeholder for future)
-
 // ******************************** Convection ********************************
 
 // Convection: div(F * phi)
