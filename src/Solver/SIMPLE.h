@@ -27,9 +27,6 @@
 
 // ********************************** Headers *********************************
 
-// Standard library headers
-#include <vector>
-
 // Project headers
 #include "Mesh.h"
 #include "Vector.h"
@@ -52,8 +49,6 @@ class TurbulenceModel;
 class SIMPLE
 {
 public:
-
-    using NameRefList = std::vector<NameRef>;
 
 // ************************* Special Member Functions *************************
 

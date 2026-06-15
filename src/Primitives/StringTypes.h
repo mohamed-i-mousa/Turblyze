@@ -20,6 +20,7 @@
 
 #include <string>
 #include <string_view>
+#include <vector>
 
 // ********************************** Aliases *********************************
 
@@ -48,3 +49,11 @@ using FilePathRef = std::string_view;
 
 /// A non-owning view of human-readable diagnostic
 using MessageRef = std::string_view;
+
+// *********************************** Lists **********************************
+
+/// An ordered collection of owned name identifiers
+using NameList = std::vector<Name>;
+
+/// An ordered collection of borrowed name views
+using NameRefList = std::vector<NameRef>;

@@ -45,7 +45,7 @@ const CaseReader& CaseReader::section(const Name& sectionName) const
 }
 
 
-CaseReader::NameList CaseReader::sectionNames() const
+NameList CaseReader::sectionNames() const
 {
     NameList sectionList;
     sectionList.reserve(sections_.size());

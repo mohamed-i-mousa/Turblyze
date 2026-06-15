@@ -29,7 +29,6 @@
 // Standard library headers
 #include <string>
 #include <map>
-#include <vector>
 #include <sstream>
 #include <algorithm>
 #include <charconv>
@@ -60,7 +59,6 @@ class CaseReader
 {
 public:
 
-    using NameList = std::vector<Name>;
     using EntryMap = std::map<Name, Token>;
     using SectionMap = std::map<Name, CaseReader>;
 
