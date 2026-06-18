@@ -29,11 +29,14 @@ cd build.nosync
 
 cp ../verification/results/sphere_forces.txt \
    ../verification/results/turblyzeForcesFull.txt
-cp ../verification/results/sphere_forces_history.csv \
-   ../verification/results/sphereForcesHistory.csv
 ```
 
-Compute the Turblyze mean over the trailing half:
+The current build writes only the converged `sphere_forces.txt` summary shown
+above. The limit-cycle `Cd`/`Cl` mean and std reported in `README.md` were
+computed by `forcesStats.py` over the per-iteration force history from the
+original verification run, retained as the committed artifact
+`verification/results/sphereForcesHistory.csv` (the current solver does not
+regenerate it):
 
 ```bash
 cd ..

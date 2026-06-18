@@ -2,10 +2,12 @@
 """
 Mean/std of Cd and Cl over the limit cycle from a force-history CSV.
 
-Turblyze's ForceMonitor writes <case>_forces_history.csv (one row per SIMPLE
-iteration). The sphere wake at Re=1.37e5 is unsteady, so the steady solve
-settles into a statistically-steady limit cycle rather than a fixed point; the
-reported coefficient is the mean over that cycle (after the initial transient).
+The <case>_forces_history.csv input (one row per SIMPLE iteration) is a
+retained verification artifact; the current solver writes only a converged
+<case>_forces.txt summary, not a per-iteration history. The sphere wake at
+Re=1.37e5 is unsteady, so the steady solve settles into a statistically-steady
+limit cycle rather than a fixed point; the reported coefficient is the mean
+over that cycle (after the initial transient).
 
 Usage:
     python3 forcesStats.py ../results/sphereForcesHistory.csv
