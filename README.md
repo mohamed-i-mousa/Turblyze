@@ -145,7 +145,7 @@ The default `defaultCase` file contains:
 - **Fields Exported**:
   - Main `.vtu`: `pressure`, `velocityMagnitude`, vector `velocity`,
     and, when turbulence is enabled, `k`, `omega`, `nut`, `wallDistance`
-  - Boundary `.vtp` (e.g. `sphere_boundary.vtp`): all boundary patches  with integer `patchID`, `patchZoneID`, `patchTypeID`, and `isWall` metadata.
+  - Boundary `.vtp` (e.g. `sphere_boundary.vtp`): all boundary patches  with integer `patchIdx`, `patchZoneIdx`, `patchTypeIdx`, and `isWall` metadata.
     `wallShearStress` is included for all runs; `yPlus` is added only when turbulence is enabled
 - **Cell Encoding**: volume cells are written as `VTK_POLYHEDRON` to preserve
   Turblyze's face topology. This is more robust for mixed/polyhedral meshes,
