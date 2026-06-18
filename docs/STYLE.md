@@ -10,43 +10,52 @@ and `.cpp` files under `src/`.
 
 ## File Headers
 
-**Header files (.h)** use the extended form with `@class` and description:
+**Header files (.h)** open with the Turblyze identity banner, a `---` divider,
+then `@file`/`@brief`/`@details` and (for a class header) `@class`:
 ```cpp
 /******************************************************************************
+
+                                     Turblyze
+                           3D incompressible CFD solver
+                       Copyright (C) 2025-2026 Mohamed Mousa
+                        SPDX-License-Identifier: Apache-2.0
+
+ ------------------------------------------------------------------------------
  * @file BoundaryPatch.h
  * @brief Boundary patch representation and mesh connectivity management
- * @version 1.0.0
- * @copyright (C) 2025-2026 Mohamed Mousa. SPDX-License-Identifier: Apache-2.0
  *
- * This header defines the BoundaryPatch class, which represents a set of
- * faces on the domain boundary. A patch is identified by a name
+ * @details This header defines the BoundaryPatch class, which represents a
+ * set of faces on the domain boundary. A patch is identified by a name
  * (e.g., "inlet", "wall") and a geometric zone ID from the mesh file.
  *
  * @class BoundaryPatch
- *
- * The BoundaryPatch class provides:
  * - Identification of boundary zones (name, ID, type)
  * - Topological range definitions (start face index, end face index)
- * - Mapping between mesh file types (e.g., Fluent strings) and internal enums
  * - Helper methods for querying patch size and face validity
  *****************************************************************************/
 ```
 
-**Source files (.cpp)** use the shorter form:
+**Source files (.cpp)** use the same banner with just `@file` and `@brief`:
 ```cpp
 /******************************************************************************
+
+                                     Turblyze
+                           3D incompressible CFD solver
+                       Copyright (C) 2025-2026 Mohamed Mousa
+                        SPDX-License-Identifier: Apache-2.0
+
+ ------------------------------------------------------------------------------
  * @file FileName.cpp
  * @brief Brief description of file purpose
- * @version 1.0.0
- * @copyright (C) 2025-2026 Mohamed Mousa. SPDX-License-Identifier: Apache-2.0
  *****************************************************************************/
 ```
 
-Every file carries two provenance lines directly under `@brief`: `@version`
-(the project version from `CMakeLists.txt`) and `@copyright`, which folds the
-machine-readable `SPDX-License-Identifier` tag into the human copyright notice
-on one line. These two tags plus `@file`, `@brief`, `@class`, `@details`,
-`@param`, `@return`, and `@note` are the complete set used in this codebase.
+Every file opens with the centred identity banner — the project name,
+`3D incompressible CFD solver`, a `Copyright (C) 2025-2026 Mohamed Mousa` line,
+and the machine-readable `SPDX-License-Identifier: Apache-2.0` on its own line —
+followed by a `---` divider before the Doxygen tags. `@file`, `@brief`,
+`@class`, `@details`, `@param`, `@return`, and `@note` are the complete set of
+Doxygen tags used in this codebase.
 
 ## Section Separators
 

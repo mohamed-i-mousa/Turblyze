@@ -482,7 +482,7 @@ Entry point: `SIMPLE::solve()` performs the outer iteration until convergence or
 5) `correctVelocity()`: update U using `U = U* - D ∇p'`.
 6) `correctFlowRate()`: update face mass fluxes.
 7) `correctPressure()`: apply `p = p + α_p p'` (p' is reset at the next iteration's corrector-loop entry).
-8) `solveTurbulence()`: advance k–ω SST using current fields and pre-computed `gradU_` (if enabled).
+8) `solveTurbulence()`: advance k–ω SST using current fields and velocity gradients `gradU_` (if enabled).
 9) `checkConvergence()`: monitor mass imbalance (normalized per-cell average), velocity residual (normalized L2), and pressure correction residual (normalized RMS).
 
 Controls:
@@ -600,9 +600,9 @@ Class `kOmegaSST`:
   `mesh.patches()` in order and then each patch's face-index range.
 - Builds a deterministic boundary-only global-to-local point remap for the
   `.vtp` file.
-- Adds integer cell arrays `patchID`, `patchZoneID`, `patchTypeID`, and
-  `isWall`. `patchID` is the zero-based ordinal in `mesh.patches()` order;
-  `patchZoneID` is the Fluent zone ID.
+- Adds integer cell arrays `patchIdx`, `patchZoneIdx`, `patchTypeIdx`, and
+  `isWall`. `patchIdx` is the zero-based ordinal in `mesh.patches()` order;
+  `patchZoneIdx` is the Fluent zone ID.
 - Adds `wallShearStress` for all runs, indexed by global `face.idx()`. Adds
   `yPlus` only when turbulence is enabled.
 
@@ -792,7 +792,11 @@ construction).
    The base's `faceGradient`/`limitGradient`/`fieldGradient` are reused as-is —
    `fieldGradient` dispatches to your `cellGradient` virtually.
 3) Add the `.cpp` to `CMakeLists.txt`.
-4) Add a branch to `makeGradientScheme()` in `SolverSetup.cpp` matching the
+4) Register the case-file name in `RuntimeSelection::gradientSchemes`
+   (`src/Case/RuntimeSelection.h`) — the parser validates
+   `numericalSchemes.gradient` against that list, so an unregistered name is
+   rejected before the factory runs.
+5) Add a branch to `makeGradientScheme()` in `SolverSetup.cpp` matching the
    case-file name, and document the name under `numericalSchemes.gradient`
    in `docs/CASE.md`.
 

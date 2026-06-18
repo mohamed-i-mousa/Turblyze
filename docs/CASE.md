@@ -304,7 +304,7 @@ Turbulence model configuration.
 ```cpp
 turbulence
 {
-    model               kOmegaSST;  // Options: none, kOmegaSST
+    model               kOmegaSST;  // Only option: kOmegaSST (disable via enabled false)
     enabled             true;       // Enable/disable turbulence
     turbulenceIntensity 0.05;       // Optional: default 0.05 (5%)
     hydraulicDiameter   0.01;       // Optional: default 0.01 [m]
@@ -375,7 +375,7 @@ Output configuration.
 ```cpp
 output
 {
-    filename        ../outputFiles.nosync/result.vtu;    // Output file path
+    filename        ../outputFiles/result.vtu;           // Output file path
     debug           false;      // Optional: verbose console output
 }
 ```
@@ -385,7 +385,7 @@ output
   `.vtu`; a sibling `_boundary.vtp` file is also written for all boundary
   patches.
 - All computed volume fields are written to the `.vtu` file. Boundary patch
-  metadata (`patchID`, `patchZoneID`, `patchTypeID`, `isWall`) is written to
+  metadata (`patchIdx`, `patchZoneIdx`, `patchTypeIdx`, `isWall`) is written to
   `_boundary.vtp`; `wallShearStress` is written for all runs, while
   turbulence-only wall diagnostics such as `yPlus` are added only when
   turbulence is enabled.
