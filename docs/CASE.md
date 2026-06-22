@@ -12,6 +12,18 @@ This document provides a comprehensive reference for configuring the Turblyze so
 - [Overview](#overview)
 - [File Syntax](#file-syntax)
 - [Case Sections](#case-sections)
+  - [1. mesh](#1-mesh)
+  - [2. physicalProperties](#2-physicalproperties)
+  - [3. initialConditions](#3-initialconditions)
+  - [4. boundaryConditions](#4-boundaryconditions)
+  - [5. numericalSchemes](#5-numericalschemes)
+  - [6. SIMPLE](#6-simple)
+  - [7. linearSolvers](#7-linearsolvers)
+  - [8. turbulence](#8-turbulence)
+  - [9. constraints](#9-constraints-optional)
+  - [10. forces](#10-forces-optional)
+  - [11. output](#11-output)
+  - [12. parallelism](#12-parallelism-optional)
 
 ## Overview
 
