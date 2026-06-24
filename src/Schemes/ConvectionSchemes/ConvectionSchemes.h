@@ -21,9 +21,11 @@
 
 // Standard library headers
 #include <algorithm>
+#include <memory>
 
 // Project headers
 #include "Scalar.h"
+#include "StringTypes.h"
 #include "Vector.h"
 #include "Face.h"
 #include "CellData.h"
@@ -46,6 +48,17 @@ public:
 
     /// Default destructor
     virtual ~ConvectionSchemes() = default;
+
+// **************************** Runtime Selection ****************************
+
+    /// Construct the convection scheme selected by name
+    [[nodiscard]] static std::unique_ptr<ConvectionSchemes> create
+    (
+        Name schemeName
+    );
+
+    /// Names of every selectable convection scheme
+    [[nodiscard]] static NameList availableSchemes();
 
 // ************************** struct FluxCoefficients *************************
 

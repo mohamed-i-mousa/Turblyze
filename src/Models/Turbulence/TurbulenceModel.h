@@ -20,6 +20,7 @@
 // ********************************** Headers *********************************
 
 // Standard library headers
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -34,6 +35,10 @@
 // *************************** Forward Declarations ***************************
 
 class BoundaryConditions;
+class ConvectionSchemes;
+class GradientScheme;
+class LinearSolver;
+class Mesh;
 
 // *************************** class TurbulenceModel **************************
 
@@ -63,6 +68,36 @@ public:
 
     /// Destructor - virtual for polymorphic deletion through the base
     virtual ~TurbulenceModel() noexcept = default;
+
+// **************************** Runtime Selection ****************************
+
+    /// Whether modelName selects the Laminar null-object (no turbulence)
+    [[nodiscard]] static bool isLaminar(NameRef modelName) noexcept
+    {
+        return modelName == "Laminar";
+    }
+
+    /// Construct the turbulence model selected by name
+    [[nodiscard]] static std::unique_ptr<TurbulenceModel> create
+    (
+        NameRef modelName,
+        const Mesh& mesh,
+        const BoundaryConditions& bc,
+        const GradientScheme& gradScheme,
+        const ConvectionSchemes& kScheme,
+        LinearSolver& kSolver,
+        const ConvectionSchemes& omegaScheme,
+        LinearSolver& omegaSolver,
+        Scalar nu,
+        Scalar initialK,
+        Scalar initialOmega,
+        Scalar alphaK,
+        Scalar alphaOmega,
+        bool debug
+    );
+
+    /// Names of every selectable turbulence model
+    [[nodiscard]] static NameList availableModels();
 
 // ***************************** Turbulence Solve *****************************
 

@@ -311,8 +311,7 @@ linearSolvers
 // ============================================================================
 turbulence
 {
-    model               kOmegaSST;      // Options: none, kOmegaSST
-    enabled             true;           // Enable/disable turbulence
+    model               kOmegaSST;      // Options: Laminar, kOmegaSST
     turbulenceIntensity 0.05;           // Turbulence intensity (5%)
     hydraulicDiameter   0.01;           // Hydraulic diameter [m]
 }

@@ -199,10 +199,11 @@ changes when a new scheme is added.
 (`src/Schemes/GradientSchemes/LeastSquares.h/.cpp`)
 is the only concrete scheme today. It owns the least-squares-specific
 `precomputeInverseATA()` and the cached `invATA_` table, and overrides
-`cellGradient`. The factory `makeGradientScheme()` in `SolverSetup.cpp` selects
-it from `numericalSchemes.gradient` (default `leastSquares`); an unknown name is
-a fatal error. To add another scheme (e.g. Green–Gauss), derive a new
-`final` class, override `cellGradient`, and add one branch to the factory.
+`cellGradient`. The factory `GradientScheme::create()`
+(`src/Schemes/GradientSchemes/GradientScheme.cpp`) selects it from
+`numericalSchemes.gradient` (default `leastSquares`); an unknown name is a fatal
+error. To add another scheme (e.g. Green–Gauss), derive a new `final` class,
+override `cellGradient`, and add one branch to the factory.
 
 #### Cell Gradient Computation (`cellGradient` — `LeastSquares`)
 **Method**: Weighted least-squares gradient reconstruction
@@ -782,6 +783,10 @@ construction).
 ### Add a new convection scheme
 1) Derive from `ConvectionSchemes` (base `getFluxCoefficients` returns `FluxCoefficients` struct).
 2) Optionally add high-order face value and correction methods (see CDS/SOU) and integrate as deferred-correction in `Matrix`.
+3) Add the case-file name to `ConvectionSchemes::availableSchemes()` and a
+   matching `if (schemeName == "...")` branch to `ConvectionSchemes::create()`
+   (both in `src/Schemes/ConvectionSchemes/ConvectionSchemes.cpp`), then
+   document it under `numericalSchemes.convection` in `docs/CASE.md`.
 
 ### Add a new gradient scheme
 1) Create `src/Schemes/MyScheme.h/.cpp` with
@@ -792,13 +797,13 @@ construction).
    The base's `faceGradient`/`limitGradient`/`fieldGradient` are reused as-is —
    `fieldGradient` dispatches to your `cellGradient` virtually.
 3) Add the `.cpp` to `CMakeLists.txt`.
-4) Register the case-file name in `RuntimeSelection::gradientSchemes`
-   (`src/Case/RuntimeSelection.h`) — the parser validates
+4) Add the case-file name to `GradientScheme::availableSchemes()`
+   (`src/Schemes/GradientSchemes/GradientScheme.cpp`) — the parser validates
    `numericalSchemes.gradient` against that list, so an unregistered name is
    rejected before the factory runs.
-5) Add a branch to `makeGradientScheme()` in `SolverSetup.cpp` matching the
-   case-file name, and document the name under `numericalSchemes.gradient`
-   in `docs/CASE.md`.
+5) Add a matching `if (schemeName == "...")` branch to
+   `GradientScheme::create()` in the same file, and document the name under
+   `numericalSchemes.gradient` in `docs/CASE.md`.
 
 ### Add a new boundary condition
 1) **Extend enums**: Add new type to `BCType` enum in `BoundaryData.h`
@@ -988,7 +993,7 @@ boundaryConditions { U { patch { type value; } } p { ... } }
 numericalSchemes { gradient scheme; convection { default scheme; U scheme; k scheme; omega scheme; } }
 SIMPLE { numIterations int; convergenceTolerance scalar; relaxationFactors { U scalar; p scalar; k scalar; omega scalar; } }
 linearSolvers { U { solver type; preconditioner type; tolerance scalar; maxIter int; } p { ... } }
-turbulence { model string; enabled bool; turbulenceIntensity scalar; hydraulicDiameter scalar; }
+turbulence { model string; turbulenceIntensity scalar; hydraulicDiameter scalar; }
 output { filename string; debug bool; }
 constraints { velocity { enabled bool; maxVelocity scalar; } pressure { enabled bool; ... } }
 forces { enabled bool; patch name; dragDirection vector; liftDirection vector; referenceVelocity vector; referenceArea scalar; }

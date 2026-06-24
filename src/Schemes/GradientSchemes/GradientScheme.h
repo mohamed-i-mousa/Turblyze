@@ -27,7 +27,12 @@
 
 // ********************************** Headers *********************************
 
+// Standard library headers
+#include <memory>
+
+// Project headers
 #include "Scalar.h"
+#include "StringTypes.h"
 #include "Mesh.h"
 #include "BoundaryConditions.h"
 #include "CellData.h"
@@ -51,6 +56,19 @@ public:
 
     /// Destructor
     virtual ~GradientScheme() noexcept = default;
+
+// **************************** Runtime Selection ****************************
+
+    /// Construct the gradient scheme selected by name
+    [[nodiscard]] static std::unique_ptr<GradientScheme> create
+    (
+        Name schemeName,
+        const Mesh& mesh,
+        const BoundaryConditions& bc
+    );
+
+    /// Names of every selectable gradient scheme
+    [[nodiscard]] static NameList availableSchemes();
 
 // ****************************** Public Methods ******************************
 

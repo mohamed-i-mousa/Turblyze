@@ -20,13 +20,39 @@
 
 // Project headers
 #include "CaseReader.h"
+#include "ConvectionSchemes.h"
 #include "ErrorHandler.h"
+#include "GradientScheme.h"
+#include "LinearSolvers.h"
+#include "RuntimeSelection.h"
+#include "TurbulenceModel.h"
 #include "kOmegaSST.h"
 
 // ***************************** Internal Helpers *****************************
 
 namespace
 {
+
+/// Fail unless selection is one of the available names for a selection point
+void validateSelection
+(
+    const Name& selection,
+    const NameList& available,
+    const Name& context
+)
+{
+    if (RuntimeSelection::isKnown(selection, available))
+    {
+        return;
+    }
+
+    FatalError
+    (
+        context + ": unknown selection '" + selection
+      + "'. Valid options: " + RuntimeSelection::joinNames(available) + "."
+    );
+}
+
 
 LinearSolverSettings momentumSolverDefaults()
 {
@@ -89,6 +115,13 @@ LinearSolverSettings readSolverEntry
             entry.lookupOrDefault<Count>("maxIter", defaults.maxIter);
     }
 
+    validateSelection
+    (
+        defaults.solver,
+        LinearSolver::availableSolvers(),
+        "linearSolvers." + key + ".solver"
+    );
+
     if (defaults.tolerance <= S(0.0))
     {
         FatalError("linearSolvers." + key + ".tolerance must be positive.");
@@ -128,7 +161,7 @@ void readLinearSolvers
     config.linearSolvers.pressure =
         readSolverEntry(solvers, "p", config.linearSolvers.pressure);
 
-    if (config.turbulenceEnabled)
+    if (!TurbulenceModel::isLaminar(config.turbulenceModel))
     {
         config.linearSolvers.k =
             readSolverEntry(solvers, "k", config.linearSolvers.k);
@@ -152,6 +185,13 @@ void readGradientScheme
             "gradient",
             "leastSquares"
         );
+
+    validateSelection
+    (
+        config.schemes.gradientScheme,
+        GradientScheme::availableSchemes(),
+        "numericalSchemes.gradient"
+    );
 }
 
 
@@ -182,6 +222,43 @@ void readConvectionSchemes
         convection.lookupOrDefault<Name>("k", "");
     config.schemes.omegaScheme =
         convection.lookupOrDefault<Name>("omega", "");
+
+    const NameList convectionNames = ConvectionSchemes::availableSchemes();
+
+    validateSelection
+    (
+        config.schemes.defaultScheme,
+        convectionNames,
+        "numericalSchemes.convection.default"
+    );
+
+    if (!config.schemes.momentumScheme.empty())
+    {
+        validateSelection
+        (
+            config.schemes.momentumScheme,
+            convectionNames,
+            "numericalSchemes.convection.U"
+        );
+    }
+    if (!config.schemes.kScheme.empty())
+    {
+        validateSelection
+        (
+            config.schemes.kScheme,
+            convectionNames,
+            "numericalSchemes.convection.k"
+        );
+    }
+    if (!config.schemes.omegaScheme.empty())
+    {
+        validateSelection
+        (
+            config.schemes.omegaScheme,
+            convectionNames,
+            "numericalSchemes.convection.omega"
+        );
+    }
 
     if (config.debug)
     {
@@ -311,22 +388,14 @@ CaseConfiguration loadConfiguration(const CaseReader& reader)
     }
 
     const auto& turbulence = reader.section("turbulence");
-    config.turbulenceEnabled = turbulence.lookup<bool>("enabled");
     config.turbulenceModel = turbulence.lookup<Name>("model");
 
-    if
+    validateSelection
     (
-        config.turbulenceEnabled
-     && config.turbulenceModel != "kOmegaSST"
-    )
-    {
-        FatalError
-        (
-            "Unsupported turbulence model: '"
-          + config.turbulenceModel
-          + "'. Only 'kOmegaSST' is supported."
-        );
-    }
+        config.turbulenceModel,
+        TurbulenceModel::availableModels(),
+        "turbulence.model"
+    );
 
     config.turbulenceIntensity =
         turbulence.lookupOrDefault<Scalar>
@@ -353,7 +422,7 @@ CaseConfiguration loadConfiguration(const CaseReader& reader)
     config.initialK = S(0.0);
     config.initialOmega = S(0.0);
 
-    if (config.turbulenceEnabled)
+    if (!TurbulenceModel::isLaminar(config.turbulenceModel))
     {
         const Scalar defaultK =
             kOmegaSST::inletK

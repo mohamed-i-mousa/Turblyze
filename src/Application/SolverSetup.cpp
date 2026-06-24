@@ -22,65 +22,21 @@
 // Project headers
 #include "BoundaryConditions.h"
 #include "CaseConfiguration.h"
-#include "CentralDifferenceScheme.h"
 #include "ConvectionSchemes.h"
 #include "ErrorHandler.h"
 #include "GradientScheme.h"
-#include "LeastSquares.h"
 #include "LinearSolvers.h"
 #include "Logger.h"
 #include "Mesh.h"
 #include "SIMPLE.h"
-#include "SecondOrderUpwindScheme.h"
 #include "StringTypes.h"
 #include "TurbulenceModel.h"
-#include "UpwindScheme.h"
 #include "Laminar.h"
-#include "kOmegaSST.h"
 
 // ***************************** Internal Helpers *****************************
 
 namespace
 {
-
-std::unique_ptr<GradientScheme> makeGradientScheme
-(
-    NameRef schemeName,
-    const Mesh& mesh,
-    const BoundaryConditions& bc
-)
-{
-    if (schemeName == "leastSquares")
-    {
-        return std::make_unique<LeastSquares>(mesh, bc);
-    }
-
-    FatalError("Unknown gradient scheme: " + Name(schemeName));
-}
-
-
-std::unique_ptr<ConvectionSchemes> makeConvectionScheme
-(
-    NameRef schemeName
-)
-{
-    if (schemeName == "Upwind")
-    {
-        return std::make_unique<UpwindScheme>();
-    }
-
-    if (schemeName == "CentralDifference")
-    {
-        return std::make_unique<CentralDifferenceScheme>();
-    }
-
-    if (schemeName == "SecondOrderUpwind")
-    {
-        return std::make_unique<SecondOrderUpwindScheme>();
-    }
-
-    FatalError("Unknown convection scheme: " + Name(schemeName));
-}
 
 
 void makeConvectionSchemes
@@ -90,7 +46,7 @@ void makeConvectionSchemes
 )
 {
     modules.defaultConvectionScheme =
-        makeConvectionScheme(config.defaultScheme);
+        ConvectionSchemes::create(config.defaultScheme);
     modules.momentumConvectionScheme.reset();
     modules.kConvectionScheme.reset();
     modules.omegaConvectionScheme.reset();
@@ -98,17 +54,17 @@ void makeConvectionSchemes
     if (!config.momentumScheme.empty())
     {
         modules.momentumConvectionScheme =
-            makeConvectionScheme(config.momentumScheme);
+            ConvectionSchemes::create(config.momentumScheme);
     }
     if (!config.kScheme.empty())
     {
         modules.kConvectionScheme =
-            makeConvectionScheme(config.kScheme);
+            ConvectionSchemes::create(config.kScheme);
     }
     if (!config.omegaScheme.empty())
     {
         modules.omegaConvectionScheme =
-            makeConvectionScheme(config.omegaScheme);
+            ConvectionSchemes::create(config.omegaScheme);
     }
 }
 
@@ -138,28 +94,11 @@ std::unique_ptr<LinearSolver> makeLinearSolver
     const LinearSolverSettings& config
 )
 {
-    if (NameRef{config.solver} == BiCGSTAB::typeName)
-    {
-        return std::make_unique<BiCGSTAB>
-        (
-            config.tolerance,
-            config.maxIter
-        );
-    }
-
-    if (NameRef{config.solver} == PCG::typeName)
-    {
-        return std::make_unique<PCG>
-        (
-            config.tolerance,
-            config.maxIter
-        );
-    }
-
-    FatalError
+    return LinearSolver::create
     (
-        "Unknown linear solver '" + config.solver
-      + "'. Supported solvers: BiCGSTAB, PCG."
+        config.solver,
+        config.tolerance,
+        config.maxIter
     );
 }
 
@@ -198,7 +137,7 @@ void SolverSetup::configure
 )
 {
     modules.gradScheme =
-        makeGradientScheme
+        GradientScheme::create
         (
             config.schemes.gradientScheme,
             mesh,
@@ -218,22 +157,15 @@ void SolverSetup::configure
             config.linearSolvers.pressure
         );
 
-    if (config.turbulenceEnabled)
+    if (!TurbulenceModel::isLaminar(config.turbulenceModel))
     {
-        modules.kSolver =
-            makeLinearSolver
-            (
-                config.linearSolvers.k
-            );
-        modules.omegaSolver =
-            makeLinearSolver
-            (
-                config.linearSolvers.omega
-            );
+        modules.kSolver = makeLinearSolver(config.linearSolvers.k);
+        modules.omegaSolver = makeLinearSolver(config.linearSolvers.omega);
 
         modules.turbulenceModel =
-            std::make_unique<kOmegaSST>
+            TurbulenceModel::create
             (
+                config.turbulenceModel,
                 mesh,
                 boundaryConditions,
                 *modules.gradScheme,
@@ -316,7 +248,7 @@ void SolverSetup::logSetup
         "p",
         config.linearSolvers.pressure
     );
-    if (config.turbulenceEnabled)
+    if (!TurbulenceModel::isLaminar(config.turbulenceModel))
     {
         logLinearSolver("k", config.linearSolvers.k);
         logLinearSolver
@@ -336,7 +268,7 @@ void SolverSetup::logSetup
     );
     Logger::keyValue("Velocity relaxation", config.alphaU);
     Logger::keyValue("Pressure relaxation", config.alphaP);
-    if (config.turbulenceEnabled)
+    if (!TurbulenceModel::isLaminar(config.turbulenceModel))
     {
         Logger::keyValue("k relaxation", config.alphaK);
         Logger::keyValue("omega relaxation", config.alphaOmega);
@@ -366,7 +298,7 @@ void SolverSetup::logSetup
         }
     }
 
-    if (config.turbulenceEnabled)
+    if (!TurbulenceModel::isLaminar(config.turbulenceModel))
     {
         Logger::subsection("Turbulence initialization");
         Logger::keyValue("Model", NameRef{config.turbulenceModel});

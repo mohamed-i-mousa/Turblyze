@@ -104,7 +104,7 @@ initialConditions
 ```
 
 **Notes**:
-- `k` and `omega` are only used when turbulence modeling is enabled
+- `k` and `omega` are only used when `model` is not `Laminar`
 - When omitted, they are auto-computed from initial velocity using
   `turbulenceIntensity` and `hydraulicDiameter` from the `turbulence`
   section (see [turbulence](#8-turbulence)):
@@ -316,17 +316,20 @@ Turbulence model configuration.
 ```cpp
 turbulence
 {
-    model               kOmegaSST;  // Only option: kOmegaSST (disable via enabled false)
-    enabled             true;       // Enable/disable turbulence
+    model               kOmegaSST;  // Required: Laminar or kOmegaSST
     turbulenceIntensity 0.05;       // Optional: default 0.05 (5%)
     hydraulicDiameter   0.01;       // Optional: default 0.01 [m]
 }
 ```
 
 **Notes**:
+- `model` is required and selects the turbulence treatment: `Laminar`
+  (no turbulence transport) or `kOmegaSST`. An omitted or unknown `model`
+  aborts at load time with a fatal error listing the valid options.
 - `turbulenceIntensity` and `hydraulicDiameter` are used to auto-compute
   initial values for `k` and `omega` when they are not explicitly
-  specified in `initialConditions` (see [initialConditions](#3-initialconditions))
+  specified in `initialConditions` (see [initialConditions](#3-initialconditions)).
+  They are ignored when `model` is `Laminar`.
 - k-omega SST model constants are hardcoded in
   `src/Models/Turbulence/kOmegaSST.h`
   and cannot be changed via case file

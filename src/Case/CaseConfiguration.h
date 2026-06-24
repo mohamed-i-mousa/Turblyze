@@ -137,10 +137,7 @@ struct CaseConfiguration
     /// omega relaxation factor
     Scalar alphaOmega;
 
-    /// Whether turbulence is enabled
-    bool turbulenceEnabled;
-
-    /// Turbulence model name
+    /// Turbulence model name (Laminar or kOmegaSST)
     Name turbulenceModel;
 
     /// Turbulence intensity for calculated inlet/default values

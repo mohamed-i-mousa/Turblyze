@@ -23,6 +23,8 @@
 
 // Project headers
 #include "ErrorHandler.h"
+#include "LeastSquares.h"
+#include "RuntimeSelection.h"
 
 // ************************* Special Member Functions *************************
 
@@ -35,6 +37,34 @@ GradientScheme::GradientScheme
     mesh_{mesh},
     bcManager_{bc}
 {}
+
+// **************************** Runtime Selection ****************************
+
+std::unique_ptr<GradientScheme> GradientScheme::create
+(
+    Name schemeName,
+    const Mesh& mesh,
+    const BoundaryConditions& bc
+)
+{
+    if (schemeName == "leastSquares")
+    {
+        return std::make_unique<LeastSquares>(mesh, bc);
+    }
+
+    RuntimeSelection::unknownSelection
+    (
+        "gradient scheme",
+        schemeName,
+        availableSchemes()
+    );
+}
+
+
+NameList GradientScheme::availableSchemes()
+{
+    return {"leastSquares"};
+}
 
 // ****************************** Public Methods ******************************
 

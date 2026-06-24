@@ -22,6 +22,7 @@
 #include "CaseReader.h"
 #include "ErrorHandler.h"
 #include "Logger.h"
+#include "TurbulenceModel.h"
 #include "kOmegaSST.h"
 
 // **************************** namespace BCLoader ****************************
@@ -59,7 +60,7 @@ void validateWallFunctionSetup
     const CaseConfiguration& config
 )
 {
-    if (!config.turbulenceEnabled)
+    if (TurbulenceModel::isLaminar(config.turbulenceModel))
     {
         return;
     }

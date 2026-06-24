@@ -12,8 +12,7 @@
  * @details Polymorphic LinearSolver interface with an EigenLinearSolver
  * adapter that wraps an Eigen iterative solver. The Eigen solver type is
  * fixed by the EigenLinearSolver template argument; concrete classes
- * (BiCGSTAB, PCG) inherit a specific instantiation and supply the
- * algorithm name used in diagnostics.
+ * (BiCGSTAB, PCG) inherit a specific instantiation.
  *
  * The shared solve path lives in EigenLinearSolver<T>::solve() and is
  * defined inline, so this header pulls Eigen's iterative-solver template
@@ -43,6 +42,7 @@
 
 // Standard library headers
 #include <limits>
+#include <memory>
 
 // External library headers
 #include <eigen3/Eigen/SparseCore>
@@ -94,13 +94,15 @@ public:
 
 // ************************* Special Member Functions *************************
 
-    /// Construct linear solver with convergence parameters
+    /// Constructor
     LinearSolver
     (
+        NameRef name,
         Scalar tolerance = S(1e-6),
         Count maxIterations = 1000
     )
     :
+        name_{name},
         tolerance_{tolerance},
         maxIterations_{maxIterations}
     {}
@@ -116,6 +118,19 @@ public:
 
     /// Virtual destructor for polymorphic deletion
     virtual ~LinearSolver() noexcept = default;
+
+// **************************** Runtime Selection ****************************
+
+    /// Construct the linear solver selected by name
+    [[nodiscard]] static std::unique_ptr<LinearSolver> create
+    (
+        NameRef name,
+        Scalar tolerance,
+        Count maxIterations
+    );
+
+    /// Names of every selectable linear solver
+    [[nodiscard]] static NameList availableSolvers();
 
 // ****************************** Setter Methods ******************************
 
@@ -173,8 +188,11 @@ public:
         const Vec& B
     ) = 0;
 
-    /// Algorithm label used in diagnostic output
-    [[nodiscard]] virtual NameRef name() const noexcept = 0;
+    /// Solver name, used in diagnostic output
+    [[nodiscard]] NameRef name() const noexcept
+    {
+        return name_;
+    }
 
 // ***************************** Protected Methods ****************************
 
@@ -189,6 +207,9 @@ protected:
 // ****************************** Private Members *****************************
 
 private:
+
+    /// Solver name
+    Name name_;
 
     /// Relative residual tolerance for convergence
     Scalar tolerance_;
@@ -300,13 +321,6 @@ public:
 
     using EigenLinearSolver<EigenBiCGSTAB>::EigenLinearSolver;
 
-    /// Runtime selection name
-    static constexpr NameRef typeName = "BiCGSTAB";
-
-    [[nodiscard]] NameRef name() const noexcept override
-    {
-        return typeName;
-    }
 };
 
 // ********************************* class PCG ********************************
@@ -317,11 +331,4 @@ public:
 
     using EigenLinearSolver<EigenPCG>::EigenLinearSolver;
 
-    /// Runtime selection name
-    static constexpr NameRef typeName = "PCG";
-
-    [[nodiscard]] NameRef name() const noexcept override
-    {
-        return typeName;
-    }
 };

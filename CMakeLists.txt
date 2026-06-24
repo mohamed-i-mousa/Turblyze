@@ -59,12 +59,15 @@ add_executable(${PROJECT_NAME}
     src/BoundaryConditions/BoundaryConditionsLoader.cpp
     src/Schemes/GradientSchemes/GradientScheme.cpp
     src/Schemes/GradientSchemes/LeastSquares.cpp
+    src/Schemes/ConvectionSchemes/ConvectionSchemes.cpp
     src/Schemes/ConvectionSchemes/UpwindScheme.cpp
     src/Schemes/ConvectionSchemes/CentralDifferenceScheme.cpp
     src/Schemes/ConvectionSchemes/SecondOrderUpwindScheme.cpp
     src/LinearSystem/Matrix.cpp
+    src/LinearSystem/LinearSolvers.cpp
     src/Solver/SIMPLE.cpp
     src/Solver/Constraint.cpp
+    src/Models/Turbulence/TurbulenceModel.cpp
     src/Models/Turbulence/RANS.cpp
     src/Models/Turbulence/kOmegaSST.cpp
     src/PostProcessing/VTK/VtkWriter.cpp
@@ -75,6 +78,7 @@ add_executable(${PROJECT_NAME}
     src/PostProcessing/Forces.cpp
     src/Case/CaseReader.cpp
     src/Case/CaseConfiguration.cpp
+    src/Case/RuntimeSelection.cpp
     src/Application/SolverSetup.cpp
     src/Application/CFDApplication.cpp
 )
