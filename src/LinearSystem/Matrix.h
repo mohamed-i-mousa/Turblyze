@@ -212,5 +212,4 @@ private:
         const Face& face,
         const TransportEquation& equation
     );
-
 };

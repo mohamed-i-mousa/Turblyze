@@ -107,7 +107,6 @@ FaceIntegrals Face::geometricProperties
             crossProd.z() * secondMoment(p1.z(), p2.z(), p3.z()) / S(12.0);
 
         integrals.volume = dot(centroid_, crossProd) / S(2.0);
-
     }
     // CASE 2: Face is "Polygon" (numNodes > 3)
     else

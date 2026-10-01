@@ -138,5 +138,4 @@ private:
 
     /// Zero turbulent viscosity field
     ScalarField nut_{mesh_, S(0.0)};
-
 };

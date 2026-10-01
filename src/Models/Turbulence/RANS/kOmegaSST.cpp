@@ -293,7 +293,6 @@ void kOmegaSST::updateOmegaWallValues()
 
         if (yPlus()[face.idx()] < yPlusLam())
         {
-
             omegaWall_[face.idx()] =
                 S(6.0) * nu()
               / (coeffs_.beta1 * y()[face.idx()] * y()[face.idx()]);
