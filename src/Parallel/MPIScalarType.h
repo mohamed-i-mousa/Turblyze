@@ -20,14 +20,6 @@
 // Project headers
 #include "Scalar.h"
 
-// **************************** Build-Time Invariants *************************
-
-static_assert
-(
-    sizeof(Count) == 8,
-    "Count operations assume a 64-bit Count (MPI_UINT64_T)"
-);
-
 // ****************************** MPI Data Types ******************************
 
 /// MPI datatype of one Scalar

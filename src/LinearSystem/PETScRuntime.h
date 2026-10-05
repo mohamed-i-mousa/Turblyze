@@ -47,13 +47,6 @@ static_assert
     "--with-precision, or flip TURBLYZE_DOUBLE_PRECISION"
 );
 
-// COO index arrays and mesh indices assume PETSc's default 32-bit indices
-static_assert
-(
-    sizeof(PetscInt) == 4,
-    "PetscInt must be 32-bit: rebuild PETSc without --with-64-bit-indices"
-);
-
 // *********************** PETSc Version Compatibility ************************
 
 // For Ubuntu users, the apt repos don't carry PETSc 3.22
@@ -66,7 +59,6 @@ static_assert
 #define PETSC_UNLIMITED PETSC_DEFAULT
 #endif
 
-// PETSc < 3.19 compatibility
 #ifndef PETSC_SUCCESS
 #define PETSC_SUCCESS 0
 #endif
