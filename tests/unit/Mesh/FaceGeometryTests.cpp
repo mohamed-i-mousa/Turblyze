@@ -145,3 +145,20 @@ TEST_CASE("Two-cell box face distances", "[mesh]")
         WithinRel(S(1.0), TestTolerances::relTight)
     );
 }
+
+// ************************** Boundary Face Diffusion *************************
+
+TEST_CASE("Boundary face geometric diffusion factor", "[mesh]")
+{
+    // Single unit cube: owner centroid at (0.5, 0.5, 0.5), face centroid at
+    // boundary (e.g. x = 0), |dPf| = 0.5, orthogonal so |Ef| == |Sf| = 1.0.
+    // gDiff = |Ef| / (|Sf| * |dPf|) = 1.0 / (1.0 * 0.5) = 2.0
+    const TestMesh box(1, 1, 1);
+    const Face& boundaryFace = box.mesh().faces().front();
+
+    REQUIRE_THAT
+    (
+        box.mesh().gDiff(boundaryFace),
+        WithinRel(S(2.0), TestTolerances::relTight)
+    );
+}

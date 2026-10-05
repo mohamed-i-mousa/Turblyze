@@ -7,7 +7,7 @@
 
  ------------------------------------------------------------------------------
  * @file FixedValue.cpp
- * @brief Fixed-value boundary coefficients and diagnostics
+ * @brief Fixed-value boundary coefficients
  *****************************************************************************/
 
 // ********************************** Headers *********************************
@@ -15,73 +15,34 @@
 // Implementation header
 #include "FixedValue.h"
 
-// Standard library headers
-#include <ostream>
-
-// ***************************** Internal Helpers *****************************
-
-namespace
-{
-
-const Name fixedValueToken{"fixedValue"};
-
-} // namespace
-
-// ***************************** Override Methods *****************************
-
-const Name& FixedValue::typeName() const noexcept
-{
-    return fixedValueToken;
-}
+// Project headers
+#include "BoundaryPatch.h"
+#include "Face.h"
+#include "Mesh.h"
 
 
-Scalar FixedValue::addToDiagonal
+// ****************************** Public Methods ******************************
+
+void FixedValue::updateCoeffs
 (
-    Scalar,
-    Scalar GammaSf,
-    Scalar diffMetric,
-    const Vector&
-) const
+    const Mesh& mesh,
+    const BoundaryPatch& patch
+)
 {
-    // Dirichlet: a = 0, c = -diffMetric
-    return GammaSf * diffMetric;
+    coeffs_ = BoundaryCoeffs(patch.numFaces());
+
+    const Count numFaces = patch.numFaces();
+
+    for (Index localIdx = 0; localIdx < numFaces; ++localIdx)
+    {
+        const Index faceIdx = patch.firstFaceIdx() + localIdx;
+        const Face& face = mesh.faces()[faceIdx];
+        const Scalar gDiff = mesh.gDiff(face);
+
+        coeffs_.a[localIdx] = S(0.0);
+        coeffs_.b[localIdx] = value_;
+        coeffs_.c[localIdx] = -gDiff;
+        coeffs_.d[localIdx] = value_ * gDiff;
+    }
 }
 
-
-Scalar FixedValue::addToSource
-(
-    Scalar flux,
-    Scalar GammaSf,
-    Scalar diffMetric,
-    Scalar,
-    const Vector&,
-    const Vector&
-) const
-{
-    // Dirichlet: b = value, d = value * diffMetric
-    return GammaSf * (value_ * diffMetric) - flux * value_;
-}
-
-
-Scalar FixedValue::faceValue
-(
-    Scalar,
-    Scalar,
-    const Vector&,
-    const Vector&
-) const
-{
-    return value_;
-}
-
-
-std::unique_ptr<BoundaryType> FixedValue::pressureCorrectionCompanion() const
-{
-    return std::make_unique<FixedValue>(Field::pCorr, S(0.0));
-}
-
-
-void FixedValue::write(std::ostream& os) const
-{
-    os << typeName() << ", Value: " << value_;
-}

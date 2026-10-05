@@ -200,7 +200,7 @@ void SolverSetup::configure
     else
     {
         modules.turbulenceModel =
-            std::make_unique<Laminar>(mesh, config.mu / config.rho);
+            std::make_unique<Laminar>(mesh, boundaryConditions, config.mu / config.rho);
     }
 
     modules.solver =

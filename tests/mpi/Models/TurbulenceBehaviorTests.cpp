@@ -36,6 +36,7 @@
 #include "LinearSolvers.h"
 #include "BoundaryConditions.h"
 #include "ZeroGradient.h"
+#include "NoSlip.h"
 #include "MeshFixtures.h"
 #include "CellData.h"
 #include "FaceData.h"
@@ -52,15 +53,10 @@ using Catch::Matchers::WithinRel;
 namespace
 {
 
-/// Register a zero-gradient BC for k, omega, and nut on every wall patch.
-void registerTurbulenceBoundaries(BoundaryConditions& bc, const Mesh& mesh)
+/// Register wall BCs (NoSlip for Ux, ZeroGradient for k, omega, nut) on every wall patch.
+[[nodiscard]] BoundaryConditions makeTurbulenceBoundaries(const Mesh& mesh)
 {
-    for (const BoundaryPatch& patch : mesh.patches())
-    {
-        bc.addPatch(patch);
-    }
-
-    bc.linkFaces(mesh);
+    BoundaryConditions::BCs bcs;
 
     for
     (
@@ -75,18 +71,18 @@ void registerTurbulenceBoundaries(BoundaryConditions& bc, const Mesh& mesh)
         }
     )
     {
+        for (const Field field : {Field::Ux, Field::Uy, Field::Uz})
+        {
+            bcs[name][field] = std::make_unique<NoSlip>();
+        }
+
         for (const Field field : {Field::k, Field::omega, Field::nut})
         {
-            bc.setBoundaryType
-            (
-                name,
-                field,
-                std::make_unique<ZeroGradient>(field)
-            );
+            bcs[name][field] = std::make_unique<ZeroGradient>();
         }
     }
 
-    bc.finalize();
+    return BoundaryConditions(std::move(bcs), mesh);
 }
 
 /// Shortest distance from a point to the six faces of the cubic box
@@ -128,8 +124,7 @@ TEST_CASE
 )
 {
     DecomposedBoxMesh box(3, 3, 3);
-    BoundaryConditions bc;
-    registerTurbulenceBoundaries(bc, box.mesh());
+    const BoundaryConditions bc = makeTurbulenceBoundaries(box.mesh());
 
     // Standalone dependencies; every one must outlive the model
     const auto timeScheme = TimeScheme::create("steadyState");

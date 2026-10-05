@@ -47,14 +47,9 @@ constexpr Index centreCell = 13;
 }
 
 /// Register a zero-gradient pressure BC on every patch of the box
-void registerZeroGradient(BoundaryConditions& bc, const Mesh& mesh)
+[[nodiscard]] BoundaryConditions makeZeroGradient(const Mesh& mesh)
 {
-    for (const BoundaryPatch& patch : mesh.patches())
-    {
-        bc.addPatch(patch);
-    }
-
-    bc.linkFaces(mesh);
+    BoundaryConditions::BCs bcs;
 
     for
     (
@@ -69,15 +64,10 @@ void registerZeroGradient(BoundaryConditions& bc, const Mesh& mesh)
         }
     )
     {
-        bc.setBoundaryType
-        (
-            name,
-            Field::p,
-            std::make_unique<ZeroGradient>(Field::p)
-        );
+        bcs[name][Field::p] = std::make_unique<ZeroGradient>();
     }
 
-    bc.finalize();
+    return BoundaryConditions(std::move(bcs), mesh);
 }
 
 } // namespace
@@ -87,8 +77,7 @@ void registerZeroGradient(BoundaryConditions& bc, const Mesh& mesh)
 TEST_CASE("The limiter leaves a linear-field gradient intact", "[schemes]")
 {
     TestMesh box(3, 3, 3);
-    BoundaryConditions bc;
-    registerZeroGradient(bc, box.mesh());
+    const BoundaryConditions bc = makeZeroGradient(box.mesh());
 
     const LeastSquares leastSquares(box.mesh(), bc);
 
@@ -130,8 +119,7 @@ TEST_CASE("The limiter leaves a linear-field gradient intact", "[schemes]")
 TEST_CASE("The limiter clamps an over-steep gradient to the hull", "[schemes]")
 {
     TestMesh box(3, 3, 3);
-    BoundaryConditions bc;
-    registerZeroGradient(bc, box.mesh());
+    const BoundaryConditions bc = makeZeroGradient(box.mesh());
 
     const LeastSquares leastSquares(box.mesh(), bc);
 

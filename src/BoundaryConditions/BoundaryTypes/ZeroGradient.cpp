@@ -7,7 +7,7 @@
 
  ------------------------------------------------------------------------------
  * @file ZeroGradient.cpp
- * @brief Zero-gradient boundary coefficients and diagnostics
+ * @brief Zero-gradient boundary coefficients
  *****************************************************************************/
 
 // ********************************** Headers *********************************
@@ -15,73 +15,19 @@
 // Implementation header
 #include "ZeroGradient.h"
 
-// Standard library headers
-#include <ostream>
-
-// ***************************** Internal Helpers *****************************
-
-namespace
-{
-
-const Name zeroGradientToken{"zeroGradient"};
-
-} // namespace
-
-// ***************************** Override Methods *****************************
-
-const Name& ZeroGradient::typeName() const noexcept
-{
-    return zeroGradientToken;
-}
+// Project headers
+#include "BoundaryPatch.h"
 
 
-Scalar ZeroGradient::addToDiagonal
+// ****************************** Public Methods ******************************
+
+void ZeroGradient::updateCoeffs
 (
-    Scalar flux,
-    Scalar,
-    Scalar,
-    const Vector&
-) const
+    const Mesh& /* mesh */,
+    const BoundaryPatch& patch
+)
 {
-    // Zero-gradient: a = 1, c = 0
-    return flux;
+    // Constructor's default: a = 1, b = c = d = 0
+    coeffs_ = BoundaryCoeffs(patch.numFaces());
 }
 
-
-Scalar ZeroGradient::addToSource
-(
-    Scalar,
-    Scalar,
-    Scalar,
-    Scalar,
-    const Vector&,
-    const Vector&
-) const
-{
-    // Zero-gradient: b = 0, d = 0
-    return S(0.0);
-}
-
-
-Scalar ZeroGradient::faceValue
-(
-    Scalar ownerValue,
-    Scalar,
-    const Vector&,
-    const Vector&
-) const
-{
-    return ownerValue;
-}
-
-
-std::unique_ptr<BoundaryType> ZeroGradient::pressureCorrectionCompanion() const
-{
-    return std::make_unique<ZeroGradient>(Field::pCorr);
-}
-
-
-void ZeroGradient::write(std::ostream& os) const
-{
-    os << typeName() << " (implies zero gradient)";
-}

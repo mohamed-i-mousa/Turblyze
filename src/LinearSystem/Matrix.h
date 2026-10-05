@@ -210,6 +210,7 @@ private:
     void assembleBoundaryFace
     (
         const Face& face,
-        const TransportEquation& equation
+        const TransportEquation& equation,
+        const BoundaryType& bc
     );
 };

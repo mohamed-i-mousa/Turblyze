@@ -35,7 +35,7 @@ SPDX-License-Identifier: Apache-2.0
 
 - **Gradient Reconstruction**: Weighted least-squares cell-centered gradients
 
-- **Boundary Conditions**: `fixedValue`, `zeroGradient`, `fixedGradient`, `noSlip` (velocity), wall functions (`kWallFunction`, `omegaWallFunction`, `nutWallFunction`), and mesh-derived `symmetry` planes
+- **Boundary Conditions**: `fixedValue`, `zeroGradient`, `fixedGradient`, `noSlip` (velocity), wall functions (`kWallFunction`, `omegaWallFunction`, `nutWallFunction`), and `symmetry` planes
 
 - **Turbulence Modeling**: Laminar or k-omega SST model with wall functions
 

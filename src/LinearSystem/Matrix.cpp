@@ -249,9 +249,18 @@ void Matrix::buildMatrix(const TransportEquation& equation)
         );
     }
 
+    const BoundaryPatch* currentPatch = nullptr;
+    const BoundaryType* currentBc = nullptr;
+
     for (Index m = 0; m < numBoundaryFaces; ++m)
     {
-        assembleBoundaryFace(mesh_.faces()[boundaryFaces_[m]], equation);
+        const Face& face = mesh_.faces()[boundaryFaces_[m]];
+        if (face.patch() != currentPatch)
+        {
+            currentPatch = face.patch();
+            currentBc = &bcManager_.boundaryType(currentPatch->name(), equation.field);
+        }
+        assembleBoundaryFace(face, equation, *currentBc);
     }
 }
 
@@ -543,34 +552,28 @@ void Matrix::assembleInternalFace
 void Matrix::assembleBoundaryFace
 (
     const Face& face,
-    const TransportEquation& equation
+    const TransportEquation& equation,
+    const BoundaryType& bc
 )
 {
     const Index ownerIdx = face.ownerCell();
-    const Index boundaryIdx = bcManager_.boundaryIdx(face.idx());
+    const Index faceIdx = face.idx();
+    const Index localIdx = faceIdx - face.patch()->firstFaceIdx();
 
     const Scalar GammaSf =
-        equation.GammaFace[face.idx()] * face.projectedArea();
+        equation.GammaFace[faceIdx] * face.projectedArea();
 
     const Scalar flux =
         equation.convection
-      ? equation.convection->flowRate[face.idx()]
+      ? equation.convection->flowRate[faceIdx]
       : S(0.0);
 
-    // The boundary type owns its diagonal/source linearization; the manager
-    // serves the per-face geometry and owner-velocity it reads
-    const BoundaryType& boundaryType =
-        bcManager_.boundaryType(equation.field, boundaryIdx);
-    const Scalar diffMetric = bcManager_.diffMetric(boundaryIdx);
-    const Scalar normalDistance = bcManager_.normalDistance(boundaryIdx);
-    const Vector& normal = bcManager_.normal(boundaryIdx);
-    const Vector& ownerVelocity = bcManager_.ownerVelocity(boundaryIdx);
+    // Convection: flux * (a * phi_P + b)
+    cooValues_[diagOffset_ + ownerIdx] += flux * bc.a(localIdx);
+    vectorB_[ownerIdx]                 -= flux * bc.b(localIdx);
 
-    // A boundary face's owner is always an owned cell, so no guard here
-    cooValues_[diagOffset_ + ownerIdx] +=
-        boundaryType.addToDiagonal(flux, GammaSf, diffMetric, normal);
-    vectorB_[ownerIdx] += boundaryType.addToSource
-    (
-        flux, GammaSf, diffMetric, normalDistance, normal, ownerVelocity
-    );
+    // Diffusion: -GammaSf * (c * phi_P + d)
+    cooValues_[diagOffset_ + ownerIdx] -= GammaSf * bc.c(localIdx);
+    vectorB_[ownerIdx]                 += GammaSf * bc.d(localIdx);
 }
+

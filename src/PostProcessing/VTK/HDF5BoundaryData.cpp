@@ -25,6 +25,7 @@
 #include <vector>
 
 // Project headers
+#include "BoundaryConditions.h"
 #include "BoundaryPatch.h"
 #include "Comm.h"
 #include "ErrorHandler.h"
@@ -124,10 +125,12 @@ HDF5BoundaryData::HDF5BoundaryData
 (
     FilePath fileName,
     const Mesh& mesh,
+    const BoundaryConditions* bc,
     bool debug
 )
 :
     mesh_{mesh},
+    bc_{bc},
     fileName_{std::move(fileName)},
     debug_{debug},
     file_{H5I_INVALID_HID},
@@ -202,7 +205,10 @@ void HDF5BoundaryData::writeGeometry()
         const unsigned char isWall =
             static_cast<unsigned char>
             (
-                patch.type() == PatchType::wall ? 1 : 0
+                (
+                    bc_ != nullptr 
+                 && bc_->boundaryType(patch, Field::Ux).isWall()
+                ) ? 1 : 0
             );
 
         for

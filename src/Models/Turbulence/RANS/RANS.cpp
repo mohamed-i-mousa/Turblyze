@@ -255,7 +255,10 @@ void RANS::updateWallDistance()
 
         const BoundaryPatch& patch = *face.patch();
 
-        if (patch.type() != PatchType::wall) continue;
+        if (patch.type() == PatchType::processor || !bcManager_.boundaryType(patch, Field::Ux).isWall())
+        {
+            continue;
+        }
 
         const Index cellIdx = face.ownerCell();
         const Vector cellCenter = mesh_.cells()[cellIdx].centroid();
@@ -371,7 +374,10 @@ void RANS::initializeWallFunctionGeometry
         if (!face.isBoundary()) continue;
 
         const BoundaryPatch& patch = *face.patch();
-        if (patch.type() != PatchType::wall) continue;
+        if (patch.type() == PatchType::processor || !bcManager.boundaryType(patch, Field::Ux).isWall())
+        {
+            continue;
+        }
 
         const BoundaryType& bc =
             bcManager.boundaryType(patch.name(), wallFunctionField);
@@ -423,7 +429,11 @@ void RANS::initializeWallFunctionGeometry
             const auto& face = mesh_.faces()[faceIdx];
             if (!face.isBoundary()) continue;
             
-            if (face.patch()->type() == PatchType::wall)
+            if
+            (
+                face.patch()->type() != PatchType::processor
+             && bcManager.boundaryType(*face.patch(), Field::Ux).isWall()
+            )
             {
                 totalPolyWallArea[cellIdx] += face.projectedArea();
             }

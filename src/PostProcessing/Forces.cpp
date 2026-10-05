@@ -165,15 +165,8 @@ AeroForces computeForces
             const Vector& normal = f.normal();
 
             // Pressure force from the kinematic pressure
-            const Index bIdx = bcManager.boundaryIdx(f.idx());
             const Scalar pressureFace =
-                bcManager.boundaryType(Field::p, bIdx).faceValue
-                (
-                    pressure[cellIdx],
-                    dot(mesh.dPf(f), normal),
-                    normal,
-                    bcManager.ownerVelocity(bIdx)
-                );
+                bcManager.faceValue(f, pressure[cellIdx], Field::p);
             const Vector pressureContribution =
                 (config.rho * pressureFace * f.projectedArea()) * normal;
             pressureForceSum += pressureContribution;

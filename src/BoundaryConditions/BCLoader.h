@@ -27,13 +27,12 @@ class CaseReader;
 namespace BCLoader
 {
 
-/// Register all mesh patches and configured field boundary conditions
-void load
+/// Parse and construct the boundary conditions from the case file
+[[nodiscard]] BoundaryConditions load
 (
     const CaseReader& reader,
     const CaseConfiguration& config,
-    const Mesh& mesh,
-    BoundaryConditions& bcManager
+    const Mesh& mesh
 );
 
 } // namespace BCLoader

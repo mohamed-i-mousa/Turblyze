@@ -29,20 +29,8 @@
 
 enum class PatchType
 {
-    velocityInlet,          ///< Velocity inlet boundary
-    pressureInlet,          ///< Pressure inlet boundary
-    pressureOutlet,         ///< Pressure outlet boundary
-    wall,                   ///< Wall boundary
-    symmetry,               ///< Symmetry boundary
-    periodic,               ///< Periodic boundary
-    massFlowInlet,          ///< Mass flow inlet boundary
-    outflow,                ///< Outflow boundary
-    interface,              ///< Interface boundary
-    interior,               ///< Interior boundary
-    solid,                  ///< Solid boundary
-    fluid,                  ///< Fluid boundary
-    processor,              ///< Inter-rank cut in a decomposed mesh
-    undefined               ///< Undefined boundary type
+    physical,               ///< Physical boundary patch
+    processor               ///< Inter-rank cut in a decomposed mesh
 };
 
 // **************************** class BoundaryPatch ***************************
@@ -116,8 +104,8 @@ private:
     /// Human-readable patch name
     Name name_;
 
-    /// Mapped boundary condition type
-    PatchType type_ = PatchType::undefined;
+    /// Patch classification: physical boundary or MPI processor cut
+    PatchType type_ = PatchType::physical;
 
     /// Zone identifier from mesh file
     Index zoneIdx_;

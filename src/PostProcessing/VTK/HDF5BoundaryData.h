@@ -43,6 +43,10 @@
 #include "Mesh.h"
 #include "FaceData.h"
 
+// *************************** Forward Declarations ***************************
+
+class BoundaryConditions;
+
 // ******************************* namespace VTK ******************************
 
 namespace VTK
@@ -64,6 +68,7 @@ public:
     (
         FilePath fileName,
         const Mesh& mesh,
+        const BoundaryConditions* bc = nullptr,
         bool debug = false
     );
 
@@ -128,6 +133,9 @@ private:
 
     /// Non-owning mesh reference
     const Mesh& mesh_;
+
+    /// Optional boundary conditions view for wall identification
+    const BoundaryConditions* bc_ = nullptr;
 
     /// Output file path
     FilePath fileName_;

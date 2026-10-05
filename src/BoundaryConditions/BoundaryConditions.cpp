@@ -18,417 +18,148 @@
 // Standard library headers
 #include <format>
 #include <iostream>
-#include <set>
-#include <utility>
 
 // Project headers
+#include "BoundaryPatch.h"
 #include "ErrorHandler.h"
-#include "Reduce.h"
+#include "Face.h"
+#include "Field.h"
+#include "Mesh.h"
 
-// ***************************** Internal Helpers *****************************
+// ************************* Special Member Functions *************************
 
-namespace
-{
-
-/// Registered boundary condition object for a field, or nullptr
-const BoundaryType* findBoundaryType
+BoundaryConditions::BoundaryConditions
 (
-    const std::map<Field, std::unique_ptr<BoundaryType>>& fieldMap,
-    Field field
+    BCs boundaryConditions,
+    const Mesh& mesh
 )
+:
+    boundaryConditions_(std::move(boundaryConditions))
 {
-    const auto fieldIterator = fieldMap.find(field);
-
-    return
-        fieldIterator != fieldMap.end()
-      ? fieldIterator->second.get()
-      : nullptr;
-}
-
-} // namespace
-
-// ****************************** Setter Methods ******************************
-
-void BoundaryConditions::addPatch(BoundaryPatch patch)
-{
-    if (linked_)
+    for (const BoundaryPatch& patch : mesh.patches())
     {
-        FatalError
-        (
-            "Cannot add patch after linkFaces() has been called. "
-            "Stored face pointers would become invalid."
-        );
+        if (patch.type() == PatchType::processor)
+        {
+            continue;
+        }
+
+        const auto patchIt = boundaryConditions_.find(patch.name());
+        if (patchIt == boundaryConditions_.end())
+        {
+            continue;
+        }
+
+        for (auto& [field, bcPtr] : patchIt->second)
+        {
+            if (bcPtr != nullptr)
+            {
+                bcPtr->updateCoeffs(mesh, patch);
+            }
+        }
     }
-    patches_.push_back(std::move(patch));
-}
-
-
-void BoundaryConditions::setBoundaryType
-(
-    const Name& patchName,
-    Field field,
-    std::unique_ptr<BoundaryType> bc
-)
-{
-    if (finalized_)
-    {
-        FatalError
-        (
-            "Cannot register boundary condition for field '"
-          + Name(fieldToString(field)) + "' on patch '" + patchName
-          + "' after finalize()."
-        );
-    }
-
-    boundaryTypes_[patchName][field] = std::move(bc);
 }
 
 // ***************************** Accessor Methods *****************************
 
-bool BoundaryConditions::hasBoundaryType
+const BoundaryType& BoundaryConditions::boundaryType
 (
     const Name& patchName,
+    Field field
+) const
+{
+    const BoundaryType* bc = find(patchName, field);
+
+    if (bc == nullptr)
+    {
+        missing(patchName, field);
+    }
+
+    return *bc;
+}
+
+
+const BoundaryType& BoundaryConditions::boundaryType
+(
+    const BoundaryPatch& patch,
+    Field field
+) const
+{
+    return boundaryType(patch.name(), field);
+}
+
+
+const BoundaryType& BoundaryConditions::boundaryType
+(
+    const Face& face,
+    Field field
+) const
+{
+    const BoundaryPatch* patch = face.patch();
+    if (patch == nullptr || patch->type() == PatchType::processor)
+    {
+        FatalError("Face is not on a physical boundary patch");
+    }
+
+    return boundaryType(patch->name(), field);
+}
+
+
+Scalar BoundaryConditions::faceValue
+(
+    const Face& face,
+    Scalar ownerValue,
     Field field
 ) const noexcept
 {
-    const auto patchIterator = boundaryTypes_.find(patchName);
+    const BoundaryPatch* patch = face.patch();
+    if (patch == nullptr || patch->type() == PatchType::processor)
+    {
+        return ownerValue;
+    }
 
-    return patchIterator != boundaryTypes_.end()
-        && patchIterator->second.contains(field);
+    const BoundaryType* bc = find(patch->name(), field);
+    if (bc == nullptr)
+    {
+        return ownerValue;
+    }
+
+    const Index localIdx = face.idx() - patch->firstFaceIdx();
+    return bc->faceValue(localIdx, ownerValue);
 }
 
+// ****************************** Public Methods ******************************
 
-const BoundaryType& BoundaryConditions::boundaryType
+void BoundaryConditions::refresh
 (
-    const Name& patchName,
-    Field field
-) const
-{
-    const auto patchIterator = boundaryTypes_.find(patchName);
-
-    if (patchIterator != boundaryTypes_.end())
-    {
-        const auto fieldIterator = patchIterator->second.find(field);
-
-        if (fieldIterator != patchIterator->second.end())
-        {
-            return *fieldIterator->second;
-        }
-    }
-
-    FatalError
-    (
-        "Boundary condition not found for patch " + patchName
-      + " and field " + Name(fieldToString(field))
-    );
-}
-
-
-Index BoundaryConditions::boundaryIdx(Index faceIdx) const
-{
-    const Index compactIdx = boundaryIdx_[faceIdx];
-
-    if (compactIdx == noBoundaryIdx_)
-    {
-        FatalError
-        (
-            "Face " + std::to_string(faceIdx)
-          + " is not a physical boundary face."
-        );
-    }
-
-    return compactIdx;
-}
-
-
-const BoundaryType& BoundaryConditions::boundaryType
-(
-    Field field,
-    Index boundaryIdx
-) const
-{
-    const BoundaryType* type = boundaryTypeAt_[fieldSlot(field)][boundaryIdx];
-
-    if (type == nullptr)
-    {
-        FatalError
-        (
-            "No boundary condition registered for field '"
-          + Name(fieldToString(field))
-          + "' at boundary face " + std::to_string(boundaryIdx) + "."
-        );
-    }
-
-    return *type;
-}
-
-
-void BoundaryConditions::linkFaces(const Mesh& mesh)
-{
-    const FaceList& faces = mesh.faces();
-    for (const auto& patch : patches_)
-    {
-        if (patch.firstFaceIdx() > patch.lastFaceIdx())
-        {
-            FatalError
-            (
-                "Boundary patch '" + patch.name()
-              + "' has an inverted face range ["
-              + std::to_string(patch.firstFaceIdx()) + ", "
-              + std::to_string(patch.lastFaceIdx()) + "]."
-            );
-        }
-
-        if (patch.lastFaceIdx() >= faces.size())
-        {
-            FatalError
-            (
-                "Boundary patch '" + patch.name()
-              + "' references face index "
-              + std::to_string(patch.lastFaceIdx())
-              + " outside the valid range [0, "
-              + std::to_string(faces.size()) + ")."
-            );
-        }
-
-        // Faces are linked to patches during mesh preparation by MeshCreator::linkBoundaryFaces
-    }
-
-    linked_ = true;
-
-    // Compact boundary indexing over physical patches; processor patches are
-    // inter-rank cuts whose faces carry a neighbor cell, not boundary physics
-    boundaryIdx_.assign(faces.size(), noBoundaryIdx_);
-    patchStart_.assign(patches_.size(), noBoundaryIdx_);
-
-    Count numBoundaryFaces = 0;
-
-    for (Index patchIdx = 0; patchIdx < patches_.size(); ++patchIdx)
-    {
-        if (patches_[patchIdx].type() == PatchType::processor)
-        {
-            continue;
-        }
-
-        patchStart_[patchIdx] = numBoundaryFaces;
-        numBoundaryFaces += patches_[patchIdx].numFaces();
-    }
-
-    geomOwnerCells_.resize(numBoundaryFaces);
-    normals_.resize(numBoundaryFaces);
-    diffMetric_.resize(numBoundaryFaces);
-    normalDistance_.resize(numBoundaryFaces);
-    ownerVelocity_.resize(numBoundaryFaces);
-
-    for (Index patchIdx = 0; patchIdx < patches_.size(); ++patchIdx)
-    {
-        if (patchStart_[patchIdx] == noBoundaryIdx_)
-        {
-            continue;
-        }
-
-        Index compactIdx = patchStart_[patchIdx];
-
-        for
-        (
-            Index faceIdx = patches_[patchIdx].firstFaceIdx();
-            faceIdx <= patches_[patchIdx].lastFaceIdx();
-            ++faceIdx, ++compactIdx
-        )
-        {
-            const Face& face = faces[faceIdx];
-
-            if (!face.isBoundary())
-            {
-                FatalError
-                (
-                    "Face " + std::to_string(faceIdx)
-                  + " on physical patch '"
-                  + patches_[patchIdx].name()
-                  + "' has a neighbor cell."
-                );
-            }
-
-            boundaryIdx_[faceIdx] = compactIdx;
-
-            // Over-relaxed orthogonal metric, per unit diffusivity and area
-            const Vector Sf = face.normal() * face.projectedArea();
-            const Vector dPf = mesh.dPf(face);
-            const Scalar dPfMag = magnitude(dPf);
-            const Vector ePf = dPf / (dPfMag + vSmallValue);
-            const Vector Ef = (dot(Sf, Sf) / dot(Sf, ePf)) * ePf;
-
-            geomOwnerCells_[compactIdx] = face.ownerCell();
-            normals_[compactIdx] = face.normal();
-            diffMetric_[compactIdx] =
-                magnitude(Ef)
-              / (face.projectedArea() * (dPfMag + vSmallValue));
-            normalDistance_[compactIdx] = dot(dPf, face.normal());
-        }
-    }
-
-    for (Index slot = 0; slot < numFields_; ++slot)
-    {
-        boundaryTypeAt_[slot].assign(numBoundaryFaces, nullptr);
-    }
-
-    fluxConstrained_.assign(faces.size(), 0);
-    correctsFlux_.assign(faces.size(), 0);
-    velocityHullExcluded_.assign(faces.size(), 0);
-}
-
-
-void BoundaryConditions::finalize()
-{
-    if (!linked_)
-    {
-        FatalError("BoundaryConditions::finalize called before linkFaces.");
-    }
-
-    if (finalized_)
-    {
-        FatalError("BoundaryConditions::finalize called twice.");
-    }
-
-    for (Index patchIdx = 0; patchIdx < patches_.size(); ++patchIdx)
-    {
-        if (patchStart_[patchIdx] == noBoundaryIdx_)
-        {
-            continue;
-        }
-
-        const BoundaryPatch& patch = patches_[patchIdx];
-        const auto patchIterator = boundaryTypes_.find(patch.name());
-
-        if (patchIterator == boundaryTypes_.end())
-        {
-            continue;
-        }
-
-        const auto& fieldMap = patchIterator->second;
-
-        // Record the type pointer for every registered (field, face) pair
-        for (const auto& fieldBCPair : fieldMap)
-        {
-            const Count slot = fieldSlot(fieldBCPair.first);
-            std::vector<const BoundaryType*>& fieldTypeAt =
-                boundaryTypeAt_[slot];
-
-            for (Index i = 0; i < patch.numFaces(); ++i)
-            {
-                fieldTypeAt[patchStart_[patchIdx] + i] =
-                    fieldBCPair.second.get();
-            }
-        }
-
-        // Per-face trait flags; the velocity flags demand component agreement
-        const BoundaryType* UxType = findBoundaryType(fieldMap, Field::Ux);
-        const BoundaryType* UyType = findBoundaryType(fieldMap, Field::Uy);
-        const BoundaryType* UzType = findBoundaryType(fieldMap, Field::Uz);
-
-        if ((UxType != nullptr) != (UyType != nullptr)
-         || (UxType != nullptr) != (UzType != nullptr)
-         || (UxType != nullptr
-          && (UxType->constrainsZeroFlux() != UyType->constrainsZeroFlux()
-           || UxType->constrainsZeroFlux() != UzType->constrainsZeroFlux()
-           || UxType->contributesToLimiterHull()
-           != UyType->contributesToLimiterHull()
-           || UxType->contributesToLimiterHull()
-           != UzType->contributesToLimiterHull())))
-        {
-            FatalError
-            (
-                "Velocity component boundary conditions disagree on patch '"
-              + patch.name() + "'."
-            );
-        }
-
-        const BoundaryType* pType = findBoundaryType(fieldMap, Field::p);
-
-        const bool zeroFlux = UxType != nullptr && UxType->constrainsZeroFlux();
-        const bool hullExcluded =
-            UxType != nullptr && !UxType->contributesToLimiterHull();
-        const bool fluxCorrected =
-            pType != nullptr && pType->correctsBoundaryFlux();
-
-        for
-        (
-            Index faceIdx = patch.firstFaceIdx();
-            faceIdx <= patch.lastFaceIdx();
-            ++faceIdx
-        )
-        {
-            fluxConstrained_[faceIdx] = zeroFlux ? 1 : 0;
-            velocityHullExcluded_[faceIdx] = hullExcluded ? 1 : 0;
-            correctsFlux_[faceIdx] = fluxCorrected ? 1 : 0;
-        }
-    }
-
-    finalized_ = true;
-}
-
-
-void BoundaryConditions::snapshotBoundaryVelocity
-(
+    const Mesh& mesh,
     const ScalarField& Ux,
     const ScalarField& Uy,
     const ScalarField& Uz
 )
 {
-    if (!finalized_)
+    for (const BoundaryPatch& patch : mesh.patches())
     {
-        FatalError
-        (
-            "BoundaryConditions::snapshotBoundaryVelocity called before "
-            "finalize."
-        );
-    }
-
-    // The symmetry mirror needs the owner velocity of the just-solved
-    // components; single-component consumers read it back per boundary face
-    for (Index c = 0; c < ownerVelocity_.size(); ++c)
-    {
-        const Index owner = geomOwnerCells_[c];
-        ownerVelocity_[c] = Vector{Ux[owner], Uy[owner], Uz[owner]};
-    }
-}
-
-
-void BoundaryConditions::validatePatchNames() const
-{
-    // std::set guarantees uniqueness
-    std::set<Name> validNames;
-
-    for (const auto& patch : patches_)
-    {
-        validNames.insert(patch.name());
-    }
-
-    // A missing patch is an error only when NO rank has it
-    for (const auto& entry : boundaryTypes_)
-    {
-        if (globalOr(validNames.contains(entry.first)))
+        if (patch.type() == PatchType::processor)
         {
             continue;
         }
 
-        Message validList;
-        for (const auto& name : validNames)
+        const auto patchIt = boundaryConditions_.find(patch.name());
+        if (patchIt == boundaryConditions_.end())
         {
-            if (!validList.empty())
-            {
-                validList += ", ";
-            }
-            validList += "'" + name + "'";
+            missing(patch.name(), Field::Ux);
         }
 
-        FatalError
-        (
-            "Boundary condition patch '"
-          + entry.first
-          + "' does not match any mesh patch on any rank. "
-            "Local patch names: " + validList
-        );
+        for (const Field field : {Field::Ux, Field::Uy, Field::Uz})
+        {
+            const auto fieldIt = patchIt->second.find(field);
+            if (fieldIt == patchIt->second.end() || fieldIt->second == nullptr)
+            {
+                missing(patch.name(), field);
+            }
+
+            fieldIt->second->refreshCoeffs(mesh, patch, Ux, Uy, Uz);
+        }
     }
 }
 
@@ -437,56 +168,77 @@ void BoundaryConditions::printSummary() const
 {
     std::cout << "\n--- Boundary Conditions Setup Summary ---\n";
 
-    if (patches_.empty())
+    if (boundaryConditions_.empty())
     {
-        std::cout << "  No mesh patches loaded.\n";
+        std::cout << "  No boundary conditions loaded.\n";
         return;
     }
 
     std::cout << std::format
     (
-        "Total Mesh Patches Loaded: {}\n",
-        patches_.size()
+        "Total Patches Configured: {}\n",
+        boundaryConditions_.size()
     );
 
-    for (const auto& meshPatch : patches_)
+    for (const auto& [patchName, fieldMap] : boundaryConditions_)
     {
         std::cout << std::format
         (
             "  ------------------------------------\n"
-            "  Mesh Patch Name         : {}\n"
-            "  Zone ID                 : {}\n"
-            "  Number of Faces         : {}\n",
-            meshPatch.name(),
-            meshPatch.zoneIdx(),
-            meshPatch.numFaces()
+            "  Patch Name              : {}\n"
+            "  Configured Fields       :\n",
+            patchName
         );
 
-        const auto patchIterator =
-            boundaryTypes_.find(meshPatch.name());
-
-        if
-        (
-            patchIterator != boundaryTypes_.end()
-         && !patchIterator->second.empty()
-        )
+        for (const auto& [field, bc] : fieldMap)
         {
-            std::cout << "  Configured Physical BCs :\n";
+            std::cout << std::format
+            (
+                "      Field '{}': Type: ",
+                fieldToString(field)
+            );
 
-            for (const auto& fieldBCPair : patchIterator->second)
+            if (bc != nullptr)
             {
-                std::cout << std::format
-                (
-                    "      Field '{}': Type: ",
-                    fieldToString(fieldBCPair.first)
-                );
-
-                fieldBCPair.second->write(std::cout);
-
-                std::cout << '\n';
+                std::cout << bc->typeName();
             }
+
+            std::cout << '\n';
         }
     }
 
     std::cout << "  ------------------------------------\n";
+}
+
+// ****************************** Private Methods *****************************
+
+const BoundaryType* BoundaryConditions::find
+(
+    const Name& patchName,
+    Field field
+) const noexcept
+{
+    const auto patchIt = boundaryConditions_.find(patchName);
+    if (patchIt == boundaryConditions_.end())
+    {
+        return nullptr;
+    }
+
+    const auto fieldIt = patchIt->second.find(field);
+    if (fieldIt == patchIt->second.end())
+    {
+        return nullptr;
+    }
+
+    return fieldIt->second.get();
+}
+
+
+void BoundaryConditions::missing(const Name& patchName, Field field)
+{
+    FatalError
+    (
+        "Boundary condition not found for patch '" + patchName
+      + "' and field '" + Name(fieldToString(field)) + "'."
+    );
 }

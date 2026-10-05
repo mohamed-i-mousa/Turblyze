@@ -7,7 +7,7 @@
 
  ------------------------------------------------------------------------------
  * @file Symmetry.cpp
- * @brief Symmetry-plane boundary coefficients and diagnostics
+ * @brief Symmetry-plane boundary coefficients and registration
  *****************************************************************************/
 
 // ********************************** Headers *********************************
@@ -16,158 +16,109 @@
 #include "Symmetry.h"
 
 // Standard library headers
-#include <ostream>
+#include <algorithm>
+
+// Project headers
+#include "BoundaryPatch.h"
+#include "Face.h"
+#include "Mesh.h"
+#include "Vector.h"
 
 // ***************************** Internal Helpers *****************************
 
 namespace
 {
 
-const Name symmetryToken{"symmetry"};
+// Entry of a vector along the velocity component
+Scalar along(const Vector& v, Field component) noexcept
+{
+    switch (component)
+    {
+        case Field::Ux:
+            return v.x();
+        case Field::Uy:
+            return v.y();
+        case Field::Uz:
+            return v.z();
+        default:
+            return S(0.0);
+    }
+}
+
+// Sum of n_j U_j over the two components other than the given one
+Scalar crossNormalVelocity
+(
+    const Vector& n,
+    const Vector& U,
+    Field component
+) noexcept
+{
+    switch (component)
+    {
+        case Field::Ux:
+            return n.y() * U.y() + n.z() * U.z();
+        case Field::Uy:
+            return n.x() * U.x() + n.z() * U.z();
+        case Field::Uz:
+            return n.x() * U.x() + n.y() * U.y();
+        default:
+            return S(0.0);
+    }
+}
 
 } // namespace
 
-// ***************************** Override Methods *****************************
+// ****************************** Public Methods ******************************
 
-const Name& Symmetry::typeName() const noexcept
-{
-    return symmetryToken;
-}
-
-
-Scalar Symmetry::addToDiagonal
+void Symmetry::updateCoeffs
 (
-    Scalar flux,
-    Scalar GammaSf,
-    Scalar diffMetric,
-    const Vector& normal
-) const
+    const Mesh& mesh,
+    const BoundaryPatch& patch
+)
 {
-    const bool isVelocity =
-        field() == Field::Ux || field() == Field::Uy || field() == Field::Uz;
+    coeffs_ = BoundaryCoeffs(patch.numFaces());
 
-    // Scalar fields mirror as zero-gradient: a = 1, c = 0
-    if (!isVelocity)
+    const Count numFaces = patch.numFaces();
+
+    for (Index localIdx = 0; localIdx < numFaces; ++localIdx)
     {
-        return flux;
+        const Index faceIdx = patch.firstFaceIdx() + localIdx;
+        const Face& face = mesh.faces()[faceIdx];
+        const Scalar ni = along(face.normal(), component_);
+        const Scalar gDiff = mesh.gDiff(face);
+
+        coeffs_.a[localIdx] = S(1.0) - ni * ni;
+        coeffs_.b[localIdx] = S(0.0);
+        coeffs_.c[localIdx] = -ni * ni * gDiff;
+        coeffs_.d[localIdx] = S(0.0);
     }
-
-    Scalar ni = S(0.0);
-
-    switch (field())
-    {
-        case Field::Ux: ni = normal.x(); break;
-        case Field::Uy: ni = normal.y(); break;
-        case Field::Uz: ni = normal.z(); break;
-        default: break;
-    }
-
-    // Tangential projection: a = 1 - ni^2, c = -ni^2 * diffMetric
-    return GammaSf * (ni * ni * diffMetric) + flux * (S(1.0) - ni * ni);
 }
 
 
-Scalar Symmetry::addToSource
+void Symmetry::refreshCoeffs
 (
-    Scalar flux,
-    Scalar GammaSf,
-    Scalar diffMetric,
-    Scalar,
-    const Vector& normal,
-    const Vector& ownerVelocity
-) const
+    const Mesh& mesh,
+    const BoundaryPatch& patch,
+    const ScalarField& Ux,
+    const ScalarField& Uy,
+    const ScalarField& Uz
+)
 {
-    const bool isVelocity =
-        field() == Field::Ux || field() == Field::Uy || field() == Field::Uz;
+    const Count numFaces = patch.numFaces();
 
-    // Scalar fields carry no tangential source: b = 0, d = 0
-    if (!isVelocity)
+    for (Index localIdx = 0; localIdx < numFaces; ++localIdx)
     {
-        return S(0.0);
+        const Index faceIdx = patch.firstFaceIdx() + localIdx;
+        const Face& face = mesh.faces()[faceIdx];
+        const Vector n = face.normal();
+        const Index owner = face.ownerCell();
+
+        const Vector Uowner(Ux[owner], Uy[owner], Uz[owner]);
+        const Scalar ni = along(n, component_);
+        const Scalar unCross = crossNormalVelocity(n, Uowner, component_);
+        const Scalar gDiff = mesh.gDiff(face);
+
+        coeffs_.b[localIdx] = -ni * unCross;
+        coeffs_.d[localIdx] = -ni * unCross * gDiff;
     }
-
-    Scalar ni = S(0.0);
-    Scalar UnCross = S(0.0);
-
-    switch (field())
-    {
-        case Field::Ux:
-            ni = normal.x();
-            UnCross = normal.y() * ownerVelocity.y()
-                    + normal.z() * ownerVelocity.z();
-            break;
-        case Field::Uy:
-            ni = normal.y();
-            UnCross = normal.x() * ownerVelocity.x()
-                    + normal.z() * ownerVelocity.z();
-            break;
-        case Field::Uz:
-            ni = normal.z();
-            UnCross = normal.x() * ownerVelocity.x()
-                    + normal.y() * ownerVelocity.y();
-            break;
-        default:
-            break;
-    }
-
-    // b = -ni * UnCross, d = b * diffMetric
-    return GammaSf * (-ni * UnCross * diffMetric) - flux * (-ni * UnCross);
-}
-
-
-Scalar Symmetry::faceValue
-(
-    Scalar ownerValue,
-    Scalar,
-    const Vector& normal,
-    const Vector& ownerVelocity
-) const
-{
-    const bool isVelocity =
-        field() == Field::Ux || field() == Field::Uy || field() == Field::Uz;
-
-    // Scalar fields see the plane as zero gradient
-    if (!isVelocity)
-    {
-        return ownerValue;
-    }
-
-    Scalar ni = S(0.0);
-    Scalar UnCross = S(0.0);
-
-    switch (field())
-    {
-        case Field::Ux:
-            ni = normal.x();
-            UnCross = normal.y() * ownerVelocity.y()
-                    + normal.z() * ownerVelocity.z();
-            break;
-        case Field::Uy:
-            ni = normal.y();
-            UnCross = normal.x() * ownerVelocity.x()
-                    + normal.z() * ownerVelocity.z();
-            break;
-        case Field::Uz:
-            ni = normal.z();
-            UnCross = normal.x() * ownerVelocity.x()
-                    + normal.y() * ownerVelocity.y();
-            break;
-        default:
-            break;
-    }
-
-    // Mirror value: U_f = (1 - ni^2) * U_P,i - ni * UnCross
-    return (S(1.0) - ni * ni) * ownerValue + (-ni * UnCross);
-}
-
-
-std::unique_ptr<BoundaryType> Symmetry::pressureCorrectionCompanion() const
-{
-    return std::make_unique<Symmetry>(Field::pCorr);
-}
-
-
-void Symmetry::write(std::ostream& os) const
-{
-    os << typeName() << " (symmetry plane)";
 }

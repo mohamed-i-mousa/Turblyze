@@ -28,6 +28,7 @@
 
 // Project headers
 #include "Mesh.h"
+#include "BoundaryConditions.h"
 #include "TurbulenceModel.h"
 
 // ******************************* class Laminar ******************************
@@ -39,9 +40,15 @@ public:
 // ************************* Special Member Functions *************************
 
     /// Constructor
-    Laminar(const Mesh& mesh, Scalar nu) noexcept
+    Laminar
+    (
+        const Mesh& mesh,
+        const BoundaryConditions& bc,
+        Scalar nu
+    ) noexcept
     :
         mesh_{mesh},
+        bc_{bc},
         nu_{nu}
     {}
 
@@ -101,7 +108,10 @@ public:
                 continue;
             }
 
-            if (face.patch()->type() != PatchType::wall)
+            if
+            (
+                face.patch()->type() == PatchType::processor
+             || !bc_.boundaryType(*face.patch(), Field::Ux).isWall())
             {
                 continue;
             }
@@ -132,6 +142,9 @@ private:
 
     /// Mesh view for laminar wall-shear evaluation
     const Mesh& mesh_;
+
+    /// Boundary conditions view for wall identification
+    const BoundaryConditions& bc_;
 
     /// Laminar kinematic viscosity
     Scalar nu_;

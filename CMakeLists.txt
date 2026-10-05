@@ -81,13 +81,11 @@ add_library(turblyze_core OBJECT
     src/Mesh/MeshChecker.cpp
     src/Fields/Field.cpp
     src/BoundaryConditions/BoundaryConditions.cpp
+    src/BoundaryConditions/BoundaryTypeFactory.cpp
     src/BoundaryConditions/BCLoader.cpp
-    src/BoundaryConditions/BoundaryTypes/BoundaryType.cpp
     src/BoundaryConditions/BoundaryTypes/FixedValue.cpp
-    src/BoundaryConditions/BoundaryTypes/NoSlip.cpp
     src/BoundaryConditions/BoundaryTypes/FixedGradient.cpp
     src/BoundaryConditions/BoundaryTypes/ZeroGradient.cpp
-    src/BoundaryConditions/BoundaryTypes/WallFunction.cpp
     src/BoundaryConditions/BoundaryTypes/Symmetry.cpp
     src/Schemes/GradientSchemes/GradientScheme.cpp
     src/Schemes/GradientSchemes/LeastSquares.cpp

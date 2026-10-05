@@ -22,9 +22,6 @@
 
 // ********************************** Headers *********************************
 
-// Standard library headers
-#include <utility>
-
 // Project headers
 #include "ZeroGradient.h"
 
@@ -36,17 +33,17 @@ public:
 
 // ************************* Special Member Functions *************************
 
-    /// Construct with the flavor's parse token (e.g. "kWallFunction")
-    WallFunction(Field field, Name typeName)
+    /// Construct with the flavor's name (e.g. "kWallFunction")
+    explicit WallFunction(Name typeName) noexcept
     :
-        ZeroGradient{field},
+        ZeroGradient{},
         typeName_{std::move(typeName)}
     {}
 
 // ***************************** Override Methods *****************************
 
-    /// The flavor's case-file parse token
-    [[nodiscard]] const Name& typeName() const noexcept override
+    /// The boundary condition type name
+    [[nodiscard]] std::string_view typeName() const noexcept override
     {
         return typeName_;
     }
@@ -57,13 +54,10 @@ public:
         return true;
     }
 
-    /// Print type
-    void write(std::ostream& os) const override;
-
 // ****************************** Private Members *****************************
 
 private:
 
-    /// The flavor's case-file parse token
+    /// The wallFunction flavor name
     Name typeName_;
 };

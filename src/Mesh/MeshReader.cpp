@@ -24,6 +24,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <string_view>
 #include <vector>
 
 // Project headers
@@ -33,6 +34,22 @@
 
 namespace
 {
+
+/// Fluent mesh-file section identifier tokens (ASCII data blocks)
+constexpr std::string_view MSH_COMMENT    = "(0";
+constexpr std::string_view MSH_DIMENSION  = "(2";
+constexpr std::string_view MSH_NODES      = "(10";
+constexpr std::string_view MSH_CELLS      = "(12";
+constexpr std::string_view MSH_FACES      = "(13";
+constexpr std::string_view MSH_BOUNDARIES = "(45";
+
+/// Fluent binary data-block identifiers (Binary data blocks)
+constexpr std::string_view MSH_NODES_SP   = "(2010";
+constexpr std::string_view MSH_NODES_DP   = "(3010";
+constexpr std::string_view MSH_CELLS_SP   = "(2012";
+constexpr std::string_view MSH_CELLS_DP   = "(3012";
+constexpr std::string_view MSH_FACES_SP   = "(2013";
+constexpr std::string_view MSH_FACES_DP   = "(3013";
 
 // Convert hexadecimal string to Count
 [[nodiscard]] Count hexToDec(const Token& hexStr)
@@ -1054,8 +1071,7 @@ void MeshReader::parseBoundariesSection
         if (zoneIdx == boundaryPatches_[i].zoneIdx())
         {
             boundaryPatches_[i].setName(patchName);
-
-            boundaryPatches_[i].setType(mapFluentBCToEnum(bcType));
+            boundaryPatches_[i].setType(PatchType::physical);
         }
     }
 }
@@ -1178,21 +1194,4 @@ void MeshReader::validateMesh() const
             );
         }
     }
-}
-
-
-PatchType MeshReader::mapFluentBCToEnum(const Token& fluentType)
-{
-    for (const auto& [name, type] : bcMappings_)
-    {
-        if (fluentType == name) return type;
-    }
-
-    Warning
-    (
-        "Unknown Fluent boundary type encountered: "
-      + Token(fluentType)
-    );
-
-    return PatchType::undefined;
 }

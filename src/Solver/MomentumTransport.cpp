@@ -329,10 +329,15 @@ void MomentumTransport::updatePrevStepDerivatives(TransientFields& prevStep)
 }
 
 
+void MomentumTransport::updateSymmetryBoundaries()
+{
+    bcManager_.refresh(mesh_, Ux_, Uy_, Uz_);
+}
+
+
 void MomentumTransport::updateVelocityGradients()
 {
-    // Boundary velocity snapshot must match the velocity the stencils read
-    bcManager_.snapshotBoundaryVelocity(Ux_, Uy_, Uz_);
+    updateSymmetryBoundaries();
 
     const Count numDomainCells = mesh_.numDomainCells();
 

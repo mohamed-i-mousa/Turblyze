@@ -86,8 +86,12 @@ Segregated::Segregated
 
     for (const BoundaryPatch& patch : mesh.patches())
     {
-        if (bc.hasBoundaryType(patch.name(), Field::p)
-         && bc.boundaryType(patch.name(), Field::p).fixesValue())
+        if (patch.type() == PatchType::processor)
+        {
+            continue;
+        }
+
+        if (bc.boundaryType(patch.name(), Field::p).fixesValue())
         {
             ++fixedPressurePatches;
         }
@@ -95,8 +99,8 @@ Segregated::Segregated
 
     pCorrNeedsNullSpace_ = globalSum(fixedPressurePatches) == 0;
 
-    // First velocity snapshot; the loop below reconstructs boundary values
-    bc.snapshotBoundaryVelocity(Ux(), Uy(), Uz());
+    // Update boundary coefficients
+    updateSymmetryBoundaries();
 
     UxAvgf_.setAll(initialVelocity.x());
     UyAvgf_.setAll(initialVelocity.y());
@@ -112,20 +116,12 @@ Segregated::Segregated
 
         if (face.isBoundary())
         {
-            const Index bIdx = bcManager().boundaryIdx(face.idx());
             const Index owner = face.ownerCell();
-            const Scalar nd = bcManager().normalDistance(bIdx);
-            const Vector& n = bcManager().normal(bIdx);
-            const Vector& ownerU = bcManager().ownerVelocity(bIdx);
-
             Uf = Vector
             (
-                bcManager().boundaryType(Field::Ux, bIdx)
-                    .faceValue(Ux()[owner], nd, n, ownerU),
-                bcManager().boundaryType(Field::Uy, bIdx)
-                    .faceValue(Uy()[owner], nd, n, ownerU),
-                bcManager().boundaryType(Field::Uz, bIdx)
-                    .faceValue(Uz()[owner], nd, n, ownerU)
+                bcManager().faceValue(face, Ux()[owner], Field::Ux),
+                bcManager().faceValue(face, Uy()[owner], Field::Uy),
+                bcManager().faceValue(face, Uz()[owner], Field::Uz)
             );
         }
         else
@@ -139,7 +135,9 @@ Segregated::Segregated
         }
 
         const bool isZeroFlux =
-            face.isBoundary() && bcManager().constrainsZeroFlux(face.idx());
+            face.isBoundary()
+         && face.patch()->type() != PatchType::processor
+         && bcManager().boundaryType(face.patch()->name(), Field::Ux).isSymmetry();
 
         const Vector Sf = face.normal() * face.projectedArea();
         RhieChowFlowRate_[faceIdx] = isZeroFlux ? S(0.0) : dot(Uf, Sf);
@@ -300,9 +298,6 @@ void Segregated::solveMomentum(const TransientFields* prevStep)
         ++momentumComponent
     )
     {
-        // Symmetry cross-terms read the just-solved previous component
-        bcManager().snapshotBoundaryVelocity(Ux(), Uy(), Uz());
-
         matrixConstruct_.buildMatrix(equations[momentumComponent]);
 
         matrixConstruct_.relax(alphaU_, *prevIters[momentumComponent]);
@@ -376,12 +371,11 @@ void Segregated::buildFaceDiagonal()
 
         if (face.isBoundary())
         {
-            const Index boundaryIdx = bcManager().boundaryIdx(face.idx());
-
             // Dirichlet p' couples pressure and velocity through the face; a
             // zero-gradient or symmetry plane decouples them
             DUf_[faceIdx] =
-                bcManager().boundaryType(Field::pCorr, boundaryIdx).fixesValue()
+                (face.patch()->type() != PatchType::processor
+              && bcManager().boundaryType(face.patch()->name(), Field::pCorr).fixesValue())
               ? DU_[face.ownerCell()]
               : S(0.0);
         }
@@ -404,22 +398,16 @@ void Segregated::updateRhieChowFlowRate(const TransientFields* prevStep)
 
         if (face.isBoundary())
         {
-            const Index bIdx = bcManager().boundaryIdx(face.idx());
             const Index owner = face.ownerCell();
-            const Scalar nd = bcManager().normalDistance(bIdx);
-            const Vector& n = bcManager().normal(bIdx);
-            const Vector& ownerU = bcManager().ownerVelocity(bIdx);
 
-            UxAvgf_[faceIdx] = bcManager().boundaryType(Field::Ux, bIdx)
-                .faceValue(Ux()[owner], nd, n, ownerU);
-            UyAvgf_[faceIdx] = bcManager().boundaryType(Field::Uy, bIdx)
-                .faceValue(Uy()[owner], nd, n, ownerU);
-            UzAvgf_[faceIdx] = bcManager().boundaryType(Field::Uz, bIdx)
-                .faceValue(Uz()[owner], nd, n, ownerU);
+            UxAvgf_[faceIdx] = bcManager().faceValue(face, Ux()[owner], Field::Ux);
+            UyAvgf_[faceIdx] = bcManager().faceValue(face, Uy()[owner], Field::Uy);
+            UzAvgf_[faceIdx] = bcManager().faceValue(face, Uz()[owner], Field::Uz);
 
             // A flux-constrained face (symmetry) carries zero mass flux
             const bool isZeroFlux =
-                bcManager().constrainsZeroFlux(face.idx());
+                face.patch()->type() != PatchType::processor
+             && bcManager().boundaryType(face.patch()->name(), Field::Ux).isSymmetry();
 
             const Vector Uf
             (
@@ -432,7 +420,6 @@ void Segregated::updateRhieChowFlowRate(const TransientFields* prevStep)
                 isZeroFlux
               ? S(0.0)
               : dot(Uf, face.normal() * face.projectedArea());
-
             continue;
         }
 
@@ -616,6 +603,8 @@ void Segregated::correctVelocity()
     // The face averages below read the corrected U at both cells
     Halo::exchange({&Ux(), &Uy(), &Uz()});
 
+    updateSymmetryBoundaries();
+
     // Update face velocities
     const Count numFaces = mesh().numFaces();
 
@@ -625,18 +614,10 @@ void Segregated::correctVelocity()
 
         if (face.isBoundary())
         {
-            const Index bIdx = bcManager().boundaryIdx(face.idx());
             const Index owner = face.ownerCell();
-            const Scalar nd = bcManager().normalDistance(bIdx);
-            const Vector& n = bcManager().normal(bIdx);
-            const Vector& ownerU = bcManager().ownerVelocity(bIdx);
-
-            UxAvgf_[faceIdx] = bcManager().boundaryType(Field::Ux, bIdx)
-                .faceValue(Ux()[owner], nd, n, ownerU);
-            UyAvgf_[faceIdx] = bcManager().boundaryType(Field::Uy, bIdx)
-                .faceValue(Uy()[owner], nd, n, ownerU);
-            UzAvgf_[faceIdx] = bcManager().boundaryType(Field::Uz, bIdx)
-                .faceValue(Uz()[owner], nd, n, ownerU);
+            UxAvgf_[faceIdx] = bcManager().faceValue(face, Ux()[owner], Field::Ux);
+            UyAvgf_[faceIdx] = bcManager().faceValue(face, Uy()[owner], Field::Uy);
+            UzAvgf_[faceIdx] = bcManager().faceValue(face, Uz()[owner], Field::Uz);
         }
         else
         {
@@ -659,7 +640,14 @@ void Segregated::correctFlowRate()
 
         if (face.isBoundary())
         {
-            if (!bcManager().correctsBoundaryFlux(face.idx()))
+            if
+            (
+                face.patch()->type() == PatchType::processor
+             || !bcManager().boundaryType
+                (
+                    face.patch()->name(), Field::p
+                ).correctsBoundaryFlux()
+            )
             {
                 continue;
             }

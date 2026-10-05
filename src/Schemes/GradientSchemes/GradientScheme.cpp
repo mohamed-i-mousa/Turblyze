@@ -123,20 +123,17 @@ void GradientScheme::limitGradient
             const Face& f = mesh_.faces()[faceIdx];
             if (!f.isBoundary()) continue;
 
-            if (isVelocity && bcManager_.excludedFromVelocityHull(f.idx()))
+            if
+            (
+                isVelocity 
+             && bcManager_.boundaryType(f, Field::Ux).isSymmetry()
+            )
             {
                 continue;
             }
 
-            const Index bIdx = bcManager_.boundaryIdx(f.idx());
             const Scalar phiBound =
-                bcManager_.boundaryType(field, bIdx).faceValue
-                (
-                    phi[f.ownerCell()],
-                    dot(mesh_.dPf(f), f.normal()),
-                    f.normal(),
-                    bcManager_.ownerVelocity(bIdx)
-                );
+                bcManager_.faceValue(f, phi[f.ownerCell()], field);
             phiMin = std::min(phiMin, phiBound);
             phiMax = std::max(phiMax, phiBound);
         }
@@ -150,9 +147,8 @@ void GradientScheme::limitGradient
 
             if
             (
-                isVelocity && f.isBoundary()
-             && bcManager_.excludedFromVelocityHull(f.idx())
-            )
+                isVelocity
+             && bcManager_.boundaryType(f, Field::Ux).isSymmetry())
             {
                 continue;
             }

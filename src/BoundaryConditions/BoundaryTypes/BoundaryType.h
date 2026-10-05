@@ -8,20 +8,6 @@
  ------------------------------------------------------------------------------
  * @file BoundaryType.h
  * @brief Abstract base class for per-(patch, field) boundary conditions
- *
- * @details A BoundaryType is one boundary condition of one field on one patch.
- * It exposes its physics as per-face math, with no BC-type dispatch anywhere
- * outside this class hierarchy:
- *
- *   - faceValue() reconstructs the boundary face value phi_f, read by gradient
- *     reconstruction, Rhie-Chow, and forces.
- *   - addToDiagonal() / addToSource() return this face's owner-cell diagonal
- *     and right-hand-side contributions for matrix assembly.
- *
- * A BoundaryType carries no patch reference and no per-face state: a boundary
- * condition may be registered for a patch with no faces on this rank. The
- * manager owns per-face geometry and owner velocity and hands each method the
- * data it needs.
  *****************************************************************************/
 
 #pragma once
@@ -29,19 +15,17 @@
 // ********************************** Headers *********************************
 
 // Standard library headers
-#include <iosfwd>
-#include <memory>
-#include <vector>
+#include <string_view>
 
 // Project headers
+#include "BoundaryCoeffs.h"
+#include "CellData.h"
 #include "Scalar.h"
-#include "Vector.h"
-#include "StringTypes.h"
-#include "Field.h"
 
 // *************************** Forward Declarations ***************************
 
-class CaseReader;
+class BoundaryPatch;
+class Mesh;
 
 // **************************** class BoundaryType ****************************
 
@@ -62,57 +46,61 @@ public:
     /// Destructor
     virtual ~BoundaryType() noexcept = default;
 
-// **************************** Runtime Selection *****************************
-
-    /// Create a boundary condition of the given type for the given field
-    [[nodiscard]] static std::unique_ptr<BoundaryType> create
-    (
-        const Name& typeName,
-        Field field,
-        const CaseReader& patchSection
-    );
-
-    /// Case-file-selectable type names valid for the given field
-    [[nodiscard]] static NameList availableTypes(Field field);
-
 // ****************************** Public Methods ******************************
 
-    /// The case-file parse of this type
-    [[nodiscard]] virtual const Name& typeName() const noexcept = 0;
+    /// The boundary condition type name
+    [[nodiscard]] virtual std::string_view typeName() const noexcept = 0;
 
-    /// The field this boundary condition applies to
-    [[nodiscard]] Field field() const noexcept { return field_; }
-
-    /// Owner-cell diagonal contribution of this boundary face
-    [[nodiscard]] virtual Scalar addToDiagonal
+    /// Update patch linearized boundary coefficients
+    virtual void updateCoeffs
     (
-        Scalar flux,
-        Scalar GammaSf,
-        Scalar diffMetric,
-        const Vector& normal
-    ) const = 0;
+        const Mesh& mesh,
+        const BoundaryPatch& patch
+    ) = 0;
 
-    /// Owner-cell right-hand-side contribution of this boundary face
-    [[nodiscard]] virtual Scalar addToSource
+    /// Re-evaluate the coefficients that depend on the current velocity
+    virtual void refreshCoeffs
     (
-        Scalar flux,
-        Scalar GammaSf,
-        Scalar diffMetric,
-        Scalar normalDistance,
-        const Vector& normal,
-        const Vector& ownerVelocity
-    ) const = 0;
+        const Mesh& /* mesh */,
+        const BoundaryPatch& /* patch */,
+        const ScalarField& /* Ux */,
+        const ScalarField& /* Uy */,
+        const ScalarField& /* Uz */
+    )
+    {}
 
-    /// Reconstructed boundary face value phi_f for this face
-    [[nodiscard]] virtual Scalar faceValue
+    /// Linearization coefficients of a patch face
+    [[nodiscard]] Scalar a(Index localIdx) const noexcept
+    {
+        return coeffs_.a[localIdx];
+    }
+
+    [[nodiscard]] Scalar b(Index localIdx) const noexcept
+    {
+        return coeffs_.b[localIdx];
+    }
+
+    [[nodiscard]] Scalar c(Index localIdx) const noexcept
+    {
+        return coeffs_.c[localIdx];
+    }
+
+    [[nodiscard]] Scalar d(Index localIdx) const noexcept
+    {
+        return coeffs_.d[localIdx];
+    }
+
+    /// Reconstruct boundary face value: phi_f = a * adjacentValue + b
+    [[nodiscard]] Scalar faceValue
     (
-        Scalar ownerValue,
-        Scalar normalDistance,
-        const Vector& normal,
-        const Vector& ownerVelocity
-    ) const = 0;
+        Index localIdx,
+        Scalar adjacentValue
+    ) const noexcept
+    {
+        return coeffs_.a[localIdx] * adjacentValue + coeffs_.b[localIdx];
+    }
 
-// ********************************** Traits **********************************
+// ****************************** Capability Flags ****************************
 
     /// Dirichlet-like: the face value is prescribed
     [[nodiscard]] virtual bool fixesValue() const noexcept
@@ -120,8 +108,8 @@ public:
         return false;
     }
 
-    /// The face mass flux is identically zero (Rhie-Chow flux zeroing)
-    [[nodiscard]] virtual bool constrainsZeroFlux() const noexcept
+    /// Mirror plane: no mass flux, and the velocity components couple
+    [[nodiscard]] virtual bool isSymmetry() const noexcept
     {
         return false;
     }
@@ -138,33 +126,21 @@ public:
         return false;
     }
 
-    /// The face value participates in the Barth-Jespersen limiter hull
-    [[nodiscard]] virtual bool contributesToLimiterHull() const noexcept
+    /// Whether this boundary condition represents a physical wall
+    [[nodiscard]] virtual bool isWall() const noexcept
     {
-        return true;
+        return false;
     }
-
-    /// The p' boundary condition implied by this pressure boundary condition
-    [[nodiscard]] virtual std::unique_ptr<BoundaryType>
-    pressureCorrectionCompanion() const;
-
-    /// Print this boundary condition's type and parameters
-    virtual void write(std::ostream& os) const = 0;
 
 // ***************************** Protected Methods ****************************
 
 protected:
 
-    /// Construct with the field identity (derived classes only)
-    explicit BoundaryType(Field field) noexcept
-    :
-        field_{field}
-    {}
+    /// Default constructor for derived classes
+    BoundaryType() noexcept = default;
 
-// ****************************** Private Members *****************************
+// ***************************** Protected Members ****************************
 
-private:
-
-    /// The field this boundary condition applies to
-    Field field_;
+    /// Patch linearized boundary coefficients
+    BoundaryCoeffs coeffs_;
 };

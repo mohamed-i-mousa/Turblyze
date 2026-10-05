@@ -121,7 +121,7 @@ void addBoundaryPatch
 {
     BoundaryPatch patch(zoneIdx, firstFaceIdx, faces.size() - 1);
     patch.setName(patchName);
-    patch.setType(PatchType::wall);
+    patch.setType(PatchType::physical);
     patches.push_back(std::move(patch));
 }
 

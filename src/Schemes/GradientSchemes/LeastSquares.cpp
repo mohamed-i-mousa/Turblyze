@@ -75,15 +75,8 @@ Vector LeastSquares::cellGradient
         const Scalar rMagSqr = magnitudeSquared(r);
         const Scalar w = S(1.0) / (rMagSqr + smallValue);
 
-        const Index bIdx = bcManager().boundaryIdx(f.idx());
         const Scalar phiBoundary =
-            bcManager().boundaryType(field, bIdx).faceValue
-            (
-                phi[f.ownerCell()],
-                dot(mesh().dPf(f), f.normal()),
-                f.normal(),
-                bcManager().ownerVelocity(bIdx)
-            );
+            bcManager().faceValue(f, phi[f.ownerCell()], field);
 
         const Scalar wDeltaPhi =
             w * (phiBoundary - phi[cellIndex]);

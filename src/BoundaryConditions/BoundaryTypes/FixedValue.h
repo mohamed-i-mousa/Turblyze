@@ -25,58 +25,37 @@ public:
 // ************************* Special Member Functions *************************
 
     /// Construct with the prescribed boundary value
-    FixedValue(Field field, Scalar value) noexcept
+    explicit FixedValue(Scalar value) noexcept
     :
-        BoundaryType{field},
         value_{value}
     {}
 
 // ***************************** Override Methods *****************************
 
-    /// The case-file parse token "fixedValue"
-    [[nodiscard]] const Name& typeName() const noexcept override;
+    /// The boundary condition type name
+    [[nodiscard]] std::string_view typeName() const noexcept override
+    {
+        return "fixedValue";
+    }
 
-    /// diag = GammaSf * diffMetric (Dirichlet: a = 0, c = -diffMetric)
-    [[nodiscard]] Scalar addToDiagonal
-    (
-        Scalar flux,
-        Scalar GammaSf,
-        Scalar diffMetric,
-        const Vector& normal
-    ) const override;
-
-    /// source = value * (GammaSf * diffMetric - flux)
-    [[nodiscard]] Scalar addToSource
-    (
-        Scalar flux,
-        Scalar GammaSf,
-        Scalar diffMetric,
-        Scalar normalDistance,
-        const Vector& normal,
-        const Vector& ownerVelocity
-    ) const override;
-
-    /// The prescribed value is the face value
-    [[nodiscard]] Scalar faceValue
-    (
-        Scalar ownerValue,
-        Scalar normalDistance,
-        const Vector& normal,
-        const Vector& ownerVelocity
-    ) const override;
-
-    /// Dirichlet: anchors the pressure level when registered on p
+    /// Dirichlet-like: value is fixed
     [[nodiscard]] bool fixesValue() const noexcept override
     {
         return true;
     }
 
-    /// Fixed pressure implies p' = 0
-    [[nodiscard]] std::unique_ptr<BoundaryType>
-    pressureCorrectionCompanion() const override;
+    /// Prescribed boundary value
+    [[nodiscard]] Scalar value() const noexcept
+    {
+        return value_;
+    }
 
-    /// Print type and prescribed value
-    void write(std::ostream& os) const override;
+    /// Update patch-local linearized boundary coefficients
+    void updateCoeffs
+    (
+        const Mesh& mesh,
+        const BoundaryPatch& patch
+    ) override;
 
 // ****************************** Private Members *****************************
 

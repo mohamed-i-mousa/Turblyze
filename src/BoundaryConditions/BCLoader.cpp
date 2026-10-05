@@ -22,14 +22,16 @@
 #include <memory>
 
 // Project headers
+#include "BoundaryTypeFactory.h"
 #include "CaseReader.h"
 #include "ErrorHandler.h"
 #include "FixedValue.h"
 #include "Logger.h"
 #include "Reduce.h"
 #include "RuntimeSelection.h"
-#include "Symmetry.h"
 #include "TurbulenceModel.h"
+#include "Vector.h"
+#include "ZeroGradient.h"
 #include "kOmegaSST.h"
 
 // **************************** namespace BCLoader ****************************
@@ -64,26 +66,37 @@ namespace
 /// construct and register the boundary condition
 void registerBC
 (
-    BoundaryConditions& bcManager,
+    BoundaryConditions::BCs& bcs,
     const Name& patchName,
     Field field,
     const Name& bcType,
-    const CaseReader& patchBC,
+    Scalar value,
     const Name& sectionName
 )
 {
-    if (!RuntimeSelection::isKnown(bcType, BoundaryType::availableTypes(field)))
+    if
+    (
+        !RuntimeSelection::isKnown
+        (
+            bcType,
+            BoundaryTypeFactory::availableTypes(field)
+        )
+    )
     {
         unknownTypeToken
         (
             bcType,
             sectionName,
             patchName,
-            RuntimeSelection::joinNames(BoundaryType::availableTypes(field))
+            RuntimeSelection::joinNames
+            (
+                BoundaryTypeFactory::availableTypes(field)
+            )
         );
     }
 
-    bcManager.setBoundaryType(patchName, field, BoundaryType::create(bcType, field, patchBC));
+    bcs[patchName][field] =
+        BoundaryTypeFactory::create(bcType, field, value);
 }
 
 
@@ -94,14 +107,15 @@ void validateWallFunctionSetup
     const CaseConfiguration& config
 )
 {
-    if (TurbulenceModel::isLaminar(config.turbulenceModel))
+    if (!TurbulenceModel::isRANS(config.turbulenceModel))
     {
         return;
     }
 
     for (const auto& patch : mesh.patches())
     {
-        if (patch.type() != PatchType::wall)
+        if (patch.type() == PatchType::processor
+         || !bcManager.boundaryType(patch.name(), Field::Ux).isWall())
         {
             continue;
         }
@@ -134,73 +148,22 @@ void validateWallFunctionSetup
     }
 }
 
-
-bool isSymmetryPatch(const Mesh& mesh, const Name& patchName)
-{
-    bool symmetryHere = false;
-
-    for (const auto& patch : mesh.patches())
-    {
-        if (patch.name() == patchName)
-        {
-            symmetryHere = patch.type() == PatchType::symmetry;
-            break;
-        }
-    }
-
-    // A patch may live on some ranks only
-    return globalOr(symmetryHere);
-}
-
-
-void applySymmetry(const Mesh& mesh, BoundaryConditions& bcManager)
-{
-    using enum Field;
-    static constexpr Field solvedFields[] =
-        { Ux, Uy, Uz, p, pCorr, k, omega, nut };
-
-    // A symmetry plane is mesh-derived: the case file carries no entry for it
-    for (const auto& patch : mesh.patches())
-    {
-        if (patch.type() != PatchType::symmetry)
-        {
-            continue;
-        }
-
-        for (const Field field : solvedFields)
-        {
-            bcManager.setBoundaryType
-            (
-                patch.name(),
-                field,
-                std::make_unique<Symmetry>(field)
-            );
-        }
-    }
-}
-
-} // namespace (unnamed)
+} // namespace
 
 
 // *********************************** Load ***********************************
 
-void load
+BoundaryConditions load
 (
     const CaseReader& reader,
     const CaseConfiguration& config,
-    const Mesh& mesh,
-    BoundaryConditions& bcManager
+    const Mesh& mesh
 )
 {
     std::cout << '\n';
     Logger::sectionHeader("Setting Boundary Conditions");
 
-    for (const auto& patch : mesh.patches())
-    {
-        bcManager.addPatch(patch);
-    }
-
-    bcManager.linkFaces(mesh);
+    BoundaryConditions::BCs bcs;
 
     for (const auto& face : mesh.faces())
     {
@@ -225,18 +188,23 @@ void load
 
         for (const auto& patchName : velocityBCs.sectionNames())
         {
-            if (isSymmetryPatch(mesh, patchName))
-            {
-                continue;
-            }
-
             const auto& patchBC = velocityBCs.section(patchName);
             const Name bcType = patchBC.lookup<Name>("type");
 
+            Vector value{};
+            if (bcType == "fixedValue")
+            {
+                value = patchBC.lookup<Vector>("value");
+            }
+            else if (bcType == "fixedGradient")
+            {
+                value = patchBC.lookup<Vector>("gradient");
+            }
+
             // The case-file vector entry fans out into the scalar components
-            registerBC(bcManager, patchName, Field::Ux, bcType, patchBC, "U");
-            registerBC(bcManager, patchName, Field::Uy, bcType, patchBC, "U");
-            registerBC(bcManager, patchName, Field::Uz, bcType, patchBC, "U");
+            registerBC(bcs, patchName, Field::Ux, bcType, value.x(), "U");
+            registerBC(bcs, patchName, Field::Uy, bcType, value.y(), "U");
+            registerBC(bcs, patchName, Field::Uz, bcType, value.z(), "U");
         }
     }
 
@@ -248,28 +216,37 @@ void load
 
         for (const auto& patchName : pressureBCs.sectionNames())
         {
-            if (isSymmetryPatch(mesh, patchName))
-            {
-                continue;
-            }
-
             const auto& patchBC = pressureBCs.section(patchName);
             const Name bcType = patchBC.lookup<Name>("type");
 
-            registerBC(bcManager, patchName, Field::p, bcType, patchBC, "p");
+            Scalar value = S(0.0);
+            if (bcType == "fixedValue")
+            {
+                value = patchBC.lookup<Scalar>("value");
+            }
+            else if (bcType == "fixedGradient")
+            {
+                value = patchBC.lookup<Scalar>("gradient");
+            }
 
-            const BoundaryType& pType = bcManager.boundaryType(patchName, Field::p);
+            registerBC(bcs, patchName, Field::p, bcType, value, "p");
+
+            const auto& pType = *bcs[patchName][Field::p];
 
             hasFixedPressure = hasFixedPressure || pType.fixesValue();
 
             // Derive the p' boundary condition from p: fixed p becomes
             // p' = 0, zero-gradient p stays zero-gradient
-            bcManager.setBoundaryType
-            (
-                patchName,
-                Field::pCorr,
-                pType.pressureCorrectionCompanion()
-            );
+            if (pType.fixesValue())
+            {
+                bcs[patchName][Field::pCorr] =
+                    std::make_unique<FixedValue>(S(0.0));
+            }
+            else
+            {
+                bcs[patchName][Field::pCorr] =
+                    std::make_unique<ZeroGradient>();
+            }
         }
     }
 
@@ -293,11 +270,6 @@ void load
 
         for (const auto& patchName : kBCs.sectionNames())
         {
-            if (isSymmetryPatch(mesh, patchName))
-            {
-                continue;
-            }
-
             const auto& patchBC = kBCs.section(patchName);
             const Name bcType = patchBC.lookup<Name>("type");
 
@@ -328,17 +300,18 @@ void load
                     value = patchBC.lookup<Scalar>("value");
                 }
 
-                bcManager.setBoundaryType
-                (
-                    patchName,
-                    Field::k,
-                    std::make_unique<FixedValue>(Field::k, value)
-                );
+                registerBC(bcs, patchName, Field::k, bcType, value, "k");
                 resolvedK[patchName] = value;
                 continue;
             }
 
-            registerBC(bcManager, patchName, Field::k, bcType, patchBC, "k");
+            Scalar value = S(0.0);
+            if (bcType == "fixedGradient")
+            {
+                value = patchBC.lookup<Scalar>("gradient");
+            }
+
+            registerBC(bcs, patchName, Field::k, bcType, value, "k");
             resolvedK[patchName] =
                 kOmegaSST::inletK
                 (
@@ -354,11 +327,6 @@ void load
 
         for (const auto& patchName : omegaBCs.sectionNames())
         {
-            if (isSymmetryPatch(mesh, patchName))
-            {
-                continue;
-            }
-
             const auto& patchBC = omegaBCs.section(patchName);
             const Name bcType = patchBC.lookup<Name>("type");
 
@@ -400,24 +368,17 @@ void load
                     value = patchBC.lookup<Scalar>("value");
                 }
 
-                bcManager.setBoundaryType
-                (
-                    patchName,
-                    Field::omega,
-                    std::make_unique<FixedValue>(Field::omega, value)
-                );
+                registerBC(bcs, patchName, Field::omega, bcType, value, "omega");
                 continue;
             }
 
-            registerBC
-            (
-                bcManager,
-                patchName,
-                Field::omega,
-                bcType,
-                patchBC,
-                "omega"
-            );
+            Scalar value = S(0.0);
+            if (bcType == "fixedGradient")
+            {
+                value = patchBC.lookup<Scalar>("gradient");
+            }
+
+            registerBC(bcs, patchName, Field::omega, bcType, value, "omega");
         }
     }
 
@@ -427,25 +388,26 @@ void load
 
         for (const auto& patchName : nutBCs.sectionNames())
         {
-            if (isSymmetryPatch(mesh, patchName))
-            {
-                continue;
-            }
-
             const auto& patchBC = nutBCs.section(patchName);
             const Name bcType = patchBC.lookup<Name>("type");
 
-            registerBC(bcManager, patchName, Field::nut, bcType, patchBC, "nut");
+            Scalar value = S(0.0);
+            if (bcType == "fixedValue")
+            {
+                value = patchBC.lookup<Scalar>("value");
+            }
+            else if (bcType == "fixedGradient")
+            {
+                value = patchBC.lookup<Scalar>("gradient");
+            }
+
+            registerBC(bcs, patchName, Field::nut, bcType, value, "nut");
         }
     }
 
-    bcManager.validatePatchNames();
+    BoundaryConditions bcManager(std::move(bcs), mesh);
 
     validateWallFunctionSetup(mesh, bcManager, config);
-
-    applySymmetry(mesh, bcManager);
-
-    bcManager.finalize();
 
     if (config.debug)
     {
@@ -457,6 +419,8 @@ void load
         "Boundary conditions set for {} patches.\n",
         mesh.patches().size()
     );
+
+    return bcManager;
 }
 
 } // namespace BCLoader

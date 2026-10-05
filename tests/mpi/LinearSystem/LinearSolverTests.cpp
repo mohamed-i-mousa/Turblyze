@@ -50,27 +50,14 @@ namespace
 {
 
 /// Register the fixed-value / zero-gradient BCs of the 1D diffusion problem
-void registerDiffusionBoundaries(BoundaryConditions& bc, const Mesh& mesh)
+[[nodiscard]] BoundaryConditions makeDiffusionBoundaries(const Mesh& mesh)
 {
-    for (const BoundaryPatch& patch : mesh.patches())
-    {
-        bc.addPatch(patch);
-    }
+    BoundaryConditions::BCs bcs;
 
-    bc.linkFaces(mesh);
-
-    bc.setBoundaryType
-    (
-        BoxPatch::xMin,
-        Field::p,
-        std::make_unique<FixedValue>(Field::p, S(0.0))
-    );
-    bc.setBoundaryType
-    (
-        BoxPatch::xMax,
-        Field::p,
-        std::make_unique<FixedValue>(Field::p, S(8.0))
-    );
+    bcs[BoxPatch::xMin][Field::p] =
+        std::make_unique<FixedValue>(S(0.0));
+    bcs[BoxPatch::xMax][Field::p] =
+        std::make_unique<FixedValue>(S(8.0));
 
     for
     (
@@ -83,15 +70,11 @@ void registerDiffusionBoundaries(BoundaryConditions& bc, const Mesh& mesh)
         }
     )
     {
-        bc.setBoundaryType
-        (
-            lateral,
-            Field::p,
-            std::make_unique<ZeroGradient>(Field::p)
-        );
+        bcs[lateral][Field::p] =
+            std::make_unique<ZeroGradient>();
     }
 
-    bc.finalize();
+    return BoundaryConditions(std::move(bcs), mesh);
 }
 
 } // namespace
@@ -101,9 +84,7 @@ void registerDiffusionBoundaries(BoundaryConditions& bc, const Mesh& mesh)
 TEST_CASE("Krylov solvers reproduce the linear profile", "[petsc]")
 {
     DecomposedBoxMesh box(8, 2, 2);
-
-    BoundaryConditions bc;
-    registerDiffusionBoundaries(bc, box.mesh());
+    const BoundaryConditions bc = makeDiffusionBoundaries(box.mesh());
 
     const LeastSquares gradScheme(box.mesh(), bc);
 

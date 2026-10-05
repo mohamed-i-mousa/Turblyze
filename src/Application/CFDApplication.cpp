@@ -113,6 +113,7 @@ void runTransient
     (
         PostProcess::boundaryDataPath(config),
         mesh,
+        &bcManager,
         config.debug
     );
 
@@ -218,8 +219,7 @@ void run(const FilePath& caseFile)
     Mesh mesh = MeshCreator::create(config);
 
     // Load boundary conditions
-    BoundaryConditions bcManager;
-    BCLoader::load(caseReader, config, mesh, bcManager);
+    BoundaryConditions bcManager = BCLoader::load(caseReader, config, mesh);
 
     // Configure solver
     SolverModules modules;

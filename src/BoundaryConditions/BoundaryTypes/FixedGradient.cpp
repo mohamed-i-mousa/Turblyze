@@ -15,74 +15,34 @@
 // Implementation header
 #include "FixedGradient.h"
 
-// Standard library headers
-#include <ostream>
-
-// ***************************** Internal Helpers *****************************
-
-namespace
-{
-
-const Name fixedGradientToken{"fixedGradient"};
-
-} // namespace
-
-// ***************************** Override Methods *****************************
-
-const Name& FixedGradient::typeName() const noexcept
-{
-    return fixedGradientToken;
-}
+// Project headers
+#include "BoundaryPatch.h"
+#include "Face.h"
+#include "Mesh.h"
 
 
-Scalar FixedGradient::addToDiagonal
+// ****************************** Public Methods ******************************
+
+void FixedGradient::updateCoeffs
 (
-    Scalar flux,
-    Scalar,
-    Scalar,
-    const Vector&
-) const
+    const Mesh& mesh,
+    const BoundaryPatch& patch
+)
 {
-    return flux;
+    coeffs_ = BoundaryCoeffs(patch.numFaces());
+
+    const Count numFaces = patch.numFaces();
+
+    for (Index localIdx = 0; localIdx < numFaces; ++localIdx)
+    {
+        const Index faceIdx = patch.firstFaceIdx() + localIdx;
+        const Face& face = mesh.faces()[faceIdx];
+        const Scalar normalDistance = dot(mesh.dPf(face), face.normal());
+
+        coeffs_.a[localIdx] = S(1.0);
+        coeffs_.b[localIdx] = gradient_ * normalDistance;
+        coeffs_.c[localIdx] = S(0.0);
+        coeffs_.d[localIdx] = gradient_;
+    }
 }
 
-
-Scalar FixedGradient::addToSource
-(
-    Scalar flux,
-    Scalar GammaSf,
-    Scalar,
-    Scalar normalDistance,
-    const Vector&,
-    const Vector&
-) const
-{
-    return GammaSf * gradient_ - (flux * gradient_ * normalDistance);
-}
-
-
-Scalar FixedGradient::faceValue
-(
-    Scalar ownerValue,
-    Scalar normalDistance,
-    const Vector&,
-    const Vector&
-) const
-{
-    return ownerValue + gradient_ * normalDistance;
-}
-
-
-std::unique_ptr<BoundaryType> FixedGradient::pressureCorrectionCompanion() const
-{
-    // The base pressure gradient is already imposed, so p' carries a zero
-    // prescribed gradient; correctsBoundaryFlux() still feeds the explicit
-    // boundary flux correction that couples pressure and velocity here
-    return std::make_unique<FixedGradient>(Field::pCorr, S(0.0));
-}
-
-
-void FixedGradient::write(std::ostream& os) const
-{
-    os << typeName() << ", Gradient: " << gradient_;
-}

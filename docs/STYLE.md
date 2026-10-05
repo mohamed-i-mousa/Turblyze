@@ -334,7 +334,7 @@ std::cerr << "\n" << "Error: " << msg << "\n";
 - **Type aliases**: PascalCase (e.g., `VectorField`, `ScalarField`)
 - **Enum class names**: PascalCase (e.g., `Field`, `BCType`, `PatchType`)
 - **Enumerators**: lowerCamelCase (e.g., `Field::Ux`, `BCType::fixedValue`,
-  `PatchType::wall`). Avoid `ALL_CAPS`, since it collides with preprocessor macros
+  `PatchType::physical`). Avoid `ALL_CAPS`, since it collides with preprocessor macros
   (C++ Core Guidelines Enum.5). Prefer `enum class` over plain `enum` (Enum.3).
 
 ### Intent-revealing aliases
@@ -469,11 +469,10 @@ std::ostream& operator<<(std::ostream& os, const Vector& v)
 }
 ```
 
-**With format manipulators:**
+**With formatted text:**
+Use modern C++20 `std::format`:
 ```cpp
-std::cout
-    << std::scientific << std::setprecision(6)
-    << value << " m²" << '\n';
+std::cout << std::format("{:.6e} m²\n", value);
 ```
 
 **Newlines:** Use `'\n'` for ordinary line endings. Use `std::endl`

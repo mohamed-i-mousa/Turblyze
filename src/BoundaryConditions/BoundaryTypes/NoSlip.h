@@ -8,10 +8,6 @@
  ------------------------------------------------------------------------------
  * @file NoSlip.h
  * @brief No-slip boundary condition, an alias of FixedValue with value 0
- *
- * @class NoSlip
- * FixedValue with value 0 under the "noSlip" parse token, registered on
- * the velocity components of wall patches.
  *****************************************************************************/
 
 #pragma once
@@ -29,13 +25,22 @@ public:
 // ************************* Special Member Functions *************************
 
     /// Construct a zero-value velocity boundary condition
-    explicit NoSlip(Field field) noexcept
+    NoSlip() noexcept
     :
-        FixedValue{field, S(0.0)}
+        FixedValue{S(0.0)}
     {}
 
 // ***************************** Override Methods *****************************
 
-    /// The case-file parse token "noSlip"
-    [[nodiscard]] const Name& typeName() const noexcept override;
+    /// The boundary condition type name
+    [[nodiscard]] std::string_view typeName() const noexcept override
+    {
+        return "noSlip";
+    }
+
+    /// Whether this boundary condition represents a physical wall
+    [[nodiscard]] bool isWall() const noexcept override
+    {
+        return true;
+    }
 };

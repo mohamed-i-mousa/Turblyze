@@ -86,13 +86,6 @@ public:
 
 private:
 
-    /// Mapping entry from Fluent type string to enum
-    struct BCMapping
-    {
-        Token fluentType;
-        PatchType patchType;
-    };
-
     /// All mesh node coordinates
     NodeList nodes_;
 
@@ -104,40 +97,6 @@ private:
 
     /// All boundary patches
     PatchList boundaryPatches_;
-
-    /// Fluent mesh-file section identifier tokens (ASCII data blocks)
-    inline static const Token MSH_COMMENT    = "(0";
-    inline static const Token MSH_DIMENSION  = "(2";
-    inline static const Token MSH_NODES      = "(10";
-    inline static const Token MSH_CELLS      = "(12";
-    inline static const Token MSH_FACES      = "(13";
-    inline static const Token MSH_BOUNDARIES = "(45";
-
-    /// Fluent binary data-block identifiers (ASCII id + 2000 single / + 3000 double)
-    inline static const Token MSH_NODES_SP   = "(2010";
-    inline static const Token MSH_NODES_DP   = "(3010";
-    inline static const Token MSH_CELLS_SP   = "(2012";
-    inline static const Token MSH_CELLS_DP   = "(3012";
-    inline static const Token MSH_FACES_SP   = "(2013";
-    inline static const Token MSH_FACES_DP   = "(3013";
-
-    /// Lookup table for Fluent BC type string to enum mapping
-    inline static const std::array<BCMapping, 13> bcMappings_ =
-    {{
-        {"velocity-inlet",   PatchType::velocityInlet},
-        {"pressure-inlet",   PatchType::pressureInlet},
-        {"pressure-outlet",  PatchType::pressureOutlet},
-        {"wall",             PatchType::wall},
-        {"symmetry",         PatchType::symmetry},
-        {"periodic",         PatchType::periodic},
-        {"periodic-shadow",  PatchType::periodic},
-        {"mass-flow-inlet",  PatchType::massFlowInlet},
-        {"outflow",          PatchType::outflow},
-        {"interface",        PatchType::interface},
-        {"interior",         PatchType::interior},
-        {"solid",            PatchType::solid},
-        {"fluid",            PatchType::fluid}
-    }};
 
 // ****************************** Private Methods *****************************
 
@@ -183,10 +142,4 @@ private:
 
     /// Validate mesh integrity
     void validateMesh() const;
-
-    /// Map Fluent boundary type string to enumeration
-    [[nodiscard]] static PatchType mapFluentBCToEnum
-    (
-        const Token& fluentType
-    );
 };

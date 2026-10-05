@@ -159,6 +159,17 @@ public:
           - cells_[f.ownerCell()].centroid();
     }
 
+    /// gDiff = |Ef| / (|Sf| * |dPf|)
+    [[nodiscard]] Scalar gDiff(const Face& f) const noexcept
+    {
+        const Vector Sf = f.normal() * f.projectedArea();
+        const Vector dPfVec = dPf(f);
+        const Scalar dPfMag = magnitude(dPfVec);
+        const Vector ePf = dPfVec / (dPfMag + vSmallValue);
+        const Vector Ef = (dot(Sf, Sf) / dot(Sf, ePf)) * ePf;
+        return magnitude(Ef) / (f.projectedArea() * (dPfMag + vSmallValue));
+    }
+
 // ****************************** Private Members *****************************
 
 private:

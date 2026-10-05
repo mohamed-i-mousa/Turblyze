@@ -170,6 +170,12 @@ public:
         return mesh_;
     }
 
+    /// Boundary-condition manager view
+    [[nodiscard]] const BoundaryConditions& bcManager() const noexcept
+    {
+        return bcManager_;
+    }
+
 // ***************************** Protected Methods ****************************
 
 protected:
@@ -191,6 +197,9 @@ protected:
     [[nodiscard]] virtual Scalar pressureResidual() const noexcept = 0;
 
 // Shared driver helpers
+
+    /// Update velocity-coupled symmetry boundary coefficients
+    void updateSymmetryBoundaries();
 
     /// Roll the Crank-Nicolson stored velocity time derivatives forward
     void updatePrevStepDerivatives(TransientFields& prevStep);
@@ -228,11 +237,6 @@ protected:
         return totalDomainCells_;
     }
 
-    /// Boundary-condition manager (mutable: the solver drives the snapshot)
-    [[nodiscard]] const BoundaryConditions& bcManager() const noexcept
-    {
-        return bcManager_;
-    }
     [[nodiscard]] BoundaryConditions& bcManager() noexcept
     {
         return bcManager_;

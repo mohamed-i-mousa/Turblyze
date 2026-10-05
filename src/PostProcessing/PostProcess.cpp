@@ -151,6 +151,7 @@ void exportResults
     (
         boundaryFile,
         mesh,
+        &solver.bcManager(),
         config.debug
     );
 
