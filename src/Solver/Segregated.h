@@ -81,17 +81,8 @@ public:
 
 protected:
 
-    /// The convective face mass flux
-    [[nodiscard]] const FaceFluxField& faceMassFlux() const noexcept override
-    {
-        return RhieChowFlowRate_;
-    }
-
     /// Pressure correction RMS normalized by the pressure RMS
     [[nodiscard]] Scalar pressureResidual() const noexcept override;
-
-    /// Build cell and face effective viscosity
-    void updateEffectiveViscosity();
 
     /// Build the gradient sources and reset the DU_ accumulators
     void assembleMomentum();
@@ -102,11 +93,11 @@ protected:
     /// Compute the momentum diagonal coefficient DU_ = 3 V / sum(a_P)
     void diagonalDU(Index momentumComponent);
 
-    /// Interpolate the face momentum diagonal DUf_ from DU_
-    void buildFaceDiagonal();
-
     /// Update face mass fluxes using Rhie-Chow interpolation
-    void updateRhieChowFlowRate(const TransientFields* prevStep);
+    void updateRhieChowFlowRate(const TransientFields* prevStep)
+    {
+        MomentumTransport::updateRhieChowFlowRate(alphaU_, prevStep);
+    }
 
     /// Assemble and solve the pressure correction equation
     void solvePressureCorrection();
@@ -121,7 +112,16 @@ protected:
     void correctPressure();
 
     /// Add the transpose-gradient source to the momentum source terms
-    void addTransposeGradientSource();
+    void addTransposeGradientSource()
+    {
+        MomentumTransport::addTransposeGradientSource
+        (
+            UxSource_,
+            UySource_,
+            UzSource_
+        );
+    }
+
 
     /// Build the transient term for one velocity component
     [[nodiscard]] std::optional<TransientTerm> ddtTerm
@@ -150,21 +150,6 @@ protected:
         return matrixConstruct_;
     }
 
-    /// Pressure gradient field
-    [[nodiscard]] const VectorField& gradP() const noexcept
-    {
-        return gradP_;
-    }
-    [[nodiscard]] VectorField& gradP() noexcept
-    {
-        return gradP_;
-    }
-
-    /// Effective viscosity at face centres
-    [[nodiscard]] const FaceData<Scalar>& nuEffFace() const noexcept
-    {
-        return nuEffFace_;
-    }
 
     /// Momentum source terms
     [[nodiscard]] const ScalarField& UxSource() const noexcept
@@ -217,47 +202,11 @@ private:
     /// Pressure correction gradient field
     VectorField gradPCorr_{mesh_};
 
-    /// Pressure gradient field
-    VectorField gradP_{mesh_};
-
-// Face velocity fields
-
-    /// Face velocity (current iteration)
-    FaceData<Scalar> UxAvgf_{mesh_};
-    FaceData<Scalar> UyAvgf_{mesh_};
-    FaceData<Scalar> UzAvgf_{mesh_};
-
-    /// Face velocity (previous iteration)
-    FaceData<Scalar> UxAvgPrevIterf_{mesh_};
-    FaceData<Scalar> UyAvgPrevIterf_{mesh_};
-    FaceData<Scalar> UzAvgPrevIterf_{mesh_};
-
-// Mass flux fields
-
-    /// Mass flux through faces (Rhie-Chow)
-    FaceFluxField RhieChowFlowRate_{mesh_};
-
-    /// Mass flux from the previous iteration
-    FaceFluxField RhieChowFlowRatePrevIter_{mesh_};
-
-// Momentum diagonal coefficients
-
-    /// Momentum diagonal coefficients
-    ScalarField DU_{mesh_};
-
-    /// Face momentum diagonal coefficients
-    FaceFluxField DUf_{mesh_};
-
     /// True when p' has no Dirichlet anchor on any rank (pure Neumann)
     bool pCorrNeedsNullSpace_ = false;
 
 // Momentum assembly fields
 
-    /// Effective viscosity (laminar + turbulent)
-    ScalarField nuEff_{mesh_};
-
-    /// Effective viscosity at face centres
-    FaceData<Scalar> nuEffFace_{mesh_};
 
     /// Momentum source terms
     ScalarField UxSource_{mesh_};

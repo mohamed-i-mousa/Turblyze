@@ -25,6 +25,7 @@
 #include "HaloExchange.h"
 #include "Reduce.h"
 #include "Logger.h"
+#include "LinearInterpolation.h"
 #include "TimeScheme.h"
 #include "TurbulenceModel.h"
 #include "RuntimeSelection.h"
@@ -67,6 +68,49 @@ MomentumTransport::MomentumTransport
     Uy_.setAll(initialVelocity.y());
     Uz_.setAll(initialVelocity.z());
     p_.setAll(initialPressure);
+
+    updateSymmetryBoundaries();
+
+    // Initialize RhieChowFlowRate_ with linear interpolation
+    const Count numFaces = mesh_.numFaces();
+
+    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
+    {
+        const Face& face = mesh_.faces()[faceIdx];
+        Vector Uf;
+
+        if (face.isBoundary())
+        {
+            const Index owner = face.ownerCell();
+            Uf = Vector
+            (
+                bcManager_.faceValue(face, Ux_[owner], Field::Ux),
+                bcManager_.faceValue(face, Uy_[owner], Field::Uy),
+                bcManager_.faceValue(face, Uz_[owner], Field::Uz)
+            );
+            RhieChowFlowRate_[faceIdx] =
+                (face.patch()->type() != PatchType::processor
+              && bcManager_.boundaryType(face, Field::Ux).isSymmetry())
+              ? S(0.0)
+              : dot(Uf, face.normal() * face.projectedArea());
+        }
+        else
+        {
+            Uf = Vector
+            (
+                interpolateToFace(mesh_, face, Ux_),
+                interpolateToFace(mesh_, face, Uy_),
+                interpolateToFace(mesh_, face, Uz_)
+            );
+
+            const Vector Sf = face.normal() * face.projectedArea();
+            RhieChowFlowRate_[faceIdx] = dot(Uf, Sf);
+        }
+
+        UxAvgf_[faceIdx] = Uf.x();
+        UyAvgf_[faceIdx] = Uf.y();
+        UzAvgf_[faceIdx] = Uf.z();
+    }
 
     // Collective: constructed on every rank together
     totalDomainCells_ = globalSum(mesh_.numDomainCells());
@@ -196,7 +240,7 @@ void MomentumTransport::solve
     }
     else
     {
-        Logger::sectionHeader("Starting " + algorithmName() + " Loop");
+        Logger::sectionHeader(std::format("Starting {} Loop", algorithmName()));
     }
 
     reportPerIteration_ = prevStep ? debug_ : true;
@@ -620,3 +664,221 @@ MomentumTransport::computeCourant() const noexcept
         globalSum(sumCourant) / S(std::max<Count>(1, totalDomainCells_))
     };
 }
+
+
+// ********************** Shared Finite-Volume Methods ***********************
+
+void MomentumTransport::updateEffectiveViscosity()
+{
+    const Count numCells = mesh_.numCells();
+    const Count numFaces = mesh_.numFaces();
+
+    const ScalarField& nut = turbulence_.turbulentViscosity();
+
+    // Build cell-based effective viscosity
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    {
+        nuEff_[cellIdx] = nu_ + nut[cellIdx];
+    }
+
+    // Build face-based effective viscosity
+    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
+    {
+        const Face& face = mesh_.faces()[faceIdx];
+
+        if (face.isBoundary())
+        {
+            // Turbulent models may provide wall-function boundary nut.
+            nuEffFace_[faceIdx] =
+                nu_
+              + turbulence_.boundaryTurbulentViscosity(face);
+        }
+        else
+        {
+            // Internal faces: linear interpolation
+            nuEffFace_[faceIdx] = interpolateToFace(mesh_, face, nuEff_);
+        }
+    }
+}
+
+
+void MomentumTransport::buildFaceDiagonal()
+{
+    const Count numFaces = mesh_.numFaces();
+
+    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
+    {
+        const Face& face = mesh_.faces()[faceIdx];
+
+        if (face.isBoundary())
+        {
+            // Dirichlet p' couples pressure and velocity through the face; a
+            // zero-gradient or symmetry plane decouples them
+            DUf_[faceIdx] =
+                (face.patch()->type() != PatchType::processor
+              && bcManager_.boundaryType(face.patch()->name(), Field::pCorr).fixesValue())
+              ? DU_[face.ownerCell()]
+              : S(0.0);
+        }
+        else
+        {
+            // Internal faces
+            DUf_[faceIdx] = interpolateToFace(mesh_, face, DU_);
+        }
+    }
+}
+
+
+void MomentumTransport::updateRhieChowFlowRate
+(
+    Scalar alphaU,
+    const TransientFields* prevStep
+)
+{
+    const Count numFaces = mesh_.numFaces();
+
+    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
+    {
+        const Face& face = mesh_.faces()[faceIdx];
+
+        if (face.isBoundary())
+        {
+            const Index owner = face.ownerCell();
+            const Vector Uf
+            (
+                bcManager_.faceValue(face, Ux_[owner], Field::Ux),
+                bcManager_.faceValue(face, Uy_[owner], Field::Uy),
+                bcManager_.faceValue(face, Uz_[owner], Field::Uz)
+            );
+            UxAvgf_[faceIdx] = Uf.x();
+            UyAvgf_[faceIdx] = Uf.y();
+            UzAvgf_[faceIdx] = Uf.z();
+
+            RhieChowFlowRate_[faceIdx] =
+                (face.patch()->type() != PatchType::processor
+              && bcManager_.boundaryType(face, Field::Ux).isSymmetry())
+              ? S(0.0)
+              : dot(Uf, face.normal() * face.projectedArea());
+            continue;
+        }
+
+        const Index P = face.ownerCell();
+        const Index N = face.neighborCell().value();
+
+        // Linear-interpolated velocity at face
+        const Vector UfLinear
+        (
+            interpolateToFace(mesh_, face, Ux_),
+            interpolateToFace(mesh_, face, Uy_),
+            interpolateToFace(mesh_, face, Uz_)
+        );
+
+        const Vector gradPAvgf = interpolateToFace(mesh_, face, gradP_);
+        const Vector Sf = face.normal() * face.projectedArea();
+        const Vector gradPf =
+            gradientScheme_.faceGradient
+            (
+                p_,
+                gradP_[P],
+                gradP_[N],
+                faceIdx
+            );
+        const Vector UfPrevIter
+        (
+            UxAvgPrevIterf_[faceIdx],
+            UyAvgPrevIterf_[faceIdx],
+            UzAvgPrevIterf_[faceIdx]
+        );
+
+        RhieChowFlowRate_[faceIdx] =
+            dot(UfLinear, Sf)
+          - dot((DUf_[faceIdx] * (gradPf - gradPAvgf)), Sf)
+          + (S(1.0) - alphaU)
+          * (RhieChowFlowRatePrevIter_[faceIdx] - dot(UfPrevIter, Sf));
+
+        // prevStep is non-null exactly on the transient path
+        if (prevStep != nullptr)
+        {
+            const Vector UfPrevStepLinear
+            (
+                interpolateToFace(mesh_, face, prevStep->UxPrevStep),
+                interpolateToFace(mesh_, face, prevStep->UyPrevStep),
+                interpolateToFace(mesh_, face, prevStep->UzPrevStep)
+            );
+            const Scalar phiCorr =
+                prevStep->fluxPrevStep[faceIdx] - dot(UfPrevStepLinear, Sf);
+            const Scalar coeff = S(1.0) - std::min
+            (
+                std::abs(phiCorr)
+              / (std::abs(prevStep->fluxPrevStep[faceIdx]) + vSmallValue),
+                S(1.0)
+            );
+            const Scalar DTf = DUf_[faceIdx] * coeff / deltaT_;
+            RhieChowFlowRate_[faceIdx] += DTf * phiCorr;
+        }
+    }
+}
+
+
+void MomentumTransport::addTransposeGradientSource
+(
+    ScalarField& UxSource,
+    ScalarField& UySource,
+    ScalarField& UzSource
+) const
+{
+    const Count numCells = mesh_.numDomainCells();
+
+    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
+    {
+        Scalar sumX = S(0.0);
+        Scalar sumY = S(0.0);
+        Scalar sumZ = S(0.0);
+
+        const auto& cell = mesh_.cells()[cellIdx];
+        const auto& faceIndices = cell.faceIndices();
+        const auto& faceSigns = cell.faceSigns();
+
+        for (Index j = 0; j < faceIndices.size(); ++j)
+        {
+            const Index faceIdx = faceIndices[j];
+            const Face& face = mesh_.faces()[faceIdx];
+
+            // Symmetry planes integrate full viscous normal stress implicitly;
+            // skip to avoid double-counting the transpose stress here
+            if
+            (
+                face.isBoundary()
+             && face.patch()->type() != PatchType::processor
+             && bcManager_.boundaryType(face, Field::Ux).isSymmetry()
+            )
+            {
+                continue;
+            }
+
+            const Scalar sign = S(faceSigns[j]);
+            const Vector Sf = face.normal() * face.projectedArea() * sign;
+            const Scalar nuEfff = nuEffFace_[faceIdx];
+
+            Tensor gradUf;
+            if (face.isBoundary())
+            {
+                gradUf = gradU_[cellIdx];
+            }
+            else
+            {
+                gradUf = interpolateToFace(mesh_, face, gradU_);
+            }
+
+            sumX += nuEfff * dot(gradUf.col(0), Sf);
+            sumY += nuEfff * dot(gradUf.col(1), Sf);
+            sumZ += nuEfff * dot(gradUf.col(2), Sf);
+        }
+
+        UxSource[cellIdx] += sumX;
+        UySource[cellIdx] += sumY;
+        UzSource[cellIdx] += sumZ;
+    }
+}
+
+

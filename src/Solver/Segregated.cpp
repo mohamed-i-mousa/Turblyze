@@ -98,50 +98,6 @@ Segregated::Segregated
     }
 
     pCorrNeedsNullSpace_ = globalSum(fixedPressurePatches) == 0;
-
-    // Update boundary coefficients
-    updateSymmetryBoundaries();
-
-    UxAvgf_.setAll(initialVelocity.x());
-    UyAvgf_.setAll(initialVelocity.y());
-    UzAvgf_.setAll(initialVelocity.z());
-
-    // Initialize RhieChowFlowRate_ with linear interpolation
-    const Count numFaces = mesh.numFaces();
-
-    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
-    {
-        const Face& face = mesh.faces()[faceIdx];
-        Vector Uf;
-
-        if (face.isBoundary())
-        {
-            const Index owner = face.ownerCell();
-            Uf = Vector
-            (
-                bcManager().faceValue(face, Ux()[owner], Field::Ux),
-                bcManager().faceValue(face, Uy()[owner], Field::Uy),
-                bcManager().faceValue(face, Uz()[owner], Field::Uz)
-            );
-        }
-        else
-        {
-            Uf = Vector
-            (
-                interpolateToFace(mesh, face, Ux()),
-                interpolateToFace(mesh, face, Uy()),
-                interpolateToFace(mesh, face, Uz())
-            );
-        }
-
-        const bool isZeroFlux =
-            face.isBoundary()
-         && face.patch()->type() != PatchType::processor
-         && bcManager().boundaryType(face.patch()->name(), Field::Ux).isSymmetry();
-
-        const Vector Sf = face.normal() * face.projectedArea();
-        RhieChowFlowRate_[faceIdx] = isZeroFlux ? S(0.0) : dot(Uf, Sf);
-    }
 }
 
 
@@ -161,40 +117,6 @@ Scalar Segregated::pressureResidual() const noexcept
         std::sqrt(globalSum(sumP2) / S(totalDomainCells()));
 
     return lastPressureCorrectionRMS_ / (pRms + vSmallValue);
-}
-
-
-void Segregated::updateEffectiveViscosity()
-{
-    const Count numCells = mesh().numCells();
-    const Count numFaces = mesh().numFaces();
-
-    const ScalarField& nut = turbulence().turbulentViscosity();
-
-    // Build cell-based effective viscosity
-    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
-    {
-        nuEff_[cellIdx] = nu() + nut[cellIdx];
-    }
-
-    // Build face-based effective viscosity
-    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
-    {
-        const Face& face = mesh().faces()[faceIdx];
-
-        if (face.isBoundary())
-        {
-            // Turbulent models may provide wall-function boundary nut.
-            nuEffFace_[faceIdx] =
-                nu()
-              + turbulence().boundaryTurbulentViscosity(face);
-        }
-        else
-        {
-            // Internal faces: linear interpolation
-            nuEffFace_[faceIdx] = interpolateToFace(mesh(), face, nuEff_);
-        }
-    }
 }
 
 
@@ -361,126 +283,6 @@ void Segregated::diagonalDU(Index component)
 }
 
 
-void Segregated::buildFaceDiagonal()
-{
-    const Count numFaces = mesh().numFaces();
-
-    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
-    {
-        const Face& face = mesh().faces()[faceIdx];
-
-        if (face.isBoundary())
-        {
-            // Dirichlet p' couples pressure and velocity through the face; a
-            // zero-gradient or symmetry plane decouples them
-            DUf_[faceIdx] =
-                (face.patch()->type() != PatchType::processor
-              && bcManager().boundaryType(face.patch()->name(), Field::pCorr).fixesValue())
-              ? DU_[face.ownerCell()]
-              : S(0.0);
-        }
-        else
-        {
-            // Internal faces
-            DUf_[faceIdx] = interpolateToFace(mesh(), face, DU_);
-        }
-    }
-}
-
-
-void Segregated::updateRhieChowFlowRate(const TransientFields* prevStep)
-{
-    const Count numFaces = mesh().numFaces();
-
-    for (Index faceIdx = 0; faceIdx < numFaces; ++faceIdx)
-    {
-        const Face& face = mesh().faces()[faceIdx];
-
-        if (face.isBoundary())
-        {
-            const Index owner = face.ownerCell();
-
-            UxAvgf_[faceIdx] = bcManager().faceValue(face, Ux()[owner], Field::Ux);
-            UyAvgf_[faceIdx] = bcManager().faceValue(face, Uy()[owner], Field::Uy);
-            UzAvgf_[faceIdx] = bcManager().faceValue(face, Uz()[owner], Field::Uz);
-
-            // A flux-constrained face (symmetry) carries zero mass flux
-            const bool isZeroFlux =
-                face.patch()->type() != PatchType::processor
-             && bcManager().boundaryType(face.patch()->name(), Field::Ux).isSymmetry();
-
-            const Vector Uf
-            (
-                UxAvgf_[faceIdx],
-                UyAvgf_[faceIdx],
-                UzAvgf_[faceIdx]
-            );
-
-            RhieChowFlowRate_[faceIdx] =
-                isZeroFlux
-              ? S(0.0)
-              : dot(Uf, face.normal() * face.projectedArea());
-            continue;
-        }
-
-        const Index P = face.ownerCell();
-        const Index N = face.neighborCell().value();
-
-        // Linear-interpolated velocity at face
-        const Vector UfLinear
-        (
-            interpolateToFace(mesh(), face, Ux()),
-            interpolateToFace(mesh(), face, Uy()),
-            interpolateToFace(mesh(), face, Uz())
-        );
-
-        const Vector gradPAvgf = interpolateToFace(mesh(), face, gradP_);
-        const Vector Sf = face.normal() * face.projectedArea();
-        const Vector gradPf =
-            gradientScheme().faceGradient
-            (
-                pressure(),
-                gradP_[P],
-                gradP_[N],
-                faceIdx
-            );
-        const Vector UfPrevIter
-        (
-            UxAvgPrevIterf_[faceIdx],
-            UyAvgPrevIterf_[faceIdx],
-            UzAvgPrevIterf_[faceIdx]
-        );
-
-        RhieChowFlowRate_[faceIdx] =
-            dot(UfLinear, Sf)
-          - dot((DUf_[faceIdx] * (gradPf - gradPAvgf)), Sf)
-          + (S(1.0) - alphaU_)
-          * (RhieChowFlowRatePrevIter_[faceIdx] - dot(UfPrevIter, Sf));
-
-        // prevStep is non-null exactly on the transient path
-        if (prevStep != nullptr)
-        {
-            const Vector UfPrevStepLinear
-            (
-                interpolateToFace(mesh(), face, prevStep->UxPrevStep),
-                interpolateToFace(mesh(), face, prevStep->UyPrevStep),
-                interpolateToFace(mesh(), face, prevStep->UzPrevStep)
-            );
-            const Scalar phiCorr =
-                prevStep->fluxPrevStep[faceIdx] - dot(UfPrevStepLinear, Sf);
-            const Scalar coeff = S(1.0) - std::min
-            (
-                std::abs(phiCorr)
-              / (std::abs(prevStep->fluxPrevStep[faceIdx]) + vSmallValue),
-                S(1.0)
-            );
-            const Scalar DTf = DUf_[faceIdx] * coeff / deltaT();
-            RhieChowFlowRate_[faceIdx] += DTf * phiCorr;
-        }
-    }
-}
-
-
 void Segregated::solvePressureCorrection()
 {
     const Count numCells = mesh().numDomainCells();
@@ -642,8 +444,7 @@ void Segregated::correctFlowRate()
         {
             if
             (
-                face.patch()->type() == PatchType::processor
-             || !bcManager().boundaryType
+                !bcManager().boundaryType
                 (
                     face.patch()->name(), Field::p
                 ).correctsBoundaryFlux()
@@ -705,51 +506,6 @@ void Segregated::correctPressure()
 
     // Next iteration's gradP stencil and Rhie-Chow read p across cuts
     Halo::exchange({&pressure()});
-}
-
-
-void Segregated::addTransposeGradientSource()
-{
-    const Count numCells = mesh().numDomainCells();
-
-    for (Index cellIdx = 0; cellIdx < numCells; ++cellIdx)
-    {
-        Scalar sumX = S(0.0);
-        Scalar sumY = S(0.0);
-        Scalar sumZ = S(0.0);
-
-        const auto& cell = mesh().cells()[cellIdx];
-        const auto& faceIndices = cell.faceIndices();
-        const auto& faceSigns = cell.faceSigns();
-
-        for (Index j = 0; j < faceIndices.size(); ++j)
-        {
-            const Index faceIdx = faceIndices[j];
-            const Scalar sign = S(faceSigns[j]);
-            const Face& face = mesh().faces()[faceIdx];
-
-            const Vector Sf = face.normal() * face.projectedArea() * sign;
-            const Scalar nuEfff = nuEffFace_[faceIdx];
-
-            Tensor gradUf;
-            if (face.isBoundary())
-            {
-                gradUf = gradU()[cellIdx];
-            }
-            else
-            {
-                gradUf = interpolateToFace(mesh(), face, gradU());
-            }
-
-            sumX += nuEfff * dot(gradUf.col(0), Sf);
-            sumY += nuEfff * dot(gradUf.col(1), Sf);
-            sumZ += nuEfff * dot(gradUf.col(2), Sf);
-        }
-
-        UxSource_[cellIdx] += sumX;
-        UySource_[cellIdx] += sumY;
-        UzSource_[cellIdx] += sumZ;
-    }
 }
 
 

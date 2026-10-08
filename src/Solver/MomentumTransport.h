@@ -191,15 +191,42 @@ protected:
 
     /// The convective face mass flux used by the shared driver
     [[nodiscard]] virtual const FaceFluxField&
-    faceMassFlux() const noexcept = 0;
+    faceMassFlux() const noexcept
+    {
+        return RhieChowFlowRate_;
+    }
 
     /// Family pressure residual for the convergence check
     [[nodiscard]] virtual Scalar pressureResidual() const noexcept = 0;
 
-// Shared driver helpers
+// Shared finite-volume methods
 
     /// Update velocity-coupled symmetry boundary coefficients
     void updateSymmetryBoundaries();
+
+    /// Build cell and face effective viscosity
+    void updateEffectiveViscosity();
+
+    /// Interpolate the face momentum diagonal DUf_ from DU_
+    void buildFaceDiagonal();
+
+    /// Update face mass fluxes using Rhie-Chow interpolation
+    void updateRhieChowFlowRate
+    (
+        Scalar alphaU,
+        const TransientFields* prevStep = nullptr
+    );
+
+    /// Add the turbulent transpose-gradient source term: div(nuEff * (gradU)^T)
+    void addTransposeGradientSource
+    (
+        ScalarField& UxSource,
+        ScalarField& UySource,
+        ScalarField& UzSource
+    ) const;
+
+
+// Shared driver helpers
 
     /// Roll the Crank-Nicolson stored velocity time derivatives forward
     void updatePrevStepDerivatives(TransientFields& prevStep);
@@ -332,19 +359,137 @@ protected:
         return gradU_;
     }
 
-// ***************************** Protected Members ***************************
+    /// Pressure gradient field
+    [[nodiscard]] const VectorField& gradP() const noexcept
+    {
+        return gradP_;
+    }
+    [[nodiscard]] VectorField& gradP() noexcept
+    {
+        return gradP_;
+    }
 
-protected:
+    /// Effective viscosity (laminar + turbulent)
+    [[nodiscard]] const ScalarField& nuEff() const noexcept
+    {
+        return nuEff_;
+    }
+    [[nodiscard]] ScalarField& nuEff() noexcept
+    {
+        return nuEff_;
+    }
+
+    /// Effective viscosity at face centres
+    [[nodiscard]] const FaceData<Scalar>& nuEffFace() const noexcept
+    {
+        return nuEffFace_;
+    }
+    [[nodiscard]] FaceData<Scalar>& nuEffFace() noexcept
+    {
+        return nuEffFace_;
+    }
+
+    /// Face velocity (current iteration)
+    [[nodiscard]] const FaceData<Scalar>& UxAvgf() const noexcept
+    {
+        return UxAvgf_;
+    }
+    [[nodiscard]] FaceData<Scalar>& UxAvgf() noexcept
+    {
+        return UxAvgf_;
+    }
+    [[nodiscard]] const FaceData<Scalar>& UyAvgf() const noexcept
+    {
+        return UyAvgf_;
+    }
+    [[nodiscard]] FaceData<Scalar>& UyAvgf() noexcept
+    {
+        return UyAvgf_;
+    }
+    [[nodiscard]] const FaceData<Scalar>& UzAvgf() const noexcept
+    {
+        return UzAvgf_;
+    }
+    [[nodiscard]] FaceData<Scalar>& UzAvgf() noexcept
+    {
+        return UzAvgf_;
+    }
+
+    /// Face velocity (previous iteration)
+    [[nodiscard]] const FaceData<Scalar>& UxAvgPrevIterf() const noexcept
+    {
+        return UxAvgPrevIterf_;
+    }
+    [[nodiscard]] FaceData<Scalar>& UxAvgPrevIterf() noexcept
+    {
+        return UxAvgPrevIterf_;
+    }
+    [[nodiscard]] const FaceData<Scalar>& UyAvgPrevIterf() const noexcept
+    {
+        return UyAvgPrevIterf_;
+    }
+    [[nodiscard]] FaceData<Scalar>& UyAvgPrevIterf() noexcept
+    {
+        return UyAvgPrevIterf_;
+    }
+    [[nodiscard]] const FaceData<Scalar>& UzAvgPrevIterf() const noexcept
+    {
+        return UzAvgPrevIterf_;
+    }
+    [[nodiscard]] FaceData<Scalar>& UzAvgPrevIterf() noexcept
+    {
+        return UzAvgPrevIterf_;
+    }
+
+    /// Mass flux through faces (Rhie-Chow)
+    [[nodiscard]] const FaceFluxField& RhieChowFlowRate() const noexcept
+    {
+        return RhieChowFlowRate_;
+    }
+    [[nodiscard]] FaceFluxField& RhieChowFlowRate() noexcept
+    {
+        return RhieChowFlowRate_;
+    }
+
+    /// Mass flux from the previous iteration
+    [[nodiscard]] const FaceFluxField& RhieChowFlowRatePrevIter() const noexcept
+    {
+        return RhieChowFlowRatePrevIter_;
+    }
+    [[nodiscard]] FaceFluxField& RhieChowFlowRatePrevIter() noexcept
+    {
+        return RhieChowFlowRatePrevIter_;
+    }
+
+    /// Momentum diagonal coefficients
+    [[nodiscard]] const ScalarField& DU() const noexcept
+    {
+        return DU_;
+    }
+    [[nodiscard]] ScalarField& DU() noexcept
+    {
+        return DU_;
+    }
+
+    /// Face momentum diagonal coefficients
+    [[nodiscard]] const FaceFluxField& DUf() const noexcept
+    {
+        return DUf_;
+    }
+    [[nodiscard]] FaceFluxField& DUf() noexcept
+    {
+        return DUf_;
+    }
+
+// ***************************** Protected Members ****************************
+
+// Dependencies
 
     /// Mesh view (nodes, faces, cells)
     const Mesh& mesh_;
 
     /// Reference to BCs (mutable: coefficient re-evaluation)
     BoundaryConditions& bcManager_;
-
-// ****************************** Private Members *****************************
-
-private:
 
     /// Time-derivative discretization scheme
     const TimeScheme& timeScheme_;
@@ -354,6 +499,43 @@ private:
 
     /// Turbulence model
     TurbulenceModel& turbulence_;
+
+// Collocated finite-volume fields
+
+    /// Pressure gradient field
+    VectorField gradP_{mesh_};
+
+    /// Effective viscosity (laminar + turbulent)
+    ScalarField nuEff_{mesh_};
+
+    /// Effective viscosity at face centres
+    FaceData<Scalar> nuEffFace_{mesh_};
+
+    /// Face velocity (current iteration)
+    FaceData<Scalar> UxAvgf_{mesh_};
+    FaceData<Scalar> UyAvgf_{mesh_};
+    FaceData<Scalar> UzAvgf_{mesh_};
+
+    /// Face velocity (previous iteration)
+    FaceData<Scalar> UxAvgPrevIterf_{mesh_};
+    FaceData<Scalar> UyAvgPrevIterf_{mesh_};
+    FaceData<Scalar> UzAvgPrevIterf_{mesh_};
+
+    /// Mass flux through faces (Rhie-Chow)
+    FaceFluxField RhieChowFlowRate_{mesh_};
+
+    /// Mass flux from the previous iteration
+    FaceFluxField RhieChowFlowRatePrevIter_{mesh_};
+
+    /// Momentum diagonal coefficients
+    ScalarField DU_{mesh_};
+
+    /// Face momentum diagonal coefficients
+    FaceFluxField DUf_{mesh_};
+
+// ****************************** Private Members *****************************
+
+private:
 
 // Physical properties
 
