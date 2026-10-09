@@ -33,6 +33,10 @@
 #include "LinearSolvers.h"
 #include "TransportEquation.h"
 
+// *************************** Forward Declarations ***************************
+
+class Initializer;
+
 // ***************************** class Segregated *****************************
 
 class Segregated : public MomentumTransport
@@ -52,8 +56,7 @@ public:
         LinearSolver& momentumSolver,
         LinearSolver& pressureSolver,
         TurbulenceModel& turbulence,
-        const Vector& initialVelocity,
-        Scalar initialPressure,
+        const Initializer& initializer,
         Scalar deltaT,
         Scalar rho,
         Scalar mu,

@@ -130,6 +130,12 @@ struct CaseConfiguration
     /// Dynamic viscosity
     Scalar mu;
 
+    /// Flow field initialization mode (default: "Uniform")
+    Name initializationType = "Uniform";
+
+    /// Potential flow non-orthogonal corrector passes
+    Count potentialFlowCorrectors = 3;
+
     /// Initial velocity
     Vector initialVelocity;
 

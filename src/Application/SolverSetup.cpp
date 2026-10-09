@@ -15,6 +15,9 @@
 // Implementation header
 #include "SolverSetup.h"
 
+// Standard library headers
+#include <format>
+
 // Project headers
 #include "Mesh.h"
 #include "BoundaryConditions.h"
@@ -30,12 +33,12 @@
 #include "ErrorHandler.h"
 #include "Logger.h"
 #include "StringTypes.h"
+#include "Initializer.h"
 
 // ***************************** Internal Helpers *****************************
 
 namespace
 {
-
 
 void makeConvectionSchemes
 (
@@ -203,6 +206,9 @@ void SolverSetup::configure
             std::make_unique<Laminar>(mesh, boundaryConditions, config.mu / config.rho);
     }
 
+    const auto initializer =
+        Initializer::create(config, *modules.gradScheme, *modules.pressureSolver);
+
     modules.solver =
         MomentumTransport::create
         (
@@ -219,8 +225,7 @@ void SolverSetup::configure
             *modules.momentumSolver,
             *modules.pressureSolver,
             *modules.turbulenceModel,
-            config.initialVelocity,
-            config.initialPressure,
+            *initializer,
             config.time.timeStep,
             config.rho,
             config.mu,
@@ -242,7 +247,10 @@ void SolverSetup::logSetup
     const CaseConfiguration& config
 )
 {
-    Logger::sectionHeader("Initializing " + config.algorithm + " Solver");
+    Logger::sectionHeader(std::format("Initializing {} Solver", config.algorithm));
+
+    Logger::subsection("Flow initialization");
+    Logger::keyValue("Mode", Name{config.initializationType});
 
     Logger::subsection("Linear solvers");
     Logger::linearSolverConfigHeader();
@@ -266,7 +274,7 @@ void SolverSetup::logSetup
         );
     }
 
-    Logger::subsection(config.algorithm + " controls");
+    Logger::subsection(std::format("{} controls", config.algorithm));
 
     if (!modules.timeScheme->isTransient())
     {

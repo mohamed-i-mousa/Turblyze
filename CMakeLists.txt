@@ -109,6 +109,9 @@ add_library(turblyze_core OBJECT
     src/Solver/Segregated.cpp
     src/Solver/SIMPLE.cpp
     src/Solver/PISO.cpp
+    src/Solver/Initialization/Initializer.cpp
+    src/Solver/Initialization/Uniform.cpp
+    src/Solver/Initialization/PotentialFlow.cpp
     src/Models/Turbulence/TurbulenceModel.cpp
     src/Models/Turbulence/RANS/RANS.cpp
     src/Models/Turbulence/RANS/kOmegaSST.cpp
@@ -146,6 +149,7 @@ target_include_directories(turblyze_core PUBLIC
     src/PostProcessing/
     src/PostProcessing/VTK/
     src/Solver/
+    src/Solver/Initialization/
     src/LinearSystem/
     src/Parallel/
 )

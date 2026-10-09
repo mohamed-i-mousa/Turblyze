@@ -16,6 +16,7 @@
 #include "MomentumTransport.h"
 
 // Standard library headers
+#include <algorithm>
 #include <cmath>
 #include <format>
 #include <iostream>
@@ -29,6 +30,7 @@
 #include "TimeScheme.h"
 #include "TurbulenceModel.h"
 #include "RuntimeSelection.h"
+#include "Initializer.h"
 #include "SIMPLE.h"
 #include "PISO.h"
 
@@ -41,8 +43,7 @@ MomentumTransport::MomentumTransport
     const TimeScheme& timeScheme,
     const GradientScheme& gradScheme,
     TurbulenceModel& turbulence,
-    const Vector& initialVelocity,
-    Scalar initialPressure,
+    const Initializer& initializer,
     Scalar deltaT,
     Scalar rho,
     Scalar mu,
@@ -64,11 +65,7 @@ MomentumTransport::MomentumTransport
     tolerance_{convergenceTolerance},
     debug_{debug}
 {
-    Ux_.setAll(initialVelocity.x());
-    Uy_.setAll(initialVelocity.y());
-    Uz_.setAll(initialVelocity.z());
-    p_.setAll(initialPressure);
-
+    initializer.initialize(mesh_, bcManager_, Ux_, Uy_, Uz_, p_);
     updateSymmetryBoundaries();
 
     // Initialize RhieChowFlowRate_ with linear interpolation
@@ -129,8 +126,7 @@ std::unique_ptr<MomentumTransport> MomentumTransport::create
     LinearSolver& momentumSolver,
     LinearSolver& pressureSolver,
     TurbulenceModel& turbulence,
-    const Vector& initialVelocity,
-    Scalar initialPressure,
+    const Initializer& initializer,
     Scalar deltaT,
     Scalar rho,
     Scalar mu,
@@ -157,8 +153,7 @@ std::unique_ptr<MomentumTransport> MomentumTransport::create
                 momentumSolver,
                 pressureSolver,
                 turbulence,
-                initialVelocity,
-                initialPressure,
+                initializer,
                 deltaT,
                 rho,
                 mu,
@@ -185,8 +180,7 @@ std::unique_ptr<MomentumTransport> MomentumTransport::create
                 momentumSolver,
                 pressureSolver,
                 turbulence,
-                initialVelocity,
-                initialPressure,
+                initializer,
                 deltaT,
                 rho,
                 mu,

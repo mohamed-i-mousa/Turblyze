@@ -24,6 +24,10 @@
 
 #include "Segregated.h"
 
+// *************************** Forward Declarations ***************************
+
+class Initializer;
+
 // ******************************* class SIMPLE *******************************
 
 class SIMPLE final : public Segregated
@@ -43,8 +47,7 @@ public:
         LinearSolver& momentumSolver,
         LinearSolver& pressureSolver,
         TurbulenceModel& turbulence,
-        const Vector& initialVelocity,
-        Scalar initialPressure,
+        const Initializer& initializer,
         Scalar deltaT,
         Scalar rho,
         Scalar mu,

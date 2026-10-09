@@ -26,6 +26,7 @@
 #include "GradientScheme.h"
 #include "LinearSolvers.h"
 #include "MomentumTransport.h"
+#include "Initializer.h"
 #include "RuntimeSelection.h"
 #include "TimeScheme.h"
 #include "TurbulenceModel.h"
@@ -546,8 +547,26 @@ CaseConfiguration loadConfiguration(const CaseReader& reader)
     }
 
     const auto& initialConditions = reader.section("initialConditions");
-    config.initialVelocity = initialConditions.lookup<Vector>("U");
-    config.initialPressure = initialConditions.lookup<Scalar>("p");
+    config.initializationType =
+        initialConditions.lookupOrDefault<Name>("type", "Uniform");
+
+    validateSelection
+    (
+        config.initializationType,
+        Initializer::availableTypes(),
+        "initialConditions.type"
+    );
+
+    if (config.initializationType == "Uniform")
+    {
+        config.initialVelocity = initialConditions.lookup<Vector>("U");
+        config.initialPressure = initialConditions.lookup<Scalar>("p");
+    }
+    else if (config.initializationType == "potentialFlow")
+    {
+        config.initialVelocity = initialConditions.lookup<Vector>("U");
+        config.initialPressure = initialConditions.lookup<Scalar>("p");
+    }
 
     const auto& outputDict = reader.section("output");
     config.debug = outputDict.lookupOrDefault<bool>("debug", false);
@@ -636,6 +655,12 @@ CaseConfiguration loadConfiguration(const CaseReader& reader)
     else if (config.algorithm == "PISO")
     {
         readPisoControls(reader, config);
+    }
+
+    if (config.initializationType == "potentialFlow")
+    {
+        // 1 base solve + N non-orthogonal correction loops
+        config.potentialFlowCorrectors = 1 + config.nNonOrthogonalCorrectors;
     }
 
     config.vtkOutputFilename = outputDict.lookup<FilePath>("filename");

@@ -104,11 +104,14 @@ physicalProperties
 ```
 
 ### 3. initialConditions
-Sets initial field values for all solved fields.
+Sets initial field values for all solved fields. Three initialization modes are supported via `type`:
 
+#### A. Uniform (default)
+Uniform velocity and pressure assignment throughout the entire domain:
 ```cpp
 initialConditions
 {
+    type            Uniform;        // Optional (default: Uniform)
     U               (0 0 -0.1);     // Required: Initial velocity [m/s]
     p               0;              // Required: Initial pressure [Pa]
     k               3.75e-5;        // Optional: Initial TKE [m^2/s^2]
@@ -117,6 +120,7 @@ initialConditions
 ```
 
 **Notes**:
+- `type` is optional and defaults to `Uniform` for full backward compatibility.
 - `k` and `omega` are only used when `model` is not `Laminar`
 - When omitted, they are auto-computed from initial velocity using
   `turbulenceIntensity` and `hydraulicDiameter` from the `turbulence`
@@ -395,7 +399,7 @@ PISO
   dominant; very high Courant numbers can destabilize the explicit sweep. Keep
   `U` and `p` relaxation at `1.0`.
 
-### 10. linearSolvers
+### 11. linearSolvers
 Linear solver settings for each field.
 
 ```cpp
@@ -488,7 +492,7 @@ Algorithm/equation pairing is not validated. Picking `PCG` for a
 non-symmetric equation will compile and run but will not converge to the
 correct solution.
 
-### 11. turbulence
+### 12. turbulence
 Turbulence model configuration.
 
 ```cpp

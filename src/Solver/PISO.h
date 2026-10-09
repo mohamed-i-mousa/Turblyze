@@ -25,6 +25,10 @@
 
 #include "Segregated.h"
 
+// *************************** Forward Declarations ***************************
+
+class Initializer;
+
 // ******************************** class PISO ********************************
 
 class PISO final : public Segregated
@@ -44,8 +48,7 @@ public:
         LinearSolver& momentumSolver,
         LinearSolver& pressureSolver,
         TurbulenceModel& turbulence,
-        const Vector& initialVelocity,
-        Scalar initialPressure,
+        const Initializer& initializer,
         Scalar deltaT,
         Scalar rho,
         Scalar mu,

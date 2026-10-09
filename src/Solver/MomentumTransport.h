@@ -44,6 +44,7 @@
 class TimeScheme;
 class ConvectionScheme;
 class LinearSolver;
+class Initializer;
 
 // *************************** struct TransientFields *************************
 
@@ -86,8 +87,7 @@ public:
         const TimeScheme& timeScheme,
         const GradientScheme& gradScheme,
         TurbulenceModel& turbulence,
-        const Vector& initialVelocity,
-        Scalar initialPressure,
+        const Initializer& initializer,
         Scalar deltaT,
         Scalar rho,
         Scalar mu,
@@ -122,8 +122,7 @@ public:
         LinearSolver& momentumSolver,
         LinearSolver& pressureSolver,
         TurbulenceModel& turbulence,
-        const Vector& initialVelocity,
-        Scalar initialPressure,
+        const Initializer& initializer,
         Scalar deltaT,
         Scalar rho,
         Scalar mu,
